@@ -10,7 +10,13 @@
     "test:runtime": "playwright test",
     "mobile:prepare": "node tools/prepare-mobile.mjs",
     "cap:sync": "npm run mobile:prepare && cap sync",
-    "cap:add:android": "npm run mobile:prepare && cap add android"
+    "cap:add:android": "npm run mobile:prepare && cap add android",
+
+    "student:prepare": "node tools/prepare-student.mjs",
+    "student:build":   "build-student.bat",
+
+    "admin:prepare":   "node tools/prepare-admin.mjs",
+    "admin:build":     "build-admin.bat"
   },
   "devDependencies": {
     "@capacitor/android": "^7.4.2",
