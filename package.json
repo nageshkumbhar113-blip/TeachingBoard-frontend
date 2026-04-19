@@ -1,0 +1,22 @@
+{
+  "name": "teachingboard-split-apps",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "npm install --prefix TeachingBoard-backend",
+    "serve": "node tools/static-server.mjs",
+    "test:runtime": "playwright test",
+    "mobile:prepare": "node tools/prepare-mobile.mjs",
+    "cap:sync": "npm run mobile:prepare && cap sync",
+    "cap:add:android": "npm run mobile:prepare && cap add android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "@playwright/test": "^1.55.0",
+    "typescript": "^6.0.3"
+  }
+}

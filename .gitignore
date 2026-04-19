@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Android build
+android/
+.gradle-home/
+dist-mobile/
+
+# Backend (separate repo)
+TeachingBoard-backend/
+
+# Old frontend repo
+TeachingBoard/
+
+# Env & secrets
+.env
+*.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test output
+test-results/
+
+# Misc
+New Text Document.txt

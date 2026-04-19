@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/student-app/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="description" content="TeachingBoard Student App - published quizzes, practice sessions, analytics, and offline quiz taking." />
+  <title>TeachingBoard Student App</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="../icons/icon-72.png" />
+  <link rel="apple-touch-icon" href="../icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="student-ui.css" />
+</head>
+<body class="theme-dark student-app" data-lang="en">
+  <noscript>
+    <div class="noscript-msg">TeachingBoard requires JavaScript. Please enable it in your browser.</div>
+  </noscript>
+
+  <!-- ── ONBOARDING ───────────────────────────────────────── -->
+  <div id="onboarding-screen" class="onboarding-screen hidden" role="dialog" aria-modal="true" aria-label="Setup">
+    <div class="onboarding-card">
+      <div class="onboarding-logo" aria-hidden="true">🎯</div>
+      <h1 class="onboarding-title">TeachingBoard</h1>
+      <p class="onboarding-sub">Setup करण्यासाठी खालील माहिती भरा</p>
+
+      <div class="onboarding-field">
+        <label for="ob-name" class="onboarding-label">तुमचे नाव <span class="ob-required">*</span></label>
+        <input id="ob-name" type="text" class="onboarding-input"
+          placeholder="उदा. Rahul Patil"
+          autocomplete="name" autocapitalize="words" spellcheck="false" />
+      </div>
+
+      <div class="onboarding-field" id="ob-server-field">
+        <label for="ob-server" class="onboarding-label">Server URL</label>
+        <input id="ob-server" type="url" class="onboarding-input"
+          placeholder="http://192.168.x.x:4000/api"
+          autocomplete="url" spellcheck="false" />
+        <p class="onboarding-hint" id="ob-server-hint">शाळेतील server चा IP address टाका.</p>
+        <button type="button" id="ob-change-server" class="ob-change-link" style="display:none">बदलायचे आहे का? ✏️</button>
+      </div>
+
+      <button id="ob-continue" class="onboarding-btn">Continue →</button>
+      <button id="ob-skip" class="onboarding-skip">Offline वापरा</button>
+    </div>
+  </div>
+
+  <div id="splash" class="splash-screen" role="status" aria-live="polite" aria-label="Loading TeachingBoard Student App">
+    <div class="splash-logo">
+      <div class="splash-icon" aria-hidden="true">🎯</div>
+      <h1>TeachingBoard</h1>
+      <p class="splash-sub" id="splash-tagline" data-i18n="splash.tagline">Student App</p>
+    </div>
+    <div class="splash-loader" aria-hidden="true">
+      <div class="loader-bar"><div class="loader-fill"></div></div>
+    </div>
+  </div>
+
+      <div id="app" class="app-shell hidden">
+    <header class="top-nav" role="banner">
+      <div class="nav-left">
+          <button id="btn-home" class="nav-btn" aria-label="Go to Home">
+            <span class="nav-btn-icon" aria-hidden="true">🏠</span>
+            <span class="nav-btn-label">Home</span>
+          </button>
+          <button id="btn-back" class="nav-btn nav-back hidden" aria-label="Go back">
+            <span class="nav-btn-icon" aria-hidden="true">‹</span>
+            <span class="nav-btn-label">Back</span>
+          </button>
+          <div class="tb-brand" aria-hidden="true">
+            <span class="tb-brand-mark">TB</span>
+            <span class="tb-brand-text">TeachingBoard</span>
+          </div>
+          <div id="breadcrumb" class="breadcrumb" aria-live="polite">Home</div>
+        </div>
+
+      <div class="nav-center" aria-hidden="true">
+        <div class="session-score" id="session-score-nav">
+          <span class="score-item correct-score"><span id="nav-correct">0</span><span class="score-sym">✓</span></span>
+          <span class="score-item wrong-score"><span id="nav-wrong">0</span><span class="score-sym">✕</span></span>
+          <span class="score-item skip-score"><span id="nav-skip">0</span><span class="score-sym">⊘</span></span>
+        </div>
+      </div>
+
+      <nav class="nav-right" role="navigation" aria-label="App controls">
+        <button id="btn-profile" class="nav-btn" aria-label="Profile Settings" title="नाव / Server बदला">
+          <span class="nav-btn-icon" aria-hidden="true">👤</span>
+          <span class="nav-btn-label" id="nav-student-name">Profile</span>
+        </button>
+        <button id="btn-admin" class="nav-btn admin-btn" aria-label="Open Admin App">
+          <span class="nav-btn-icon" aria-hidden="true">⚙️</span>
+          <span class="nav-btn-label">Admin</span>
+        </button>
+        <button id="btn-theme" class="nav-btn" aria-label="Toggle Theme">
+          <span class="nav-btn-icon" aria-hidden="true">🎨</span>
+          <span class="nav-btn-label">Theme</span>
+        </button>
+        <button id="btn-lang" class="nav-btn" aria-label="Switch Language">
+          <span class="nav-btn-icon" aria-hidden="true">🌐</span>
+          <span class="nav-btn-label">Language</span>
+        </button>
+        <button id="btn-tts" class="nav-btn" aria-label="Text to Speech">
+          <span class="nav-btn-icon" aria-hidden="true">🔊</span>
+          <span class="nav-btn-label">Speak</span>
+        </button>
+        <button id="btn-ui-mode" class="nav-btn" aria-label="Toggle Board Mode" aria-pressed="false" title="Switch to Board Mode">
+          <span class="nav-btn-icon" aria-hidden="true">🖥️</span>
+          <span class="nav-btn-label">Board</span>
+        </button>
+      </nav>
+    </header>
+
+    <main class="screens-wrap" id="screens-wrap">
+      <section id="screen-home" class="screen hidden" aria-label="Home">
+        <div class="home-hero">
+          <h2 class="home-title" data-i18n="home.title">Select Class &amp; Subject</h2>
+          <p class="home-sub" data-i18n="home.sub">Choose your batch to begin</p>
+        </div>
+
+        <div class="stats-grid" role="group" aria-label="Summary statistics">
+          <div class="stat-card"><span class="stat-num" id="home-total-q">0</span><span class="stat-label">Questions</span></div>
+          <div class="stat-card"><span class="stat-num" id="home-total-batch">0</span><span class="stat-label">Classes</span></div>
+          <div class="stat-card"><span class="stat-num" id="home-total-tests">0</span><span class="stat-label">Attempts</span></div>
+        </div>
+
+        <section class="home-section" aria-label="Classes">
+          <h3 class="section-label">📚 Classes</h3>
+          <div class="batch-grid" id="batch-grid" role="list"></div>
+        </section>
+
+        <section class="home-section hidden" id="subject-section" aria-label="Subjects">
+          <h3 class="section-label" data-i18n="subjects">Subjects</h3>
+          <div class="subject-grid" id="subject-grid" role="list"></div>
+        </section>
+
+        <section class="home-section hidden" id="chapter-section" aria-label="Chapters">
+          <h3 class="section-label" data-i18n="chapters">Chapters</h3>
+          <div class="chapter-list" id="chapter-list" role="list"></div>
+        </section>
+
+        <section class="home-section hidden" id="lesson-section" aria-label="Latest Lessons">
+          <h3 class="section-label">📖 Latest Lessons</h3>
+          <div class="lesson-list" id="lesson-list"></div>
+        </section>
+
+        <section class="home-section hidden" id="available-tests-section" aria-label="Published Quizzes">
+          <h3 class="section-label">📝 Published Quizzes</h3>
+          <div id="available-tests-list"></div>
+        </section>
+
+        <section class="home-section" aria-label="Recent Attempts">
+          <div class="section-label-row">
+            <h3 class="section-label">📊 Recent Attempts</h3>
+            <button id="btn-analytics" class="home-analytics-btn" aria-label="View Analytics">📈 Analytics</button>
+          </div>
+          <div id="home-recent"></div>
+        </section>
+      </section>
+
+      <section id="screen-quiz" class="screen hidden" aria-label="Quiz">
+        <header class="quiz-header">
+          <div class="quiz-meta">
+            <span class="quiz-chapter" id="quiz-chapter-name">Chapter</span>
+            <span class="quiz-mode-badge" id="quiz-mode-badge">Practice</span>
+            <span class="diff-badge" id="current-diff-badge" aria-label="Difficulty"></span>
+          </div>
+          <div class="quiz-controls">
+            <button id="btn-shuffle" class="ctrl-btn" aria-label="Shuffle questions" title="Shuffle">🔀</button>
+            <button id="btn-revision" class="ctrl-btn" aria-label="Revision mode" title="Revision Mode">🔖</button>
+            <label class="ctrl-btn timer-select-wrap" title="Timer" aria-label="Timer">
+              ⏱️
+              <select id="timer-select" aria-label="Select timer duration">
+                <option value="0">OFF</option>
+                <option value="10">10s</option>
+                <option value="15">15s</option>
+                <option value="20">20s</option>
+                <option value="30" selected>30s</option>
+                <option value="45">45s</option>
+                <option value="60">60s</option>
+                <option value="90">90s</option>
+                <option value="120">2min</option>
+              </select>
+            </label>
+          </div>
+        </header>
+
+        <div class="progress-wrap">
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <span class="progress-text" id="progress-text" aria-live="polite">0 / 0</span>
+        </div>
+
+        <div class="timer-wrap hidden" id="timer-wrap" aria-live="polite" aria-label="Time remaining">
+          <svg class="timer-ring" viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="ring-bg" cx="32" cy="32" r="28" />
+            <circle class="ring-fill" id="ring-fill" cx="32" cy="32" r="28" />
+          </svg>
+          <span class="timer-count" id="timer-count">30</span>
+        </div>
+
+        <article class="question-card" id="question-card">
+          <div class="q-number" id="q-number" aria-label="Question number">Q1</div>
+          <figure class="q-image-wrap hidden" id="q-image-wrap">
+            <img id="q-image" src="" alt="Question image" class="q-image" loading="lazy" decoding="async" />
+          </figure>
+          <p class="q-text" id="q-text">Loading...</p>
+          <div class="options-grid" id="options-grid" role="group" aria-label="Answer options"></div>
+          <div class="tf-grid hidden" id="tf-grid" role="group" aria-label="True or False">
+            <button class="tf-btn" data-val="True" aria-label="True">✅ True</button>
+            <button class="tf-btn" data-val="False" aria-label="False">❌ False</button>
+          </div>
+          <div class="fib-wrap hidden" id="fib-wrap">
+            <input type="text" id="fib-input" class="fib-input" placeholder="Type your answer..." data-i18n-placeholder="fib.placeholder" autocomplete="off" autocorrect="off" spellcheck="false" />
+            <button id="fib-submit" class="fib-submit-btn" data-i18n="fib.submit">Submit</button>
+          </div>
+          <div class="mtp-wrap hidden" id="mtp-wrap" role="group" aria-label="Match the pairs"></div>
+        </article>
+
+        <div class="feedback-bar hidden" id="feedback-bar" role="status" aria-live="assertive">
+          <span class="feedback-icon" id="feedback-icon" aria-hidden="true">✅</span>
+          <span class="feedback-text" id="feedback-text">Correct!</span>
+        </div>
+
+        <nav class="quiz-nav" aria-label="Question navigation">
+          <button id="btn-prev" class="nav-arrow" aria-label="Previous question">← Prev</button>
+          <button id="btn-flag" class="flag-btn" aria-label="Flag for revision" title="Flag">🚩</button>
+          <button id="btn-skip" class="skip-btn" aria-label="Skip question">Skip ⊘</button>
+          <button id="btn-next" class="nav-arrow primary" aria-label="Next question">Next →</button>
+        </nav>
+
+        <p class="keyboard-hint" aria-hidden="true">
+          <kbd>←</kbd> Prev <kbd>→</kbd> Next <kbd>1-4</kbd> Select <kbd>Space</kbd> Reveal <kbd>F</kbd> Flag <kbd>R</kbd> Revision <kbd>S</kbd> Shuffle
+        </p>
+      </section>
+
+      <section id="screen-results" class="screen hidden" aria-label="Session Results">
+        <div class="results-card">
+          <div class="results-emoji" id="results-emoji" aria-hidden="true">🏆</div>
+          <h2 class="results-title" id="results-title" data-i18n="results.title">Session Complete!</h2>
+
+          <div class="results-grid" role="group" aria-label="Score summary">
+            <div class="result-stat correct"><span class="stat-num" id="res-correct">0</span><span class="stat-label" data-i18n="results.correct">Correct</span></div>
+            <div class="result-stat wrong"><span class="stat-num" id="res-wrong">0</span><span class="stat-label" data-i18n="results.wrong">Wrong</span></div>
+            <div class="result-stat skip"><span class="stat-num" id="res-skip">0</span><span class="stat-label" data-i18n="results.skipped">Skipped</span></div>
+            <div class="result-stat time"><span class="stat-num" id="res-time">0m</span><span class="stat-label" data-i18n="results.time">Time</span></div>
+          </div>
+
+          <div class="score-bar-wrap">
+            <div class="score-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="score-fill" id="score-fill"></div>
+            </div>
+            <span class="score-pct" id="score-pct" aria-live="polite">0%</span>
+          </div>
+
+          <div class="chapter-chart" id="chapter-chart" aria-label="Performance by difficulty"></div>
+
+          <div class="results-actions">
+            <button id="btn-retry" class="action-btn" data-i18n="retry">🔄 Retry</button>
+            <button id="btn-revision-mode" class="action-btn accent" data-i18n="revision">🔖 Revision Mode</button>
+            <button id="btn-pdf-export" class="action-btn" data-i18n="export.pdf">📄 Export PDF</button>
+            <button id="btn-home-from-results" class="action-btn" data-i18n="home.btn">🏠 Home</button>
+          </div>
+        </div>
+
+        <section class="history-section" aria-label="Session history">
+          <h3 class="section-label">📊 Session History</h3>
+          <div class="history-list" id="history-list"></div>
+        </section>
+      </section>
+
+      <section id="screen-test-player" class="screen hidden" aria-label="Test Player">
+        <div id="tp-quiz-view">
+          <header class="quiz-header">
+            <div class="quiz-meta">
+              <span class="quiz-chapter" id="tp-quiz-title">Quiz</span>
+              <span class="quiz-mode-badge" id="tp-mode-badge">Exam</span>
+              <span class="diff-badge" id="tp-diff-badge" aria-label="Difficulty"></span>
+            </div>
+            <div class="quiz-meta-right">
+              <span id="tp-section-label" class="tp-section-badge"></span>
+              <span id="tp-q-marks" class="tp-marks-badge">+1 / -0</span>
+            </div>
+          </header>
+
+          <div class="progress-wrap">
+            <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="progress-fill" id="tp-progress-fill"></div>
+            </div>
+            <span class="progress-text" id="tp-progress-text" aria-live="polite">1 / 0</span>
+          </div>
+
+          <div id="tp-full-timer-wrap" class="tp-full-timer-wrap hidden" aria-live="polite" aria-label="Test time remaining">
+            <div class="tp-full-timer-bar"><div id="tp-full-timer-fill" class="tp-full-timer-fill"></div></div>
+            <span id="tp-full-timer-text" class="tp-full-timer-text">0:00</span>
+          </div>
+
+          <div class="timer-wrap hidden" id="tp-timer-wrap" aria-live="polite" aria-label="Time remaining">
+            <svg class="timer-ring" viewBox="0 0 64 64" aria-hidden="true">
+              <circle class="ring-bg" cx="32" cy="32" r="28" />
+              <circle class="ring-fill" id="tp-ring-fill" cx="32" cy="32" r="28" />
+            </svg>
+            <span class="timer-count" id="tp-timer-count">30</span>
+          </div>
+
+          <article class="question-card" id="tp-question-card">
+            <div class="q-number" id="tp-q-number" aria-label="Question number">Q1</div>
+            <figure class="q-image-wrap hidden" id="tp-q-image-wrap">
+              <img id="tp-q-image" src="" alt="Question image" class="q-image" loading="lazy" decoding="async" />
+            </figure>
+            <p class="q-text" id="tp-q-text">Loading...</p>
+            <div class="options-grid hidden" id="tp-options-grid" role="group" aria-label="Answer options"></div>
+            <div class="tf-grid hidden" id="tp-tf-grid" role="group" aria-label="True or False">
+              <button class="tf-btn" data-val="True" aria-label="True">✅ True</button>
+              <button class="tf-btn" data-val="False" aria-label="False">❌ False</button>
+            </div>
+            <div class="fib-wrap hidden" id="tp-fib-wrap">
+              <input type="text" id="tp-fib-input" class="fib-input" placeholder="Type your answer..." autocomplete="off" autocorrect="off" spellcheck="false" />
+              <button id="tp-fib-submit" class="fib-submit-btn">Submit</button>
+            </div>
+          </article>
+
+          <div class="feedback-bar hidden" id="tp-feedback-bar" role="status" aria-live="assertive">
+            <span class="feedback-icon" id="tp-feedback-icon" aria-hidden="true">✅</span>
+            <span class="feedback-text" id="tp-feedback-text">Correct!</span>
+          </div>
+
+          <nav class="quiz-nav" aria-label="Question navigation">
+            <button id="tp-prev" class="nav-arrow" aria-label="Previous question">← Prev</button>
+            <span id="tp-live-score" class="tp-live-score" aria-live="polite">0 pts</span>
+            <button id="tp-skip" class="skip-btn" aria-label="Skip question">Skip ⊘</button>
+            <button id="tp-next" class="nav-arrow primary" aria-label="Next question">Next →</button>
+          </nav>
+
+          <p class="keyboard-hint" aria-hidden="true">
+            <kbd>←</kbd> Prev <kbd>→</kbd> Next <kbd>1-4</kbd> Select <kbd>Space</kbd> Reveal <kbd>S</kbd> Skip <kbd>F</kbd> Flag
+          </p>
+        </div>
+
+        <div id="tp-results-view" class="hidden">
+          <div class="results-card">
+            <div class="results-emoji" id="tp-res-emoji" aria-hidden="true">🏆</div>
+            <h2 class="results-title" id="tp-res-title">Quiz Complete!</h2>
+
+            <div class="results-grid" role="group" aria-label="Score summary">
+              <div class="result-stat correct"><span class="stat-num" id="tp-res-correct">0</span><span class="stat-label">Correct</span></div>
+              <div class="result-stat wrong"><span class="stat-num" id="tp-res-wrong">0</span><span class="stat-label">Wrong</span></div>
+              <div class="result-stat skip"><span class="stat-num" id="tp-res-skip">0</span><span class="stat-label">Skipped</span></div>
+              <div class="result-stat"><span class="stat-num" id="tp-res-score">0/0</span><span class="stat-label">Score</span></div>
+              <div class="result-stat time"><span class="stat-num" id="tp-res-time">0s</span><span class="stat-label">Time</span></div>
+            </div>
+
+            <div class="score-bar-wrap">
+              <div class="score-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="score-fill" id="tp-score-fill"></div>
+              </div>
+              <span class="score-pct" id="tp-score-pct" aria-live="polite">0%</span>
+            </div>
+
+            <div class="chapter-chart" id="tp-section-chart" aria-label="Score by section"></div>
+
+            <div class="results-actions">
+              <button id="tp-btn-retry" class="action-btn">🔄 Retry</button>
+              <button id="tp-btn-weak" class="action-btn accent">🔖 Weak Practice</button>
+              <button id="tp-btn-home" class="action-btn" data-i18n="home.btn">🏠 Home</button>
+            </div>
+          </div>
+
+          <section id="tp-wrong-review-wrap" class="tp-wrong-review-wrap hidden" aria-label="Wrong answers review">
+            <h3 class="section-label">❌ Wrong Answers Review</h3>
+            <div id="tp-wrong-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="screen-analytics" class="screen hidden" aria-label="Analytics">
+        <div id="analytics-root" class="analytics-root"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+
+  <script src="../env.js"></script>
+  <script src="../core/db.js" defer></script>
+  <script src="../core/helpers.js" defer></script>
+  <script src="../core/i18n.js" defer></script>
+  <script src="../core/pdf.js" defer></script>
+  <script src="../core/sync.js" defer></script>
+  <script src="quiz.js" defer></script>
+  <script src="testPlayer.js" defer></script>
+  <script src="analytics.js" defer></script>
+  <script src="tts.js" defer></script>
+  <script src="ui.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

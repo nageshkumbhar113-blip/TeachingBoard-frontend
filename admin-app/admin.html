@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/admin-app/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="description" content="TeachingBoard Admin App - question bank, quiz publishing, imports, and offline-first management." />
+  <title>TeachingBoard Admin App</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="../icons/icon-72.png" />
+  <link rel="apple-touch-icon" href="../icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin-ui.css" />
+</head>
+<body class="theme-light admin-app" data-lang="en">
+  <noscript>
+    <div class="noscript-msg">TeachingBoard requires JavaScript. Please enable it in your browser.</div>
+  </noscript>
+
+  <header class="admin-shell-header">
+    <div>
+      <p class="admin-shell-kicker">TeachingBoard</p>
+      <h1 class="admin-shell-title">Admin App</h1>
+      <p class="admin-shell-sub">Manage quizzes, imports, lessons, publishing, and stats from the same offline-first IndexedDB used by students.</p>
+    </div>
+    <button id="btn-open-student" class="admin-btn-secondary admin-shell-link">Open Student App</button>
+  </header>
+
+  <section class="admin-overview" aria-label="Basic stats">
+    <div class="stat-card"><span class="stat-num" id="admin-stat-questions">0</span><span class="stat-label">Questions</span></div>
+    <div class="stat-card"><span class="stat-num" id="admin-stat-quizzes">0</span><span class="stat-label">Quizzes</span></div>
+    <div class="stat-card"><span class="stat-num" id="admin-stat-published">0</span><span class="stat-label">Published</span></div>
+    <div class="stat-card"><span class="stat-num" id="admin-stat-attempts">0</span><span class="stat-label">Attempts</span></div>
+  </section>
+
+  <div id="admin-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="admin-panel-title">
+    <div class="modal-panel admin-panel">
+      <div class="modal-header">
+        <h2 id="admin-panel-title">⚙️ Admin Panel</h2>
+        <button class="modal-close" id="admin-close" aria-label="Return to Student App">✕</button>
+      </div>
+
+      <div id="admin-pin-gate" class="pin-gate">
+        <p class="pin-label">Enter 4-digit PIN</p>
+        <div class="pin-inputs" role="group" aria-label="PIN digits">
+          <input type="password" maxlength="1" class="pin-digit" data-i="0" aria-label="PIN digit 1" inputmode="numeric" />
+          <input type="password" maxlength="1" class="pin-digit" data-i="1" aria-label="PIN digit 2" inputmode="numeric" />
+          <input type="password" maxlength="1" class="pin-digit" data-i="2" aria-label="PIN digit 3" inputmode="numeric" />
+          <input type="password" maxlength="1" class="pin-digit" data-i="3" aria-label="PIN digit 4" inputmode="numeric" />
+        </div>
+        <p class="pin-hint">Default PIN: 1234</p>
+        <p class="pin-error hidden" id="pin-error" role="alert">Wrong PIN</p>
+      </div>
+
+      <div id="admin-content" class="admin-content hidden">
+
+        <!-- Sync Status Bar — always visible, updates live -->
+        <div id="sync-status-bar" class="sync-status-bar sync-all-synced" role="status" aria-live="polite">
+          <span id="sync-status-icon" class="sync-status-icon">🟢</span>
+          <span id="sync-status-text" class="sync-status-text">All synced</span>
+          <button id="sync-retry-btn" class="sync-retry-btn hidden" type="button">↺ Retry</button>
+        </div>
+
+        <nav class="admin-tabs" role="tablist" aria-label="Admin sections">
+          <button class="atab" role="tab" data-tab="lessons" aria-controls="atab-lessons" aria-selected="false">📖 Lessons</button>
+          <button class="atab active" role="tab" data-tab="questions" aria-controls="atab-questions" aria-selected="true">📝 Questions</button>
+          <button class="atab" role="tab" data-tab="tests" aria-controls="atab-tests" aria-selected="false">🧪 Tests</button>
+          <button class="atab" role="tab" data-tab="import" aria-controls="atab-import" aria-selected="false">📥 Import</button>
+          <button class="atab" role="tab" data-tab="classes" aria-controls="atab-classes" aria-selected="false">🏫 Classes</button>
+          <button class="atab" role="tab" data-tab="sync" aria-controls="atab-sync" aria-selected="false">🔗 Sync</button>
+          <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">⚙️ Settings</button>
+        </nav>
+
+        <div class="atab-content active" id="atab-questions" role="tabpanel">
+          <div class="admin-toolbar">
+            <select id="admin-batch-filter" class="admin-select" aria-label="Filter by batch"></select>
+            <select id="admin-subject-filter" class="admin-select" aria-label="Filter by subject">
+              <option value="">All Subjects</option>
+            </select>
+            <select id="admin-chapter-filter" class="admin-select" aria-label="Filter by chapter">
+              <option value="">All Chapters</option>
+            </select>
+            <input id="admin-search-filter" class="admin-input" type="search" placeholder="Search question bank" aria-label="Search questions" />
+            <button id="btn-add-question" class="admin-btn-primary">+ Add Question</button>
+          </div>
+          <div class="q-bank-meta">
+            <p id="q-bank-summary" class="q-bank-summary">0 questions</p>
+            <button id="btn-q-bank-more" type="button" class="admin-btn-secondary hidden">Show More</button>
+          </div>
+          <div class="q-bank-list" id="q-bank-list" role="list" aria-label="Question bank"></div>
+        </div>
+
+        <div class="atab-content hidden" id="atab-tests" role="tabpanel">
+          <div class="admin-toolbar">
+            <button id="btn-create-quiz" class="admin-btn-primary">+ Create Quiz</button>
+          </div>
+          <div class="quiz-list-section">
+            <h4 class="quiz-list-label">📝 Drafts</h4>
+            <div id="quiz-list-draft" role="list"><p class="empty-hint">No drafts yet</p></div>
+          </div>
+          <div class="quiz-list-section">
+            <h4 class="quiz-list-label">🚀 Published</h4>
+            <div id="quiz-list-published" role="list"><p class="empty-hint">No published quizzes yet</p></div>
+          </div>
+        </div>
+
+        <div class="atab-content hidden" id="atab-lessons" role="tabpanel">
+          <div class="lesson-editor-card">
+            <div class="admin-toolbar">
+              <input type="hidden" id="lesson-id" />
+              <input type="text" id="lesson-title" class="admin-input" placeholder="Lesson title" aria-label="Lesson title" />
+              <button id="btn-save-lesson" class="admin-btn-primary">Save Lesson</button>
+              <button id="btn-cancel-lesson" class="admin-btn-secondary hidden">Cancel</button>
+            </div>
+            <textarea id="lesson-body" class="admin-textarea" rows="6" placeholder="Lesson notes, homework, instructions, or JSON content..." aria-label="Lesson content"></textarea>
+          </div>
+          <div class="lesson-admin-list" id="lesson-admin-list" role="list" aria-label="Saved lessons"></div>
+        </div>
+
+        <div class="atab-content hidden" id="atab-import" role="tabpanel">
+          <section class="import-section" aria-label="CSV Import">
+            <h3>📊 CSV Import</h3>
+            <p class="import-hint">Format: Question, A, B, C, D, Answer, Image, Difficulty, Type</p>
+            <button id="btn-sample-csv" class="admin-btn-secondary" style="margin-bottom:8px">⬇️ Download Sample CSV</button>
+            <label class="file-drop-zone" id="csv-drop-zone" aria-label="Upload CSV file">
+              <span>📂 Drop CSV here or click to browse</span>
+              <input type="file" id="csv-file-input" accept=".csv" class="hidden" aria-label="Choose CSV file" />
+            </label>
+            <div class="import-target">
+              <select id="import-batch" class="admin-select" aria-label="Target batch"></select>
+              <input id="import-subject" class="admin-input" placeholder="Subject" aria-label="Subject" />
+              <input id="import-chapter" class="admin-input" placeholder="Chapter" aria-label="Chapter" />
+            </div>
+            <button id="btn-csv-import" class="admin-btn-primary">Import CSV</button>
+            <div id="import-log" class="import-log" role="log" aria-live="polite"></div>
+          </section>
+
+          <section class="import-section" aria-label="Bulk Paste">
+            <h3>📋 Bulk Paste (ChatGPT Format)</h3>
+            <p class="import-hint">ChatGPT ला खालील prompt द्या → output copy करा → खाली paste करा</p>
+            <div class="bulk-prompt-box">
+              <pre id="bulk-sample-prompt" class="bulk-prompt-text">Generate 5 multiple choice questions on [TOPIC] in this exact format:
+
+Q1. [Question text]
+A) [Option A]
+B) [Option B]
+C) [Option C]
+D) [Option D]
+Answer: A
+Difficulty: medium
+Type: mcq
+
+For True/False questions use Type: tf
+For Fill in the blank use Type: fib and put ___ in the question</pre>
+              <button id="btn-copy-prompt" class="admin-btn-secondary">📋 Copy Prompt</button>
+            </div>
+            <textarea id="bulk-paste-input" class="bulk-paste-area" rows="10" placeholder="येथे ChatGPT चे output paste करा…" aria-label="Bulk paste area"></textarea>
+            <div class="import-target">
+              <select id="bulk-batch" class="admin-select" aria-label="Target batch"></select>
+              <input id="bulk-subject" class="admin-input" placeholder="Subject" aria-label="Subject" />
+              <input id="bulk-chapter" class="admin-input" placeholder="Chapter" aria-label="Chapter" />
+            </div>
+            <button id="btn-bulk-import" class="admin-btn-primary">✅ Import Pasted Questions</button>
+            <div id="bulk-import-log" class="import-log" role="log" aria-live="polite"></div>
+          </section>
+
+          <section class="import-section" aria-label="ZIP Bundle Import">
+            <h3>📦 ZIP Bundle Import</h3>
+            <label class="file-drop-zone" id="zip-drop-zone" aria-label="Upload ZIP file">
+              <span>📂 Drop lesson.zip here</span>
+              <input type="file" id="zip-file-input" accept=".zip" class="hidden" aria-label="Choose ZIP file" />
+            </label>
+            <button id="btn-zip-import" class="admin-btn-primary">Import ZIP</button>
+          </section>
+
+          <section class="import-section" aria-label="Export">
+            <h3>📤 Export</h3>
+            <button id="btn-export-zip" class="admin-btn-secondary">📦 Export ZIP Bundle</button>
+            <button id="btn-export-pdf" class="admin-btn-secondary">📄 Export Question Paper PDF</button>
+            <button id="btn-gdrive-backup" class="admin-btn-secondary">☁️ Google Drive Backup</button>
+          </section>
+        </div>
+
+        <div class="atab-content hidden" id="atab-classes" role="tabpanel">
+          <div class="admin-toolbar">
+            <button id="btn-add-batch" class="admin-btn-primary">+ Add Class/Batch</button>
+          </div>
+          <div class="batch-admin-list" id="batch-admin-list" role="list" aria-label="Class list"></div>
+        </div>
+
+        <div class="atab-content hidden" id="atab-sync" role="tabpanel">
+          <section class="sync-section" aria-label="Share Server URL">
+            <h3>📡 Server URL Share करा</h3>
+            <p class="import-hint">Students ला हा QR scan करायला सांगा — server URL auto-fill होईल.</p>
+            <button id="btn-share-url-qr" class="admin-btn-primary">📲 Server URL QR Generate करा</button>
+            <div id="url-qr-output" class="qr-output" role="img" aria-label="Server URL QR code"></div>
+            <p id="url-qr-text" class="onboarding-hint" style="display:none;word-break:break-all;margin-top:6px"></p>
+          </section>
+
+          <section class="sync-section" aria-label="QR Code Transfer">
+            <h3>📱 Data QR Code</h3>
+            <p class="import-hint">Questions/lessons QR मध्ये export करा.</p>
+            <button id="btn-gen-qr" class="admin-btn-secondary">Generate Data QR</button>
+            <div id="qr-output" class="qr-output" role="img" aria-label="QR code"></div>
+          </section>
+
+          <section class="sync-section" aria-label="REST API Status">
+            <h3>🔗 REST API Status</h3>
+            <div class="api-status" id="api-status">
+              <span class="status-dot offline" aria-hidden="true"></span>
+              <span class="status-label">Offline Mode</span>
+            </div>
+            <input type="url" id="api-url" class="admin-input" placeholder="http://server:4000/api" aria-label="API server URL" />
+            <button id="btn-api-sync" class="admin-btn-secondary">🔄 Delta Sync</button>
+          </section>
+        </div>
+
+        <div class="atab-content hidden" id="atab-settings" role="tabpanel">
+          <div class="settings-list">
+            <div class="setting-row">
+              <label for="new-pin">Admin PIN</label>
+              <input type="password" id="new-pin" class="admin-input short" placeholder="New 4-digit PIN" maxlength="4" inputmode="numeric" />
+              <button id="btn-save-pin" class="admin-btn-secondary">Save</button>
+            </div>
+
+            <div class="setting-row">
+              <label for="default-timer">Default Timer</label>
+              <select id="default-timer" class="admin-select">
+                <option value="0">OFF</option>
+                <option value="15">15s</option>
+                <option value="30" selected>30s</option>
+                <option value="60">60s</option>
+                <option value="120">2min</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <label for="default-theme">Default Theme</label>
+              <select id="default-theme" class="admin-select">
+                <option value="theme-dark">Dark</option>
+                <option value="theme-light">Light</option>
+                <option value="theme-contrast">High Contrast</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <label for="setting-shuffle">Auto-shuffle</label>
+              <input type="checkbox" id="setting-shuffle" class="admin-checkbox" />
+            </div>
+
+            <div class="setting-row">
+              <span>Reset All Data</span>
+              <button id="btn-reset-data" class="admin-btn-danger">⚠️ Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="test-builder-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tb-heading">
+    <div class="modal-panel tb-panel">
+      <div class="modal-header">
+        <h2 id="tb-heading">Create Quiz</h2>
+        <div class="tb-steps-indicator" aria-label="Wizard steps">
+          <span class="tb-step-dot active" aria-label="Step 1: Quiz Details" title="Step 1: Quiz Details">1</span>
+          <span class="tb-step-line" aria-hidden="true"></span>
+          <span class="tb-step-dot" aria-label="Step 2: Add Questions" title="Step 2: Add Questions">2</span>
+          <span class="tb-step-line" aria-hidden="true"></span>
+          <span class="tb-step-dot" aria-label="Step 3: Preview" title="Step 3: Preview">3</span>
+        </div>
+        <button class="modal-close" id="tb-close" aria-label="Close quiz builder">✕</button>
+      </div>
+      <div class="tb-body" id="tb-body"></div>
+      <div class="tb-footer" id="tb-footer"></div>
+    </div>
+  </div>
+
+  <div id="qedit-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="qedit-title">
+    <div class="modal-panel qedit-panel">
+      <div class="modal-header">
+        <h2 id="qedit-title">Add Question</h2>
+        <button class="modal-close" id="qedit-close" aria-label="Close question editor">✕</button>
+      </div>
+
+      <form class="qedit-form" id="qedit-form" novalidate>
+        <div class="form-row">
+          <select id="qe-batch" class="admin-select" aria-label="Batch"></select>
+          <input id="qe-subject" class="admin-input" placeholder="Subject" aria-label="Subject" />
+          <input id="qe-chapter" class="admin-input" placeholder="Chapter" aria-label="Chapter" />
+        </div>
+
+        <div class="form-row">
+          <select id="qe-type" class="admin-select" aria-label="Question type">
+            <option value="mcq">MCQ</option>
+            <option value="tf">True/False</option>
+            <option value="fib">Fill in Blank</option>
+            <option value="mtp">Match the Pair</option>
+          </select>
+          <select id="qe-difficulty" class="admin-select" aria-label="Difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <textarea id="qe-question" class="admin-textarea" placeholder="Question text..." rows="3" aria-label="Question text"></textarea>
+
+        <fieldset id="qe-mcq-opts" class="qe-opts">
+          <legend class="sr-only">MCQ Options</legend>
+          <input id="qe-a" class="admin-input" placeholder="Option A" aria-label="Option A" />
+          <input id="qe-b" class="admin-input" placeholder="Option B" aria-label="Option B" />
+          <input id="qe-c" class="admin-input" placeholder="Option C" aria-label="Option C" />
+          <input id="qe-d" class="admin-input" placeholder="Option D" aria-label="Option D" />
+          <div class="form-row">
+            <label for="qe-answer">Correct Answer:</label>
+            <select id="qe-answer" class="admin-select" aria-label="Correct answer">
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <div id="qe-fib-opts" class="qe-opts hidden">
+          <input id="qe-fib-answer" class="admin-input" placeholder="Correct answer text" aria-label="Correct answer" />
+        </div>
+
+        <div id="qe-tf-opts" class="qe-opts hidden">
+          <div class="form-row">
+            <label for="qe-tf-answer">Correct Answer:</label>
+            <select id="qe-tf-answer" class="admin-select" aria-label="True or False answer">
+              <option value="True">True</option>
+              <option value="False">False</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="qe-image">Image (optional):</label>
+          <input type="file" id="qe-image" accept="image/*" class="admin-input" aria-label="Question image" />
+        </div>
+
+        <div class="form-row">
+          <label for="qe-tags">Tags (comma-sep.):</label>
+          <input id="qe-tags" class="admin-input" placeholder="e.g. photosynthesis, biology" aria-label="Tags" />
+        </div>
+
+        <div class="qedit-actions">
+          <button type="button" id="btn-qe-delete" class="admin-btn-danger hidden" aria-label="Delete question">🗑️ Delete</button>
+          <button type="submit" id="btn-qe-save" class="admin-btn-primary" aria-label="Save question">💾 Save Question</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+
+  <script src="../env.js"></script>
+  <script src="../core/db.js" defer></script>
+  <script src="../core/helpers.js" defer></script>
+  <script src="../core/i18n.js" defer></script>
+  <script src="../core/pdf.js" defer></script>
+  <script src="../core/sync.js" defer></script>
+  <script src="parser.js" defer></script>
+  <script src="testBuilder.js" defer></script>
+  <script src="admin.js" defer></script>
+  <script src="admin-shell.js" defer></script>
+</body>
+</html>

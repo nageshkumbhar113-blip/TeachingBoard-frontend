@@ -1,0 +1,21 @@
+{
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/student", "destination": "/student-app/index.html", "permanent": false },
+    { "source": "/admin", "destination": "/admin-app/admin.html", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/student/:path*", "destination": "/student-app/index.html" },
+    { "source": "/admin/:path*",   "destination": "/admin-app/admin.html" },
+    { "source": "/favicon.ico",    "destination": "/icons/icon-72.png" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
+}
