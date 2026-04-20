@@ -17,6 +17,7 @@ const API = (() => {
 
   function resolveDefaultApiUrl() {
     const runtimeUrl = String(window.TEACHINGBOARD_API_URL || '').trim();
+    const isCapacitor = !!(window.Capacitor?.isNativePlatform?.() || window.Capacitor?.platform);
     const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location?.hostname || '');
     const sameOriginUrl = window.location?.origin && !/^file:$/i.test(window.location?.protocol || '')
       ? `${window.location.origin}/api`
@@ -24,6 +25,11 @@ const API = (() => {
 
     if (runtimeUrl) {
       return runtimeUrl.replace(/\/+$/, '');
+    }
+
+    // Capacitor Android/iOS: localhost is WebView host, not a real local server
+    if (isCapacitor) {
+      return DEFAULT_RENDER_API_URL.replace(/\/+$/, '');
     }
 
     if (isLocalHost) {

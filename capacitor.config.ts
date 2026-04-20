@@ -1,13 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.teachingboard.app',
-  appName: 'TeachingBoard',
-  webDir: 'dist-mobile',
+  appId:   'com.teachingboard.admin',
+  appName: 'TB Admin',
+  webDir:  'dist-admin',
   bundledWebRuntime: false,
-  server: {
-    androidScheme: 'https'
-  }
+  server: { androidScheme: 'https' }
 };
 
 export default config;

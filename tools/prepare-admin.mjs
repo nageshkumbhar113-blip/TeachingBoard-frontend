@@ -16,12 +16,12 @@ for (const asset of assets) {
   if (existsSync(src)) cpSync(src, path.join(outDir, asset), { recursive: true });
 }
 
-// Root index.html → redirect to admin-app
+// Root index.html → JS redirect (meta-refresh crashes Capacitor Android WebView)
 writeFileSync(path.join(outDir, 'index.html'), `<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8"/>
-<meta http-equiv="refresh" content="0;url=admin-app/admin.html"/>
 <title>TeachingBoard Admin</title>
+<script>window.location.replace('admin-app/admin.html');</script>
 </head><body></body></html>`);
 
 for (const f of ['sw.js']) {
