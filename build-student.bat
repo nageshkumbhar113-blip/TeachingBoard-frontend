@@ -3,28 +3,43 @@ echo ========================================
 echo  TeachingBoard — STUDENT APK Build
 echo ========================================
 
-echo [1/4] Preparing web assets...
+echo [1/5] Preparing web assets...
 node tools/prepare-student.mjs
 if errorlevel 1 ( echo ERROR: prepare failed & pause & exit /b 1 )
 
-echo [2/4] Switching to student config...
+echo [2/5] Switching Capacitor config...
 copy /Y capacitor.config.ts capacitor.config.ts.bak >/dev/null
 copy /Y capacitor-student.config.ts capacitor.config.ts >/dev/null
 
-echo [3/4] Capacitor sync...
+echo [3/5] Patching applicationId → com.teachingboard.student ...
+powershell -Command "(gc android\app\build.gradle) -replace 'applicationId \"com.teachingboard\.[^\"]+\"','applicationId \"com.teachingboard.student\"' | sc android\app\build.gradle"
+powershell -Command "(gc android\app\build.gradle) -replace 'namespace \"com.teachingboard\.[^\"]+\"','namespace \"com.teachingboard.student\"' | sc android\app\build.gradle"
+
+echo [4/5] Capacitor sync...
 npx cap sync android
 if errorlevel 1 (
+  echo ERROR: cap sync failed
   copy /Y capacitor.config.ts.bak capacitor.config.ts >/dev/null
-  echo ERROR: cap sync failed & pause & exit /b 1
+  pause & exit /b 1
 )
 
-echo [4/4] Restoring config + opening Android Studio...
+echo [5/5] Restoring configs...
 copy /Y capacitor.config.ts.bak capacitor.config.ts >/dev/null
+del capacitor.config.ts.bak >/dev/null 2>&1
 
 echo.
-echo ✅ Sync done! Android Studio opening...
-echo    Build ^> Build APK(s)  →  app-debug.apk
-echo    Rename to: TeachingBoard-Student.apk
+echo ========================================
+echo  ✅ Student APK ready to build!
+echo ========================================
+echo  App ID   : com.teachingboard.student
+echo  App Name : TB Student
+echo  Version  : 1.0.0
+echo.
+echo  Android Studio opening...
+echo  → Build ^> Build Bundle(s)/APK(s) ^> Build APK(s)
+echo    (debug)   app/build/outputs/apk/debug/app-debug.apk
+echo  → Build ^> Generate Signed Bundle/APK
+echo    (release) app/build/outputs/apk/release/app-release.apk
 echo.
 npx cap open android
 pause

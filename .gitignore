@@ -27,5 +27,16 @@ Thumbs.db
 # Test output
 test-results/
 
+# Build output
+dist-admin/
+dist-student/
+
+# IDE & tools
+.idea/
+.claude/
+
+# Vercel
+.vercel/
+
 # Misc
 New Text Document.txt

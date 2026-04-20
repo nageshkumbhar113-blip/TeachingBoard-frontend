@@ -1,0 +1,16 @@
+.git
+.claude
+.gradle-home
+.idea
+node_modules
+TeachingBoard-backend
+TeachingBoard
+android
+dist-mobile
+test-results
+tests
+tools
+MOBILE_SETUP.md
+playwright.config.mjs
+package-lock.json
+package.json
