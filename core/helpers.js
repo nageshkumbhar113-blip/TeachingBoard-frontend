@@ -56,6 +56,11 @@ const API = (() => {
 
   function getApiUrl() {
     const saved = localStorage.getItem('teachingboard_api_url');
+    // On Capacitor native, ignore stale localhost URLs saved from dev builds
+    if (saved && /localhost|127\.0\.0\.1/.test(saved) && isCapacitorNative()) {
+      localStorage.removeItem('teachingboard_api_url');
+      return DEFAULT_API_URL.replace(/\/+$/, '');
+    }
     return (saved || DEFAULT_API_URL).replace(/\/+$/, '');
   }
 
