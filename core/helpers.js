@@ -15,9 +15,16 @@ const API = (() => {
   const REMOTE_CHAPTER    = 'Online Quiz';
   const DEFAULT_RENDER_API_URL = 'https://teachingboard-backend.onrender.com/api';
 
+  function isCapacitorNative() {
+    // Capacitor injects window.Capacitor before JS runs
+    if (window.Capacitor?.isNativePlatform?.()) return true;
+    // Fallback: Capacitor androidScheme:'https' serves from https://localhost
+    if (window.location?.protocol === 'https:' && window.location?.hostname === 'localhost') return true;
+    return false;
+  }
+
   function resolveDefaultApiUrl() {
     const runtimeUrl = String(window.TEACHINGBOARD_API_URL || '').trim();
-    const isCapacitor = !!(window.Capacitor?.isNativePlatform?.() || window.Capacitor?.platform);
     const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location?.hostname || '');
     const sameOriginUrl = window.location?.origin && !/^file:$/i.test(window.location?.protocol || '')
       ? `${window.location.origin}/api`
@@ -27,8 +34,8 @@ const API = (() => {
       return runtimeUrl.replace(/\/+$/, '');
     }
 
-    // Capacitor Android/iOS: localhost is WebView host, not a real local server
-    if (isCapacitor) {
+    // Capacitor Android/iOS: https://localhost is WebView host, not a real local server
+    if (isCapacitorNative()) {
       return DEFAULT_RENDER_API_URL.replace(/\/+$/, '');
     }
 

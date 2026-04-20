@@ -891,10 +891,11 @@ const SYNC = (() => {
   async function autoSync() {
     await _initQueue();   // migrate localStorage queue → IDB, warm cache
 
-    // Restore persisted API URL (written by setApiUrl / admin save)
+    // Restore persisted API URL — ignore stale localhost URLs on Capacitor native
     const savedUrl = await DB.getSetting('api_url', '').catch(() => '');
-    // On Render, API.DEFAULT_API_URL resolves to the current site's /api endpoint.
-    try { setApiUrl(savedUrl || API.DEFAULT_API_URL); } catch { /* ignore stale bad URL */ }
+    const isNative = !!(window.Capacitor?.isNativePlatform?.() || (window.location?.protocol === 'https:' && window.location?.hostname === 'localhost'));
+    const isStaleLocal = isNative && /localhost|127\.0\.0\.1/.test(savedUrl);
+    try { setApiUrl((!isStaleLocal && savedUrl) || API.DEFAULT_API_URL); } catch { /* ignore stale bad URL */ }
 
     _lastSyncAt = Number(await DB.getSetting('last_sync_at', 0).catch(() => 0)) || 0;
 
@@ -928,8 +929,9 @@ const SYNC = (() => {
     await _initQueue();
 
     const savedUrl = await DB.getSetting('api_url', '').catch(() => '');
-    // On Render, API.DEFAULT_API_URL resolves to the current site's /api endpoint.
-    try { setApiUrl(savedUrl || API.DEFAULT_API_URL); } catch {}
+    const isNative2 = !!(window.Capacitor?.isNativePlatform?.() || (window.location?.protocol === 'https:' && window.location?.hostname === 'localhost'));
+    const isStaleLocal2 = isNative2 && /localhost|127\.0\.0\.1/.test(savedUrl);
+    try { setApiUrl((!isStaleLocal2 && savedUrl) || API.DEFAULT_API_URL); } catch {}
 
     _setStatus(_isOnline() ? 'online' : 'offline');
 
