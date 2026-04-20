@@ -6,6 +6,7 @@
 ════════════════════════════════════════ */
 
 const API = (() => {
+  const DEFAULT_RENDER_API_URL = 'https://teachingboard-backend.onrender.com/api';
   const DEFAULT_API_URL   = resolveDefaultApiUrl();
   const ADMIN_TOKEN_KEY   = 'teachingboard_admin_token';
   const STUDENT_TOKEN_KEY = 'teachingboard_student_token';
@@ -13,7 +14,6 @@ const API = (() => {
   const REMOTE_BATCH      = 'Live Server';
   const REMOTE_SUBJECT    = 'General';
   const REMOTE_CHAPTER    = 'Online Quiz';
-  const DEFAULT_RENDER_API_URL = 'https://teachingboard-backend.onrender.com/api';
 
   function isCapacitorNative() {
     // Capacitor injects window.Capacitor before JS runs
