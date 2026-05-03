@@ -21,6 +21,10 @@ const APP = (() => {
   const BOARD_THEMES    = ['theme-board-dark', 'theme-board-light'];
   const ALL_THEME_PRESETS = [...STANDARD_THEMES, ...BOARD_THEMES];
   const THEME_CLASSES     = [...STANDARD_THEMES, ...BOARD_THEMES];
+  const BOARD_ZOOM_MIN = 75;
+  const BOARD_ZOOM_MAX = 125;
+  const BOARD_ZOOM_STEP = 5;
+  const BOARD_ZOOM_DEFAULT = 100;
   const THEME_LABELS = {
     'theme-dark'       : 'Dark',
     'theme-light'      : 'Light',
@@ -34,6 +38,8 @@ const APP = (() => {
   let _currentScreen = 'home';
   let _homeBatch     = null;
   let _homeSubject   = null;
+  let _homeChapter   = null;
+  let _boardZoom     = BOARD_ZOOM_DEFAULT;
   let _globalGuardsInstalled = false;
   let _updatesChannel = null;
   let _swRefreshing = false;
@@ -65,6 +71,7 @@ const APP = (() => {
       // 3. Appearance — apply before any render to avoid flash
       const uiMode = await DB.getSetting('ui_mode', 'normal');
       setUiMode(uiMode, { silent: true });
+      await _applyStoredBoardZoom({ silent: true });
       await _applyStoredThemeForMode({ silent: true });
 
       // 4. i18n — before any UI text is rendered
@@ -375,6 +382,14 @@ const APP = (() => {
       await DB.setSetting('ui_mode', next);
       await _applyStoredThemeForMode({ silent: true });
     });
+
+    $('btn-board-zoom-out')?.addEventListener('click', async () => {
+      await setBoardZoom(_boardZoom - BOARD_ZOOM_STEP);
+    });
+
+    $('btn-board-zoom-in')?.addEventListener('click', async () => {
+      await setBoardZoom(_boardZoom + BOARD_ZOOM_STEP);
+    });
   }
 
   // ════════════════════════
@@ -421,6 +436,72 @@ const APP = (() => {
   // HOME
   // ════════════════════════
 
+  function _homeQuizHandlers(batchName, subject, chapter) {
+    return {
+      onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
+      onPractice: () => QUIZ.startQuiz(batchName, subject, chapter, 'practice'),
+    };
+  }
+
+  function _activateHomeChoice(selector, selectedText, childSelector) {
+    if (!selectedText) return;
+    document.querySelectorAll(selector).forEach(el => {
+      const matchText = childSelector
+        ? (el.querySelector(childSelector)?.textContent || '').trim()
+        : (el.textContent || '').trim();
+      el.classList.toggle('active', matchText === selectedText);
+    });
+  }
+
+  function _bindChapterFlow(batchName, subject) {
+    return async chapter => {
+      _homeChapter = chapter;
+      await UI.renderAvailableQuizzes({
+        batch: batchName,
+        subject,
+        chapter,
+        ..._homeQuizHandlers(batchName, subject, chapter),
+      });
+    };
+  }
+
+  function _bindSubjectFlow(batchName) {
+    return async subject => {
+      _homeSubject = subject;
+      _homeChapter = null;
+      await UI.renderChapterList(batchName, subject, _bindChapterFlow(batchName, subject));
+    };
+  }
+
+  async function _renderHomeHierarchy({ preserveSelection = false } = {}) {
+    await UI.renderBatchGrid(async batch => {
+      _homeBatch = batch;
+      _homeSubject = null;
+      _homeChapter = null;
+      await UI.renderSubjectGrid(batch.name, _bindSubjectFlow(batch.name));
+    });
+
+    if (!preserveSelection || !_homeBatch?.name) return;
+
+    _activateHomeChoice('.batch-card', _homeBatch.name, '.batch-name');
+    await UI.renderSubjectGrid(_homeBatch.name, _bindSubjectFlow(_homeBatch.name));
+
+    if (!_homeSubject) return;
+
+    _activateHomeChoice('.subject-card', _homeSubject, '.subject-name');
+    await UI.renderChapterList(_homeBatch.name, _homeSubject, _bindChapterFlow(_homeBatch.name, _homeSubject));
+
+    if (!_homeChapter) return;
+
+    _activateHomeChoice('.chapter-item', _homeChapter, '.chapter-name');
+    await UI.renderAvailableQuizzes({
+      batch: _homeBatch.name,
+      subject: _homeSubject,
+      chapter: _homeChapter,
+      ..._homeQuizHandlers(_homeBatch.name, _homeSubject, _homeChapter),
+    });
+  }
+
   async function loadHome() {
     showScreen('home');
     await DB.syncHierarchyFromExisting?.();
@@ -429,29 +510,17 @@ const APP = (() => {
     ['subject-section', 'chapter-section', 'lesson-section', 'available-tests-section']
       .forEach(id => $( id)?.classList.add('hidden'));
 
+    _homeBatch = null;
+    _homeSubject = null;
+    _homeChapter = null;
+
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
     await UI.renderAvailableQuizzes({
       showAll: false,
       onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
     });
-
-    await UI.renderBatchGrid(async batch => {
-      _homeBatch   = batch;
-      _homeSubject = null;
-      await UI.renderSubjectGrid(batch.name, async subject => {
-        _homeSubject = subject;
-        await UI.renderChapterList(batch.name, subject, async chapter => {
-          await UI.renderAvailableQuizzes({
-            batch: batch.name,
-            subject,
-            chapter,
-            onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
-            onPractice: () => QUIZ.startQuiz(batch.name, subject, chapter, 'practice'),
-          });
-        });
-      });
-    });
+    await _renderHomeHierarchy();
   }
 
   // Lightweight stats refresh — called after quiz end, admin changes, etc.
@@ -459,10 +528,13 @@ const APP = (() => {
     await DB.syncHierarchyFromExisting?.();
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
-    await UI.renderAvailableQuizzes({
-      showAll: false,
-      onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
-    });
+    await _renderHomeHierarchy({ preserveSelection: true });
+    if (!_homeBatch?.name || !_homeSubject || !_homeChapter) {
+      await UI.renderAvailableQuizzes({
+        showAll: false,
+        onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
+      });
+    }
   }
 
   function _cacheScreens() {
@@ -598,6 +670,44 @@ const APP = (() => {
     return document.body.classList.contains('mode-board') ? 'board' : 'normal';
   }
 
+  function _sanitizeBoardZoom(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return BOARD_ZOOM_DEFAULT;
+    return Math.min(BOARD_ZOOM_MAX, Math.max(BOARD_ZOOM_MIN, Math.round(num / BOARD_ZOOM_STEP) * BOARD_ZOOM_STEP));
+  }
+
+  function _updateBoardZoomUi() {
+    const control = $('board-zoom-control');
+    const valueEl = $('board-zoom-value');
+    const minusBtn = $('btn-board-zoom-out');
+    const plusBtn = $('btn-board-zoom-in');
+    const isBoard = _activeUiMode() === 'board';
+
+    if (control) control.classList.toggle('hidden', !isBoard);
+    if (valueEl) valueEl.textContent = `${_boardZoom}%`;
+    if (minusBtn) minusBtn.disabled = _boardZoom <= BOARD_ZOOM_MIN;
+    if (plusBtn) plusBtn.disabled = _boardZoom >= BOARD_ZOOM_MAX;
+  }
+
+  async function _applyStoredBoardZoom({ silent = false } = {}) {
+    const saved = await DB.getSetting('board_zoom', BOARD_ZOOM_DEFAULT).catch(() => BOARD_ZOOM_DEFAULT);
+    await setBoardZoom(saved, { persist: false, silent });
+  }
+
+  async function setBoardZoom(value, { persist = true, silent = false } = {}) {
+    _boardZoom = _sanitizeBoardZoom(value);
+    document.body.style.setProperty('--board-zoom', String(_boardZoom / 100));
+    _updateBoardZoomUi();
+
+    if (persist) {
+      await DB.setSetting('board_zoom', _boardZoom).catch(() => {});
+    }
+
+    if (!silent && _activeUiMode() === 'board') {
+      toast(`Board zoom: ${_boardZoom}%`, 'info');
+    }
+  }
+
   function _setModeButtonState(btn, isBoard) {
     if (!btn) return;
     const icon  = btn.querySelector('.nav-btn-icon');
@@ -624,6 +734,7 @@ const APP = (() => {
       btn.setAttribute('aria-pressed', String(isBoard));
     }
 
+    _updateBoardZoomUi();
     _setThemeButtonState(_activeTheme());
 
     if (!silent) {
@@ -700,6 +811,7 @@ const APP = (() => {
     // Appearance
     setTheme,
     setUiMode,
+    setBoardZoom,
     // Notifications
     toast,
     isTouchDevice,

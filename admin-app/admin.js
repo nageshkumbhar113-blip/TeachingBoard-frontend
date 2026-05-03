@@ -1096,6 +1096,25 @@ const ADMIN = (() => {
       });
       item.querySelector('.quiz-del-btn').addEventListener('click', async () => {
         if (!confirm(`Delete quiz "${quiz.title}"?`)) return;
+        const remoteId = String(quiz.backend_id || quiz.quiz_id || '').trim();
+        const needsRemoteDelete = quiz.status === 'published' || quiz.source === 'api' || !!quiz.backend_id;
+
+        if (needsRemoteDelete && !navigator.onLine) {
+          APP.toast('Connect to internet to delete published quiz', 'error');
+          return;
+        }
+
+        if (needsRemoteDelete && remoteId) {
+          try {
+            await API.deleteQuiz(remoteId);
+          } catch (err) {
+            if (!/404|not found/i.test(err.message || '')) {
+              APP.toast(`Could not delete quiz: ${err.message}`, 'error');
+              return;
+            }
+          }
+        }
+
         await DB.deleteQuiz(quiz.quiz_id);
         await loadQuizList();
         APP.toast('Quiz deleted', 'info');

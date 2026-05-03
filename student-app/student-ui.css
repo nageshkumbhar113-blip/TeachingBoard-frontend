@@ -2,6 +2,7 @@
 
 body.student-app {
   min-height: 100vh;
+  --board-zoom: 1;
   --board-shell-max: 1720px;
   --board-stage-max: 1580px;
   --board-panel-bg: rgba(18, 22, 33, 0.82);
@@ -49,6 +50,45 @@ body.student-app {
   font-size: 0.92rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.board-zoom-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 0 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fbff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.board-zoom-btn {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.board-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.board-zoom-value {
+  min-width: 56px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .mode-board.theme-board-dark {
@@ -113,6 +153,7 @@ body.student-app.mode-board.theme-board-light::before {
   background: linear-gradient(180deg, rgba(18, 22, 34, 0.92), rgba(12, 16, 27, 0.8));
   box-shadow: var(--board-glow);
   backdrop-filter: blur(18px);
+  zoom: var(--board-zoom);
 }
 
 .mode-board .nav-left,
@@ -201,6 +242,7 @@ body.student-app.mode-board.theme-board-light::before {
 .mode-board .screen {
   max-width: var(--board-shell-max);
   padding: 28px 22px 48px;
+  zoom: var(--board-zoom);
 }
 
 .mode-board #screen-quiz,
@@ -668,10 +710,16 @@ body.student-app.mode-board.theme-board-light::before {
 .mode-board.theme-board-light .quiz-controls .ctrl-btn,
 .mode-board.theme-board-light .quiz-controls .timer-select-wrap,
 .mode-board.theme-board-light .tp-live-score,
-.mode-board.theme-board-light .nav-btn {
+.mode-board.theme-board-light .nav-btn,
+.mode-board.theme-board-light .board-zoom-control {
   color: #17304d;
   border-color: rgba(32, 59, 89, 0.14);
   background: rgba(235, 243, 255, 0.88);
+}
+
+.mode-board.theme-board-light .board-zoom-btn {
+  background: rgba(32, 59, 89, 0.08);
+  color: #17304d;
 }
 
 .mode-board.theme-board-light .quiz-chapter,
@@ -793,6 +841,11 @@ body.student-app.mode-board.theme-board-light::before {
     display: none;
   }
 
+  .mode-board .board-zoom-value {
+    min-width: 44px;
+    font-size: 0.82rem;
+  }
+
   .mode-board .top-nav {
     min-height: 74px;
     margin-top: 8px;
@@ -804,6 +857,17 @@ body.student-app.mode-board.theme-board-light::before {
     min-width: 48px;
     height: 48px;
     padding: 0 12px;
+  }
+
+  .mode-board .board-zoom-control {
+    min-height: 48px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .mode-board .board-zoom-btn {
+    width: 30px;
+    height: 30px;
   }
 
   .mode-board .screen {

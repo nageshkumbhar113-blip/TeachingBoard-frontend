@@ -507,6 +507,17 @@ const API = (() => {
     });
   }
 
+  async function deleteQuiz(backendId, pin = '1234') {
+    const token = await ensureAdminSession(pin);
+    const rawId = String(backendId || '').trim();
+    if (!rawId) throw new Error('quiz id is required');
+    const cleanId = encodeURIComponent(rawId);
+    return request(`/quizzes/${cleanId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function createLesson(lesson, pin = '1234') {
     const token = await ensureAdminSession(pin);
     return request('/lessons', {
@@ -656,7 +667,7 @@ const API = (() => {
     getExpiredState, isExpiredLocally, clearExpiredState, markExpired,
     loginAdmin, loginStudent, ensureAdminSession, ensureStudentSession,
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
-    addQuestion, updateQuestion, deleteQuestion,
+    addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,
     request,

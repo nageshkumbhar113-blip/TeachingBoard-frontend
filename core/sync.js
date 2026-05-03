@@ -885,7 +885,13 @@ const SYNC = (() => {
 
     Promise.resolve()
       .then(() => _drainQueue())
-      .then(() => fetchQuizzes({ silent: true, status: 'published' }))
+      .then(() => Promise.all([
+        fetchQuizzes({ silent: true, status: 'published' }),
+        API.syncStudentQuestions().catch(err => {
+          console.warn('SYNC questions (student cycle):', err.message);
+          return [];
+        }),
+      ]))
       .then(() => {
         if (typeof APP !== 'undefined' && typeof APP.refreshHome === 'function') {
           return Promise.resolve(APP.refreshHome()).catch(() => {});
