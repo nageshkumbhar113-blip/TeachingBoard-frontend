@@ -151,6 +151,54 @@ test('admin handoff deep-links into the student app with shared IndexedDB state'
   await expect(page.locator('#screen-test-player')).toBeVisible();
 });
 
+test('admin question editor saves an image-only MCQ without reloading away', async ({ page }) => {
+  const questionImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'><rect width='100%' height='100%' fill='%235f3dc4'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='26'>Image Only</text></svg>";
+  const optionAImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='120'><rect width='100%' height='100%' fill='%23e8590c'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='22'>A</text></svg>";
+  const optionBImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='120'><rect width='100%' height='100%' fill='%232b8a3e'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='22'>B</text></svg>";
+
+  await page.goto('/admin-app/admin.html');
+  await page.evaluate(async () => {
+    await DB.open();
+    await DB.resetAll();
+    await DB.initDefaultBatches();
+    await DB.saveBatch({ id: 401, name: 'Std Admin', icon: '🧪' });
+    await DB.saveBatchSubject({ batch: 'Std Admin', name: 'Science' });
+    await DB.saveSubjectChapter({ batch: 'Std Admin', subject: 'Science', name: 'Images' });
+  });
+  await page.reload();
+
+  const digits = page.locator('.pin-digit');
+  await digits.nth(0).fill('1');
+  await digits.nth(1).fill('2');
+  await digits.nth(2).fill('3');
+  await digits.nth(3).fill('4');
+  await expect(page.locator('#admin-content')).toBeVisible();
+
+  await page.locator('#btn-add-question').click();
+  await expect(page.locator('#qedit-overlay')).toBeVisible();
+
+  await page.locator('#qe-batch').selectOption('Std Admin');
+  await page.locator('#qe-subject').selectOption('Science');
+  await page.locator('#qe-chapter').selectOption('Images');
+  await page.locator('#qe-image').fill(questionImage);
+  await page.locator('#qe-a-image').fill(optionAImage);
+  await page.locator('#qe-b-image').fill(optionBImage);
+  await page.locator('#qe-answer').selectOption('B');
+  await page.locator('#btn-qe-save').click();
+
+  await expect(page.locator('#qedit-overlay')).toBeHidden();
+  await expect(page.locator('#q-bank-list .qb-item')).toHaveCount(1);
+
+  const saved = await page.evaluate(async () => {
+    const all = await DB.getAllQuestions();
+    return all[0];
+  });
+  expect(saved.image).toBe(questionImage);
+  expect(saved.option_images.A).toBe(optionAImage);
+  expect(saved.option_images.B).toBe(optionBImage);
+  expect(saved.question).toBe('');
+});
+
 test('published quiz supports question image and option image URLs in student app', async ({ page }) => {
   const questionImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'><rect width='100%' height='100%' fill='%230b7285'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='28'>Question</text></svg>";
   const optionAImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='120'><rect width='100%' height='100%' fill='%231c7ed6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='24'>A</text></svg>";

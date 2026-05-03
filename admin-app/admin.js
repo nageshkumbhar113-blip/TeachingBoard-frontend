@@ -639,7 +639,8 @@ const ADMIN = (() => {
     return null; // valid
   }
 
-  async function _saveQEditor() {
+  async function _saveQEditor(event) {
+    event?.preventDefault?.();
     const type = $('qe-type').value;
     const q = {
       q_id      : _editingQId || undefined,
@@ -1246,7 +1247,7 @@ const ADMIN = (() => {
     // Question editor
     $('btn-add-question')?.addEventListener('click', () => _openQEditor());
     $('qedit-close')?.addEventListener('click', () => $('qedit-overlay')?.classList.add('hidden'));
-    $('btn-qe-save')?.addEventListener('click', _saveQEditor);
+    $('qedit-form')?.addEventListener('submit', _saveQEditor);
     $('btn-qe-delete')?.addEventListener('click', _deleteCurrentQ);
     $('qe-type')?.addEventListener('change', _updateQETypeView);
     $('qe-batch')?.addEventListener('change', () => _refreshFormHierarchy({
