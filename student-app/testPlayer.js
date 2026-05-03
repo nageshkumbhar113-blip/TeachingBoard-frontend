@@ -13,6 +13,48 @@ const TEST_PLAYER = (() => {
     if (el) el.textContent = text ?? '';
     return el;
   };
+  const _escHtml = value => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  async function _resolveImageSrc(ref) {
+    if (!ref) return null;
+    const localSrc = await DB.getImage(ref).catch(() => null);
+    return localSrc || String(ref || '').trim() || null;
+  }
+
+  function _getOptionText(q, key) {
+    return String(q?.options?.[key] || '').trim();
+  }
+
+  function _getOptionImageRef(q, key) {
+    return String(q?.option_images?.[key] || '').trim() || null;
+  }
+
+  function _hasOptionContent(q, key) {
+    return !!_getOptionText(q, key) || !!_getOptionImageRef(q, key);
+  }
+
+  function _getAnswerFeedbackText(q, key) {
+    const text = _getOptionText(q, key);
+    if (text) return text;
+    if (_getOptionImageRef(q, key)) return 'Image option';
+    return '';
+  }
+
+  async function _buildOptionMarkup(q, key) {
+    const text = _getOptionText(q, key);
+    const imageSrc = await _resolveImageSrc(_getOptionImageRef(q, key));
+    return `
+      <span class="option-key">${_escHtml(key)})</span>
+      <span class="option-body">
+        ${text ? `<span class="option-text${imageSrc ? ' option-text-with-media' : ''}">${_escHtml(text)}</span>` : ''}
+        ${imageSrc ? `<span class="option-media"><img src="${_escHtml(imageSrc)}" alt="Option ${_escHtml(key)} image" loading="lazy" decoding="async" /></span>` : ''}
+      </span>
+    `;
+  }
 
   function _formatTimerValue(seconds) {
     if (!document.body.classList.contains('mode-board')) return String(seconds);
@@ -261,7 +303,7 @@ const TEST_PLAYER = (() => {
   // RENDER QUESTION
   // ════════════════════════
 
-  function _renderQuestion() {
+  async function _renderQuestion() {
     _stopPerQTimer();
     state.answered   = false;
     state.qStartTime = Date.now();
@@ -302,15 +344,15 @@ const TEST_PLAYER = (() => {
     }
 
     // Question text
-    _setText('tp-q-text', q.question);
+    _setText('tp-q-text', q.question || '');
 
     // Image
     const imgWrap = $('tp-q-image-wrap');
     if (q.image) {
       const qAtLoad = q;   // capture to detect stale render
-      DB.getImage(q.image).then(url => {
+      _resolveImageSrc(q.image).then(url => {
         if (state.questions[state.current] !== qAtLoad) return; // navigated away
-        const src = url || (typeof q.image === 'string' && q.image.startsWith('http') ? q.image : null);
+        const src = url || null;
         const img = $('tp-q-image');
         if (src && img) {
           img.src = src;
@@ -331,17 +373,17 @@ const TEST_PLAYER = (() => {
 
     // Render by type
     const type = q.type || q._secType || 'mcq';
-    if      (type === 'mcq') _renderMCQ(q);
+    if      (type === 'mcq') await _renderMCQ(q);
     else if (type === 'tf')  _renderTF(q);
     else if (type === 'fib') _renderFIB(q);
-    else                     _renderMCQ(q);
+    else                     await _renderMCQ(q);
 
     // Restore previous answer on back-nav
     const prev = state.answers[q.q_id];
     if (prev) {
       state.answered = true;
       if (state.mode === 'practice' && !prev.skipped) {
-        _showFeedback(prev.correct, q.answer, q.options?.[q.answer]);
+        _showFeedback(prev.correct, q.answer, _getAnswerFeedbackText(q, q.answer));
       }
     }
 
@@ -371,19 +413,20 @@ const TEST_PLAYER = (() => {
   // MCQ
   // ════════════════════════
 
-  function _renderMCQ(q) {
+  async function _renderMCQ(q) {
     const grid = $('tp-options-grid');
     if (!grid) return;
     grid.classList.remove('hidden');
     grid.innerHTML = '';
 
     const prev = state.answers[q.q_id];
-    Object.entries(q.options || {}).forEach(([key, text], idx) => {
+    for (const [key] of Object.entries(q.options || {})) {
+      if (!_hasOptionContent(q, key)) continue;
       const btn = document.createElement('button');
       btn.className       = 'option-btn';
       btn.dataset.key     = key;
-      btn.dataset.kbIndex = idx + 1;
-      btn.innerHTML = `<span class="option-key">${key})</span><span class="option-text">${text}</span>`;
+      btn.dataset.kbIndex = grid.children.length + 1;
+      btn.innerHTML = await _buildOptionMarkup(q, key);
 
       if (prev) {
         btn.disabled = true;
@@ -393,7 +436,7 @@ const TEST_PLAYER = (() => {
         btn.addEventListener('click', () => _selectMCQ(btn, key, q));
       }
       grid.appendChild(btn);
-    });
+    }
   }
 
   function _selectMCQ(btn, selected, q) {
@@ -409,7 +452,7 @@ const TEST_PLAYER = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, q.options?.[q.answer]);
+    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, _getAnswerFeedbackText(q, q.answer));
     if (state.mode === 'exam')     setTimeout(_nextQ, 700);
   }
 
@@ -663,7 +706,8 @@ const TEST_PLAYER = (() => {
     if (!bar || !icon || !text) return;
     bar.className = 'feedback-bar wrong-fb';
     $('tp-feedback-icon').textContent = '⏰';
-    $('tp-feedback-text').textContent = `Time up! Answer: ${q?.answer || ''}`;
+    const answerText = _getAnswerFeedbackText(q, q?.answer);
+    $('tp-feedback-text').textContent = `Time up! Answer: ${q?.answer || ''}${answerText ? ` (${answerText})` : ''}`;
     bar.classList.remove('hidden');
 
     if (q) state.answers[q.q_id] = { given: null, correct: false, time_ms: 0, skipped: true };
@@ -989,11 +1033,11 @@ const TEST_PLAYER = (() => {
           <span class="tp-wrong-num">✗ ${i + 1}</span>
           <span class="tp-wrong-sec">${q._secLabel || ''}</span>
         </div>
-        <div class="tp-wrong-qtext">${q.question}</div>
+        <div class="tp-wrong-qtext">${q.question || (q.image ? '[Image Question]' : '')}</div>
         <div class="tp-wrong-ans-row">
           <span class="tp-ans-given">Your: ${a.given || '—'}</span>
           <span class="tp-ans-correct">
-            Correct: ${q.answer}${q.options?.[q.answer] ? ` — ${q.options[q.answer]}` : ''}
+            Correct: ${q.answer}${_getAnswerFeedbackText(q, q.answer) ? ` — ${_getAnswerFeedbackText(q, q.answer)}` : ''}
           </span>
         </div>
       `;

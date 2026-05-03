@@ -25,6 +25,8 @@ const server = createServer(async (req, res) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
   let pathname = decodeURIComponent(requestUrl.pathname);
   if (pathname === '/') pathname = '/index.html';
+  if (pathname === '/student') pathname = '/student-app/index.html';
+  if (pathname === '/admin') pathname = '/admin-app/admin.html';
 
   const safePath = path.normalize(path.join(rootDir, pathname));
   if (!safePath.startsWith(rootDir)) {

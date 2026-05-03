@@ -423,22 +423,32 @@ const APP = (() => {
 
   async function loadHome() {
     showScreen('home');
+    await DB.syncHierarchyFromExisting?.();
 
     // Hide drill-down sections immediately
-    ['subject-section', 'chapter-section', 'lesson-section']
+    ['subject-section', 'chapter-section', 'lesson-section', 'available-tests-section']
       .forEach(id => $( id)?.classList.add('hidden'));
 
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
-    await UI.renderAvailableQuizzes(quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'));
+    await UI.renderAvailableQuizzes({
+      showAll: false,
+      onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
+    });
 
     await UI.renderBatchGrid(async batch => {
       _homeBatch   = batch;
       _homeSubject = null;
       await UI.renderSubjectGrid(batch.name, async subject => {
         _homeSubject = subject;
-        await UI.renderChapterList(batch.name, subject, chapter => {
-          QUIZ.startQuiz(batch.name, subject, chapter, 'practice');
+        await UI.renderChapterList(batch.name, subject, async chapter => {
+          await UI.renderAvailableQuizzes({
+            batch: batch.name,
+            subject,
+            chapter,
+            onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
+            onPractice: () => QUIZ.startQuiz(batch.name, subject, chapter, 'practice'),
+          });
         });
       });
     });
@@ -446,9 +456,13 @@ const APP = (() => {
 
   // Lightweight stats refresh — called after quiz end, admin changes, etc.
   async function refreshHome() {
+    await DB.syncHierarchyFromExisting?.();
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
-    await UI.renderAvailableQuizzes(quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'));
+    await UI.renderAvailableQuizzes({
+      showAll: false,
+      onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
+    });
   }
 
   function _cacheScreens() {

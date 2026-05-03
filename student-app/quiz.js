@@ -37,6 +37,48 @@ const QUIZ = (() => {
     if (el) el.value = value;
     return el;
   };
+  const _escHtml = value => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  async function _resolveImageSrc(ref) {
+    if (!ref) return null;
+    const localSrc = await DB.getImage(ref).catch(() => null);
+    return localSrc || String(ref || '').trim() || null;
+  }
+
+  function _getOptionText(q, key) {
+    return String(q?.options?.[key] || '').trim();
+  }
+
+  function _getOptionImageRef(q, key) {
+    return String(q?.option_images?.[key] || '').trim() || null;
+  }
+
+  function _hasOptionContent(q, key) {
+    return !!_getOptionText(q, key) || !!_getOptionImageRef(q, key);
+  }
+
+  function _getAnswerFeedbackText(q, key) {
+    const text = _getOptionText(q, key);
+    if (text) return text;
+    if (_getOptionImageRef(q, key)) return 'Image option';
+    return '';
+  }
+
+  async function _buildOptionMarkup(q, key) {
+    const text = _getOptionText(q, key);
+    const imageSrc = await _resolveImageSrc(_getOptionImageRef(q, key));
+    return `
+      <span class="option-key">${_escHtml(key)})</span>
+      <span class="option-body">
+        ${text ? `<span class="option-text${imageSrc ? ' option-text-with-media' : ''}">${_escHtml(text)}</span>` : ''}
+        ${imageSrc ? `<span class="option-media"><img src="${_escHtml(imageSrc)}" alt="Option ${_escHtml(key)} image" loading="lazy" decoding="async" /></span>` : ''}
+      </span>
+    `;
+  }
 
   function _formatTimerValue(seconds) {
     if (!document.body.classList.contains('mode-board')) return String(seconds);
@@ -147,12 +189,12 @@ const QUIZ = (() => {
       diffBadge.className = 'diff-badge ' + (q.difficulty || '');
     }
 
-    _setText('q-text', q.question);
+    _setText('q-text', q.question || '');
 
     // Image
     const imgWrap = $('q-image-wrap');
     if (q.image) {
-      const imgUrl = await DB.getImage(q.image) || q.image;
+      const imgUrl = await _resolveImageSrc(q.image);
       if (imgUrl) {
         const img = $('q-image');
         if (img) img.src = imgUrl;
@@ -169,7 +211,7 @@ const QUIZ = (() => {
     // Render by type
     _hideAllInputs();
     const type = q.type || 'mcq';
-    if      (type === 'mcq') _renderMCQ(q);
+    if      (type === 'mcq') await _renderMCQ(q);
     else if (type === 'tf')  _renderTF(q);
     else if (type === 'fib') _renderFIB(q);
     else if (type === 'mtp') _renderMTP(q);
@@ -198,7 +240,7 @@ const QUIZ = (() => {
   // MCQ
   // ════════════════════════
 
-  function _renderMCQ(q) {
+  async function _renderMCQ(q) {
     const grid = $('options-grid');
     grid.classList.remove('hidden');
     grid.innerHTML = '';
@@ -206,15 +248,16 @@ const QUIZ = (() => {
     let opts = Object.entries(q.options || {});
     if (state.shuffleOn) opts = _shuffleArray(opts);
 
-    opts.forEach(([key, text], idx) => {
+    for (const [key] of opts) {
+      if (!_hasOptionContent(q, key)) continue;
       const btn = document.createElement('button');
       btn.className = 'option-btn';
       btn.dataset.key     = key;
-      btn.dataset.kbIndex = idx + 1;
-      btn.innerHTML = `<span class="option-key">${key})</span><span class="option-text">${text}</span>`;
+      btn.dataset.kbIndex = grid.children.length + 1;
+      btn.innerHTML = await _buildOptionMarkup(q, key);
       btn.addEventListener('click', () => _selectMCQ(btn, key, q));
       grid.appendChild(btn);
-    });
+    }
   }
 
   function _selectMCQ(btn, selected, q) {
@@ -232,7 +275,7 @@ const QUIZ = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    _showFeedback(isCorrect, correct, q.options[correct]);
+    _showFeedback(isCorrect, correct, _getAnswerFeedbackText(q, correct));
   }
 
   // ════════════════════════
@@ -448,7 +491,8 @@ const QUIZ = (() => {
     if (!feedback || !feedbackIcon || !feedbackText) return;
     feedback.className = 'feedback-bar wrong-fb';
     $('feedback-icon').textContent = '⏰';
-    _setText('feedback-text', `${I18N.t('wrong')} ${q.answer}`);
+    const answerText = _getAnswerFeedbackText(q, q.answer);
+    _setText('feedback-text', `${I18N.t('wrong')} ${q.answer}${answerText ? ` — ${answerText}` : ''}`);
     feedback.classList.remove('hidden');
   }
 

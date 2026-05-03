@@ -6,6 +6,21 @@
 
 const TEST_BUILDER = (() => {
   const $ = id => document.getElementById(id);
+  const _cleanUrl = value => {
+    const trimmed = String(value || '').trim();
+    return trimmed || null;
+  };
+  const _hasOptionContent = (text, imageUrl) => !!String(text || '').trim() || !!_cleanUrl(imageUrl);
+  const _questionLabel = q => {
+    const text = String(q?.question || '').trim();
+    if (text) return text;
+    if (q?.image) return '[Image Question]';
+    return '[Untitled Question]';
+  };
+  const _questionSummary = (q, maxLen = 90) => {
+    const label = _questionLabel(q);
+    return label.length > maxLen ? `${label.slice(0, maxLen)}…` : label;
+  };
 
   // ════════════════════════
   // STATE
@@ -102,15 +117,15 @@ const TEST_BUILDER = (() => {
           </div>
           <div class="tb-field">
             <label>Subject *</label>
-            <input id="tb-subject" class="admin-input"
-              placeholder="e.g. Science"
-              value="${_esc(q?.subject)}">
+            <select id="tb-subject" class="admin-select">
+              <option value="">Select Subject</option>
+            </select>
           </div>
           <div class="tb-field">
-            <label>Chapter</label>
-            <input id="tb-chapter" class="admin-input"
-              placeholder="e.g. Chapter 3"
-              value="${_esc(q?.chapter)}">
+            <label>Chapter *</label>
+            <select id="tb-chapter" class="admin-select">
+              <option value="">Select Chapter</option>
+            </select>
           </div>
         </div>
 
@@ -163,6 +178,10 @@ const TEST_BUILDER = (() => {
 
     $('tb-add-section').addEventListener('click', _addSection);
     $('tb-save-draft').addEventListener('click', () => _saveQuiz('draft'));
+    $('tb-batch')?.addEventListener('change', () => _refreshQuizTopicSelectors());
+    $('tb-subject')?.addEventListener('change', () => _refreshQuizTopicSelectors({
+      subjectValue: $('tb-subject')?.value || '',
+    }));
     $('tb-next-1').addEventListener('click', async () => {
       if (await _commitStep1()) _renderStep(2);
     });
@@ -172,6 +191,7 @@ const TEST_BUILDER = (() => {
     const batches = await DB.getAllBatches();
     const sel     = $('tb-batch');
     if (!sel) return;
+    sel.innerHTML = '<option value="">Select Class</option>';
     batches.forEach(b => {
       const o = document.createElement('option');
       o.value       = b.name;
@@ -179,6 +199,52 @@ const TEST_BUILDER = (() => {
       if (state.quiz?.batch === b.name) o.selected = true;
       sel.appendChild(o);
     });
+    await _refreshQuizTopicSelectors({
+      subjectValue: state.quiz?.subject || '',
+      chapterValue: state.quiz?.chapter || '',
+    });
+  }
+
+  function _setTopicSelectOptions(select, values, placeholder) {
+    if (!select) return;
+    const currentValue = select.value;
+    select.innerHTML = '';
+
+    const base = document.createElement('option');
+    base.value = '';
+    base.textContent = placeholder;
+    select.appendChild(base);
+
+    values.forEach(value => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
+    });
+
+    select.value = values.includes(currentValue) ? currentValue : '';
+  }
+
+  async function _refreshQuizTopicSelectors({ subjectValue, chapterValue } = {}) {
+    const batch = $('tb-batch')?.value || '';
+    const subjectSelect = $('tb-subject');
+    const chapterSelect = $('tb-chapter');
+    if (!subjectSelect || !chapterSelect) return;
+
+    const subjects = batch
+      ? (await DB.getSubjectsByBatch(batch)).map(item => item.name)
+      : [];
+    _setTopicSelectOptions(subjectSelect, subjects, 'Select Subject');
+    const nextSubject = subjectValue ?? subjectSelect.value;
+    subjectSelect.value = subjects.includes(nextSubject) ? nextSubject : '';
+
+    const subject = subjectSelect.value || subjectValue || '';
+    const chapters = (batch && subject)
+      ? (await DB.getChaptersByBatchSubject(batch, subject)).map(item => item.name)
+      : [];
+    _setTopicSelectOptions(chapterSelect, chapters, 'Select Chapter');
+    const nextChapter = chapterValue ?? chapterSelect.value;
+    chapterSelect.value = chapters.includes(nextChapter) ? nextChapter : '';
   }
 
   function _renderSectionsList() {
@@ -234,18 +300,20 @@ const TEST_BUILDER = (() => {
   async function _commitStep1() {
     const title   = $('tb-title')?.value.trim();
     const batch   = $('tb-batch')?.value;
-    const subject = $('tb-subject')?.value.trim();
+    const subject = $('tb-subject')?.value;
+    const chapter = $('tb-chapter')?.value;
 
     if (!title)   { APP.toast('Quiz title is required', 'error');      return false; }
     if (!batch)   { APP.toast('Please select a class/batch', 'error'); return false; }
     if (!subject) { APP.toast('Subject is required', 'error');         return false; }
+    if (!chapter) { APP.toast('Chapter is required', 'error');         return false; }
 
     state.quiz = {
       ...(state.quiz || {}),
       title,
       batch,
       subject,
-      chapter       : $('tb-chapter')?.value.trim()       || '',
+      chapter,
       school_name   : $('tb-school')?.value.trim()        || '',
       timer_mode    : $('tb-timer-mode')?.value            || 'per_question',
       timer_value   : parseInt($('tb-timer-value')?.value) || 30,
@@ -311,6 +379,7 @@ const TEST_BUILDER = (() => {
             <p class="tb-sub-label">✏️ Quick Add Question</p>
             <textarea id="tb-manual-q" class="admin-textarea" rows="2"
               placeholder="Type question text…"></textarea>
+            <input id="tb-manual-q-image" class="admin-input" placeholder="Question image URL (optional)" style="margin-top:8px">
 
             <div class="tb-manual-meta">
               <select id="tb-manual-type" class="admin-select">
@@ -332,6 +401,10 @@ const TEST_BUILDER = (() => {
                 <input id="tb-manual-b" class="admin-input" placeholder="Option B">
                 <input id="tb-manual-c" class="admin-input" placeholder="Option C (optional)">
                 <input id="tb-manual-d" class="admin-input" placeholder="Option D (optional)">
+                <input id="tb-manual-a-image" class="admin-input" placeholder="Option A image URL (optional)">
+                <input id="tb-manual-b-image" class="admin-input" placeholder="Option B image URL (optional)">
+                <input id="tb-manual-c-image" class="admin-input" placeholder="Option C image URL (optional)">
+                <input id="tb-manual-d-image" class="admin-input" placeholder="Option D image URL (optional)">
               </div>
               <div class="tb-manual-answer-row">
                 <label for="tb-manual-answer">Correct:</label>
@@ -477,7 +550,7 @@ const TEST_BUILDER = (() => {
       item.className = `tb-bank-item${isSel ? ' selected' : ''}`;
       item.innerHTML = `
         <div class="tb-bank-item-body">
-          <div class="tb-bank-item-text">${_esc(q.question.slice(0, 90))}${q.question.length > 90 ? '…' : ''}</div>
+          <div class="tb-bank-item-text">${_esc(_questionSummary(q, 90))}</div>
           <div class="tb-bank-item-meta">
             <span class="qb-badge ${q.difficulty || 'medium'}">${q.difficulty || 'med'}</span>
             <span class="tb-q-type">${(q.type || 'mcq').toUpperCase()}</span>
@@ -515,7 +588,7 @@ const TEST_BUILDER = (() => {
       item.innerHTML = `
         <span class="tb-sel-num">${idx + 1}</span>
         <span class="tb-sel-text">${q
-          ? _esc(q.question.slice(0, 65)) + (q.question.length > 65 ? '…' : '')
+          ? _esc(_questionSummary(q, 65))
           : qid}</span>
         <button class="tb-remove-btn" data-id="${qid}" title="Remove" aria-label="Remove question">✕</button>
       `;
@@ -585,13 +658,15 @@ const TEST_BUILDER = (() => {
 
   async function _doManualAdd() {
     const qText = $('tb-manual-q')?.value.trim();
+    const qImage = _cleanUrl($('tb-manual-q-image')?.value);
     const type  = $('tb-manual-type')?.value || 'mcq';
     const diff  = $('tb-manual-diff')?.value || 'medium';
 
-    if (!qText) { APP.toast('Question text is required', 'error'); return; }
+    if (!qText && !qImage) { APP.toast('Question text or question image URL is required', 'error'); return; }
 
     const q = {
       question  : qText,
+      image     : qImage,
       type,
       difficulty: diff,
       batch     : state.quiz?.batch   || '',
@@ -603,14 +678,25 @@ const TEST_BUILDER = (() => {
     if (type === 'mcq') {
       const a = $('tb-manual-a')?.value.trim();
       const b = $('tb-manual-b')?.value.trim();
-      if (!a || !b) { APP.toast('At least options A and B are required', 'error'); return; }
       q.options = {
         A: a,
         B: b,
         C: $('tb-manual-c')?.value.trim() || '',
         D: $('tb-manual-d')?.value.trim() || '',
       };
+      q.option_images = {
+        A: _cleanUrl($('tb-manual-a-image')?.value),
+        B: _cleanUrl($('tb-manual-b-image')?.value),
+        C: _cleanUrl($('tb-manual-c-image')?.value),
+        D: _cleanUrl($('tb-manual-d-image')?.value),
+      };
       q.answer = $('tb-manual-answer')?.value || 'A';
+
+      const populated = ['A', 'B', 'C', 'D'].filter(key =>
+        _hasOptionContent(q.options[key], q.option_images[key])
+      );
+      if (populated.length < 2) { APP.toast('Add at least two MCQ options using text or image URL', 'error'); return; }
+      if (!populated.includes(q.answer)) { APP.toast('Correct answer must point to an option with text or image', 'error'); return; }
 
     } else if (type === 'tf') {
       q.options = { A: 'True', B: 'False' };
@@ -627,10 +713,15 @@ const TEST_BUILDER = (() => {
 
     // Reset form
     if ($('tb-manual-q'))       $('tb-manual-q').value       = '';
+    if ($('tb-manual-q-image')) $('tb-manual-q-image').value = '';
     if ($('tb-manual-a'))       $('tb-manual-a').value       = '';
     if ($('tb-manual-b'))       $('tb-manual-b').value       = '';
     if ($('tb-manual-c'))       $('tb-manual-c').value       = '';
     if ($('tb-manual-d'))       $('tb-manual-d').value       = '';
+    if ($('tb-manual-a-image')) $('tb-manual-a-image').value = '';
+    if ($('tb-manual-b-image')) $('tb-manual-b-image').value = '';
+    if ($('tb-manual-c-image')) $('tb-manual-c-image').value = '';
+    if ($('tb-manual-d-image')) $('tb-manual-d-image').value = '';
     if ($('tb-manual-fib-ans')) $('tb-manual-fib-ans').value = '';
 
     await _loadBankQuestions();
@@ -787,6 +878,9 @@ const TEST_BUILDER = (() => {
 
   function _buildPreviewQHtml(q, qIdx) {
     let answersHtml = '';
+    const questionImage = q.image
+      ? `<div class="tb-preview-qimg"><img src="${_esc(q.image)}" alt="Question image" loading="lazy" decoding="async" style="max-width:320px;width:100%;max-height:220px;object-fit:contain;border-radius:14px;border:1px solid rgba(0,0,0,0.12);padding:8px;margin:10px 0 14px;" /></div>`
+      : '';
 
     if (q.type === 'fib') {
       answersHtml = `
@@ -795,11 +889,13 @@ const TEST_BUILDER = (() => {
       `;
     } else {
       const opts = q.options || {};
+      const optionImages = q.option_images || {};
       answersHtml = `
         <div class="tb-preview-opts">
-          ${Object.entries(opts).filter(([, v]) => v).map(([k, v]) => `
+          ${Object.entries(opts).filter(([k, v]) => v || optionImages[k]).map(([k, v]) => `
             <span class="tb-preview-opt${q.answer === k ? ' correct-ans preview-answer' : ''}">
-              <b>${k})</b> ${_esc(v)}
+              <b>${k})</b>${v ? ` ${_esc(v)}` : ''}
+              ${optionImages[k] ? `<img src="${_esc(optionImages[k])}" alt="Option ${_esc(k)} image" loading="lazy" decoding="async" style="display:block;max-width:180px;width:100%;max-height:120px;object-fit:contain;border-radius:10px;border:1px solid rgba(0,0,0,0.12);padding:6px;margin-top:8px;" />` : ''}
             </span>`).join('')}
         </div>
       `;
@@ -809,7 +905,8 @@ const TEST_BUILDER = (() => {
       <div class="tb-preview-q">
         <div class="tb-preview-qnum">Q${qIdx + 1}.</div>
         <div class="tb-preview-qbody">
-          <div class="tb-preview-qtext">${_esc(q.question)}</div>
+          <div class="tb-preview-qtext">${_esc(q.question || '')}</div>
+          ${questionImage}
           ${answersHtml}
         </div>
       </div>

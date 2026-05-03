@@ -136,8 +136,12 @@
             </label>
             <div class="import-target">
               <select id="import-batch" class="admin-select" aria-label="Target batch"></select>
-              <input id="import-subject" class="admin-input" placeholder="Subject" aria-label="Subject" />
-              <input id="import-chapter" class="admin-input" placeholder="Chapter" aria-label="Chapter" />
+              <select id="import-subject" class="admin-select" aria-label="Subject">
+                <option value="">Select Subject</option>
+              </select>
+              <select id="import-chapter" class="admin-select" aria-label="Chapter">
+                <option value="">Select Chapter</option>
+              </select>
             </div>
             <button id="btn-csv-import" class="admin-btn-primary">Import CSV</button>
             <div id="import-log" class="import-log" role="log" aria-live="polite"></div>
@@ -165,8 +169,12 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             <textarea id="bulk-paste-input" class="bulk-paste-area" rows="10" placeholder="येथे ChatGPT चे output paste करा…" aria-label="Bulk paste area"></textarea>
             <div class="import-target">
               <select id="bulk-batch" class="admin-select" aria-label="Target batch"></select>
-              <input id="bulk-subject" class="admin-input" placeholder="Subject" aria-label="Subject" />
-              <input id="bulk-chapter" class="admin-input" placeholder="Chapter" aria-label="Chapter" />
+              <select id="bulk-subject" class="admin-select" aria-label="Subject">
+                <option value="">Select Subject</option>
+              </select>
+              <select id="bulk-chapter" class="admin-select" aria-label="Chapter">
+                <option value="">Select Chapter</option>
+              </select>
             </div>
             <button id="btn-bulk-import" class="admin-btn-primary">✅ Import Pasted Questions</button>
             <div id="bulk-import-log" class="import-log" role="log" aria-live="polite"></div>
@@ -194,6 +202,29 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             <button id="btn-add-batch" class="admin-btn-primary">+ Add Class/Batch</button>
           </div>
           <div class="batch-admin-list" id="batch-admin-list" role="list" aria-label="Class list"></div>
+          <section class="import-section" aria-label="Manage Subjects">
+            <h3>Subjects</h3>
+            <p class="import-hint">Select class and add multiple subjects.</p>
+            <div class="import-target">
+              <select id="class-subject-batch" class="admin-select" aria-label="Class for subjects"></select>
+              <input id="class-subject-name" class="admin-input" placeholder="Subject name" aria-label="Subject name" />
+              <button id="btn-add-class-subject" class="admin-btn-primary" type="button">+ Add Subject</button>
+            </div>
+            <div class="batch-admin-list" id="subject-admin-list" role="list" aria-label="Subject list"></div>
+          </section>
+          <section class="import-section" aria-label="Manage Chapters">
+            <h3>Chapters</h3>
+            <p class="import-hint">Select class and subject, then add multiple chapters.</p>
+            <div class="import-target">
+              <select id="class-chapter-batch" class="admin-select" aria-label="Class for chapters"></select>
+              <select id="class-chapter-subject" class="admin-select" aria-label="Subject for chapters">
+                <option value="">Select Subject</option>
+              </select>
+              <input id="class-chapter-name" class="admin-input" placeholder="Chapter name" aria-label="Chapter name" />
+              <button id="btn-add-subject-chapter" class="admin-btn-primary" type="button">+ Add Chapter</button>
+            </div>
+            <div class="batch-admin-list" id="chapter-admin-list" role="list" aria-label="Chapter list"></div>
+          </section>
         </div>
 
         <div class="atab-content hidden" id="atab-sync" role="tabpanel">
@@ -294,8 +325,12 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       <form class="qedit-form" id="qedit-form" novalidate>
         <div class="form-row">
           <select id="qe-batch" class="admin-select" aria-label="Batch"></select>
-          <input id="qe-subject" class="admin-input" placeholder="Subject" aria-label="Subject" />
-          <input id="qe-chapter" class="admin-input" placeholder="Chapter" aria-label="Chapter" />
+          <select id="qe-subject" class="admin-select" aria-label="Subject">
+            <option value="">Select Subject</option>
+          </select>
+          <select id="qe-chapter" class="admin-select" aria-label="Chapter">
+            <option value="">Select Chapter</option>
+          </select>
         </div>
 
         <div class="form-row">
@@ -314,12 +349,24 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
 
         <textarea id="qe-question" class="admin-textarea" placeholder="Question text..." rows="3" aria-label="Question text"></textarea>
 
+        <div class="form-row">
+          <input id="qe-image" class="admin-input" placeholder="Question image URL (optional)" aria-label="Question image URL" />
+        </div>
+
         <fieldset id="qe-mcq-opts" class="qe-opts">
           <legend class="sr-only">MCQ Options</legend>
           <input id="qe-a" class="admin-input" placeholder="Option A" aria-label="Option A" />
           <input id="qe-b" class="admin-input" placeholder="Option B" aria-label="Option B" />
           <input id="qe-c" class="admin-input" placeholder="Option C" aria-label="Option C" />
           <input id="qe-d" class="admin-input" placeholder="Option D" aria-label="Option D" />
+          <div class="form-row">
+            <input id="qe-a-image" class="admin-input" placeholder="Option A image URL (optional)" aria-label="Option A image URL" />
+            <input id="qe-b-image" class="admin-input" placeholder="Option B image URL (optional)" aria-label="Option B image URL" />
+          </div>
+          <div class="form-row">
+            <input id="qe-c-image" class="admin-input" placeholder="Option C image URL (optional)" aria-label="Option C image URL" />
+            <input id="qe-d-image" class="admin-input" placeholder="Option D image URL (optional)" aria-label="Option D image URL" />
+          </div>
           <div class="form-row">
             <label for="qe-answer">Correct Answer:</label>
             <select id="qe-answer" class="admin-select" aria-label="Correct answer">
@@ -343,11 +390,6 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <option value="False">False</option>
             </select>
           </div>
-        </div>
-
-        <div class="form-row">
-          <label for="qe-image">Image (optional):</label>
-          <input type="file" id="qe-image" accept="image/*" class="admin-input" aria-label="Question image" />
         </div>
 
         <div class="form-row">

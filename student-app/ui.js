@@ -247,12 +247,13 @@ const UI = (() => {
     if (!section || !grid) return;
 
     const questions = await DB.getQuestionsByBatch(batchName);
-    const subjectCounts = questions.reduce((counts, q) => {
-      if (!q.subject) return counts;
-      counts[q.subject] = (counts[q.subject] || 0) + 1;
-      return counts;
-    }, {});
-    const subjects  = Object.keys(subjectCounts);
+    const storedSubjects = await DB.getSubjectsByBatch(batchName);
+    const fallbackSubjects = [...new Set(
+      questions.map(q => q.subject).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+    const subjects = storedSubjects.length
+      ? storedSubjects.map(item => item.name)
+      : fallbackSubjects;
 
     grid.innerHTML = '';
 
@@ -418,6 +419,181 @@ const UI = (() => {
           <div class="quiz-portal-title">${_escHtml(quiz.title || 'Untitled Quiz')}</div>
           <div class="quiz-portal-meta">
             ${_escHtml(quiz.batch || '')}${quiz.subject ? ' · ' + _escHtml(quiz.subject) : ''}
+            · ${totalQ} questions
+          </div>
+        </div>
+        <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
+      `;
+      card.querySelector('.quiz-portal-btn').addEventListener('click', () => {
+        if (onStart) onStart(quiz);
+      });
+      fragment.appendChild(card);
+    });
+    list.appendChild(fragment);
+  }
+
+  // Hierarchy-aware overrides: class -> subject -> chapter -> tests
+  async function renderSubjectGrid(batchName, onSubjectClick) {
+    const section = $('subject-section');
+    const grid    = $('subject-grid');
+    if (!section || !grid) return;
+
+    const questions = await DB.getQuestionsByBatch(batchName);
+    const storedSubjects = await DB.getSubjectsByBatch(batchName);
+    const fallbackSubjects = [...new Set(
+      questions.map(q => q.subject).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+    const subjects = storedSubjects.length
+      ? storedSubjects.map(item => item.name)
+      : fallbackSubjects;
+
+    grid.innerHTML = '';
+    if (!subjects.length) { section.classList.add('hidden'); return; }
+
+    const fragment = document.createDocumentFragment();
+    for (const sub of subjects) {
+      const chapters = await DB.getChaptersByBatchSubject(batchName, sub);
+      const icon  = _subjectIcons[sub.toLowerCase()] || '📝';
+      const count = chapters.length;
+      const card  = document.createElement('div');
+      card.className = 'subject-card';
+      card.setAttribute('role', 'listitem');
+      card.innerHTML = `
+        <div class="subject-icon">${icon}</div>
+        <div class="subject-name">${sub}</div>
+        <div class="batch-count">${count} chapter${count === 1 ? '' : 's'}</div>
+      `;
+      card.addEventListener('click', () => {
+        grid.querySelectorAll('.subject-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        if (onSubjectClick) onSubjectClick(sub);
+      });
+      fragment.appendChild(card);
+    }
+    grid.appendChild(fragment);
+
+    section.classList.remove('hidden');
+    $('chapter-section')?.classList.add('hidden');
+    $('lesson-section')?.classList.add('hidden');
+    $('available-tests-section')?.classList.add('hidden');
+  }
+
+  async function renderChapterList(batchName, subjectName, onChapterClick) {
+    const section = $('chapter-section');
+    const list    = $('chapter-list');
+    if (!section || !list) return;
+
+    const questions = await DB.getQuestionsByChapter(batchName, subjectName, '');
+    const storedChapters = await DB.getChaptersByBatchSubject(batchName, subjectName);
+    const fallbackChapters = [...new Set(
+      questions.map(q => q.chapter).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+    const chapters = storedChapters.length
+      ? storedChapters.map(item => item.name)
+      : fallbackChapters;
+    const published = await DB.getQuizzesByStatus('published');
+
+    list.innerHTML = '';
+    if (!chapters.length) { section.classList.add('hidden'); return; }
+
+    const fragment = document.createDocumentFragment();
+    chapters.forEach(ch => {
+      const totalQuestions = questions.filter(q => q.chapter === ch).length;
+      const testCount = published.filter(quiz =>
+        quiz.batch === batchName &&
+        quiz.subject === subjectName &&
+        quiz.chapter === ch
+      ).length;
+      const item = document.createElement('div');
+      item.className = 'chapter-item';
+      item.setAttribute('role', 'listitem');
+      item.innerHTML = `
+        <div class="chapter-info">
+          <div class="chapter-name">${ch}</div>
+          <div class="chapter-meta">${testCount} test${testCount === 1 ? '' : 's'}${totalQuestions ? ` · ${totalQuestions} questions` : ''}</div>
+        </div>
+        <div class="chapter-stats"></div>
+        <span class="chapter-arrow" aria-hidden="true">›</span>
+      `;
+      item.addEventListener('click', () => {
+        if (onChapterClick) onChapterClick(ch);
+      });
+      fragment.appendChild(item);
+    });
+    list.appendChild(fragment);
+
+    section.classList.remove('hidden');
+    $('available-tests-section')?.classList.add('hidden');
+    await renderLessons();
+  }
+
+  async function renderAvailableQuizzes({
+    batch = '',
+    subject = '',
+    chapter = '',
+    onStart = null,
+    onPractice = null,
+    showAll = false,
+  } = {}) {
+    const section = $('available-tests-section');
+    const list    = $('available-tests-list');
+    if (!section || !list) return;
+
+    const titleEl = section.querySelector('.section-label');
+    if (titleEl) {
+      titleEl.textContent = chapter ? `${chapter} Tests` : 'Published Quizzes';
+    }
+
+    if (!showAll && (!batch || !subject || !chapter)) {
+      section.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+
+    const published = (await DB.getQuizzesByStatus('published')).filter(quiz =>
+      (!batch || quiz.batch === batch) &&
+      (!subject || quiz.subject === subject) &&
+      (!chapter || quiz.chapter === chapter)
+    );
+    const chapterQuestions = (batch && subject && chapter)
+      ? await DB.getQuestionsByChapter(batch, subject, chapter)
+      : [];
+
+    if (!published.length && !(chapterQuestions.length && onPractice)) {
+      section.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+
+    section.classList.remove('hidden');
+    list.innerHTML = '';
+
+    const fragment = document.createDocumentFragment();
+    if (chapterQuestions.length && onPractice) {
+      const practiceCard = document.createElement('div');
+      practiceCard.className = 'quiz-portal-card';
+      practiceCard.innerHTML = `
+        <div class="quiz-portal-info">
+          <div class="quiz-portal-title">Practice Questions</div>
+          <div class="quiz-portal-meta">${chapterQuestions.length} questions · chapter practice</div>
+        </div>
+        <button class="quiz-portal-btn" aria-label="Start practice">Practice</button>
+      `;
+      practiceCard.querySelector('.quiz-portal-btn').addEventListener('click', () => onPractice());
+      fragment.appendChild(practiceCard);
+    }
+
+    published.forEach(quiz => {
+      const totalQ = Array.isArray(quiz.questions) && quiz.questions.length
+        ? quiz.questions.length
+        : (quiz.sections || []).reduce((s, sec) => s + (sec.question_ids?.length || 0), 0);
+      const card   = document.createElement('div');
+      card.className = 'quiz-portal-card';
+      card.innerHTML = `
+        <div class="quiz-portal-info">
+          <div class="quiz-portal-title">${_escHtml(quiz.title || 'Untitled Quiz')}</div>
+          <div class="quiz-portal-meta">
+            ${_escHtml(quiz.batch || '')}${quiz.subject ? ' · ' + _escHtml(quiz.subject) : ''}${quiz.chapter ? ' · ' + _escHtml(quiz.chapter) : ''}
             · ${totalQ} questions
           </div>
         </div>

@@ -18,6 +18,21 @@ const ADMIN = (() => {
     if (el) el.value = value ?? '';
     return el;
   };
+  const _cleanUrl = value => {
+    const trimmed = String(value || '').trim();
+    return trimmed || null;
+  };
+  const _hasOptionContent = (text, imageUrl) => !!String(text || '').trim() || !!_cleanUrl(imageUrl);
+  const _questionLabel = q => {
+    const text = String(q?.question || '').trim();
+    if (text) return text;
+    if (q?.image) return '[Image Question]';
+    return '[Untitled Question]';
+  };
+  const _questionSummary = (q, maxLen = 90) => {
+    const label = _questionLabel(q);
+    return label.length > maxLen ? `${label.slice(0, maxLen)}…` : label;
+  };
 
   let _unlocked    = false;
   let _editingQId  = null;
@@ -142,12 +157,15 @@ const ADMIN = (() => {
   async function _loadAdminContent() {
     const savedApiUrl = await DB.getSetting('api_url', API.DEFAULT_API_URL);
     try { API.setApiUrl(savedApiUrl || API.DEFAULT_API_URL); } catch {}
+    await DB.syncHierarchyFromExisting?.();
     _questionBankLimit = QUESTION_BANK_PAGE_SIZE;
     await Promise.all([
       _loadBatchOptions(),
       loadQuestionBank({ resetLimit: true }),
       _loadLessonAdmin(),
       _loadBatchAdmin(),
+      _loadSubjectAdmin(),
+      _loadChapterAdmin(),
       _loadSettings(),
       loadQuizList(),
     ]);
@@ -176,19 +194,42 @@ const ADMIN = (() => {
 
   async function _loadBatchOptions() {
     const batches = await DB.getAllBatches();
-    const selects = [
-      $('admin-batch-filter'), $('import-batch'), $('qe-batch'),
+    const batchOptions = batches.map(batch => ({
+      value: batch.name,
+      label: `${batch.icon || ''} ${batch.name}`.trim(),
+    }));
+    const selectConfigs = [
+      { id: 'admin-batch-filter', placeholder: 'All Classes' },
+      { id: 'import-batch', placeholder: 'Select Class' },
+      { id: 'bulk-batch', placeholder: 'Select Class' },
+      { id: 'qe-batch', placeholder: 'Select Class' },
+      { id: 'class-subject-batch', placeholder: 'Select Class' },
+      { id: 'class-chapter-batch', placeholder: 'Select Class' },
     ];
-    selects.forEach(sel => {
-      if (!sel) return;
-      sel.innerHTML = '<option value="">All Classes</option>';
-      batches.forEach(b => {
-        const o = document.createElement('option');
-        o.value = b.name;
-        o.textContent = `${b.icon || ''} ${b.name}`;
-        sel.appendChild(o);
-      });
+
+    selectConfigs.forEach(({ id, placeholder }) => {
+      _setSelectOptions($(id), batchOptions, placeholder);
     });
+
+    const defaultBatch = $('class-subject-batch')?.value || $('class-chapter-batch')?.value || batchOptions[0]?.value || '';
+    if ($('class-subject-batch') && !$('class-subject-batch').value && defaultBatch) {
+      $('class-subject-batch').value = defaultBatch;
+    }
+    if ($('class-chapter-batch') && !$('class-chapter-batch').value && defaultBatch) {
+      $('class-chapter-batch').value = defaultBatch;
+    }
+
+    await Promise.all([
+      _refreshFormHierarchy({ batchId: 'qe-batch', subjectId: 'qe-subject', chapterId: 'qe-chapter' }),
+      _refreshFormHierarchy({ batchId: 'import-batch', subjectId: 'import-subject', chapterId: 'import-chapter' }),
+      _refreshFormHierarchy({ batchId: 'bulk-batch', subjectId: 'bulk-subject', chapterId: 'bulk-chapter' }),
+      _refreshFormHierarchy({
+        batchId: 'class-chapter-batch',
+        subjectId: 'class-chapter-subject',
+        chapterId: null,
+        chapterPlaceholder: 'Select Chapter',
+      }),
+    ]);
   }
 
   function _setSelectOptions(select, options, placeholder) {
@@ -202,13 +243,202 @@ const ADMIN = (() => {
     select.appendChild(base);
 
     options.forEach(optionValue => {
+      const value = typeof optionValue === 'object' ? optionValue.value : optionValue;
+      const label = typeof optionValue === 'object' ? (optionValue.label || optionValue.value) : optionValue;
       const option = document.createElement('option');
-      option.value = optionValue;
-      option.textContent = optionValue;
+      option.value = value;
+      option.textContent = label;
       select.appendChild(option);
     });
 
-    select.value = options.includes(currentValue) ? currentValue : '';
+    const values = options.map(optionValue => (
+      typeof optionValue === 'object' ? optionValue.value : optionValue
+    ));
+    select.value = values.includes(currentValue) ? currentValue : '';
+  }
+
+  async function _refreshFormHierarchy({
+    batchId,
+    subjectId,
+    chapterId,
+    subjectValue,
+    chapterValue,
+    subjectPlaceholder = 'Select Subject',
+    chapterPlaceholder = 'Select Chapter',
+  }) {
+    const batch = $(batchId)?.value || '';
+    const subjectSelect = $(subjectId);
+    const chapterSelect = chapterId ? $(chapterId) : null;
+
+    const subjects = batch
+      ? (await DB.getSubjectsByBatch(batch)).map(item => item.name)
+      : [];
+    _setSelectOptions(subjectSelect, subjects, subjectPlaceholder);
+    if (subjectSelect) {
+      const nextSubject = subjectValue ?? subjectSelect.value;
+      subjectSelect.value = subjects.includes(nextSubject) ? nextSubject : '';
+    }
+
+    if (!chapterSelect) return;
+
+    const subject = subjectSelect?.value || subjectValue || '';
+    const chapters = (batch && subject)
+      ? (await DB.getChaptersByBatchSubject(batch, subject)).map(item => item.name)
+      : [];
+    _setSelectOptions(chapterSelect, chapters, chapterPlaceholder);
+    const nextChapter = chapterValue ?? chapterSelect.value;
+    chapterSelect.value = chapters.includes(nextChapter) ? nextChapter : '';
+  }
+
+  function _countPublishedQuizzes(batch, subject, chapter) {
+    return DB.getAllQuizzes().then(quizzes =>
+      quizzes.filter(quiz =>
+        quiz.status === 'published' &&
+        (!batch || quiz.batch === batch) &&
+        (!subject || quiz.subject === subject) &&
+        (!chapter || quiz.chapter === chapter)
+      ).length
+    );
+  }
+
+  async function _loadSubjectAdmin() {
+    const batch = $('class-subject-batch')?.value || '';
+    const list = $('subject-admin-list');
+    if (!list) return;
+
+    if (!batch) {
+      list.innerHTML = '<p class="empty-hint">Select a class to manage subjects.</p>';
+      return;
+    }
+
+    const subjects = await DB.getSubjectsByBatch(batch);
+    if (!subjects.length) {
+      list.innerHTML = '<p class="empty-hint">No subjects yet for this class.</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    for (const subject of subjects) {
+      const chapters = await DB.getChaptersByBatchSubject(batch, subject.name);
+      const item = document.createElement('div');
+      item.className = 'batch-admin-item';
+      item.innerHTML = `
+        <div>
+          <div class="batch-admin-name">${_escHtml(subject.name)}</div>
+          <div class="batch-admin-meta">${chapters.length} chapter${chapters.length === 1 ? '' : 's'}</div>
+        </div>
+        <div class="batch-admin-actions">
+          <button class="admin-btn-secondary" data-action="use">Use</button>
+          <button class="admin-btn-danger" data-action="delete">Delete</button>
+        </div>
+      `;
+      item.querySelector('[data-action="use"]').addEventListener('click', async () => {
+        if ($('class-chapter-batch')) $('class-chapter-batch').value = batch;
+        await _refreshFormHierarchy({
+          batchId: 'class-chapter-batch',
+          subjectId: 'class-chapter-subject',
+          chapterId: null,
+        });
+        if ($('class-chapter-subject')) $('class-chapter-subject').value = subject.name;
+        await _loadChapterAdmin();
+      });
+      item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+        if (!confirm(`Delete subject "${subject.name}" from "${batch}"?`)) return;
+        await DB.deleteBatchSubject(subject.id);
+        await Promise.all([
+          _loadSubjectAdmin(),
+          _loadChapterAdmin(),
+          _loadBatchOptions(),
+        ]);
+      });
+      fragment.appendChild(item);
+    }
+    list.appendChild(fragment);
+  }
+
+  async function _loadChapterAdmin() {
+    const batch = $('class-chapter-batch')?.value || '';
+    const subject = $('class-chapter-subject')?.value || '';
+    const list = $('chapter-admin-list');
+    if (!list) return;
+
+    if (!batch) {
+      list.innerHTML = '<p class="empty-hint">Select a class to manage chapters.</p>';
+      return;
+    }
+    if (!subject) {
+      list.innerHTML = '<p class="empty-hint">Select a subject to manage chapters.</p>';
+      return;
+    }
+
+    const chapters = await DB.getChaptersByBatchSubject(batch, subject);
+    if (!chapters.length) {
+      list.innerHTML = '<p class="empty-hint">No chapters yet for this subject.</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    for (const chapter of chapters) {
+      const quizCount = await _countPublishedQuizzes(batch, subject, chapter.name);
+      const item = document.createElement('div');
+      item.className = 'batch-admin-item';
+      item.innerHTML = `
+        <div>
+          <div class="batch-admin-name">${_escHtml(chapter.name)}</div>
+          <div class="batch-admin-meta">${quizCount} published test${quizCount === 1 ? '' : 's'}</div>
+        </div>
+        <div class="batch-admin-actions">
+          <button class="admin-btn-danger" data-action="delete">Delete</button>
+        </div>
+      `;
+      item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+        if (!confirm(`Delete chapter "${chapter.name}" from "${subject}"?`)) return;
+        await DB.deleteSubjectChapter(chapter.id);
+        await Promise.all([
+          _loadChapterAdmin(),
+          _loadBatchOptions(),
+        ]);
+      });
+      fragment.appendChild(item);
+    }
+    list.appendChild(fragment);
+  }
+
+  async function _addBatchSubject() {
+    const batch = $('class-subject-batch')?.value || '';
+    const name = $('class-subject-name')?.value.trim() || '';
+    if (!batch || !name) {
+      APP.toast('Select class and enter subject name', 'error');
+      return;
+    }
+
+    await DB.saveBatchSubject({ batch, name });
+    $('class-subject-name').value = '';
+    await Promise.all([
+      _loadSubjectAdmin(),
+      _loadBatchOptions(),
+    ]);
+    APP.toast(`Subject "${name}" added to ${batch}`, 'success');
+  }
+
+  async function _addSubjectChapter() {
+    const batch = $('class-chapter-batch')?.value || '';
+    const subject = $('class-chapter-subject')?.value || '';
+    const name = $('class-chapter-name')?.value.trim() || '';
+    if (!batch || !subject || !name) {
+      APP.toast('Select class, subject, and chapter name', 'error');
+      return;
+    }
+
+    await DB.saveSubjectChapter({ batch, subject, name });
+    $('class-chapter-name').value = '';
+    await Promise.all([
+      _loadChapterAdmin(),
+      _loadBatchOptions(),
+    ]);
+    APP.toast(`Chapter "${name}" added to ${subject}`, 'success');
   }
 
   function _refreshQuestionFilterOptions(allQuestions, { batch, subject }) {
@@ -300,7 +530,7 @@ const ADMIN = (() => {
       item.className = 'qb-item' + ((q.weak_count >= 2 || q.flagged) ? ' weak-flag' : '');
       item.innerHTML = `
         <div class="qb-info">
-          <div class="qb-text">${_escHtml(q.question)}</div>
+          <div class="qb-text">${_escHtml(_questionSummary(q, 140))}</div>
           <div class="qb-meta">${q.batch} › ${q.subject} › ${q.chapter} · ${(q.type || 'MCQ').toUpperCase()}</div>
         </div>
         <div class="qb-badges">
@@ -316,7 +546,7 @@ const ADMIN = (() => {
       });
       item.querySelector('.qb-del-btn').addEventListener('click', async e => {
         e.stopPropagation();
-        if (!confirm(`Delete: "${q.question.slice(0, 60)}…"?`)) return;
+        if (!confirm(`Delete: "${_questionSummary(q, 60)}"?`)) return;
         if (q.backend_id) {
           try { await API.deleteQuestion(q.backend_id); } catch {}
         }
@@ -334,22 +564,32 @@ const ADMIN = (() => {
   // QUESTION EDITOR
   // ════════════════════════
 
-  function _openQEditor(q = null) {
+  async function _openQEditor(q = null) {
     _editingQId = q?.q_id || null;
     _setText('qedit-title', q ? 'Edit Question' : 'Add Question');
     $('btn-qe-delete')?.classList.toggle('hidden', !q);
 
     if (q) {
       _setValue('qe-batch', q.batch || '');
-      _setValue('qe-subject', q.subject || '');
-      _setValue('qe-chapter', q.chapter || '');
+      await _refreshFormHierarchy({
+        batchId: 'qe-batch',
+        subjectId: 'qe-subject',
+        chapterId: 'qe-chapter',
+        subjectValue: q.subject || '',
+        chapterValue: q.chapter || '',
+      });
       _setValue('qe-type', q.type || 'mcq');
       _setValue('qe-difficulty', q.difficulty || 'medium');
       _setValue('qe-question', q.question || '');
+      _setValue('qe-image', q.image || '');
       _setValue('qe-a', q.options?.A || '');
       _setValue('qe-b', q.options?.B || '');
       _setValue('qe-c', q.options?.C || '');
       _setValue('qe-d', q.options?.D || '');
+      _setValue('qe-a-image', q.option_images?.A || '');
+      _setValue('qe-b-image', q.option_images?.B || '');
+      _setValue('qe-c-image', q.option_images?.C || '');
+      _setValue('qe-d-image', q.option_images?.D || '');
       _setValue('qe-answer', q.type === 'mcq' ? (q.answer || 'A') : 'A');
       _setValue('qe-fib-answer', q.type === 'fib' ? (q.answer || '') : '');
       if ($('qe-tf-answer')) _setValue('qe-tf-answer', q.type === 'tf' ? (q.answer || 'True') : 'True');
@@ -358,6 +598,11 @@ const ADMIN = (() => {
       $('qedit-overlay')?.querySelectorAll('input,textarea,select').forEach(el => {
         if (el.tagName === 'SELECT') el.selectedIndex = 0;
         else el.value = '';
+      });
+      await _refreshFormHierarchy({
+        batchId: 'qe-batch',
+        subjectId: 'qe-subject',
+        chapterId: 'qe-chapter',
       });
     }
 
@@ -377,12 +622,14 @@ const ADMIN = (() => {
     if (!q.batch)    return 'Select a class / batch';
     if (!q.subject)  return 'Subject is required';
     if (!q.chapter)  return 'Chapter is required';
-    if (!q.question) return 'Question text is required';
+    if (!q.question && !q.image) return 'Question text or question image URL is required';
 
     if (type === 'mcq') {
-      const a = $('qe-a').value.trim(), b = $('qe-b').value.trim();
-      const c = $('qe-c').value.trim(), d = $('qe-d').value.trim();
-      if (!a || !b || !c || !d) return 'All four MCQ options (A–D) are required';
+      const populated = ['A', 'B', 'C', 'D'].filter(key =>
+        _hasOptionContent(q.options?.[key], q.option_images?.[key])
+      );
+      if (populated.length < 2) return 'Add at least two MCQ options using text or image URL';
+      if (!populated.includes(q.answer)) return 'Correct answer must point to an option with text or image';
     }
 
     if (type === 'fib' && !$('qe-fib-answer').value.trim()) {
@@ -397,16 +644,14 @@ const ADMIN = (() => {
     const q = {
       q_id      : _editingQId || undefined,
       batch     : $('qe-batch').value,
-      subject   : $('qe-subject').value.trim(),
-      chapter   : $('qe-chapter').value.trim(),
+      subject   : $('qe-subject').value,
+      chapter   : $('qe-chapter').value,
       type,
       difficulty: $('qe-difficulty').value,
       question  : $('qe-question').value.trim(),
+      image     : _cleanUrl($('qe-image')?.value),
       tags      : $('qe-tags').value.split(',').map(t => t.trim()).filter(Boolean),
     };
-
-    const validationError = _validateQ(type, q);
-    if (validationError) { APP.toast(validationError, 'error'); return; }
 
     if (type === 'mcq') {
       q.options = {
@@ -414,6 +659,12 @@ const ADMIN = (() => {
         B: $('qe-b').value.trim(),
         C: $('qe-c').value.trim(),
         D: $('qe-d').value.trim(),
+      };
+      q.option_images = {
+        A: _cleanUrl($('qe-a-image')?.value),
+        B: _cleanUrl($('qe-b-image')?.value),
+        C: _cleanUrl($('qe-c-image')?.value),
+        D: _cleanUrl($('qe-d-image')?.value),
       };
       q.answer = $('qe-answer').value;
     } else if (type === 'fib') {
@@ -423,12 +674,8 @@ const ADMIN = (() => {
       q.options = { A: 'True', B: 'False' };
     }
 
-    // Image upload
-    const imgFile = $('qe-image')?.files?.[0];
-    if (imgFile) {
-      await DB.saveImage(imgFile.name, imgFile);
-      q.image = imgFile.name;
-    }
+    const validationError = _validateQ(type, q);
+    if (validationError) { APP.toast(validationError, 'error'); return; }
 
     let saved;
     try {
@@ -444,7 +691,7 @@ const ADMIN = (() => {
       const res = saved.backend_id
         ? await API.updateQuestion(saved.backend_id, saved)
         : await API.addQuestion(saved);
-      const bid = res?.data?.id || saved.backend_id;
+      const bid = res?.data?.id || res?.data?._id || res?.data?.q_id || saved.backend_id;
       if (bid) {
         saved.backend_id = bid;
         try { await DB.saveQuestion(saved); } catch (err) { console.error('DB write failed:', err); }
@@ -610,8 +857,8 @@ const ADMIN = (() => {
     if (!file) { APP.toast('Select a CSV file first', 'error'); return; }
 
     const batch   = $('import-batch').value;
-    const subject = $('import-subject').value.trim();
-    const chapter = $('import-chapter').value.trim();
+    const subject = $('import-subject').value;
+    const chapter = $('import-chapter').value;
     if (!batch || !subject || !chapter) {
       APP.toast('Fill Class, Subject, Chapter fields', 'error'); return;
     }
@@ -732,9 +979,27 @@ const ADMIN = (() => {
         const { id, name } = e.target.dataset;
         if (!confirm(`Delete batch "${name}"?`)) return;
         await DB.deleteBatch(parseInt(id));
-        await _loadBatchAdmin();
-        await _loadBatchOptions();
+        await Promise.all([
+          _loadBatchAdmin(),
+          _loadSubjectAdmin(),
+          _loadChapterAdmin(),
+          _loadBatchOptions(),
+        ]);
         APP.refreshHome();
+      });
+      item.addEventListener('click', async e => {
+        if (e.target.closest('button')) return;
+        if ($('class-subject-batch')) $('class-subject-batch').value = b.name;
+        if ($('class-chapter-batch')) $('class-chapter-batch').value = b.name;
+        await _refreshFormHierarchy({
+          batchId: 'class-chapter-batch',
+          subjectId: 'class-chapter-subject',
+          chapterId: null,
+        });
+        await Promise.all([
+          _loadSubjectAdmin(),
+          _loadChapterAdmin(),
+        ]);
       });
       list.appendChild(item);
     }
@@ -745,9 +1010,13 @@ const ADMIN = (() => {
     if (!name) return;
     const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
     const icon  = icons[Math.floor(Math.random() * icons.length)];
-    await DB.saveBatch({ name: name.trim(), icon });
-    await _loadBatchAdmin();
-    await _loadBatchOptions();
+      await DB.saveBatch({ name: name.trim(), icon });
+      await Promise.all([
+        _loadBatchAdmin(),
+        _loadSubjectAdmin(),
+        _loadChapterAdmin(),
+        _loadBatchOptions(),
+      ]);
     APP.refreshHome();
     APP.toast(`✅ Class "${name}" added`, 'success');
   }
@@ -980,6 +1249,17 @@ const ADMIN = (() => {
     $('btn-qe-save')?.addEventListener('click', _saveQEditor);
     $('btn-qe-delete')?.addEventListener('click', _deleteCurrentQ);
     $('qe-type')?.addEventListener('change', _updateQETypeView);
+    $('qe-batch')?.addEventListener('change', () => _refreshFormHierarchy({
+      batchId: 'qe-batch',
+      subjectId: 'qe-subject',
+      chapterId: 'qe-chapter',
+    }));
+    $('qe-subject')?.addEventListener('change', () => _refreshFormHierarchy({
+      batchId: 'qe-batch',
+      subjectId: 'qe-subject',
+      chapterId: 'qe-chapter',
+      subjectValue: $('qe-subject')?.value || '',
+    }));
 
     // Question filters
     ['admin-batch-filter','admin-subject-filter','admin-chapter-filter'].forEach(id => {
@@ -1008,6 +1288,28 @@ const ADMIN = (() => {
     });
 
     // Import / export
+    $('import-batch')?.addEventListener('change', () => _refreshFormHierarchy({
+      batchId: 'import-batch',
+      subjectId: 'import-subject',
+      chapterId: 'import-chapter',
+    }));
+    $('import-subject')?.addEventListener('change', () => _refreshFormHierarchy({
+      batchId: 'import-batch',
+      subjectId: 'import-subject',
+      chapterId: 'import-chapter',
+      subjectValue: $('import-subject')?.value || '',
+    }));
+    $('bulk-batch')?.addEventListener('change', () => _refreshFormHierarchy({
+      batchId: 'bulk-batch',
+      subjectId: 'bulk-subject',
+      chapterId: 'bulk-chapter',
+    }));
+    $('bulk-subject')?.addEventListener('change', () => _refreshFormHierarchy({
+      batchId: 'bulk-batch',
+      subjectId: 'bulk-subject',
+      chapterId: 'bulk-chapter',
+      subjectValue: $('bulk-subject')?.value || '',
+    }));
     $('btn-csv-import')?.addEventListener('click', _importCSV);
     $('btn-zip-import')?.addEventListener('click', _importZIP);
     $('btn-export-zip')?.addEventListener('click', _exportZIP);
@@ -1030,6 +1332,18 @@ const ADMIN = (() => {
 
     // Batch
     $('btn-add-batch')?.addEventListener('click', _addBatch);
+    $('btn-add-class-subject')?.addEventListener('click', _addBatchSubject);
+    $('btn-add-subject-chapter')?.addEventListener('click', _addSubjectChapter);
+    $('class-subject-batch')?.addEventListener('change', _loadSubjectAdmin);
+    $('class-chapter-batch')?.addEventListener('change', async () => {
+      await _refreshFormHierarchy({
+        batchId: 'class-chapter-batch',
+        subjectId: 'class-chapter-subject',
+        chapterId: null,
+      });
+      await _loadChapterAdmin();
+    });
+    $('class-chapter-subject')?.addEventListener('change', _loadChapterAdmin);
 
     // Sync
     $('btn-share-url-qr')?.addEventListener('click', _generateServerUrlQR);

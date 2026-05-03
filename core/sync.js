@@ -195,9 +195,8 @@ const SYNC = (() => {
     }
 
     const optionEntries = Object.entries(question.options || {})
-      .filter(([, value]) => String(value || '').trim())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([, value]) => String(value).trim());
+      .filter(([key, value]) => String(value || '').trim() || question.option_images?.[key])
+      .sort(([a], [b]) => a.localeCompare(b));
 
     if (optionEntries.length < 2) {
       throw new Error(
@@ -205,21 +204,20 @@ const SYNC = (() => {
       );
     }
 
-    const answerValue = question.options?.[question.answer] || question.answer;
-    const normalizedAnswer = String(answerValue || '').trim();
-
-    if (!normalizedAnswer || !optionEntries.includes(normalizedAnswer)) {
+    const normalizedAnswer = String(question.answer || '').trim().toUpperCase();
+    if (!normalizedAnswer || !optionEntries.some(([key]) => key === normalizedAnswer)) {
       throw new Error(
         `Question "${String(question.question).slice(0, 48)}" has an answer that does not match its options`
       );
     }
 
     return {
-      q_id    : question.q_id,
-      question: String(question.question).trim(),
-      options : optionEntries,
-      answer  : normalizedAnswer,
-      image   : question.image || null,
+      q_id         : question.q_id,
+      question     : String(question.question).trim(),
+      options      : Object.fromEntries(optionEntries.map(([key, value]) => [key, String(value || '').trim()])),
+      option_images: Object.fromEntries(optionEntries.map(([key]) => [key, question.option_images?.[key] || null])),
+      answer       : normalizedAnswer,
+      image        : question.image || null,
     };
   }
 
@@ -280,27 +278,48 @@ const SYNC = (() => {
   }
 
   function _toLocalQuizQuestion(remoteQuestion, quizMeta, index) {
-    const options = Array.isArray(remoteQuestion?.options)
-      ? remoteQuestion.options.map(option => String(option || '').trim()).filter(Boolean)
-      : [];
-
-    const answerText = String(remoteQuestion?.answer || '').trim();
-    const answerIndex = options.findIndex(option => option === answerText);
     const optionKeys = ['A', 'B', 'C', 'D', 'E', 'F'];
     const optionMap = {};
+    const optionImages = {};
 
-    options.forEach((option, optionIndex) => {
-      optionMap[optionKeys[optionIndex] || `O${optionIndex + 1}`] = option;
-    });
-
-    if (options.length < 2 || answerIndex < 0) {
-      return null;
+    if (remoteQuestion?.options && typeof remoteQuestion.options === 'object' && !Array.isArray(remoteQuestion.options)) {
+      Object.entries(remoteQuestion.options).forEach(([key, value]) => {
+        optionMap[key] = String(value || '').trim();
+      });
+      const images = remoteQuestion.option_images && typeof remoteQuestion.option_images === 'object'
+        ? remoteQuestion.option_images
+        : {};
+      Object.keys(optionMap).forEach(key => {
+        optionImages[key] = String(images[key] || '').trim() || null;
+      });
+    } else {
+      const options = Array.isArray(remoteQuestion?.options)
+        ? remoteQuestion.options.map(option => String(option || '').trim())
+        : [];
+      options.forEach((option, optionIndex) => {
+        optionMap[optionKeys[optionIndex] || `O${optionIndex + 1}`] = option;
+      });
+      const images = Array.isArray(remoteQuestion?.option_images) ? remoteQuestion.option_images : [];
+      Object.keys(optionMap).forEach((key, optionIndex) => {
+        optionImages[key] = String(images[optionIndex] || '').trim() || null;
+      });
     }
 
+    const populatedKeys = Object.keys(optionMap).filter(key => optionMap[key] || optionImages[key]);
+    if (populatedKeys.length < 2) return null;
+
+    const rawAnswer = String(remoteQuestion?.answer || '').trim();
+    const upperAnswer = rawAnswer.toUpperCase();
+    const answerKey = populatedKeys.includes(upperAnswer)
+      ? upperAnswer
+      : populatedKeys.find(key => optionMap[key] === rawAnswer);
+    if (!answerKey) return null;
+
+    const optionValues = populatedKeys.map(key => optionMap[key]);
     const isTrueFalse =
-      options.length === 2 &&
-      options.some(option => /^true$/i.test(option)) &&
-      options.some(option => /^false$/i.test(option));
+      populatedKeys.length === 2 &&
+      optionValues.some(option => /^true$/i.test(option)) &&
+      optionValues.some(option => /^false$/i.test(option));
 
     return {
       q_id      : remoteQuestion.q_id || `${quizMeta.quiz_id}_q_${index + 1}`,
@@ -309,7 +328,8 @@ const SYNC = (() => {
       chapter   : quizMeta.chapter || '',
       question  : String(remoteQuestion.question || '').trim(),
       options   : optionMap,
-      answer    : optionKeys[answerIndex] || 'A',
+      option_images: optionImages,
+      answer    : answerKey,
       type      : isTrueFalse ? 'tf' : 'mcq',
       image     : remoteQuestion.image || null,
       source    : 'api',

@@ -284,11 +284,35 @@ const API = (() => {
     return map[String(answer || '').trim()] || 'option1';
   }
 
+  function normalizeOptionImages(optionImages = {}) {
+    if (!optionImages || typeof optionImages !== 'object') {
+      return { A: null, B: null, C: null, D: null };
+    }
+    return {
+      A: String(optionImages.A || '').trim() || null,
+      B: String(optionImages.B || '').trim() || null,
+      C: String(optionImages.C || '').trim() || null,
+      D: String(optionImages.D || '').trim() || null,
+    };
+  }
+
+  function normalizeBackendOptionImages(question = {}) {
+    if (Array.isArray(question.option_images)) {
+      return {
+        A: String(question.option_images[0] || '').trim() || null,
+        B: String(question.option_images[1] || '').trim() || null,
+        C: String(question.option_images[2] || '').trim() || null,
+        D: String(question.option_images[3] || '').trim() || null,
+      };
+    }
+    return normalizeOptionImages(question.option_images);
+  }
+
   function toFrontendQuestion(question, meta = {}) {
     const type = (['mcq','tf','fib','mtp'].includes(question.type) ? question.type : 'mcq');
     const base = {
-      q_id      : meta.q_id || `api_${question.id}`,
-      backend_id: question.id,
+      q_id      : meta.q_id || question.q_id || `api_${question.id}`,
+      backend_id: question.id || question._id || question.q_id || null,
       batch     : meta.batch      || question.batch      || REMOTE_BATCH,
       subject   : meta.subject    || question.subject    || REMOTE_SUBJECT,
       chapter   : meta.chapter    || question.chapter    || REMOTE_CHAPTER,
@@ -297,13 +321,27 @@ const API = (() => {
       type,
       tags      : question.tags   || [],
       image     : question.image  || null,
+      option_images: normalizeBackendOptionImages(question),
       source    : 'api',
       synced_at : Date.now(),
     };
 
     if (type === 'mcq') {
-      base.options = { A: question.option1 || '', B: question.option2 || '', C: question.option3 || '', D: question.option4 || '' };
-      base.answer  = backendAnswerToFrontend(question.answer);
+      if (question.options && typeof question.options === 'object' && !Array.isArray(question.options)) {
+        base.options = {
+          A: question.options.A || '',
+          B: question.options.B || '',
+          C: question.options.C || '',
+          D: question.options.D || '',
+        };
+        const normalizedAnswer = String(question.answer || '').trim().toUpperCase();
+        base.answer = ['A', 'B', 'C', 'D'].includes(normalizedAnswer)
+          ? normalizedAnswer
+          : backendAnswerToFrontend(question.answer);
+      } else {
+        base.options = { A: question.option1 || '', B: question.option2 || '', C: question.option3 || '', D: question.option4 || '' };
+        base.answer  = backendAnswerToFrontend(question.answer);
+      }
     } else if (type === 'tf') {
       base.options = { A: 'True', B: 'False' };
       base.answer  = question.answer || 'True';
@@ -328,15 +366,27 @@ const API = (() => {
       chapter   : question.chapter    || '',
       tags      : question.tags       || [],
       image     : question.image      || null,
+      option_images: normalizeOptionImages(question.option_images),
     };
 
     if (type === 'mcq') {
+      base.options = {
+        A: question.options?.A || '',
+        B: question.options?.B || '',
+        C: question.options?.C || '',
+        D: question.options?.D || '',
+      };
       base.option1 = question.options?.A || '';
       base.option2 = question.options?.B || '';
       base.option3 = question.options?.C || '';
       base.option4 = question.options?.D || '';
-      base.answer  = frontendAnswerToBackend(question.answer);
+      base.option1_image = base.option_images.A;
+      base.option2_image = base.option_images.B;
+      base.option3_image = base.option_images.C;
+      base.option4_image = base.option_images.D;
+      base.answer  = question.answer || 'A';
     } else if (type === 'tf') {
+      base.options = { A: 'True', B: 'False' };
       base.option1 = 'True';
       base.option2 = 'False';
       base.answer  = question.answer || 'True';

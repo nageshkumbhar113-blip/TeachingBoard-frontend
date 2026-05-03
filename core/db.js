@@ -1,14 +1,14 @@
 /* ════════════════════════════════════════
    db.js — IndexedDB Storage Layer
    TeachingBoard PWA — Complete CRUD
-   Stores: questions, batches, sessions,
-           settings, images, lessons,
-           quizzes, test_attempts
+   Stores: questions, batches, batch_subjects,
+           subject_chapters, sessions, settings,
+           images, lessons, quizzes, test_attempts
 ════════════════════════════════════════ */
 
 const DB = (() => {
   const DB_NAME    = 'TeachingBoardDB';
-  const DB_VERSION = 8;
+  const DB_VERSION = 9;
   const PENDING_WRITE_KEY = 'teachingboard_pending_writes';
 
   let _db = null;
@@ -40,6 +40,19 @@ const DB = (() => {
         // batches
         if (!db.objectStoreNames.contains('batches')) {
           db.createObjectStore('batches', { keyPath: 'id', autoIncrement: true });
+        }
+
+        // batch_subjects
+        if (!db.objectStoreNames.contains('batch_subjects')) {
+          const bs = db.createObjectStore('batch_subjects', { keyPath: 'id', autoIncrement: true });
+          bs.createIndex('batch', 'batch');
+        }
+
+        // subject_chapters
+        if (!db.objectStoreNames.contains('subject_chapters')) {
+          const sc = db.createObjectStore('subject_chapters', { keyPath: 'id', autoIncrement: true });
+          sc.createIndex('batch', 'batch');
+          sc.createIndex('subject', 'subject');
         }
 
         // sessions
@@ -184,6 +197,36 @@ const DB = (() => {
     _savePendingWrites(queue);
   }
 
+  function _cleanText(value) {
+    return String(value || '').trim();
+  }
+
+  function _pairKey(a, b) {
+    return `${_cleanText(a).toLowerCase()}::${_cleanText(b).toLowerCase()}`;
+  }
+
+  function _tripleKey(a, b, c) {
+    return `${_pairKey(a, b)}::${_cleanText(c).toLowerCase()}`;
+  }
+
+  async function _ensureHierarchyEntry(batch, subject, chapter) {
+    const cleanBatch = _cleanText(batch);
+    const cleanSubject = _cleanText(subject);
+    const cleanChapter = _cleanText(chapter);
+    if (!cleanBatch) return;
+
+    const batches = await getAllBatches();
+    if (!batches.some(item => _cleanText(item.name).toLowerCase() === cleanBatch.toLowerCase())) {
+      await saveBatch({ name: cleanBatch, icon: '📚' });
+    }
+    if (cleanSubject) {
+      await saveBatchSubject({ batch: cleanBatch, name: cleanSubject });
+    }
+    if (cleanSubject && cleanChapter) {
+      await saveSubjectChapter({ batch: cleanBatch, subject: cleanSubject, name: cleanChapter });
+    }
+  }
+
   // ════════════════════════
   // QUESTIONS
   // ════════════════════════
@@ -208,6 +251,7 @@ const DB = (() => {
     const normalized = _normalizeQuestion({ ...q });
     try {
       await _put('questions', normalized);
+      await _ensureHierarchyEntry(normalized.batch, normalized.subject, normalized.chapter);
       return normalized;
     } catch (err) {
       if (queueOnFailure) _queuePendingWrite('saveQuestion', normalized, err);
@@ -222,6 +266,9 @@ const DB = (() => {
     try {
       await Promise.all(normalized.map(q => _put('questions', q)));
       _questionCache = null;
+      for (const item of normalized) {
+        await _ensureHierarchyEntry(item.batch, item.subject, item.chapter);
+      }
       return normalized;
     } catch (err) {
       if (queueOnFailure) _queuePendingWrite('saveQuestionsBatch', normalized, err);
@@ -352,6 +399,20 @@ const DB = (() => {
 
   async function importJSON(payload) {
     const questions = payload.questions || payload || [];
+    const batches = Array.isArray(payload.batches) ? payload.batches : [];
+    const batchSubjects = Array.isArray(payload.batchSubjects) ? payload.batchSubjects : [];
+    const subjectChapters = Array.isArray(payload.subjectChapters) ? payload.subjectChapters : [];
+
+    if (batches.length) {
+      await Promise.all(batches.map(batch => saveBatch(batch)));
+    }
+    if (batchSubjects.length) {
+      await Promise.all(batchSubjects.map(subject => saveBatchSubject(subject)));
+    }
+    if (subjectChapters.length) {
+      await Promise.all(subjectChapters.map(chapter => saveSubjectChapter(chapter)));
+    }
+
     const saved = await saveQuestionsBatch(questions);
     return saved.length;
   }
@@ -359,8 +420,17 @@ const DB = (() => {
   async function exportJSON() {
     const questions = await getAllQuestions();
     const batches   = await getAllBatches();
+    const batchSubjects = await getAllBatchSubjects();
+    const subjectChapters = await getAllSubjectChapters();
     const lessons   = await getAllLessons();
-    return { questions, batches, lessons, exported_at: new Date().toISOString() };
+    return {
+      questions,
+      batches,
+      batchSubjects,
+      subjectChapters,
+      lessons,
+      exported_at: new Date().toISOString(),
+    };
   }
 
   // ════════════════════════
@@ -372,11 +442,37 @@ const DB = (() => {
   }
 
   async function saveBatch(b) {
-    return _put('batches', b);
+    const name = _cleanText(b?.name);
+    if (!name) throw new Error('Class name is required');
+
+    const existing = await getAllBatches();
+    const match = existing.find(item => _cleanText(item.name).toLowerCase() === name.toLowerCase());
+    const resolvedId = match?.id ?? b?.id;
+    const payload = {
+      ...b,
+      name,
+      icon: b?.icon || match?.icon || '📚',
+    };
+    if (resolvedId != null) payload.id = resolvedId;
+    await _put('batches', payload);
+    return payload;
   }
 
   async function deleteBatch(id) {
-    return _del('batches', id);
+    const batch = await _get('batches', id);
+    await _del('batches', id);
+    if (!batch?.name) return;
+
+    const [subjects, chapters] = await Promise.all([
+      getSubjectsByBatch(batch.name),
+      getAllSubjectChapters(),
+    ]);
+    await Promise.all(subjects.map(item => _del('batch_subjects', item.id)));
+    await Promise.all(
+      chapters
+        .filter(item => _cleanText(item.batch).toLowerCase() === _cleanText(batch.name).toLowerCase())
+        .map(item => _del('subject_chapters', item.id))
+    );
   }
 
   async function initDefaultBatches() {
@@ -391,6 +487,148 @@ const DB = (() => {
       { id: 6, name: 'Std 10', icon: '🎯' },
     ];
     await Promise.all(defaults.map(b => _put('batches', b)));
+  }
+
+  async function getAllBatchSubjects() {
+    return _getAll('batch_subjects');
+  }
+
+  async function getSubjectsByBatch(batch) {
+    const cleanBatch = _cleanText(batch);
+    const all = await getAllBatchSubjects();
+    return all
+      .filter(item => _cleanText(item.batch).toLowerCase() === cleanBatch.toLowerCase())
+      .sort((a, b) => _cleanText(a.name).localeCompare(_cleanText(b.name)));
+  }
+
+  async function saveBatchSubject(subject, { queueOnFailure = true } = {}) {
+    const batch = _cleanText(subject?.batch);
+    const name = _cleanText(subject?.name);
+    if (!batch) throw new Error('Class is required');
+    if (!name) throw new Error('Subject name is required');
+
+    const existing = await getSubjectsByBatch(batch);
+    const match = existing.find(item => _cleanText(item.name).toLowerCase() === name.toLowerCase());
+    const resolvedId = match?.id ?? subject?.id;
+    const payload = {
+      ...subject,
+      batch,
+      name,
+      updated_at: Date.now(),
+    };
+    if (resolvedId != null) payload.id = resolvedId;
+    try {
+      await _put('batch_subjects', payload);
+      return payload;
+    } catch (err) {
+      if (queueOnFailure) _queuePendingWrite('saveBatchSubject', payload, err);
+      throw err;
+    }
+  }
+
+  async function deleteBatchSubject(id) {
+    const subject = await _get('batch_subjects', id);
+    await _del('batch_subjects', id);
+    if (!subject?.batch || !subject?.name) return;
+    const chapters = await getChaptersByBatchSubject(subject.batch, subject.name);
+    await Promise.all(chapters.map(item => _del('subject_chapters', item.id)));
+  }
+
+  async function getAllSubjectChapters() {
+    return _getAll('subject_chapters');
+  }
+
+  async function getChaptersByBatchSubject(batch, subject) {
+    const cleanBatch = _cleanText(batch);
+    const cleanSubject = _cleanText(subject);
+    const all = await getAllSubjectChapters();
+    return all
+      .filter(item =>
+        _cleanText(item.batch).toLowerCase() === cleanBatch.toLowerCase() &&
+        _cleanText(item.subject).toLowerCase() === cleanSubject.toLowerCase()
+      )
+      .sort((a, b) => _cleanText(a.name).localeCompare(_cleanText(b.name)));
+  }
+
+  async function saveSubjectChapter(chapter, { queueOnFailure = true } = {}) {
+    const batch = _cleanText(chapter?.batch);
+    const subject = _cleanText(chapter?.subject);
+    const name = _cleanText(chapter?.name);
+    if (!batch) throw new Error('Class is required');
+    if (!subject) throw new Error('Subject is required');
+    if (!name) throw new Error('Chapter name is required');
+
+    const existing = await getChaptersByBatchSubject(batch, subject);
+    const match = existing.find(item => _cleanText(item.name).toLowerCase() === name.toLowerCase());
+    const resolvedId = match?.id ?? chapter?.id;
+    const payload = {
+      ...chapter,
+      batch,
+      subject,
+      name,
+      updated_at: Date.now(),
+    };
+    if (resolvedId != null) payload.id = resolvedId;
+    try {
+      await _put('subject_chapters', payload);
+      return payload;
+    } catch (err) {
+      if (queueOnFailure) _queuePendingWrite('saveSubjectChapter', payload, err);
+      throw err;
+    }
+  }
+
+  async function deleteSubjectChapter(id) {
+    return _del('subject_chapters', id);
+  }
+
+  async function syncHierarchyFromExisting() {
+    const [questions, quizzes, batches, batchSubjects, subjectChapters] = await Promise.all([
+      getAllQuestions(),
+      getAllQuizzes(),
+      getAllBatches(),
+      getAllBatchSubjects(),
+      getAllSubjectChapters(),
+    ]);
+
+    const batchMap = new Map(
+      batches.map(item => [_cleanText(item.name).toLowerCase(), item])
+    );
+    const subjectKeys = new Set(
+      batchSubjects.map(item => _pairKey(item.batch, item.name))
+    );
+    const chapterKeys = new Set(
+      subjectChapters.map(item => _tripleKey(item.batch, item.subject, item.name))
+    );
+
+    for (const item of [...questions, ...quizzes]) {
+      const batch = _cleanText(item.batch);
+      const subject = _cleanText(item.subject);
+      const chapter = _cleanText(item.chapter);
+      if (!batch) continue;
+
+      const batchKey = batch.toLowerCase();
+      if (!batchMap.has(batchKey)) {
+        const savedBatch = await saveBatch({ name: batch, icon: '📚' });
+        batchMap.set(batchKey, savedBatch);
+      }
+
+      if (subject) {
+        const subjectKey = _pairKey(batch, subject);
+        if (!subjectKeys.has(subjectKey)) {
+          await _put('batch_subjects', { batch, name: subject, updated_at: Date.now() });
+          subjectKeys.add(subjectKey);
+        }
+      }
+
+      if (subject && chapter) {
+        const chapterKey = _tripleKey(batch, subject, chapter);
+        if (!chapterKeys.has(chapterKey)) {
+          await _put('subject_chapters', { batch, subject, name: chapter, updated_at: Date.now() });
+          chapterKeys.add(chapterKey);
+        }
+      }
+    }
   }
 
   // ════════════════════════
@@ -507,6 +745,7 @@ const DB = (() => {
     };
     try {
       await _put('quizzes', payload);
+      await _ensureHierarchyEntry(payload.batch, payload.subject, payload.chapter);
       return payload;
     } catch (err) {
       if (queueOnFailure) _queuePendingWrite('saveQuiz', payload, err);
@@ -612,6 +851,10 @@ const DB = (() => {
           await saveQuestion(item.payload, { queueOnFailure: false });
         } else if (item.op === 'saveQuestionsBatch') {
           await saveQuestionsBatch(item.payload, { queueOnFailure: false });
+        } else if (item.op === 'saveBatchSubject') {
+          await saveBatchSubject(item.payload, { queueOnFailure: false });
+        } else if (item.op === 'saveSubjectChapter') {
+          await saveSubjectChapter(item.payload, { queueOnFailure: false });
         } else if (item.op === 'saveLesson') {
           await saveLesson(item.payload, { queueOnFailure: false });
         } else if (item.op === 'saveLessonsBatch') {
@@ -652,7 +895,7 @@ const DB = (() => {
 
   async function resetAll() {
     const db = await open();
-    const stores = ['questions','batches','sessions','settings',
+    const stores = ['questions','batches','batch_subjects','subject_chapters','sessions','settings',
                     'images','lessons','quizzes','test_attempts','sync_queue'];
     for (const name of stores) {
       if (db.objectStoreNames.contains(name)) {
@@ -693,6 +936,15 @@ const DB = (() => {
     saveBatch,
     deleteBatch,
     initDefaultBatches,
+    getAllBatchSubjects,
+    getSubjectsByBatch,
+    saveBatchSubject,
+    deleteBatchSubject,
+    getAllSubjectChapters,
+    getChaptersByBatchSubject,
+    saveSubjectChapter,
+    deleteSubjectChapter,
+    syncHierarchyFromExisting,
 
     // Sessions
     saveSession,

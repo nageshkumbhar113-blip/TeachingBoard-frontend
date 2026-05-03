@@ -1,9 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId:   'com.teachingboard.admin',
-  appName: 'TB Admin',
-  webDir:  'dist-admin',
+  appId:   'com.teachingboard.student',
+  appName: 'TB Student',
+  webDir:  'dist-student',
   bundledWebRuntime: false,
   server: { androidScheme: 'https' }
 };
