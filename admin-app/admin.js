@@ -83,8 +83,20 @@ const ADMIN = (() => {
         await API.loginAdmin(digits);
         await DB.setSetting('admin_pin', digits);
       } catch (err) {
-        _showPinError(err?.message?.includes('Invalid') ? 'Wrong PIN' : 'Server unreachable — try offline mode');
-        return;
+        const message = String(err?.message || '').trim();
+        const savedPin = await DB.getSetting('admin_pin', null);
+        const canUseCachedPin = savedPin && digits === savedPin;
+        const canFallbackOffline = canUseCachedPin && (
+          /too many login attempts/i.test(message) ||
+          /fetch|network|timeout|unreachable|failed/i.test(message)
+        );
+
+        if (canFallbackOffline) {
+          APP.toast?.('Server temporarily unavailable — using cached credentials', 'info');
+        } else {
+          _showPinError(message || 'PIN check failed');
+          return;
+        }
       }
     } else {
       const savedPin = await DB.getSetting('admin_pin', null);
