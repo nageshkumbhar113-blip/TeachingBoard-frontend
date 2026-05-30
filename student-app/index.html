@@ -30,13 +30,22 @@
     <div class="onboarding-card">
       <div class="onboarding-logo" aria-hidden="true">🎯</div>
       <h1 class="onboarding-title">TeachingBoard</h1>
-      <p class="onboarding-sub">Setup करण्यासाठी खालील माहिती भरा</p>
+      <p class="onboarding-sub">Student access साठी code आणि PIN टाका</p>
 
       <div class="onboarding-field">
-        <label for="ob-name" class="onboarding-label">तुमचे नाव <span class="ob-required">*</span></label>
-        <input id="ob-name" type="text" class="onboarding-input"
-          placeholder="उदा. Rahul Patil"
-          autocomplete="name" autocapitalize="words" spellcheck="false" />
+        <label for="ob-student-code" class="onboarding-label">Student Code <span class="ob-required">*</span></label>
+        <input id="ob-student-code" type="text" class="onboarding-input"
+          placeholder="उदा. STU001"
+          autocomplete="username" autocapitalize="characters" spellcheck="false" />
+      </div>
+
+      <div class="onboarding-field">
+        <label for="ob-pin" class="onboarding-label">PIN <span class="ob-required">*</span></label>
+        <input id="ob-pin" type="password" class="onboarding-input"
+          placeholder="4 digit PIN"
+          maxlength="4"
+          inputmode="numeric"
+          autocomplete="current-password" />
       </div>
 
       <div class="onboarding-field" id="ob-server-field">
@@ -48,8 +57,9 @@
         <button type="button" id="ob-change-server" class="ob-change-link" style="display:none">बदलायचे आहे का? ✏️</button>
       </div>
 
+      <p id="ob-error-msg" class="pin-error hidden" role="alert"></p>
       <button id="ob-continue" class="onboarding-btn">Continue →</button>
-      <button id="ob-skip" class="onboarding-skip">Offline वापरा</button>
+      <button id="ob-skip" class="onboarding-skip">Cached access वापरा</button>
     </div>
   </div>
 

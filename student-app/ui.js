@@ -9,6 +9,36 @@
 const UI = (() => {
   const $ = id => document.getElementById(id);
 
+  async function _getAllowedBatches() {
+    const saved = await DB.getSetting('student_allowed_batches', []).catch(() => []);
+    return Array.isArray(saved)
+      ? [...new Set(saved.map(item => String(item || '').trim()).filter(Boolean))]
+      : [];
+  }
+
+  function _filterByAllowedBatches(items, allowedBatches, key = 'batch') {
+    if (!Array.isArray(items)) return [];
+    if (!allowedBatches.length) return [];
+    return items.filter(item => allowedBatches.includes(String(item?.[key] || '').trim()));
+  }
+
+  async function _getCurrentStudentProfile() {
+    return await DB.getSetting('student_profile', null).catch(() => null);
+  }
+
+  function _filterAttemptsForCurrentStudent(attempts, profile) {
+    if (!Array.isArray(attempts)) return [];
+    if (!profile) return [];
+
+    const studentCode = String(profile.student_code || '').trim().toUpperCase();
+    const studentName = String(profile.name || '').trim();
+    return attempts.filter(attempt => {
+      const attemptCode = String(attempt.student_code || '').trim().toUpperCase();
+      if (studentCode && attemptCode) return attemptCode === studentCode;
+      return studentName && String(attempt.student_name || '').trim() === studentName;
+    });
+  }
+
   // ════════════════════════
   // TOAST SYSTEM
   // ════════════════════════
@@ -172,14 +202,19 @@ const UI = (() => {
 
   async function renderHomeStats() {
     try {
-      const [questions, batches, attempts] = await Promise.all([
+      const [questions, batches, attempts, allowedBatches, profile] = await Promise.all([
         DB.getAllQuestions(),
         DB.getAllBatches(),
         DB.getAllAttempts(),
+        _getAllowedBatches(),
+        _getCurrentStudentProfile(),
       ]);
-      if ($('home-total-q'))     $('home-total-q').textContent     = questions.length;
-      if ($('home-total-batch')) $('home-total-batch').textContent = batches.length;
-      if ($('home-total-tests')) $('home-total-tests').textContent = attempts.length;
+      const filteredQuestions = _filterByAllowedBatches(questions, allowedBatches);
+      const filteredBatches = batches.filter(batch => allowedBatches.includes(String(batch?.name || '').trim()));
+      const filteredAttempts = _filterAttemptsForCurrentStudent(attempts, profile);
+      if ($('home-total-q'))     $('home-total-q').textContent     = filteredQuestions.length;
+      if ($('home-total-batch')) $('home-total-batch').textContent = filteredBatches.length;
+      if ($('home-total-tests')) $('home-total-tests').textContent = filteredAttempts.length;
     } catch (e) {
       console.warn('renderHomeStats failed', e);
     }
@@ -193,25 +228,28 @@ const UI = (() => {
     const grid = $('batch-grid');
     if (!grid) return;
 
-    const [batches, questions] = await Promise.all([
+    const [batches, questions, allowedBatches] = await Promise.all([
       DB.getAllBatches(),
       DB.getAllQuestions(),
+      _getAllowedBatches(),
     ]);
+    const visibleBatches = batches.filter(batch => allowedBatches.includes(String(batch?.name || '').trim()));
+    const visibleQuestions = _filterByAllowedBatches(questions, allowedBatches);
 
     grid.innerHTML = '';
 
-    if (!batches.length) {
-      grid.innerHTML = '<p class="empty-hint" style="grid-column:1/-1">No classes found. Add some in the Admin panel.</p>';
+    if (!visibleBatches.length) {
+      grid.innerHTML = '<p class="empty-hint" style="grid-column:1/-1">No classes assigned yet. Contact your admin.</p>';
       return;
     }
 
-    const questionCounts = questions.reduce((counts, q) => {
+    const questionCounts = visibleQuestions.reduce((counts, q) => {
       counts[q.batch] = (counts[q.batch] || 0) + 1;
       return counts;
     }, {});
     const fragment = document.createDocumentFragment();
 
-    batches.forEach(b => {
+    visibleBatches.forEach(b => {
       const count = questionCounts[b.name] || 0;
       const card  = document.createElement('div');
       card.className = 'batch-card';
@@ -346,12 +384,16 @@ const UI = (() => {
     const list    = $('lesson-list');
     if (!section || !list) return;
 
-    const lessons = await DB.getAllLessons();
+    const [lessons, allowedBatches] = await Promise.all([
+      DB.getAllLessons(),
+      _getAllowedBatches(),
+    ]);
+    const visibleLessons = _filterByAllowedBatches(lessons, allowedBatches);
 
-    if (!lessons.length) { section.classList.add('hidden'); return; }
+    if (!visibleLessons.length) { section.classList.add('hidden'); return; }
 
     section.classList.remove('hidden');
-    renderList('lesson-list', lessons.slice(0, 5), lesson => {
+    renderList('lesson-list', visibleLessons.slice(0, 5), lesson => {
       const bodyStr = _lessonBodyStr(lesson.content);
       const card    = document.createElement('div');
       card.className = 'lesson-card';
@@ -373,9 +415,13 @@ const UI = (() => {
   // ════════════════════════
 
   async function renderRecentAttempts() {
-    const recent = await DB.getAllAttempts();
+    const [recent, profile] = await Promise.all([
+      DB.getAllAttempts(),
+      _getCurrentStudentProfile(),
+    ]);
+    const visibleAttempts = _filterAttemptsForCurrentStudent(recent, profile);
 
-    renderList('home-recent', recent.slice(0, 5), a => {
+    renderList('home-recent', visibleAttempts.slice(0, 5), a => {
       const pct   = a.percent || 0;
       const color = pct >= 70 ? 'var(--correct)' : pct >= 40 ? 'var(--medium)' : 'var(--wrong)';
       const item  = document.createElement('div');
@@ -400,7 +446,11 @@ const UI = (() => {
     const list    = $('available-tests-list');
     if (!section || !list) return;
 
-    const published = await DB.getQuizzesByStatus('published');
+    const [publishedRaw, allowedBatches] = await Promise.all([
+      DB.getQuizzesByStatus('published'),
+      _getAllowedBatches(),
+    ]);
+    const published = _filterByAllowedBatches(publishedRaw, allowedBatches);
 
     if (!published.length) { section.classList.add('hidden'); return; }
 
@@ -491,7 +541,11 @@ const UI = (() => {
     const chapters = storedChapters.length
       ? storedChapters.map(item => item.name)
       : fallbackChapters;
-    const published = await DB.getQuizzesByStatus('published');
+    const [publishedRaw, allowedBatches] = await Promise.all([
+      DB.getQuizzesByStatus('published'),
+      _getAllowedBatches(),
+    ]);
+    const published = _filterByAllowedBatches(publishedRaw, allowedBatches);
 
     list.innerHTML = '';
     if (!chapters.length) { section.classList.add('hidden'); return; }
@@ -550,7 +604,8 @@ const UI = (() => {
       return;
     }
 
-    const published = (await DB.getQuizzesByStatus('published')).filter(quiz =>
+    const allowedBatches = await _getAllowedBatches();
+    const published = _filterByAllowedBatches(await DB.getQuizzesByStatus('published'), allowedBatches).filter(quiz =>
       (!batch || quiz.batch === batch) &&
       (!subject || quiz.subject === subject) &&
       (!chapter || quiz.chapter === chapter)

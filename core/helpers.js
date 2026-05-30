@@ -121,10 +121,56 @@ const API = (() => {
     return savedPin || preferredPin || '1234';
   }
 
-  async function _resolveStudentName(name) {
-    const preferredName = String(name || '').trim();
-    if (preferredName) return preferredName;
-    return String(await DB.getSetting('student_name', '').catch(() => '') || '').trim();
+  async function _resolveStudentCredentials(input = {}) {
+    const source = input && typeof input === 'object'
+      ? input
+      : { student_code: input };
+
+    const preferredCode = String(source.student_code || source.studentCode || '').trim().toUpperCase();
+    const preferredPin  = String(source.pin || '').trim();
+    const savedCode     = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim().toUpperCase();
+    const savedPin      = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+
+    return {
+      student_code: preferredCode || savedCode,
+      pin: preferredPin || savedPin,
+    };
+  }
+
+  async function _storeStudentProfile(user = {}, credentials = {}) {
+    const studentCode = String(user.student_code || credentials.student_code || '').trim().toUpperCase();
+    const profile = {
+      id: user.id || '',
+      name: String(user.name || '').trim(),
+      student_code: studentCode,
+      mobile: String(user.mobile || '').trim(),
+      status: String(user.status || 'active').trim(),
+      assigned_batches: Array.isArray(user.assigned_batches)
+        ? [...new Set(user.assigned_batches.map(item => String(item || '').trim()).filter(Boolean))]
+        : [],
+      expiry_date: String(user.expiry_date || '').trim(),
+    };
+
+    await Promise.all([
+      DB.setSetting('student_profile', profile).catch(() => {}),
+      DB.setSetting('student_name', profile.name).catch(() => {}),
+      DB.setSetting('student_code', profile.student_code).catch(() => {}),
+      DB.setSetting('student_allowed_batches', profile.assigned_batches).catch(() => {}),
+    ]);
+  }
+
+  async function getStudentProfile() {
+    return await DB.getSetting('student_profile', null).catch(() => null);
+  }
+
+  async function clearStudentProfile() {
+    await Promise.all([
+      DB.setSetting('student_profile', null).catch(() => {}),
+      DB.setSetting('student_name', '').catch(() => {}),
+      DB.setSetting('student_code', '').catch(() => {}),
+      DB.setSetting('student_pin', '').catch(() => {}),
+      DB.setSetting('student_allowed_batches', []).catch(() => {}),
+    ]);
   }
 
   function markExpired(message, expiryDate = '') {
@@ -133,6 +179,7 @@ const API = (() => {
     clearStudentToken();
     localStorage.setItem(EXPIRED_STATE_KEY, JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent('teachingboard:expired', { detail: payload }));
+    DB.setSetting('student_profile', null).catch(() => {});
   }
 
   function _sleep(ms) {
@@ -173,9 +220,7 @@ const API = (() => {
 
     if (payload.role === 'student') {
       clearStudentToken();
-      const studentName = await _resolveStudentName(payload.name);
-      if (!studentName) return '';
-      const loginPayload = await loginStudent(studentName);
+      const loginPayload = await loginStudent({ student_code: payload.student_code || '' });
       return loginPayload?.token || '';
     }
 
@@ -219,8 +264,12 @@ const API = (() => {
     if (!response.ok) {
       if (response.status === 403 && payload?.code === 'ACCOUNT_EXPIRED') {
         markExpired(payload.message, payload.expiryDate);
+      } else if (response.status === 403 && ['ACCOUNT_BLOCKED', 'ACCOUNT_PENDING'].includes(payload?.code)) {
+        clearStudentToken();
       }
-      throw new Error(payload?.message || `Request failed: ${response.status}`);
+      const err = new Error(payload?.message || `Request failed: ${response.status}`);
+      if (payload?.code) err.code = payload.code;
+      throw err;
     }
     return payload;
   }
@@ -239,13 +288,21 @@ const API = (() => {
     return payload;
   }
 
-  async function loginStudent(name) {
+  async function loginStudent(input = {}) {
+    const credentials = await _resolveStudentCredentials(input);
+    if (!credentials.student_code) throw new Error('Student code is required');
+    if (!credentials.pin) throw new Error('Student PIN is required');
+
     const payload = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ role: 'student', name }),
+      body: JSON.stringify({ role: 'student', student_code: credentials.student_code, pin: credentials.pin, device_id: input.device_id || '' }),
     });
     clearExpiredState();
     if (payload?.token) setStudentToken(payload.token);
+    await Promise.all([
+      DB.setSetting('student_pin', credentials.pin).catch(() => {}),
+      _storeStudentProfile(payload?.user || {}, credentials),
+    ]);
     return payload;
   }
 
@@ -258,13 +315,24 @@ const API = (() => {
     return payload.token;
   }
 
-  async function ensureStudentSession(name = '') {
+  async function ensureStudentSession(input = {}) {
     const existing = getStudentToken();
     if (existing && !_isTokenExpired(existing)) return existing;
     clearStudentToken();
 
-    const payload = await loginStudent(await _resolveStudentName(name));
+    const payload = await loginStudent(input);
     return payload.token;
+  }
+
+  async function fetchStudentMe() {
+    const token = await ensureStudentSession();
+    const payload = await request('/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (payload?.user) {
+      await _storeStudentProfile(payload.user);
+    }
+    return payload?.user || null;
   }
 
   // ════════════════════════
@@ -427,11 +495,9 @@ const API = (() => {
   // ════════════════════════
 
   async function fetchQuiz(limit = 20) {
-    const studentName = String(await DB.getSetting('student_name', '') || '').trim();
-    const token       = studentName ? await ensureStudentSession(studentName) : '';
-    const query       = studentName
-      ? `/quiz?limit=${limit}&studentName=${encodeURIComponent(studentName)}`
-      : `/quiz?limit=${limit}`;
+    const profile = await getStudentProfile();
+    const token   = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
+    const query   = `/quiz?limit=${limit}`;
     const payload = await request(query, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -439,8 +505,8 @@ const API = (() => {
   }
 
   async function fetchPublishedQuizzes() {
-    const studentName = String(await DB.getSetting('student_name', '') || '').trim();
-    const token       = studentName ? await ensureStudentSession(studentName).catch(() => '') : '';
+    const profile = await getStudentProfile();
+    const token   = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
     const payload = await request('/quizzes?status=published', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -451,8 +517,8 @@ const API = (() => {
     const cleanId = String(quizId || '').trim();
     if (!cleanId) throw new Error('quiz id is required');
 
-    const studentName = String(await DB.getSetting('student_name', '') || '').trim();
-    const token       = studentName ? await ensureStudentSession(studentName).catch(() => '') : '';
+    const profile = await getStudentProfile();
+    const token   = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
     const payload = await request(`/quizzes/${encodeURIComponent(cleanId)}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -460,11 +526,9 @@ const API = (() => {
   }
 
   async function fetchLessons(limit = 50) {
-    const studentName = String(await DB.getSetting('student_name', '') || '').trim();
-    const token       = studentName ? await ensureStudentSession(studentName) : '';
-    const query       = studentName
-      ? `/lessons?limit=${limit}&studentName=${encodeURIComponent(studentName)}`
-      : `/lessons?limit=${limit}`;
+    const profile = await getStudentProfile();
+    const token   = profile?.student_code ? await ensureStudentSession() : '';
+    const query   = `/lessons?limit=${limit}`;
     const payload = await request(query, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -550,8 +614,44 @@ const API = (() => {
     });
   }
 
+  async function fetchStudents(pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/students', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function createStudent(student, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/students', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(student),
+    });
+    return payload?.data || null;
+  }
+
+  async function updateStudent(studentId, student, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request(`/students/${encodeURIComponent(studentId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(student),
+    });
+    return payload?.data || null;
+  }
+
+  async function resetStudentDevice(studentId, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(`/students/${encodeURIComponent(studentId)}/reset-device`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function submitQuiz(studentName, answers) {
-    const token = studentName ? await ensureStudentSession(studentName) : '';
+    const token = studentName ? await ensureStudentSession() : '';
     return request('/submit', {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -561,7 +661,7 @@ const API = (() => {
 
   async function submitAttempt(attempt) {
     const studentName = attempt.student_name || String(await DB.getSetting('student_name', '') || '').trim();
-    const token = studentName ? await ensureStudentSession(studentName) : '';
+    const token = studentName ? await ensureStudentSession() : '';
 
     const cachedQuiz = attempt.quiz_id ? await DB.getQuiz(attempt.quiz_id).catch(() => null) : null;
     const quizQuestions = Array.isArray(cachedQuiz?.questions) ? cachedQuiz.questions : [];
@@ -625,9 +725,11 @@ const API = (() => {
 
   async function cacheLessons(lessons = []) {
     const normalized = lessons.map(l => ({
-      id        : l.id,
+      id        : l.id || l.lesson_id,
       title     : l.title,
       content   : normalizeLessonContent(l.content),
+      batch     : l.batch || '',
+      subject   : l.subject || '',
       created_at: l.created_at || new Date().toISOString(),
       updated_at: l.updated_at || l.created_at || new Date().toISOString(),
       source    : 'api',
@@ -642,9 +744,9 @@ const API = (() => {
   }
 
   async function syncStudentQuestions() {
-    const studentName = String(await DB.getSetting('student_name', '') || '').trim();
-    if (!studentName) return [];
-    const token   = await ensureStudentSession(studentName).catch(() => '');
+    const profile = await getStudentProfile();
+    if (!profile?.student_code) return [];
+    const token   = await ensureStudentSession().catch(() => '');
     if (!token) return [];
     const payload = await request('/questions', { headers: { Authorization: `Bearer ${token}` } });
     const rows    = payload?.data || [];
@@ -665,9 +767,11 @@ const API = (() => {
     getApiUrl, setApiUrl,
     getAdminToken, getStudentToken, clearAdminToken, clearStudentToken,
     getExpiredState, isExpiredLocally, clearExpiredState, markExpired,
-    loginAdmin, loginStudent, ensureAdminSession, ensureStudentSession,
+    loginAdmin, loginStudent, ensureAdminSession, ensureStudentSession, fetchStudentMe,
+    getStudentProfile, clearStudentProfile,
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
+    fetchStudents, createStudent, updateStudent, resetStudentDevice,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,
     request,

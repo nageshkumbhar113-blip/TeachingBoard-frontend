@@ -708,10 +708,12 @@ const SYNC = (() => {
       if (requestedStatus === 'published') {
         payload = await API.fetchPublishedQuizzes();
       } else {
-        const studentName = String(await DB.getSetting('student_name', '').catch(() => '') || '').trim();
+        const profile = typeof API.getStudentProfile === 'function'
+          ? await API.getStudentProfile().catch(() => null)
+          : null;
         const adminToken = API.getAdminToken();
-        const studentToken = studentName
-          ? await API.ensureStudentSession(studentName).catch(() => '')
+        const studentToken = profile?.student_code
+          ? await API.ensureStudentSession().catch(() => '')
           : '';
         const token = adminToken || studentToken;
         const query = requestedStatus

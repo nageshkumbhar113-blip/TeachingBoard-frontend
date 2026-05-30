@@ -879,7 +879,10 @@ const TEST_PLAYER = (() => {
     const maxScore = qs.reduce((s, q) => s + (q._posMarks ?? 1), 0);
     const percent  = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
 
-    const studentName = String(await DB.getSetting('student_name', '') || '').trim();
+    const [studentName, studentProfile] = await Promise.all([
+      DB.getSetting('student_name', '').catch(() => ''),
+      DB.getSetting('student_profile', null).catch(() => null),
+    ]);
 
     const attempt = {
       quiz_id     : quiz.quiz_id,
@@ -887,7 +890,8 @@ const TEST_PLAYER = (() => {
       batch       : quiz.batch    || '',
       subject     : quiz.subject  || '',
       chapter     : quiz.chapter  || '',
-      student_name: studentName,
+      student_name: String(studentName || '').trim(),
+      student_code: String(studentProfile?.student_code || '').trim().toUpperCase(),
       mode        : state.mode,
       answers     : answerLog,
       score, max_score: maxScore, percent,

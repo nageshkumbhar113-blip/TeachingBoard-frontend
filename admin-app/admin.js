@@ -38,6 +38,18 @@ const ADMIN = (() => {
   let _editingQId  = null;
   let _questionBankLimit = 150;
   let _questionSearchTimer = null;
+  let _studentsCache = [];
+  let _studentSearchTimer = null;
+
+  function _autoStudentCode(name) {
+    const prefix = String(name || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'STU';
+    const num = String(Math.floor(100 + Math.random() * 900));
+    return prefix + num;
+  }
+
+  function _genPin() {
+    return String(Math.floor(1000 + Math.random() * 9000));
+  }
 
   const QUESTION_BANK_PAGE_SIZE = 150;
   const SCRIPT_LOADERS = new Map();
@@ -178,9 +190,12 @@ const ADMIN = (() => {
       _loadBatchAdmin(),
       _loadSubjectAdmin(),
       _loadChapterAdmin(),
+      _renderStudentBatchOptions(),
+      _loadStudentsAdmin(),
       _loadSettings(),
       loadQuizList(),
     ]);
+    _resetStudentForm();
     APP.renderDashboardStats?.();
   }
 
@@ -242,6 +257,7 @@ const ADMIN = (() => {
         chapterPlaceholder: 'Select Chapter',
       }),
     ]);
+    await _renderStudentBatchOptions();
   }
 
   function _setSelectOptions(select, options, placeholder) {
@@ -1190,6 +1206,244 @@ const ADMIN = (() => {
   // SETTINGS
   // ════════════════════════
 
+  function _selectedStudentBatches() {
+    return [...document.querySelectorAll('#student-batch-list input[type="checkbox"]:checked')]
+      .map(inp => String(inp.value || '').trim())
+      .filter(Boolean);
+  }
+
+  async function _renderStudentBatchOptions(selected = null) {
+    const list = $('student-batch-list');
+    if (!list) return;
+
+    const batches = await DB.getAllBatches();
+    const selectedSet = new Set(Array.isArray(selected) ? selected : _selectedStudentBatches());
+    list.innerHTML = '';
+
+    if (!batches.length) {
+      list.innerHTML = '<p class="empty-hint">Add classes first to assign student access.</p>';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    batches.forEach(batch => {
+      const label = document.createElement('label');
+      label.className = 'student-batch-item';
+      label.innerHTML = `
+        <input type="checkbox" value="${_escHtml(batch.name)}" ${selectedSet.has(batch.name) ? 'checked' : ''} />
+        <span>${_escHtml(batch.name)}</span>
+      `;
+      fragment.appendChild(label);
+    });
+    list.appendChild(fragment);
+  }
+
+  function _resetStudentForm() {
+    _setValue('student-edit-id', '');
+    _setValue('student-code', '');
+    _setValue('student-name', '');
+    _setValue('student-mobile', '');
+    _setValue('student-pin', '');
+    _setValue('student-expiry', '');
+    _setValue('student-status', 'active');
+    _renderStudentBatchOptions([]);
+  }
+
+  function _studentFormPayload({ requirePin = true } = {}) {
+    const student_code = String($('student-code')?.value || '').trim().toUpperCase();
+    const name = String($('student-name')?.value || '').trim();
+    const mobile = String($('student-mobile')?.value || '').trim();
+    const pin = String($('student-pin')?.value || '').trim();
+    const expiry_date = String($('student-expiry')?.value || '').trim();
+    const status = String($('student-status')?.value || 'active').trim();
+    const assigned_batches = _selectedStudentBatches();
+
+    if (!student_code) throw new Error('Student code is required');
+    if (!name) throw new Error('Student name is required');
+    if (requirePin && !/^\d{4}$/.test(pin)) throw new Error('PIN must be 4 digits');
+    if (!assigned_batches.length) throw new Error('Assign at least one class');
+
+    return {
+      student_code,
+      name,
+      mobile,
+      status,
+      assigned_batches,
+      expiry_date: expiry_date || '',
+      ...(pin ? { pin } : {}),
+    };
+  }
+
+  function _fillStudentForm(student) {
+    _setValue('student-edit-id', student?.id || '');
+    _setValue('student-code', student?.student_code || '');
+    _setValue('student-name', student?.name || '');
+    _setValue('student-mobile', student?.mobile || '');
+    _setValue('student-pin', '');
+    _setValue('student-expiry', student?.expiry_date || '');
+    _setValue('student-status', student?.status || 'active');
+    _renderStudentBatchOptions(student?.assigned_batches || []);
+  }
+
+  function _renderStudentList(query = '', courseFilter = '') {
+    const list = $('student-admin-list');
+    if (!list) return;
+
+    const cleanQuery = String(query || '').trim().toLowerCase();
+    const cleanCourse = String(courseFilter !== undefined ? courseFilter : ($('student-course-filter')?.value || '')).trim();
+
+    let students = _studentsCache;
+    if (cleanQuery) {
+      students = students.filter(s =>
+        [s.student_code, s.name, s.mobile, ...(s.assigned_batches || [])]
+          .some(v => String(v || '').toLowerCase().includes(cleanQuery))
+      );
+    }
+    if (cleanCourse) {
+      students = students.filter(s => (s.assigned_batches || []).includes(cleanCourse));
+    }
+
+    if (!students.length) {
+      list.innerHTML = '<p class="empty-hint">No student accounts found.</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    students.forEach(student => {
+      const deviceBadge = student.device_bound
+        ? '<span class="device-badge bound" title="Device bound">🔒</span>'
+        : '<span class="device-badge free" title="No device bound">🔓</span>';
+
+      let expiryBadge = '';
+      if (student.expiry_date) {
+        const daysLeft = Math.ceil((new Date(student.expiry_date) - Date.now()) / 86400000);
+        if (daysLeft < 0)       expiryBadge = '<span class="expiry-badge expired" title="Access expired">🔴 Expired</span>';
+        else if (daysLeft <= 7) expiryBadge = `<span class="expiry-badge soon" title="Expiring soon">🟡 ${daysLeft}d left</span>`;
+      }
+
+      const item = document.createElement('div');
+      item.className = 'batch-admin-item';
+      item.innerHTML = `
+        <div>
+          <div class="batch-admin-name">
+            ${_escHtml(student.name)}
+            <span class="student-status-badge ${_escHtml(student.status || 'active')}">${_escHtml(student.status || 'active')}</span>
+            ${deviceBadge}
+          </div>
+          <div class="student-meta-row">
+            <span>${_escHtml(student.student_code || '')}</span>
+            ${student.mobile ? `<span>${_escHtml(student.mobile)}</span>` : ''}
+            ${student.expiry_date ? `<span>Expiry: ${_escHtml(student.expiry_date)}</span>` : '<span>No expiry</span>'}
+            ${expiryBadge}
+          </div>
+          <div class="batch-admin-meta">${_escHtml((student.assigned_batches || []).join(', ') || 'No courses')}</div>
+        </div>
+        <div class="batch-admin-actions">
+          <button class="admin-btn-secondary student-edit-btn" type="button">Edit</button>
+          <button class="admin-btn-secondary student-toggle-btn" type="button">${student.status === 'blocked' ? 'Activate' : 'Block'}</button>
+          ${student.device_bound ? '<button class="admin-btn-secondary student-reset-device-btn" type="button" title="Reset device binding">🔓 Reset Device</button>' : ''}
+        </div>
+      `;
+
+      item.querySelector('.student-edit-btn')?.addEventListener('click', () => _fillStudentForm(student));
+      item.querySelector('.student-toggle-btn')?.addEventListener('click', async () => {
+        const nextStatus = student.status === 'blocked' ? 'active' : 'blocked';
+        try {
+          await API.updateStudent(student.id, { status: nextStatus });
+          APP.toast(`Student ${nextStatus === 'blocked' ? 'blocked' : 'activated'}`, 'success');
+          await _loadStudentsAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Could not update student', 'error');
+        }
+      });
+      item.querySelector('.student-reset-device-btn')?.addEventListener('click', async () => {
+        if (!confirm(`"${student.name}" चं device binding reset करायचं?`)) return;
+        try {
+          await API.resetStudentDevice(student.id);
+          APP.toast('Device binding reset झालं', 'success');
+          await _loadStudentsAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Device reset failed', 'error');
+        }
+      });
+
+      list.appendChild(item);
+    });
+  }
+
+  async function _populateCourseFilter() {
+    const sel = $('student-course-filter');
+    if (!sel) return;
+    try {
+      const batches = await DB.getAllBatches();
+      const current = sel.value;
+      sel.innerHTML = '<option value="">All Courses</option>';
+      batches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.name;
+        opt.textContent = `${b.icon || ''} ${b.name}`.trim();
+        if (b.name === current) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    } catch {}
+  }
+
+  async function _loadStudentsAdmin() {
+    const list = $('student-admin-list');
+    if (!list) return;
+
+    list.innerHTML = '<p class="empty-hint">Loading students...</p>';
+    try {
+      _studentsCache = await API.fetchStudents();
+      await _populateCourseFilter();
+      _renderStudentList($('student-search')?.value || '');
+    } catch (err) {
+      list.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load students')}</p>`;
+    }
+  }
+
+  function _showCredsModal(code, pin, courses, expiry) {
+    const modal = $('creds-modal');
+    if (!modal) return;
+    const el = id => document.getElementById(id);
+    if (el('creds-code'))    el('creds-code').textContent    = code;
+    if (el('creds-pin'))     el('creds-pin').textContent     = pin;
+    if (el('creds-courses')) el('creds-courses').textContent = courses.join(', ') || '—';
+    if (el('creds-expiry'))  el('creds-expiry').textContent  = expiry || 'No expiry';
+    modal.classList.remove('hidden');
+
+    const expiryLine = expiry ? `\nExpiry: ${expiry}` : '';
+    const msg = `📚 TeachingBoard Login\nCode: ${code}\nPIN: ${pin}\nCourses: ${courses.join(', ')}${expiryLine}`;
+    $('btn-copy-creds').onclick = () => {
+      navigator.clipboard?.writeText(msg).catch(() => {});
+      APP.toast('Copied!', 'success');
+    };
+    $('btn-wa-creds').onclick = () => {
+      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+    };
+    $('btn-close-creds').onclick = () => modal.classList.add('hidden');
+  }
+
+  async function _saveStudentAccount() {
+    try {
+      const studentId = String($('student-edit-id')?.value || '').trim();
+      const pinVal    = String($('student-pin')?.value || '').trim();
+      const expiryVal = String($('student-expiry')?.value || '').trim();
+      const payload   = _studentFormPayload({ requirePin: !studentId });
+      if (studentId) {
+        await API.updateStudent(studentId, payload);
+        APP.toast('Student updated', 'success');
+      } else {
+        await API.createStudent(payload);
+        _showCredsModal(payload.student_code, pinVal, payload.assigned_batches, expiryVal);
+      }
+      _resetStudentForm();
+      await _loadStudentsAdmin();
+    } catch (err) {
+      APP.toast(err.message || 'Could not save student', 'error');
+    }
+  }
+
   async function _loadSettings() {
     _setValue('default-timer', await DB.getSetting('timer', '30'));
     _setValue('default-theme', await DB.getSetting('admin_theme', 'theme-light'));
@@ -1376,6 +1630,33 @@ const ADMIN = (() => {
       await _loadChapterAdmin();
     });
     $('class-chapter-subject')?.addEventListener('change', _loadChapterAdmin);
+
+    // Students
+    $('btn-save-student')?.addEventListener('click', _saveStudentAccount);
+    $('btn-reset-student')?.addEventListener('click', _resetStudentForm);
+    $('btn-refresh-students')?.addEventListener('click', _loadStudentsAdmin);
+    $('btn-gen-code')?.addEventListener('click', () => {
+      const name = String($('student-name')?.value || '').trim();
+      const code = _autoStudentCode(name);
+      if ($('student-code')) $('student-code').value = code;
+    });
+    $('btn-gen-pin')?.addEventListener('click', () => {
+      const pin = _genPin();
+      if ($('student-pin')) {
+        $('student-pin').value = pin;
+        $('student-pin').type = 'text';
+      }
+    });
+    $('btn-toggle-pin')?.addEventListener('click', () => {
+      const inp = $('student-pin');
+      if (!inp) return;
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+    $('student-search')?.addEventListener('input', e => {
+      clearTimeout(_studentSearchTimer);
+      _studentSearchTimer = setTimeout(() => _renderStudentList(e.target.value), 120);
+    });
+    $('student-course-filter')?.addEventListener('change', () => _renderStudentList($('student-search')?.value || ''));
 
     // Sync
     $('btn-share-url-qr')?.addEventListener('click', _generateServerUrlQR);

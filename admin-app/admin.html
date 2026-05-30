@@ -75,6 +75,7 @@
           <button class="atab" role="tab" data-tab="tests" aria-controls="atab-tests" aria-selected="false">🧪 Tests</button>
           <button class="atab" role="tab" data-tab="import" aria-controls="atab-import" aria-selected="false">📥 Import</button>
           <button class="atab" role="tab" data-tab="classes" aria-controls="atab-classes" aria-selected="false">🏫 Classes</button>
+          <button class="atab" role="tab" data-tab="students" aria-controls="atab-students" aria-selected="false">👨‍🎓 Students</button>
           <button class="atab" role="tab" data-tab="sync" aria-controls="atab-sync" aria-selected="false">🔗 Sync</button>
           <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">⚙️ Settings</button>
         </nav>
@@ -225,6 +226,72 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
             <div class="batch-admin-list" id="chapter-admin-list" role="list" aria-label="Chapter list"></div>
           </section>
+        </div>
+
+        <div class="atab-content hidden" id="atab-students" role="tabpanel">
+          <section class="import-section" aria-label="Student Access Management">
+            <h3>Student Access</h3>
+            <p class="import-hint">Create student accounts, assign courses, set PIN and expiry.</p>
+            <input type="hidden" id="student-edit-id" />
+            <div class="import-target">
+              <input id="student-name" class="admin-input" placeholder="Student name" aria-label="Student name" />
+              <div class="student-code-row">
+                <input id="student-code" class="admin-input" placeholder="Student code (auto)" aria-label="Student code" />
+                <button id="btn-gen-code" class="admin-btn-secondary icon-btn" type="button" title="Auto-generate code">⚡</button>
+              </div>
+              <input id="student-mobile" class="admin-input" placeholder="Mobile (optional)" aria-label="Mobile" />
+            </div>
+            <div class="import-target">
+              <div class="pin-input-row">
+                <input id="student-pin" class="admin-input short" placeholder="4 digit PIN" maxlength="4" inputmode="numeric" aria-label="Student PIN" type="password" />
+                <button id="btn-toggle-pin" class="admin-btn-secondary icon-btn" type="button" title="Show/Hide PIN">👁</button>
+                <button id="btn-gen-pin" class="admin-btn-secondary icon-btn" type="button" title="Generate random PIN">🎲</button>
+              </div>
+              <input id="student-expiry" type="date" class="admin-input" aria-label="Expiry date" />
+              <select id="student-status" class="admin-select" aria-label="Student status">
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="blocked">Blocked</option>
+              </select>
+            </div>
+            <div class="student-batch-box">
+              <p class="import-hint">Assigned Courses</p>
+              <div id="student-batch-list" class="student-batch-list"></div>
+            </div>
+            <div class="admin-toolbar">
+              <button id="btn-save-student" class="admin-btn-primary">Save Student</button>
+              <button id="btn-reset-student" class="admin-btn-secondary" type="button">Reset</button>
+            </div>
+          </section>
+
+          <section class="import-section" aria-label="Student List">
+            <div class="admin-toolbar">
+              <input id="student-search" class="admin-input" type="search" placeholder="Search code / name / mobile" aria-label="Search students" />
+              <select id="student-course-filter" class="admin-select" aria-label="Filter by course">
+                <option value="">All Courses</option>
+              </select>
+              <button id="btn-refresh-students" class="admin-btn-secondary" type="button">Refresh</button>
+            </div>
+            <div id="student-admin-list" class="batch-admin-list" role="list" aria-label="Student list"></div>
+          </section>
+
+          <!-- Credentials share modal -->
+          <div id="creds-modal" class="creds-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Student credentials">
+            <div class="creds-modal-card">
+              <h3 class="creds-modal-title">✅ Student तयार!</h3>
+              <div class="creds-box">
+                <div class="creds-row"><span>Code</span><strong id="creds-code"></strong></div>
+                <div class="creds-row"><span>PIN</span><strong id="creds-pin"></strong></div>
+                <div class="creds-row"><span>Courses</span><span id="creds-courses"></span></div>
+                <div class="creds-row"><span>Expiry</span><span id="creds-expiry"></span></div>
+              </div>
+              <div class="admin-toolbar" style="margin-top:12px">
+                <button id="btn-copy-creds" class="admin-btn-secondary" type="button">📋 Copy</button>
+                <button id="btn-wa-creds" class="admin-btn-primary" type="button">📱 WhatsApp</button>
+                <button id="btn-close-creds" class="admin-btn-secondary" type="button">Close</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="atab-content hidden" id="atab-sync" role="tabpanel">

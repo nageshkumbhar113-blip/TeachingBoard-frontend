@@ -113,6 +113,12 @@ const QUIZ = (() => {
   // ════════════════════════
 
   async function startQuiz(batch, subject, chapter, mode = 'practice') {
+    const allowedBatches = await DB.getSetting('student_allowed_batches', []).catch(() => []);
+    if (!Array.isArray(allowedBatches) || !allowedBatches.includes(batch)) {
+      APP.toast('This class is not assigned to your account', 'error');
+      return;
+    }
+
     let qs = await DB.getQuestionsByChapter(batch, subject, chapter);
 
     if (qs.length === 0 && navigator.onLine && batch === API.REMOTE_BATCH) {
@@ -621,12 +627,8 @@ const QUIZ = (() => {
   }
 
   async function _getStudentName() {
-    let name = await DB.getSetting('student_name', '');
-    if (name) return name;
-    name = prompt('Enter student name for server result sync:')?.trim() || '';
-    if (!name) return 'Student';
-    await DB.setSetting('student_name', name);
-    return name;
+    const profile = await DB.getSetting('student_profile', null).catch(() => null);
+    return String(profile?.name || await DB.getSetting('student_name', '') || 'Student').trim() || 'Student';
   }
 
   // ════════════════════════

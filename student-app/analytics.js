@@ -8,6 +8,30 @@ const ANALYTICS = (() => {
   const $ = id => document.getElementById(id);
   const _safeAvg = (sum, count) => count ? Math.round(sum / count) : 0;
 
+  function _filterAttemptsForProfile(attempts, profile) {
+    if (!Array.isArray(attempts)) return [];
+    if (!profile) return [];
+
+    const studentCode = String(profile.student_code || '').trim().toUpperCase();
+    const studentName = String(profile.name || '').trim();
+    return attempts.filter(attempt => {
+      const attemptCode = String(attempt.student_code || '').trim().toUpperCase();
+      if (studentCode && attemptCode) return attemptCode === studentCode;
+      return studentName && String(attempt.student_name || '').trim() === studentName;
+    });
+  }
+
+  function _buildAttemptStats(attempts) {
+    if (!attempts.length) return { total: 0, avgPercent: 0, bestPercent: 0, totalTime: 0 };
+    const total = attempts.length;
+    return {
+      total,
+      avgPercent: Math.round(attempts.reduce((sum, attempt) => sum + (attempt.percent || 0), 0) / total),
+      bestPercent: Math.max(...attempts.map(attempt => attempt.percent || 0)),
+      totalTime: attempts.reduce((sum, attempt) => sum + (attempt.time_taken || 0), 0),
+    };
+  }
+
   // ════════════════════════
   // STATE
   // ════════════════════════
@@ -36,13 +60,14 @@ const ANALYTICS = (() => {
   }
 
   async function _loadData() {
-    const [attempts, stats, weakQs, allQs] = await Promise.all([
+    const [attempts, weakQs, allQs, profile] = await Promise.all([
       DB.getAllAttempts(),
-      DB.getAttemptStats(),
       DB.getWeakQuestions(),
       DB.getAllQuestions(),
+      DB.getSetting('student_profile', null).catch(() => null),
     ]);
-    _data = { attempts, stats, weakQs, allQs };
+    const visibleAttempts = _filterAttemptsForProfile(attempts, profile);
+    _data = { attempts: visibleAttempts, stats: _buildAttemptStats(visibleAttempts), weakQs, allQs };
   }
 
   // ════════════════════════

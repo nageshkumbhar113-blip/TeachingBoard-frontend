@@ -18,6 +18,17 @@ const APP = (() => {
   // ════════════════════════
 
   const STANDARD_THEMES = ['theme-dark', 'theme-light', 'theme-contrast'];
+
+  function _getDeviceId() {
+    let id = localStorage.getItem('_tbDevice');
+    if (!id) {
+      id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+        ? crypto.randomUUID()
+        : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+      localStorage.setItem('_tbDevice', id);
+    }
+    return id;
+  }
   const BOARD_THEMES    = ['theme-board-dark', 'theme-board-light'];
   const ALL_THEME_PRESETS = [...STANDARD_THEMES, ...BOARD_THEMES];
   const THEME_CLASSES     = [...STANDARD_THEMES, ...BOARD_THEMES];
@@ -124,6 +135,16 @@ const APP = (() => {
     window.addEventListener('online', () => {
       DB.flushPendingWrites?.().catch(err => console.warn('online flush failed', err));
     });
+
+    window.addEventListener('teachingboard:expired', event => {
+      const payload = event?.detail || {};
+      _showOnboarding(() => {}, {
+        force: true,
+        message: payload.expiryDate
+          ? `${payload.message || 'Account expired'} (${payload.expiryDate})`
+          : (payload.message || 'Account expired'),
+      });
+    });
   }
 
   function _applyDeviceFlags() {
@@ -194,13 +215,25 @@ const APP = (() => {
       history.replaceState(null, '', window.location.pathname);
     }
 
-    const existing = await DB.getSetting('student_name', '').catch(() => '');
-    if (existing && existing.trim()) {
-      const savedUrl = await DB.getSetting('api_url', API.DEFAULT_API_URL).catch(() => API.DEFAULT_API_URL);
-      if (window.API?.setApiUrl) {
-        try { API.setApiUrl(savedUrl || API.DEFAULT_API_URL); } catch {}
+    const savedUrl = await DB.getSetting('api_url', API.DEFAULT_API_URL).catch(() => API.DEFAULT_API_URL);
+    if (window.API?.setApiUrl) {
+      try { API.setApiUrl(savedUrl || API.DEFAULT_API_URL); } catch {}
+    }
+
+    const profile = window.API?.getStudentProfile
+      ? await API.getStudentProfile().catch(() => null)
+      : null;
+    if (profile?.student_code) {
+      _updateProfileButton(profile.name || profile.student_code);
+      if (navigator.onLine && window.API?.fetchStudentMe) {
+        try {
+          const refreshed = await API.fetchStudentMe();
+          _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
+        } catch {
+          beforePrompt?.();
+          return new Promise(resolve => _showOnboarding(resolve, { force: true }));
+        }
       }
-      _updateProfileButton(existing.trim());
       return;
     }
     beforePrompt?.();
@@ -214,26 +247,40 @@ const APP = (() => {
     UI.hideSplash();
   }
 
-  function _showOnboarding(onDone) {
+  function _showOnboarding(onDone, opts = {}) {
     const screen = document.getElementById('onboarding-screen');
     if (!screen) { onDone?.(); return; }
 
     screen.classList.remove('hidden');
 
-    const nameInput      = document.getElementById('ob-name');
+    const codeInput      = document.getElementById('ob-student-code');
+    const pinInput       = document.getElementById('ob-pin');
     const serverInput    = document.getElementById('ob-server');
     const serverField    = document.getElementById('ob-server-field');
     const serverHint     = document.getElementById('ob-server-hint');
     const changeBtn      = document.getElementById('ob-change-server');
     const continueBtn    = document.getElementById('ob-continue');
     const skipBtn        = document.getElementById('ob-skip');
+    const errorEl        = document.getElementById('ob-error-msg');
+    const subEl          = document.querySelector('.onboarding-sub');
 
     // Pre-fill server URL with the auto-detected default
     const defaultUrl = window.API?.DEFAULT_API_URL || '';
     const isProduction = defaultUrl.includes('onrender.com') || defaultUrl.includes('render.com');
 
+    if (subEl) {
+      subEl.textContent = opts.force
+        ? 'Access renew/login साठी पुन्हा authenticate करा'
+        : 'Student access साठी code आणि PIN टाका';
+    }
+
     if (serverInput && !serverInput.value) {
       serverInput.value = defaultUrl;
+    }
+
+    if (errorEl) {
+      errorEl.textContent = opts.message || '';
+      errorEl.classList.toggle('hidden', !opts.message);
     }
 
     // Production mode: hide URL field — server is auto-configured
@@ -257,47 +304,100 @@ const APP = (() => {
     const { signal } = ac;
 
     async function _save() {
-      const name   = (nameInput?.value || '').trim();
-      const server = (serverInput?.value || '').trim() || defaultUrl;
+      const studentCode = (codeInput?.value || '').trim().toUpperCase();
+      const pin         = (pinInput?.value || '').trim();
+      const server      = (serverInput?.value || '').trim() || defaultUrl;
 
-      if (!name) {
-        nameInput?.classList.add('ob-error');
-        nameInput?.focus();
-        nameInput?.setAttribute('aria-invalid', 'true');
+      if (!studentCode) {
+        codeInput?.classList.add('ob-error');
+        codeInput?.focus();
+        codeInput?.setAttribute('aria-invalid', 'true');
         return;
       }
-      nameInput?.classList.remove('ob-error');
+      if (!pin || !/^\d{4}$/.test(pin)) {
+        pinInput?.classList.add('ob-error');
+        pinInput?.focus();
+        pinInput?.setAttribute('aria-invalid', 'true');
+        return;
+      }
+      codeInput?.classList.remove('ob-error');
+      pinInput?.classList.remove('ob-error');
 
-      ac.abort();
-
-      await DB.setSetting('student_name', name).catch(() => {});
-
-      if (server) {
-        await DB.setSetting('api_url', server).catch(() => {});
-        if (window.API?.setApiUrl) {
-          try { API.setApiUrl(server); } catch {}
-        }
+      if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
       }
 
-      _updateProfileButton(name);
-      screen.classList.add('hidden');
-      onDone?.();
+      continueBtn.disabled = true;
+      try {
+        if (server) {
+          await DB.setSetting('api_url', server).catch(() => {});
+          if (window.API?.setApiUrl) {
+            try { API.setApiUrl(server); } catch {}
+          }
+        }
+
+        const deviceId = _getDeviceId();
+        const payload = await API.loginStudent({ student_code: studentCode, pin, device_id: deviceId });
+        _updateProfileButton(payload?.user?.name || payload?.user?.student_code || studentCode);
+        ac.abort();
+        screen.classList.add('hidden');
+        onDone?.();
+      } catch (err) {
+        let msg = err?.message || 'Login failed';
+        if (err?.code === 'DEVICE_MISMATCH') {
+          msg = 'हे account दुसऱ्या device वर registered आहे. Admin ला reset करायला सांगा.';
+        }
+        if (errorEl) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+      } finally {
+        continueBtn.disabled = false;
+      }
     }
 
     continueBtn?.addEventListener('click', () => _save(), { signal });
-    skipBtn?.addEventListener('click', () => {
-      const name = (nameInput?.value || '').trim();
-      if (!name) { nameInput?.focus(); return; }
-      _save();
+    skipBtn?.addEventListener('click', async () => {
+      if (!navigator.onLine) {
+        const savedCode = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
+        if (!savedCode) {
+          if (errorEl) {
+            errorEl.textContent = 'First login online करणे आवश्यक आहे';
+            errorEl.classList.remove('hidden');
+          }
+          return;
+        }
+        screen.classList.add('hidden');
+        onDone?.();
+        return;
+      }
+      if (errorEl) {
+        errorEl.textContent = 'Cached access फक्त offline mode मध्ये available आहे';
+        errorEl.classList.remove('hidden');
+      }
     }, { signal });
-    nameInput?.addEventListener('keydown', e => {
+    codeInput?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') pinInput?.focus();
+    }, { signal });
+    pinInput?.addEventListener('keydown', e => {
       if (e.key === 'Enter') isProduction ? _save() : serverInput?.focus();
     }, { signal });
     serverInput?.addEventListener('keydown', e => {
       if (e.key === 'Enter') _save();
     }, { signal });
 
-    nameInput?.focus();
+    Promise.all([
+      DB.getSetting('student_code', '').catch(() => ''),
+      DB.getSetting('api_url', defaultUrl).catch(() => defaultUrl),
+    ]).then(([studentCode, savedServer]) => {
+      if (codeInput) codeInput.value = String(studentCode || '').trim().toUpperCase();
+      if (serverInput) serverInput.value = String(savedServer || defaultUrl).trim() || defaultUrl;
+      if (pinInput) pinInput.value = '';
+    }).catch(() => {});
+
+    if (skipBtn) skipBtn.style.display = navigator.onLine ? 'none' : 'inline-block';
+    codeInput?.focus();
   }
 
   function _updateProfileButton(name) {
@@ -306,19 +406,10 @@ const APP = (() => {
   }
 
   async function _openProfileSettings() {
-    const name      = await DB.getSetting('student_name', '').catch(() => '');
-    const serverUrl = await DB.getSetting('api_url', API.DEFAULT_API_URL).catch(() => API.DEFAULT_API_URL);
-
-    const nameInput   = document.getElementById('ob-name');
-    const serverInput = document.getElementById('ob-server');
-
-    if (nameInput)   nameInput.value   = name;
-    if (serverInput) serverInput.value = serverUrl;
-
     return new Promise(resolve => _showOnboarding(() => {
       toast('Profile updated!', 'success');
       resolve();
-    }));
+    }, { force: true }));
   }
 
   function _handleInitError(err) {
