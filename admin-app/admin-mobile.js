@@ -74,6 +74,32 @@
     }, { passive: true });
   }
 
+  // ── PWA Install Button ────────────────────────────────────
+  let _deferredInstallPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _deferredInstallPrompt = e;
+    const row = document.getElementById('pwa-install-row');
+    if (row) row.style.display = 'flex';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    _deferredInstallPrompt = null;
+    const row = document.getElementById('pwa-install-row');
+    if (row) row.style.display = 'none';
+    if (window.APP?.toast) APP.toast('App install झाला! 🎉', 'success');
+  });
+
+  function _setupInstallBtn() {
+    document.getElementById('btn-install-pwa')?.addEventListener('click', async () => {
+      if (!_deferredInstallPrompt) return;
+      _deferredInstallPrompt.prompt();
+      const { outcome } = await _deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') _deferredInstallPrompt = null;
+    });
+  }
+
   // ── Init: wait for admin unlock, then setup ───────────────
   function _init() {
     _setupHeaderCollapse();
@@ -81,6 +107,8 @@
 
     const adminContent = document.getElementById('admin-content');
     if (!adminContent) return;
+
+    _setupInstallBtn();
 
     // Already unlocked (e.g. cached session)
     if (!adminContent.classList.contains('hidden')) {

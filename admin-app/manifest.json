@@ -1,27 +1,31 @@
 {
-  "name": "TeachingBoard Admin App",
+  "id": "/admin",
+  "name": "TeachingBoard Admin",
   "short_name": "TB Admin",
-  "description": "Question bank management, quiz publishing, imports, and offline-first admin tools.",
-  "start_url": "./admin.html",
-  "scope": "./",
+  "description": "Question bank, quiz publishing, student management — offline-first admin tools.",
+  "start_url": "/admin",
+  "scope": "/admin",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0d1117",
   "theme_color": "#0d1117",
+  "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "../icons/icon-72.png",
+      "src": "/icons/icon-72.png",
       "sizes": "72x72",
       "type": "image/png"
     },
     {
-      "src": "../icons/icon-192.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "../icons/icon-512.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
