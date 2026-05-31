@@ -1041,10 +1041,7 @@ body.student-app.mode-board.theme-board-light::before {
 
   /* ── 1. NAV CLEANUP — hide non-essential buttons ── */
 
-  /* Board Mode — projector feature, useless on phone */
-  #btn-ui-mode        { display: none; }
-
-  /* Board Zoom controls — only relevant in board mode */
+  /* Board Zoom controls — hide on mobile (zoom managed via pinch) */
   #board-zoom-control { display: none; }
 
   /* Admin button — students don't need to open admin */
