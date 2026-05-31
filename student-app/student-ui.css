@@ -1082,3 +1082,28 @@ body.student-app.mode-board.theme-board-light::before {
 
   * { -webkit-tap-highlight-color: transparent; }
 }
+
+/* ── Server URL field — always hidden ─────────────
+   URL is auto-configured from Render backend.
+   Students don't need to see or change it.        */
+#ob-server-field { display: none !important; }
+
+/* ── WhatsApp Help button ──────────────────────── */
+.ob-whatsapp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 10px;
+  background: #25D366;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 4px;
+  transition: opacity 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ob-whatsapp-btn:active { opacity: 0.88; transform: scale(0.98); }
