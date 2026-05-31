@@ -240,6 +240,64 @@ const APP = (() => {
     return new Promise(resolve => _showOnboarding(resolve));
   }
 
+  function _initRegistration() {
+    const loginCard = document.querySelector('#onboarding-screen .onboarding-card:first-of-type') ||
+                      document.getElementById('onboarding-screen')?.querySelector('.onboarding-card');
+    const regCard   = document.getElementById('reg-card');
+
+    $('ob-goto-register')?.addEventListener('click', () => {
+      if (loginCard) loginCard.classList.add('hidden');
+      regCard?.classList.remove('hidden');
+      document.getElementById('reg-name')?.focus();
+    });
+
+    $('reg-back')?.addEventListener('click', () => {
+      regCard?.classList.add('hidden');
+      if (loginCard) loginCard.classList.remove('hidden');
+      document.getElementById('reg-success')?.classList.add('hidden');
+      ['reg-name','reg-mobile','reg-school','reg-pin'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+      const err = document.getElementById('reg-error-msg');
+      if (err) { err.textContent = ''; err.classList.add('hidden'); }
+    });
+
+    $('reg-submit')?.addEventListener('click', async () => {
+      const name        = (document.getElementById('reg-name')?.value   || '').trim();
+      const mobile      = (document.getElementById('reg-mobile')?.value || '').trim();
+      const school_name = (document.getElementById('reg-school')?.value || '').trim();
+      const pin         = (document.getElementById('reg-pin')?.value    || '').trim();
+      const errEl       = document.getElementById('reg-error-msg');
+      const successEl   = document.getElementById('reg-success');
+      const submitBtn   = document.getElementById('reg-submit');
+
+      const _showErr = msg => {
+        if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+      };
+      if (errEl) errEl.classList.add('hidden');
+
+      if (!name)        return _showErr('पूर्ण नाव टाका');
+      if (!school_name) return _showErr('शाळेचे नाव टाका');
+      if (!/^\d{4}$/.test(pin)) return _showErr('PIN 4 अंकी असणे आवश्यक आहे');
+
+      submitBtn.disabled = true;
+      try {
+        const server = (document.getElementById('ob-server')?.value || '').trim() || API.DEFAULT_API_URL;
+        if (server && window.API?.setApiUrl) API.setApiUrl(server);
+
+        const res = await API.selfRegister({ name, mobile, school_name, pin });
+        const code = res?.student_code || '';
+        const codeEl = document.getElementById('reg-success-code');
+        if (codeEl) codeEl.textContent = `तुमचा Student Code: ${code}`;
+        if (successEl) successEl.classList.remove('hidden');
+        submitBtn.style.display = 'none';
+        document.getElementById('reg-back').textContent = '← Login कडे जा';
+      } catch (err) {
+        _showErr(err?.message || 'Registration failed — पुन्हा प्रयत्न करा');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
   function _revealAppShell() {
     if (_appShellRevealed) return;
     _appShellRevealed = true;
@@ -252,6 +310,7 @@ const APP = (() => {
     if (!screen) { onDone?.(); return; }
 
     screen.classList.remove('hidden');
+    _initRegistration();
 
     const codeInput      = document.getElementById('ob-student-code');
     const pinInput       = document.getElementById('ob-pin');
@@ -347,6 +406,10 @@ const APP = (() => {
         let msg = err?.message || 'Login failed';
         if (err?.code === 'DEVICE_MISMATCH') {
           msg = 'हे account दुसऱ्या device वर registered आहे. Admin ला reset करायला सांगा.';
+        } else if (err?.code === 'ACCOUNT_PENDING') {
+          msg = '⏳ तुमचा account अजून approve झाला नाही. Admin ची वाट पाहा.';
+        } else if (err?.code === 'ACCOUNT_BLOCKED') {
+          msg = '🚫 तुमचा account block केला आहे. Admin ला संपर्क करा.';
         }
         if (errorEl) {
           errorEl.textContent = msg;

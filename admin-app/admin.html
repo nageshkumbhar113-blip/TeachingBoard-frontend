@@ -264,6 +264,16 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </section>
 
+          <!-- Pending Registration Requests -->
+          <section class="import-section" id="pending-requests-section" style="display:none" aria-label="Pending Registrations">
+            <h3 style="display:flex;align-items:center;gap:8px">
+              🟡 Pending Requests
+              <span id="pending-count-badge" class="student-status-badge pending" style="font-size:0.85rem">0</span>
+            </h3>
+            <p class="import-hint">Students नी स्वतः registration केलं — course assign करून approve करा.</p>
+            <div id="pending-student-list" class="batch-admin-list" role="list"></div>
+          </section>
+
           <section class="import-section" aria-label="Student List">
             <div class="admin-toolbar">
               <input id="student-search" class="admin-input" type="search" placeholder="Search code / name / mobile" aria-label="Search students" />

@@ -642,6 +642,13 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  async function selfRegister(data = {}) {
+    return request('/students/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async function resetStudentDevice(studentId, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/students/${encodeURIComponent(studentId)}/reset-device`, {
@@ -771,7 +778,7 @@ const API = (() => {
     getStudentProfile, clearStudentProfile,
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
-    fetchStudents, createStudent, updateStudent, resetStudentDevice,
+    fetchStudents, createStudent, updateStudent, resetStudentDevice, selfRegister,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,
     request,

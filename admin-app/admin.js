@@ -1388,6 +1388,78 @@ const ADMIN = (() => {
     } catch {}
   }
 
+  async function _renderPendingStudents(pending) {
+    const section = $('pending-requests-section');
+    const list    = $('pending-student-list');
+    const badge   = $('pending-count-badge');
+    if (!section || !list) return;
+
+    if (!pending.length) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = '';
+    if (badge) badge.textContent = pending.length;
+    list.innerHTML = '';
+
+    const batches = await DB.getAllBatches().catch(() => []);
+    const batchOptions = batches.map(b =>
+      `<option value="${_escHtml(b.name)}">${_escHtml((b.icon || '') + ' ' + b.name)}</option>`
+    ).join('');
+
+    pending.forEach(student => {
+      const item = document.createElement('div');
+      item.className = 'batch-admin-item';
+      item.innerHTML = `
+        <div style="flex:1;min-width:0">
+          <div class="batch-admin-name">${_escHtml(student.name)}</div>
+          <div class="student-meta-row">
+            <span>📞 ${_escHtml(student.mobile || '—')}</span>
+            <span>🏫 ${_escHtml(student.school_name || '—')}</span>
+            <span>Code: ${_escHtml(student.student_code)}</span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <select class="admin-select pending-course-select" style="flex:1;min-width:120px">
+              <option value="">-- Course निवडा --</option>
+              ${batchOptions}
+            </select>
+            <button class="admin-btn-primary pending-approve-btn" type="button">✅ Approve</button>
+            <button class="admin-btn-danger pending-reject-btn" type="button">🗑 Reject</button>
+          </div>
+        </div>
+      `;
+
+      item.querySelector('.pending-approve-btn')?.addEventListener('click', async () => {
+        const course = item.querySelector('.pending-course-select')?.value;
+        if (!course) { APP.toast('Course निवडा', 'error'); return; }
+        try {
+          await API.updateStudent(student.id, {
+            status: 'active',
+            assigned_batches: [course],
+          });
+          APP.toast(`${student.name} approved ✅`, 'success');
+          await _loadStudentsAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Approve failed', 'error');
+        }
+      });
+
+      item.querySelector('.pending-reject-btn')?.addEventListener('click', async () => {
+        if (!confirm(`"${student.name}" चा request reject करायचा?`)) return;
+        try {
+          await API.updateStudent(student.id, { status: 'blocked' });
+          APP.toast(`${student.name} rejected`, 'info');
+          await _loadStudentsAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Reject failed', 'error');
+        }
+      });
+
+      list.appendChild(item);
+    });
+  }
+
   async function _loadStudentsAdmin() {
     const list = $('student-admin-list');
     if (!list) return;
@@ -1395,6 +1467,11 @@ const ADMIN = (() => {
     list.innerHTML = '<p class="empty-hint">Loading students...</p>';
     try {
       _studentsCache = await API.fetchStudents();
+      // Separate pending self-registrations
+      const pending = _studentsCache.filter(s => s.status === 'pending' && s.request_source === 'self');
+      const active  = _studentsCache.filter(s => !(s.status === 'pending' && s.request_source === 'self'));
+      _studentsCache = active;
+      await _renderPendingStudents(pending);
       await _populateCourseFilter();
       _renderStudentList($('student-search')?.value || '');
     } catch (err) {

@@ -60,6 +60,53 @@
       <p id="ob-error-msg" class="pin-error hidden" role="alert"></p>
       <button id="ob-continue" class="onboarding-btn">Continue →</button>
       <button id="ob-skip" class="onboarding-skip">Cached access वापरा</button>
+      <button id="ob-goto-register" class="onboarding-skip" style="margin-top:2px">नवीन Registration? येथे करा →</button>
+    </div>
+
+    <!-- Registration Card (toggled) -->
+    <div class="onboarding-card hidden" id="reg-card">
+      <div class="onboarding-logo" aria-hidden="true">📝</div>
+      <h1 class="onboarding-title">नवीन Registration</h1>
+      <p class="onboarding-sub">माहिती भरा — Admin approve केल्यावर login होईल</p>
+
+      <div class="onboarding-field">
+        <label for="reg-name" class="onboarding-label">पूर्ण नाव <span class="ob-required">*</span></label>
+        <input id="reg-name" type="text" class="onboarding-input"
+          placeholder="उदा. Rahul Patil"
+          autocomplete="name" autocapitalize="words" spellcheck="false" />
+      </div>
+
+      <div class="onboarding-field">
+        <label for="reg-mobile" class="onboarding-label">Mobile Number</label>
+        <input id="reg-mobile" type="tel" class="onboarding-input"
+          placeholder="उदा. 9876543210"
+          inputmode="numeric" maxlength="10"
+          autocomplete="tel" />
+      </div>
+
+      <div class="onboarding-field">
+        <label for="reg-school" class="onboarding-label">शाळेचे नाव <span class="ob-required">*</span></label>
+        <input id="reg-school" type="text" class="onboarding-input"
+          placeholder="उदा. Z.P. School, Pune"
+          autocomplete="organization" spellcheck="false" />
+      </div>
+
+      <div class="onboarding-field">
+        <label for="reg-pin" class="onboarding-label">4 digit PIN सेट करा <span class="ob-required">*</span></label>
+        <input id="reg-pin" type="password" class="onboarding-input"
+          placeholder="4 अंकी PIN"
+          maxlength="4" inputmode="numeric"
+          autocomplete="new-password" />
+      </div>
+
+      <p id="reg-error-msg" class="pin-error hidden" role="alert"></p>
+      <div id="reg-success" class="hidden" style="background:rgba(52,211,153,0.12);border:1px solid #34d399;border-radius:10px;padding:14px;text-align:center;font-size:0.9rem;line-height:1.6">
+        <div style="font-size:1.8rem">✅</div>
+        <strong id="reg-success-code"></strong><br/>
+        <span style="color:var(--text2,#8b949e)">हा code लक्षात ठेवा.<br>Admin approve केल्यावर login करा.</span>
+      </div>
+      <button id="reg-submit" class="onboarding-btn">Registration पाठवा →</button>
+      <button id="reg-back" class="onboarding-skip">← Login कडे परत जा</button>
     </div>
   </div>
 
