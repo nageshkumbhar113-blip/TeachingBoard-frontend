@@ -261,3 +261,230 @@ body.admin-app #admin-overlay .admin-panel {
     align-items: flex-start;
   }
 }
+
+/* ══════════════════════════════════════════════════
+   MOBILE UX — Ultra Smart Enhancements
+   ≤ 600px only. Desktop is 100% unchanged.
+══════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  /* ── 1. BOTTOM TAB BAR (WhatsApp style) ───────── */
+
+  .admin-tabs {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    gap: 0;
+    box-shadow: 0 -2px 16px rgba(0,0,0,0.18);
+    overflow-x: auto;
+  }
+
+  .atab {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 7px 2px 5px;
+    font-size: 0;           /* hide original inline text */
+    min-height: 54px;
+    min-width: 44px;
+    border-bottom: none;
+    border-top: 2px solid transparent;
+    border-radius: 0;
+  }
+
+  .atab.active {
+    border-bottom-color: transparent;
+    border-top-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.07);
+  }
+
+  /* Emoji icon */
+  .atab::before {
+    font-size: 20px;
+    line-height: 1.1;
+    display: block;
+  }
+  .atab[data-tab="lessons"]::before   { content: "📖"; }
+  .atab[data-tab="questions"]::before { content: "📝"; }
+  .atab[data-tab="tests"]::before     { content: "🧪"; }
+  .atab[data-tab="import"]::before    { content: "📥"; }
+  .atab[data-tab="classes"]::before   { content: "🏫"; }
+  .atab[data-tab="students"]::before  { content: "👨‍🎓"; }
+  .atab[data-tab="sync"]::before      { content: "🔗"; }
+  .atab[data-tab="settings"]::before  { content: "⚙️"; }
+
+  /* Short label */
+  .atab::after {
+    font-size: 9px;
+    display: block;
+    letter-spacing: 0.01em;
+    opacity: 0.65;
+    color: inherit;
+  }
+  .atab.active::after { opacity: 1; }
+
+  .atab[data-tab="lessons"]::after   { content: "Lessons"; }
+  .atab[data-tab="questions"]::after { content: "Questions"; }
+  .atab[data-tab="tests"]::after     { content: "Tests"; }
+  .atab[data-tab="import"]::after    { content: "Import"; }
+  .atab[data-tab="classes"]::after   { content: "Classes"; }
+  .atab[data-tab="students"]::after  { content: "Students"; }
+  .atab[data-tab="sync"]::after      { content: "Sync"; }
+  .atab[data-tab="settings"]::after  { content: "Settings"; }
+
+  /* ── 2. CONTENT PUSH ABOVE TAB BAR ───────────── */
+
+  body.admin-app {
+    padding: 10px 12px;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #admin-content {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .atab-content {
+    padding: 14px 10px;
+  }
+
+  /* ── 3. TOUCH TARGETS — 48px min ─────────────── */
+
+  .admin-btn-primary,
+  .admin-btn-secondary,
+  .admin-btn-danger {
+    min-height: 48px;
+    font-size: 0.9rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .admin-input,
+  .admin-select {
+    min-height: 48px;
+    font-size: 1rem;   /* prevents iOS auto-zoom on focus */
+  }
+
+  /* Remove fixed short width on mobile */
+  .admin-input.short { width: 100%; }
+
+  /* ── 4. FORMS — FULL WIDTH STACKED ───────────── */
+
+  .import-target {
+    flex-direction: column;
+  }
+
+  .import-target > * { width: 100%; }
+
+  /* ── 5. STUDENT LIST — MOBILE CARD ───────────── */
+
+  .batch-admin-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 12px;
+  }
+
+  .batch-admin-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .batch-admin-actions button {
+    flex: 1;
+    min-width: 80px;
+    font-size: 0.82rem;
+    padding: 10px 6px;
+  }
+
+  /* ── 6. STICKY SEARCH ────────────────────────── */
+
+  #atab-students .import-section:last-child .admin-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    margin: -14px -10px 10px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── 7. HEADER — COMPACT + COLLAPSIBLE ───────── */
+
+  .admin-shell-sub { display: none; }
+
+  .admin-shell-title { font-size: 1.25rem; }
+
+  body.header-hidden .admin-shell-header,
+  body.header-hidden .admin-overview {
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* ── 8. FAB — Floating Action Button ─────────── */
+
+  .fab-btn {
+    position: fixed;
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 14px);
+    right: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.32);
+    cursor: pointer;
+    z-index: 150;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .fab-btn:active {
+    transform: scale(0.88);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+
+  /* ── 9. MODAL HEADER — COMPACT ───────────────── */
+
+  .modal-header { padding: 10px 14px; }
+
+  /* ── 10. SYNC BAR — COMPACT ──────────────────── */
+
+  .sync-status-bar { font-size: 0.8rem; padding: 6px 12px; }
+
+  /* ── 11. OVERVIEW STATS — COMPACT ────────────── */
+
+  .admin-overview {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  /* ── 12. NO TAP HIGHLIGHT GLOBALLY ───────────── */
+
+  * { -webkit-tap-highlight-color: transparent; }
+}
+
+/* FAB hidden on desktop — always */
+@media (min-width: 601px) {
+  .fab-btn { display: none !important; }
+}
