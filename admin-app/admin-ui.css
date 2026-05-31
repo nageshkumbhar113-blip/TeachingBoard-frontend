@@ -268,24 +268,27 @@ body.admin-app #admin-overlay .admin-panel {
 ══════════════════════════════════════════════════ */
 @media (max-width: 600px) {
 
-  /* ── 1. BOTTOM TAB BAR (WhatsApp style) ───────── */
+  /* ── 1. BOTTOM TAB BAR — Floating Pill ───────── */
 
   .admin-tabs {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: max(14px, env(safe-area-inset-bottom, 14px));
+    left: 12px;
+    right: 12px;
     z-index: 200;
-    background: var(--surface);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid var(--border);
-    border-bottom: none;
-    padding: 0 0 env(safe-area-inset-bottom, 0px);
-    gap: 0;
-    box-shadow: 0 -2px 16px rgba(0,0,0,0.18);
+    border-radius: 22px;
+    background: rgba(14, 17, 26, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+    padding: 6px;
+    gap: 2px;
     overflow-x: auto;
+    scrollbar-width: none;
   }
+
+  .admin-tabs::-webkit-scrollbar { display: none; }
 
   .atab {
     flex: 1;
@@ -293,27 +296,33 @@ body.admin-app #admin-overlay .admin-panel {
     align-items: center;
     justify-content: center;
     gap: 3px;
-    padding: 7px 2px 5px;
-    font-size: 0;           /* hide original inline text */
-    min-height: 54px;
-    min-width: 44px;
-    border-bottom: none;
-    border-top: 2px solid transparent;
-    border-radius: 0;
+    padding: 8px 4px 6px;
+    /* Double-emoji fix: color:transparent hides original text
+       reliably on Android WebView even when font-size:0 fails */
+    font-size: 0;
+    color: transparent;
+    min-height: 52px;
+    min-width: 40px;
+    border: none;
+    border-radius: 16px;
+    transition: background 0.18s ease;
   }
 
   .atab.active {
+    background: rgba(var(--accent-rgb), 0.18);
     border-bottom-color: transparent;
-    border-top-color: var(--accent);
-    background: rgba(var(--accent-rgb), 0.07);
+    border-top-color: transparent;
   }
 
-  /* Emoji icon */
+  /* Emoji icon — explicit color so color:transparent doesn't affect it */
   .atab::before {
     font-size: 20px;
     line-height: 1.1;
     display: block;
+    color: rgba(255,255,255,0.55);
   }
+  .atab.active::before { color: var(--accent); }
+
   .atab[data-tab="lessons"]::before   { content: "📖"; }
   .atab[data-tab="questions"]::before { content: "📝"; }
   .atab[data-tab="tests"]::before     { content: "🧪"; }
@@ -323,18 +332,17 @@ body.admin-app #admin-overlay .admin-panel {
   .atab[data-tab="sync"]::before      { content: "🔗"; }
   .atab[data-tab="settings"]::before  { content: "⚙️"; }
 
-  /* Short label */
+  /* Short label — explicit color */
   .atab::after {
     font-size: 9px;
     display: block;
     letter-spacing: 0.01em;
-    opacity: 0.65;
-    color: inherit;
+    color: rgba(255,255,255,0.45);
   }
-  .atab.active::after { opacity: 1; }
+  .atab.active::after { color: var(--accent); }
 
   .atab[data-tab="lessons"]::after   { content: "Lessons"; }
-  .atab[data-tab="questions"]::after { content: "Questions"; }
+  .atab[data-tab="questions"]::after { content: "Q Bank"; }
   .atab[data-tab="tests"]::after     { content: "Tests"; }
   .atab[data-tab="import"]::after    { content: "Import"; }
   .atab[data-tab="classes"]::after   { content: "Classes"; }
@@ -346,11 +354,11 @@ body.admin-app #admin-overlay .admin-panel {
 
   body.admin-app {
     padding: 10px 12px;
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(90px + max(14px, env(safe-area-inset-bottom, 14px)));
   }
 
   #admin-content {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(90px + max(14px, env(safe-area-inset-bottom, 14px)));
   }
 
   .atab-content {
@@ -439,7 +447,7 @@ body.admin-app #admin-overlay .admin-panel {
 
   .fab-btn {
     position: fixed;
-    bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 14px);
+    bottom: calc(90px + max(14px, env(safe-area-inset-bottom, 14px)) + 10px);
     right: 16px;
     width: 56px;
     height: 56px;
