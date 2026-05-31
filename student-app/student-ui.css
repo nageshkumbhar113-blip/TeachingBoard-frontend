@@ -1032,3 +1032,56 @@ body.student-app.mode-board.theme-board-light::before {
   25%      { transform: translateX(-6px); }
   75%      { transform: translateX(6px); }
 }
+
+/* ══════════════════════════════════════════════════
+   MOBILE UX — Student App Targeted Fixes
+   ≤ 600px only. Desktop + Board mode unchanged.
+══════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  /* ── 1. NAV CLEANUP — hide non-essential buttons ── */
+
+  /* Board Mode — projector feature, useless on phone */
+  #btn-ui-mode        { display: none; }
+
+  /* Board Zoom controls — only relevant in board mode */
+  #board-zoom-control { display: none; }
+
+  /* Admin button — students don't need to open admin */
+  #btn-admin          { display: none; }
+
+  /* Language — rarely changed mid-session, saves nav space */
+  #btn-lang           { display: none; }
+
+  /* ── 2. NAV BUTTONS — better touch targets ─────── */
+
+  .nav-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── 3. NAV CENTER SCORE — hide to prevent overlap ─ */
+
+  /* Score shows in quiz screen directly; hiding here
+     prevents left/right nav from squeezing on small screens */
+  .nav-center { display: none; }
+
+  /* ── 4. QUIZ NAV — safe area for notch phones ──── */
+
+  .quiz-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ── 5. BODY SAFE AREA ──────────────────────────── */
+
+  body.student-app {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ── 6. TAP HIGHLIGHT OFF ───────────────────────── */
+
+  * { -webkit-tap-highlight-color: transparent; }
+}
