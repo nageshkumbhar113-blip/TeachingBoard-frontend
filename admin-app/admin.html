@@ -516,6 +516,48 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       </div><!-- /.admin-layout -->
     </div><!-- /#admin-content -->
 
+    <!-- ── MOBILE BOTTOM NAV (hidden on desktop) ──────── -->
+    <nav id="admin-bottom-nav" class="admin-bottom-nav hidden" role="tablist" aria-label="Admin navigation">
+      <button class="abn-tab active" data-tab="questions" role="tab" aria-selected="true">
+        <span class="abn-icon">📝</span>
+        <span class="abn-label">Questions</span>
+      </button>
+      <button class="abn-tab" data-tab="tests" role="tab" aria-selected="false">
+        <span class="abn-icon">🧪</span>
+        <span class="abn-label">Tests</span>
+      </button>
+      <button class="abn-tab" data-tab="students" role="tab" aria-selected="false">
+        <span class="abn-icon">👨‍🎓</span>
+        <span class="abn-label">Students</span>
+      </button>
+      <button class="abn-tab" data-tab="import" role="tab" aria-selected="false">
+        <span class="abn-icon">📥</span>
+        <span class="abn-label">Import</span>
+      </button>
+      <button class="abn-tab" id="abn-more-btn" data-tab="__more__" role="tab" aria-selected="false">
+        <span class="abn-icon">☰</span>
+        <span class="abn-label">More</span>
+      </button>
+    </nav>
+
+    <!-- ── MORE DRAWER (slides up from bottom) ────────── -->
+    <div id="admin-more-drawer" class="admin-more-drawer hidden" role="dialog" aria-label="More options">
+      <div class="admin-more-drawer-handle"></div>
+      <button class="abn-drawer-item" data-tab="lessons">
+        <span>📖</span> Lessons
+      </button>
+      <button class="abn-drawer-item" data-tab="classes">
+        <span>🏫</span> Classes
+      </button>
+      <button class="abn-drawer-item" data-tab="sync">
+        <span>🔗</span> Sync
+      </button>
+      <button class="abn-drawer-item" data-tab="settings">
+        <span>⚙️</span> Settings
+      </button>
+    </div>
+    <div id="admin-more-backdrop" class="admin-more-backdrop hidden"></div>
+
   </div><!-- /#admin-overlay -->
 
   <!-- ═══════════════════════════════════════════

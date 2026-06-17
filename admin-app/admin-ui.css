@@ -1346,3 +1346,121 @@ body.admin-app {
   .admin-main    { overflow: visible; }
   .atab-content.active { padding: 0; }
 }
+
+/* ════════════════════════════════════════
+   32. MOBILE BOTTOM NAV (≤768px)
+════════════════════════════════════════ */
+.admin-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: calc(var(--z-sticky) + 10);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: space-around;
+}
+.admin-bottom-nav:not(.hidden) { display: flex; }
+
+.abn-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text3);
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.abn-tab.active {
+  color: var(--accent);
+}
+.abn-icon { font-size: 1.35rem; line-height: 1; }
+.abn-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+
+/* More drawer */
+.admin-more-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  z-index: calc(var(--z-modal) + 5);
+  padding: 8px 0 max(20px, env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.admin-more-drawer:not(.hidden) { transform: translateY(0); }
+
+.admin-more-drawer-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 12px;
+}
+.abn-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 15px 24px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.abn-drawer-item:active { background: var(--surface2); }
+
+.admin-more-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: calc(var(--z-modal) + 4);
+}
+.admin-more-backdrop:not(.hidden) { display: block; }
+
+/* On mobile: hide sidebar, show bottom nav; add bottom padding to main */
+@media (max-width: 768px) {
+  #admin-content .admin-sidebar { display: none !important; }
+  .admin-bottom-nav { display: flex; }
+  .admin-main {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+  .admin-menu-btn { display: none; }
+  /* Compact topbar on mobile */
+  .admin-brand-icon { display: none; }
+  .admin-brand-name { font-size: var(--text-base); }
+  .admin-topbar { padding: 0 12px; gap: 8px; }
+  /* Sync status compact */
+  .sync-status-text { display: none; }
+  .sync-status-bar { padding: 4px 8px; min-width: 0; }
+}

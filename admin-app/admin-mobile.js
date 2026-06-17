@@ -130,11 +130,112 @@
     });
   }
 
+  // ── Bottom Navigation Bar (mobile ≤768px) ────────────────
+  function _setupBottomNav() {
+    const bottomNav  = document.getElementById('admin-bottom-nav');
+    const moreDrawer = document.getElementById('admin-more-drawer');
+    const moreBackdrop = document.getElementById('admin-more-backdrop');
+    if (!bottomNav) return;
+
+    // Show bottom nav only on mobile
+    function _checkMobile() {
+      if (window.innerWidth <= 768) {
+        bottomNav.classList.remove('hidden');
+      } else {
+        bottomNav.classList.add('hidden');
+        _closeMore();
+      }
+    }
+    _checkMobile();
+    window.addEventListener('resize', _checkMobile);
+
+    function _closeMore() {
+      moreDrawer?.classList.add('hidden');
+      moreBackdrop?.classList.add('hidden');
+    }
+
+    function _openMore() {
+      moreDrawer?.classList.remove('hidden');
+      moreBackdrop?.classList.remove('hidden');
+    }
+
+    // Sync active state between sidebar tabs and bottom nav
+    function _syncActive(tab) {
+      // Bottom nav tabs
+      bottomNav.querySelectorAll('.abn-tab').forEach(btn => {
+        const isActive = btn.dataset.tab === tab;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      // Sidebar tabs (keep in sync)
+      document.querySelectorAll('.atab').forEach(btn => {
+        const isActive = btn.dataset.tab === tab;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      // Panels
+      document.querySelectorAll('.atab-content').forEach(panel => {
+        const isActive = panel.id === `atab-${tab}`;
+        panel.classList.toggle('active', isActive);
+        panel.classList.toggle('hidden', !isActive);
+      });
+    }
+
+    // Handle bottom nav tab clicks
+    bottomNav.addEventListener('click', e => {
+      const btn = e.target.closest('.abn-tab');
+      if (!btn) return;
+      const tab = btn.dataset.tab;
+      if (tab === '__more__') {
+        _openMore();
+        return;
+      }
+      _syncActive(tab);
+      navigator.vibrate?.(6);
+    });
+
+    // Handle more drawer items
+    moreDrawer?.addEventListener('click', e => {
+      const btn = e.target.closest('.abn-drawer-item');
+      if (!btn) return;
+      const tab = btn.dataset.tab;
+      _syncActive(tab);
+      // Mark "More" button as active in bottom nav
+      bottomNav.querySelectorAll('.abn-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === '__more__');
+        b.setAttribute('aria-selected', b.dataset.tab === '__more__' ? 'true' : 'false');
+      });
+      _closeMore();
+      navigator.vibrate?.(6);
+    });
+
+    // Close more drawer on backdrop click
+    moreBackdrop?.addEventListener('click', _closeMore);
+
+    // Sync bottom nav when sidebar tab is clicked (desktop tabs still work)
+    document.querySelector('.admin-tabs')?.addEventListener('click', e => {
+      const btn = e.target.closest('.atab');
+      if (!btn) return;
+      const tab = btn.dataset.tab;
+      // Update bottom nav active state
+      bottomNav.querySelectorAll('.abn-tab').forEach(b => {
+        const mainTabs = ['questions', 'tests', 'students', 'import'];
+        const isMain = mainTabs.includes(tab);
+        const isActive = isMain
+          ? b.dataset.tab === tab
+          : b.dataset.tab === '__more__';
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    });
+  }
+
   // ── Init: wait for admin unlock, then setup ───────────────
   function _init() {
     _setupHeaderCollapse();
     _setupSidebarToggle();
     _setupHaptic();
+    _setupBottomNav();
 
     const adminContent = document.getElementById('admin-content');
     if (!adminContent) return;
