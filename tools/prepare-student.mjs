@@ -24,8 +24,8 @@ writeFileSync(path.join(outDir, 'index.html'), `<!DOCTYPE html>
 <script>window.location.replace('student-app/index.html');</script>
 </head><body></body></html>`);
 
-// Copy sw.js and manifest
-for (const f of ['sw.js']) {
+// Copy sw.js, env.js and manifest
+for (const f of ['sw.js', 'env.js']) {
   const src = path.join(rootDir, f);
   if (existsSync(src)) cpSync(src, path.join(outDir, f));
 }

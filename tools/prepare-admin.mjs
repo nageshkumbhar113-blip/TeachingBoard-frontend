@@ -24,7 +24,7 @@ writeFileSync(path.join(outDir, 'index.html'), `<!DOCTYPE html>
 <script>window.location.replace('admin-app/admin.html');</script>
 </head><body></body></html>`);
 
-for (const f of ['sw.js']) {
+for (const f of ['sw.js', 'env.js']) {
   const src = path.join(rootDir, f);
   if (existsSync(src)) cpSync(src, path.join(outDir, f));
 }
