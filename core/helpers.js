@@ -113,12 +113,11 @@ const API = (() => {
   }
 
   async function _resolveAdminPin(pin) {
-    const savedPin = String(await DB.getSetting('admin_pin', '1234').catch(() => '1234') || '1234').trim() || '1234';
+    const savedPin = String(await DB.getSetting('admin_pin', '').catch(() => '') || '').trim();
     const preferredPin = String(pin || '').trim();
-    if (preferredPin && (preferredPin !== '1234' || savedPin === '1234')) {
-      return preferredPin;
-    }
-    return savedPin || preferredPin || '1234';
+    const resolved = preferredPin || savedPin;
+    if (!resolved) throw new Error('Admin PIN not set — please log in first');
+    return resolved;
   }
 
   async function _resolveStudentCredentials(input = {}) {
@@ -535,7 +534,7 @@ const API = (() => {
     return payload?.data || [];
   }
 
-  async function fetchQuestions(pin = '1234') {
+  async function fetchQuestions(pin = '') {
     const token   = await ensureAdminSession(pin);
     const payload = await request('/questions', { headers: { Authorization: `Bearer ${token}` } });
     return payload?.data || [];
@@ -545,7 +544,7 @@ const API = (() => {
   // WRITE ENDPOINTS
   // ════════════════════════
 
-  async function addQuestion(question, pin = '1234') {
+  async function addQuestion(question, pin = '') {
     const token = await ensureAdminSession(pin);
     return request('/questions', {
       method: 'POST',
@@ -554,7 +553,7 @@ const API = (() => {
     });
   }
 
-  async function updateQuestion(backendId, question, pin = '1234') {
+  async function updateQuestion(backendId, question, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/questions/${backendId}`, {
       method: 'PUT',
@@ -563,7 +562,7 @@ const API = (() => {
     });
   }
 
-  async function deleteQuestion(backendId, pin = '1234') {
+  async function deleteQuestion(backendId, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/questions/${backendId}`, {
       method: 'DELETE',
@@ -571,7 +570,7 @@ const API = (() => {
     });
   }
 
-  async function deleteQuiz(backendId, pin = '1234') {
+  async function deleteQuiz(backendId, pin = '') {
     const token = await ensureAdminSession(pin);
     const rawId = String(backendId || '').trim();
     if (!rawId) throw new Error('quiz id is required');
@@ -582,7 +581,7 @@ const API = (() => {
     });
   }
 
-  async function createLesson(lesson, pin = '1234') {
+  async function createLesson(lesson, pin = '') {
     const token = await ensureAdminSession(pin);
     return request('/lessons', {
       method: 'POST',
@@ -594,7 +593,7 @@ const API = (() => {
     });
   }
 
-  async function updateLesson(lessonId, lesson, pin = '1234') {
+  async function updateLesson(lessonId, lesson, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/lessons/${lessonId}`, {
       method: 'PUT',
@@ -606,7 +605,7 @@ const API = (() => {
     });
   }
 
-  async function deleteLesson(lessonId, pin = '1234') {
+  async function deleteLesson(lessonId, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/lessons/${lessonId}`, {
       method: 'DELETE',
@@ -745,7 +744,7 @@ const API = (() => {
     return normalized;
   }
 
-  async function syncServerQuestions(pin = '1234') {
+  async function syncServerQuestions(pin = '') {
     const questions = await fetchQuestions(pin);
     return cacheQuizQuestions(questions);
   }

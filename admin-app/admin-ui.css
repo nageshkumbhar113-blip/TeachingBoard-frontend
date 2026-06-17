@@ -1126,6 +1126,7 @@ body.admin-app {
   justify-content: center;
   z-index: var(--z-modal);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 .creds-modal-overlay.hidden { display: none; }
 

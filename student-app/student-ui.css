@@ -1,4 +1,4 @@
-@import "../css/style.css";
+﻿@import "../css/style.css";
 
 body.student-app {
   min-height: 100vh;
@@ -153,6 +153,7 @@ body.student-app.mode-board.theme-board-light::before {
   background: linear-gradient(180deg, rgba(18, 22, 34, 0.92), rgba(12, 16, 27, 0.8));
   box-shadow: var(--board-glow);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   zoom: var(--board-zoom);
 }
 
@@ -198,6 +199,7 @@ body.student-app.mode-board.theme-board-light::before {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
@@ -316,6 +318,7 @@ body.student-app.mode-board.theme-board-light::before {
   background: var(--board-panel-bg);
   box-shadow: var(--board-glow);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .mode-board .quiz-meta,
@@ -399,6 +402,7 @@ body.student-app.mode-board.theme-board-light::before {
   background: rgba(12, 16, 27, 0.85);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .mode-board .timer-wrap::before,
@@ -657,6 +661,7 @@ body.student-app.mode-board.theme-board-light::before {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(15, 18, 29, 0.88);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
 }
 
@@ -888,9 +893,9 @@ body.student-app.mode-board.theme-board-light::before {
   }
 }
 
-/* ════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    ONBOARDING SCREEN
-════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 .onboarding-screen {
   position: fixed;
@@ -1033,24 +1038,24 @@ body.student-app.mode-board.theme-board-light::before {
   75%      { transform: translateX(6px); }
 }
 
-/* ══════════════════════════════════════════════════
-   MOBILE UX — Student App Targeted Fixes
-   ≤ 600px only. Desktop + Board mode unchanged.
-══════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MOBILE UX â€” Student App Targeted Fixes
+   â‰¤ 600px only. Desktop + Board mode unchanged.
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 @media (max-width: 600px) {
 
-  /* ── 1. NAV CLEANUP — hide non-essential buttons ── */
+  /* â”€â”€ 1. NAV CLEANUP â€” hide non-essential buttons â”€â”€ */
 
-  /* Board Zoom controls — hide on mobile (zoom managed via pinch) */
+  /* Board Zoom controls â€” hide on mobile (zoom managed via pinch) */
   #board-zoom-control { display: none; }
 
-  /* Admin button — students don't need to open admin */
+  /* Admin button â€” students don't need to open admin */
   #btn-admin          { display: none; }
 
-  /* Language — rarely changed mid-session, saves nav space */
+  /* Language â€” rarely changed mid-session, saves nav space */
   #btn-lang           { display: none; }
 
-  /* ── 2. NAV BUTTONS — better touch targets ─────── */
+  /* â”€â”€ 2. NAV BUTTONS â€” better touch targets â”€â”€â”€â”€â”€â”€â”€ */
 
   .nav-btn {
     width: 40px;
@@ -1059,42 +1064,42 @@ body.student-app.mode-board.theme-board-light::before {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* ── 3. NAV CENTER SCORE — hide to prevent overlap ─ */
+  /* â”€â”€ 3. NAV CENTER SCORE â€” hide to prevent overlap â”€ */
 
   /* Score shows in quiz screen directly; hiding here
      prevents left/right nav from squeezing on small screens */
   .nav-center { display: none; }
 
-  /* ── 4. QUIZ NAV — safe area for notch phones ──── */
+  /* â”€â”€ 4. QUIZ NAV â€” safe area for notch phones â”€â”€â”€â”€ */
 
   .quiz-nav {
     padding-bottom: env(safe-area-inset-bottom, 0px);
     margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
   }
 
-  /* ── 5. BODY SAFE AREA ──────────────────────────── */
+  /* â”€â”€ 5. BODY SAFE AREA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
   body.student-app {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* ── 6. TAP HIGHLIGHT OFF ───────────────────────── */
+  /* â”€â”€ 6. TAP HIGHLIGHT OFF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
   * { -webkit-tap-highlight-color: transparent; }
 }
 
-/* ════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PREMIUM STUDENT UI ENHANCEMENTS
    All existing classes preserved. New styles added
-   after existing ones — cascade wins correctly.
-════════════════════════════════════════════════════ */
+   after existing ones â€” cascade wins correctly.
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Server URL field — always hidden ─────────────
+/* â”€â”€ Server URL field â€” always hidden â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    URL is auto-configured from Render backend.
    Students don't need to see or change it.        */
 #ob-server-field { display: none !important; }
 
-/* ── WhatsApp Help button ──────────────────────── */
+/* â”€â”€ WhatsApp Help button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ob-whatsapp-btn {
   display: flex;
   align-items: center;
@@ -1114,9 +1119,9 @@ body.student-app.mode-board.theme-board-light::before {
 }
 .ob-whatsapp-btn:active { opacity: 0.88; transform: scale(0.98); }
 
-/* ════════════════════════════════════════
-   ONBOARDING — Premium redesign
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ONBOARDING â€” Premium redesign
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .onboarding-screen {
   background:
     radial-gradient(ellipse 80% 60% at 20% 10%, rgba(var(--accent-rgb), 0.1), transparent),
@@ -1173,9 +1178,9 @@ body.student-app.mode-board.theme-board-light::before {
 .onboarding-btn:hover  { filter: brightness(1.1) !important; opacity: 1 !important; }
 .onboarding-btn:active { transform: scale(0.97) !important; }
 
-/* ════════════════════════════════════════
-   TOP NAVIGATION — Premium glassmorphism
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   TOP NAVIGATION â€” Premium glassmorphism
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .top-nav {
   background: var(--topbar-bg, rgba(22,27,34,0.9)) !important;
   border-bottom: 1px solid var(--topbar-border, var(--border));
@@ -1190,7 +1195,7 @@ body.student-app.mode-board.theme-board-light::before {
 }
 .nav-btn:hover { transform: none !important; background: var(--surface2) !important; }
 
-/* Profile button — accent pill */
+/* Profile button â€” accent pill */
 #btn-profile {
   background: var(--tag-bg) !important;
   border: 1px solid var(--tag-border) !important;
@@ -1201,7 +1206,7 @@ body.student-app.mode-board.theme-board-light::before {
   min-width: 80px !important;
 }
 
-/* Live score chips — compact */
+/* Live score chips â€” compact */
 .session-score { gap: var(--sp-2) !important; }
 .score-item {
   border-radius: var(--r-pill) !important;
@@ -1210,9 +1215,9 @@ body.student-app.mode-board.theme-board-light::before {
   font-size: var(--text-sm) !important;
 }
 
-/* ════════════════════════════════════════
-   HOME SCREEN — Premium cards & layout
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   HOME SCREEN â€” Premium cards & layout
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .home-hero {
   padding: var(--sp-8) var(--sp-4) var(--sp-5) !important;
   position: relative;
@@ -1231,7 +1236,7 @@ body.student-app.mode-board.theme-board-light::before {
   letter-spacing: -0.02em !important;
 }
 
-/* Stat cards — elevated */
+/* Stat cards â€” elevated */
 .stat-card {
   border-radius: var(--r-lg) !important;
   border: 1px solid var(--border) !important;
@@ -1244,7 +1249,7 @@ body.student-app.mode-board.theme-board-light::before {
   box-shadow: var(--elev-2) !important;
 }
 
-/* Batch cards — colorful, premium */
+/* Batch cards â€” colorful, premium */
 .batch-card {
   border-radius: var(--r-lg) !important;
   border: 1px solid var(--border) !important;
@@ -1259,7 +1264,7 @@ body.student-app.mode-board.theme-board-light::before {
   box-shadow: var(--elev-2) !important;
 }
 
-/* Subject cards — pill accent header */
+/* Subject cards â€” pill accent header */
 .subject-card {
   border-radius: var(--r-lg) !important;
   border: 1px solid var(--border) !important;
@@ -1272,7 +1277,7 @@ body.student-app.mode-board.theme-board-light::before {
   border-color: var(--accent) !important;
 }
 
-/* Chapter items — progress bar on each */
+/* Chapter items â€” progress bar on each */
 .chapter-item {
   border-radius: var(--r-md) !important;
   border: 1px solid var(--border) !important;
@@ -1313,9 +1318,9 @@ body.student-app.mode-board.theme-board-light::before {
   box-shadow: var(--elev-2) !important;
 }
 
-/* ════════════════════════════════════════
-   QUIZ SCREEN — Premium question card
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   QUIZ SCREEN â€” Premium question card
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .question-card {
   border-radius: var(--r-xl) !important;
   border: 1px solid var(--border) !important;
@@ -1323,7 +1328,7 @@ body.student-app.mode-board.theme-board-light::before {
   box-shadow: var(--elev-2) !important;
 }
 
-/* Options — bigger touch targets */
+/* Options â€” bigger touch targets */
 .option-btn {
   border-radius: var(--r-lg) !important;
   min-height: 60px !important;
@@ -1406,9 +1411,9 @@ body.student-app.mode-board.theme-board-light::before {
 .diff-badge.medium { background: var(--badge-pending-bg) !important; color: var(--accent2) !important; }
 .diff-badge.hard   { background: var(--badge-blocked-bg) !important; color: var(--wrong) !important; }
 
-/* ════════════════════════════════════════
-   RESULTS SCREEN — Premium
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   RESULTS SCREEN â€” Premium
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .results-card {
   border-radius: var(--r-2xl) !important;
   background: var(--surface) !important;
@@ -1449,9 +1454,9 @@ body.student-app.mode-board.theme-board-light::before {
 }
 .action-btn:hover { transform: translateY(-1px) !important; }
 
-/* ════════════════════════════════════════
-   ANALYTICS — Premium cards
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ANALYTICS â€” Premium cards
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .analytics-root { background: var(--bg) !important; }
 
 .an-header { border-bottom: 1px solid var(--border) !important; }
@@ -1507,9 +1512,9 @@ body.student-app.mode-board.theme-board-light::before {
   border: 1px solid var(--border) !important;
 }
 
-/* ════════════════════════════════════════
-   TEST PLAYER — Premium
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   TEST PLAYER â€” Premium
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .tp-marks-badge {
   border-radius: var(--r-pill) !important;
   font-weight: 800 !important;
@@ -1522,9 +1527,9 @@ body.student-app.mode-board.theme-board-light::before {
   font-family: var(--font-mono) !important;
 }
 
-/* ════════════════════════════════════════
-   LIGHT THEME — student app overrides
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   LIGHT THEME â€” student app overrides
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .theme-light .onboarding-card   { background: #fff !important; }
 .theme-light .top-nav           { background: rgba(255,255,255,0.92) !important; box-shadow: 0 1px 0 #e6e9ed, 0 2px 8px rgba(0,0,0,0.06) !important; }
 .theme-light .question-card     { background: #fff !important; border-color: #e6e9ed !important; }
@@ -1541,9 +1546,9 @@ body.student-app.mode-board.theme-board-light::before {
 .theme-light .results-card      { background: #fff !important; border-color: #e6e9ed !important; }
 .theme-light .quiz-header       { background: #fff !important; border-color: #e6e9ed !important; }
 
-/* ════════════════════════════════════════
-   HISTORY / ATTEMPT LIST — Home screen
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   HISTORY / ATTEMPT LIST â€” Home screen
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .history-item {
   border-radius: var(--r-md) !important;
   background: var(--surface) !important;
@@ -1552,9 +1557,9 @@ body.student-app.mode-board.theme-board-light::before {
 }
 .history-item:hover { border-color: var(--accent) !important; }
 
-/* ════════════════════════════════════════
-   SCROLLBAR — student app
-════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   SCROLLBAR â€” student app
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .screens-wrap::-webkit-scrollbar { width: 5px; }
 .screens-wrap::-webkit-scrollbar-track { background: transparent; }
 .screens-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

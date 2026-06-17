@@ -1,4 +1,4 @@
-const SW_VERSION = 'v8';
+const SW_VERSION = 'v9';
 const CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;
@@ -15,6 +15,7 @@ const CORE_ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './css/style.css',
+  './css/design-tokens.css',
   './core/db.js',
   './core/helpers.js',
   './core/i18n.js',
@@ -32,6 +33,7 @@ const CORE_ASSETS = [
   './admin-app/admin.html',
   './admin-app/admin.js',
   './admin-app/admin-shell.js',
+  './admin-app/admin-mobile.js',
   './admin-app/testBuilder.js',
   './admin-app/parser.js',
   './admin-app/admin-ui.css',
