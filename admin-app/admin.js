@@ -181,6 +181,14 @@ const ADMIN = (() => {
   async function _loadAdminContent() {
     const savedApiUrl = await DB.getSetting('api_url', API.DEFAULT_API_URL);
     try { API.setApiUrl(savedApiUrl || API.DEFAULT_API_URL); } catch {}
+
+    // If online, fetch questions from backend first so batch/subject/chapter catalog is up-to-date
+    if (navigator.onLine && API.getAdminToken()) {
+      try {
+        await API.syncServerQuestions();
+      } catch { /* offline or auth — proceed with local */ }
+    }
+
     await DB.syncHierarchyFromExisting?.();
     _questionBankLimit = QUESTION_BANK_PAGE_SIZE;
     await Promise.all([
@@ -206,11 +214,18 @@ const ADMIN = (() => {
   function _initTabs() {
     document.querySelectorAll('.atab').forEach(tab => {
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.atab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.atab-content').forEach(t => t.classList.add('hidden'));
+        document.querySelectorAll('.atab').forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        document.querySelectorAll('.atab-content').forEach(t => {
+          t.classList.add('hidden');
+          t.classList.remove('active');
+        });
         tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
         const content = $('atab-' + tab.dataset.tab);
-        if (content) content.classList.remove('hidden');
+        if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
       });
     });
   }
@@ -881,6 +896,117 @@ const ADMIN = (() => {
   // CSV IMPORT
   // ════════════════════════
 
+  // ════════════════════════
+  // SAMPLE CSV DOWNLOAD
+  // ════════════════════════
+
+  function _downloadSampleCSV() {
+    const rows = [
+      ['Question', 'A', 'B', 'C', 'D', 'Answer', 'Image', 'Difficulty', 'Type'],
+      ['भारताची राजधानी कोणती आहे?', 'मुंबई', 'दिल्ली', 'पुणे', 'कोलकाता', 'B', '', 'easy', 'mcq'],
+      ['पृथ्वी गोल आहे का?', 'True', 'False', '', '', 'A', '', 'easy', 'tf'],
+      ['पाण्याचे रासायनिक सूत्र ___ आहे.', 'H2O', 'CO2', 'O2', 'N2', 'A', '', 'medium', 'mcq'],
+      ['भारतात ___ राज्ये आहेत.', '28', '29', '30', '31', 'A', '', 'medium', 'fib'],
+    ];
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sample_questions.csv';
+    a.click();
+    APP.toast('Sample CSV downloaded', 'info');
+  }
+
+  // ════════════════════════
+  // BULK PASTE IMPORT (AI format)
+  // ════════════════════════
+
+  async function _bulkImport() {
+    const text    = $('bulk-paste-input')?.value?.trim() || '';
+    const batch   = $('bulk-batch')?.value || '';
+    const subject = $('bulk-subject')?.value || '';
+    const chapter = $('bulk-chapter')?.value || '';
+    const log     = $('bulk-import-log');
+
+    if (!text) { APP.toast('AI output paste करा', 'error'); return; }
+    if (!batch || !subject || !chapter) { APP.toast('Class, Subject, Chapter निवडा', 'error'); return; }
+
+    log.innerHTML = 'Parsing…'; log.classList.add('visible');
+
+    let parsed;
+    try {
+      parsed = PARSER.parse(text);
+    } catch (err) {
+      log.innerHTML = `<span class="log-error">Parse error: ${err.message}</span>`;
+      APP.toast('Parse failed', 'error');
+      return;
+    }
+
+    if (!parsed || parsed.length === 0) {
+      log.innerHTML = '<span class="log-error">❌ कोणतेही questions सापडले नाहीत. Format तपासा.</span>';
+      APP.toast('No questions found — check format', 'error');
+      return;
+    }
+
+    log.innerHTML = `<span class="log-info">📋 ${parsed.length} questions सापडले. Saving…</span>`;
+
+    let added = 0, failed = 0, syncOk = 0, syncFail = 0;
+    for (const q of parsed) {
+      const qObj = {
+        batch, subject, chapter,
+        question  : q.question,
+        type      : q.type || 'mcq',
+        options   : q.options || { A: '', B: '', C: '', D: '' },
+        answer    : q.answer || 'A',
+        difficulty: q.difficulty || 'medium',
+        tags      : q.tags || [],
+      };
+      try {
+        const saved = await DB.saveQuestion(qObj);
+        added++;
+        // Sync to backend immediately
+        try {
+          const res = await API.addQuestion(saved);
+          const bid = res?.data?.id || res?.data?._id || res?.data?.q_id;
+          if (bid) { saved.backend_id = bid; await DB.saveQuestion(saved); }
+          syncOk++;
+        } catch { syncFail++; }
+      } catch { failed++; }
+    }
+
+    let html = `<span class="log-success">✅ Saved: ${added}${failed ? ` ❌ Failed: ${failed}` : ''}</span>\n`;
+    html += `<span class="log-info">⏫ Synced to server: ${syncOk}${syncFail ? ` ⚠️ Pending: ${syncFail}` : ''}</span>`;
+    log.innerHTML = html;
+
+    if (added > 0) {
+      $('bulk-paste-input').value = '';
+      APP.toast(`✅ ${added} questions imported`, 'success');
+      await loadQuestionBank({ resetLimit: true });
+      APP.refreshHome();
+    }
+  }
+
+  // ════════════════════════
+  // COPY AI PROMPT
+  // ════════════════════════
+
+  function _copyAIPrompt() {
+    const text = $('bulk-sample-prompt')?.textContent || '';
+    if (!text) return;
+    navigator.clipboard.writeText(text.trim())
+      .then(() => APP.toast('✅ Prompt copied! Paste it in ChatGPT/Gemini', 'success'))
+      .catch(() => {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text.trim();
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        APP.toast('✅ Prompt copied!', 'success');
+      });
+  }
+
   async function _importCSV() {
     const file    = $('csv-file-input').files[0];
     if (!file) { APP.toast('Select a CSV file first', 'error'); return; }
@@ -904,8 +1030,37 @@ const ADMIN = (() => {
 
     APP.toast(I18N.t('import.success', { n: res.added }), 'success');
     if (res.skipped) APP.toast(I18N.t('import.dup', { n: res.skipped }), 'info');
+
+    // Sync imported questions to backend
+    if (res.added > 0) {
+      log.innerHTML += '\n<span class="log-info">⏫ Syncing to server…</span>';
+      await _syncNewQuestionsToBackend(log);
+    }
+
     await loadQuestionBank({ resetLimit: true });
     APP.refreshHome();
+  }
+
+  // Sync any locally-saved questions that have no backend_id to the server
+  async function _syncNewQuestionsToBackend(logEl) {
+    const all = await DB.getAllQuestions();
+    const unsynced = all.filter(q => !q.backend_id);
+    let synced = 0, failed = 0;
+    for (const q of unsynced) {
+      try {
+        const res = await API.addQuestion(q);
+        const bid = res?.data?.id || res?.data?._id || res?.data?.q_id;
+        if (bid) {
+          q.backend_id = bid;
+          await DB.saveQuestion(q);
+        }
+        synced++;
+      } catch { failed++; }
+    }
+    if (logEl) {
+      logEl.innerHTML += `\n<span class="log-success">✅ Synced: ${synced}${failed ? ` ⚠️ Failed: ${failed}` : ''}</span>`;
+    }
+    return { synced, failed };
   }
 
   // ════════════════════════
@@ -937,6 +1092,7 @@ const ADMIN = (() => {
 
       const count = await DB.importJSON(payload);
       APP.toast(`✅ Imported ${count} questions + ${imageFiles.length} images`, 'success');
+      await _syncNewQuestionsToBackend(null);
       await loadQuestionBank({ resetLimit: true });
       APP.refreshHome();
     } catch (err) {
@@ -1673,6 +1829,9 @@ const ADMIN = (() => {
       chapterId: 'bulk-chapter',
       subjectValue: $('bulk-subject')?.value || '',
     }));
+    $('btn-sample-csv')?.addEventListener('click', _downloadSampleCSV);
+    $('btn-copy-prompt')?.addEventListener('click', _copyAIPrompt);
+    $('btn-bulk-import')?.addEventListener('click', _bulkImport);
     $('btn-csv-import')?.addEventListener('click', _importCSV);
     $('btn-zip-import')?.addEventListener('click', _importZIP);
     $('btn-export-zip')?.addEventListener('click', _exportZIP);
