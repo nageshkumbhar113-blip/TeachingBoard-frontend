@@ -547,7 +547,8 @@ const SYNC = (() => {
     }
 
     const body  = await _buildPublishPayload(quiz);
-    const pin   = opts.pin || String(await DB.getSetting('admin_pin', '1234').catch(() => '1234') || '1234');
+    const pin   = opts.pin || String(await DB.getSetting('admin_pin', '').catch(() => '') || '');
+    if (!pin) { console.warn('SYNC: admin_pin not available — skipping publish sync'); return { skipped: true }; }
     const token = await API.ensureAdminSession(pin);
     const result = await API.request('/quizzes', {
       method : 'POST',
