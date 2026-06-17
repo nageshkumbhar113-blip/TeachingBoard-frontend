@@ -43,18 +43,48 @@
     _updateFAB();
   }
 
-  // ── Header collapse on scroll ─────────────────────────────
-  function _setupHeaderCollapse() {
-    const header = document.querySelector('.admin-shell-header');
-    if (!header || !('IntersectionObserver' in window)) return;
+  // ── Hamburger sidebar toggle (mobile ≤768px) ──────────────
+  function _setupSidebarToggle() {
+    const menuBtn   = document.getElementById('admin-menu-btn');
+    const sidebar   = document.getElementById('admin-sidebar');
+    const backdrop  = document.getElementById('admin-sidebar-backdrop');
+    if (!menuBtn || !sidebar) return;
 
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        document.body.classList.toggle('header-hidden', !entry.isIntersecting);
-      },
-      { threshold: 0 }
-    );
-    io.observe(header);
+    function _open() {
+      sidebar.classList.add('sidebar-open');
+      if (backdrop) {
+        backdrop.classList.remove('hidden');
+        backdrop.classList.add('sidebar-open');
+      }
+      menuBtn.setAttribute('aria-expanded', 'true');
+    }
+
+    function _close() {
+      sidebar.classList.remove('sidebar-open');
+      if (backdrop) {
+        backdrop.classList.add('hidden');
+        backdrop.classList.remove('sidebar-open');
+      }
+      menuBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.contains('sidebar-open') ? _close() : _open();
+    });
+
+    if (backdrop) backdrop.addEventListener('click', _close);
+
+    // Close on tab select (mobile)
+    document.querySelector('.admin-tabs')?.addEventListener('click', e => {
+      if (e.target.closest('.atab') && window.innerWidth <= 768) {
+        setTimeout(_close, 150);
+      }
+    });
+  }
+
+  // ── Header collapse on scroll (no-op — new design has fixed topbar) ─
+  function _setupHeaderCollapse() {
+    /* topbar is always fixed — nothing to collapse */
   }
 
   // ── Haptic feedback on key actions ───────────────────────
@@ -103,6 +133,7 @@
   // ── Init: wait for admin unlock, then setup ───────────────
   function _init() {
     _setupHeaderCollapse();
+    _setupSidebarToggle();
     _setupHaptic();
 
     const adminContent = document.getElementById('admin-content');

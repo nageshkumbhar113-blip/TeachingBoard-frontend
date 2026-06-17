@@ -1083,6 +1083,12 @@ body.student-app.mode-board.theme-board-light::before {
   * { -webkit-tap-highlight-color: transparent; }
 }
 
+/* ════════════════════════════════════════════════════
+   PREMIUM STUDENT UI ENHANCEMENTS
+   All existing classes preserved. New styles added
+   after existing ones — cascade wins correctly.
+════════════════════════════════════════════════════ */
+
 /* ── Server URL field — always hidden ─────────────
    URL is auto-configured from Render backend.
    Students don't need to see or change it.        */
@@ -1107,3 +1113,448 @@ body.student-app.mode-board.theme-board-light::before {
   -webkit-tap-highlight-color: transparent;
 }
 .ob-whatsapp-btn:active { opacity: 0.88; transform: scale(0.98); }
+
+/* ════════════════════════════════════════
+   ONBOARDING — Premium redesign
+════════════════════════════════════════ */
+.onboarding-screen {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(var(--accent-rgb), 0.1), transparent),
+    radial-gradient(ellipse 60% 50% at 80% 90%, rgba(var(--correct-rgb), 0.07), transparent),
+    var(--bg) !important;
+  padding: var(--sp-4) !important;
+}
+
+.onboarding-card {
+  border-radius: var(--r-xl) !important;
+  padding: var(--sp-10) var(--sp-8) var(--sp-8) !important;
+  gap: var(--sp-4) !important;
+  box-shadow: var(--elev-3) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  max-width: 400px !important;
+}
+
+.onboarding-logo { font-size: 3.5rem !important; margin-bottom: var(--sp-1); }
+
+.onboarding-title {
+  font-size: var(--text-3xl) !important;
+  font-weight: 800 !important;
+  background: var(--grad-accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.onboarding-input {
+  padding: var(--sp-3) var(--sp-4) !important;
+  border-radius: var(--r-md) !important;
+  min-height: 48px !important;
+  font-size: 1rem !important;
+  background: var(--input-bg, var(--bg2)) !important;
+  border: 1.5px solid var(--input-border, var(--border)) !important;
+  color: var(--text) !important;
+  transition: border-color var(--ease-std), box-shadow var(--ease-std) !important;
+}
+.onboarding-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: var(--glow) !important;
+}
+
+.onboarding-btn {
+  border-radius: var(--r-md) !important;
+  min-height: 52px !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 800 !important;
+  background: var(--accent) !important;
+  box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.4) !important;
+  transition: filter var(--ease-fast), transform var(--ease-fast) !important;
+}
+.onboarding-btn:hover  { filter: brightness(1.1) !important; opacity: 1 !important; }
+.onboarding-btn:active { transform: scale(0.97) !important; }
+
+/* ════════════════════════════════════════
+   TOP NAVIGATION — Premium glassmorphism
+════════════════════════════════════════ */
+.top-nav {
+  background: var(--topbar-bg, rgba(22,27,34,0.9)) !important;
+  border-bottom: 1px solid var(--topbar-border, var(--border));
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: 0 1px 0 var(--border), var(--elev-1) !important;
+}
+
+.nav-btn {
+  border-radius: var(--r-md) !important;
+  transition: background var(--ease-fast), transform var(--ease-fast) !important;
+}
+.nav-btn:hover { transform: none !important; background: var(--surface2) !important; }
+
+/* Profile button — accent pill */
+#btn-profile {
+  background: var(--tag-bg) !important;
+  border: 1px solid var(--tag-border) !important;
+  color: var(--accent) !important;
+  font-weight: 700 !important;
+  border-radius: var(--r-pill) !important;
+  padding: 0 var(--sp-3) !important;
+  min-width: 80px !important;
+}
+
+/* Live score chips — compact */
+.session-score { gap: var(--sp-2) !important; }
+.score-item {
+  border-radius: var(--r-pill) !important;
+  font-weight: 700 !important;
+  font-family: var(--font-mono) !important;
+  font-size: var(--text-sm) !important;
+}
+
+/* ════════════════════════════════════════
+   HOME SCREEN — Premium cards & layout
+════════════════════════════════════════ */
+.home-hero {
+  padding: var(--sp-8) var(--sp-4) var(--sp-5) !important;
+  position: relative;
+  overflow: hidden;
+}
+.home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(var(--accent-rgb),0.08), transparent);
+  pointer-events: none;
+}
+
+.home-title {
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Stat cards — elevated */
+.stat-card {
+  border-radius: var(--r-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--elev-1) !important;
+  transition: transform var(--ease-std), box-shadow var(--ease-std) !important;
+}
+.stat-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--elev-2) !important;
+}
+
+/* Batch cards — colorful, premium */
+.batch-card {
+  border-radius: var(--r-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--elev-1) !important;
+  transition: transform var(--ease-std), border-color var(--ease-std), box-shadow var(--ease-std) !important;
+  cursor: pointer !important;
+}
+.batch-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: var(--accent) !important;
+  box-shadow: var(--elev-2) !important;
+}
+
+/* Subject cards — pill accent header */
+.subject-card {
+  border-radius: var(--r-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  transition: transform var(--ease-std), border-color var(--ease-std) !important;
+  overflow: hidden !important;
+}
+.subject-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Chapter items — progress bar on each */
+.chapter-item {
+  border-radius: var(--r-md) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  transition: border-color var(--ease-fast), background var(--ease-fast) !important;
+}
+.chapter-item:hover { border-color: var(--accent) !important; }
+
+/* Section labels */
+.section-label {
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  font-size: var(--text-sm) !important;
+  color: var(--text2) !important;
+}
+
+/* Lesson cards */
+.lesson-card {
+  border-radius: var(--r-md) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  transition: border-color var(--ease-fast) !important;
+}
+.lesson-card:hover { border-color: var(--accent) !important; }
+
+/* Test cards (published quizzes on home) */
+.test-card {
+  border-radius: var(--r-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--elev-1) !important;
+  transition: transform var(--ease-std), box-shadow var(--ease-std), border-color var(--ease-std) !important;
+}
+.test-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--accent) !important;
+  box-shadow: var(--elev-2) !important;
+}
+
+/* ════════════════════════════════════════
+   QUIZ SCREEN — Premium question card
+════════════════════════════════════════ */
+.question-card {
+  border-radius: var(--r-xl) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--elev-2) !important;
+}
+
+/* Options — bigger touch targets */
+.option-btn {
+  border-radius: var(--r-lg) !important;
+  min-height: 60px !important;
+  transition: border-color var(--ease-fast), background var(--ease-fast), box-shadow var(--ease-fast), transform var(--ease-fast) !important;
+}
+.option-btn:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: var(--elev-2) !important;
+}
+.option-btn.selected { border-color: var(--accent) !important; }
+
+/* Option key circle */
+.option-key {
+  border-radius: 50% !important;
+  font-weight: 800 !important;
+  font-family: var(--font-mono) !important;
+  background: var(--bg2) !important;
+  border: 1px solid var(--border) !important;
+}
+.option-btn.selected .option-key { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
+.option-btn.correct .option-key  { background: var(--correct) !important; color: #fff !important; border-color: var(--correct) !important; }
+.option-btn.wrong .option-key    { background: var(--wrong) !important;   color: #fff !important; border-color: var(--wrong) !important; }
+
+/* Progress bar */
+.progress-bar { border-radius: var(--r-pill) !important; }
+.progress-fill {
+  border-radius: var(--r-pill) !important;
+  background: var(--grad-accent) !important;
+  transition: width 0.4s ease !important;
+}
+
+/* Quiz header */
+.quiz-header {
+  border-radius: var(--r-xl) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--elev-1) !important;
+}
+
+/* Feedback bar */
+.feedback-bar {
+  border-radius: var(--r-lg) !important;
+  font-weight: 700 !important;
+}
+
+/* Quiz nav */
+.quiz-nav {
+  border-radius: var(--r-xl) !important;
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: var(--elev-3) !important;
+}
+
+.nav-arrow {
+  border-radius: var(--r-md) !important;
+  font-weight: 700 !important;
+}
+.nav-arrow:disabled { opacity: 0.35 !important; }
+
+/* TF buttons */
+.tf-btn {
+  border-radius: var(--r-lg) !important;
+  font-size: var(--text-xl) !important;
+  font-weight: 800 !important;
+  min-height: 64px !important;
+  transition: border-color var(--ease-fast), background var(--ease-fast), transform var(--ease-fast) !important;
+}
+.tf-btn:hover:not(:disabled) { transform: translateY(-1px) !important; }
+
+/* Difficulty badges */
+.diff-badge {
+  border-radius: var(--r-pill) !important;
+  font-weight: 700 !important;
+  font-size: var(--text-xs) !important;
+  padding: 3px 10px !important;
+}
+.diff-badge.easy   { background: var(--badge-active-bg) !important; color: var(--correct) !important; }
+.diff-badge.medium { background: var(--badge-pending-bg) !important; color: var(--accent2) !important; }
+.diff-badge.hard   { background: var(--badge-blocked-bg) !important; color: var(--wrong) !important; }
+
+/* ════════════════════════════════════════
+   RESULTS SCREEN — Premium
+════════════════════════════════════════ */
+.results-card {
+  border-radius: var(--r-2xl) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--elev-3) !important;
+}
+
+.results-emoji {
+  font-size: 4rem !important;
+  animation: resultsBounce 0.8s var(--ease-bounce) !important;
+}
+
+.results-title {
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.result-stat {
+  border-radius: var(--r-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--elev-1) !important;
+}
+
+.score-bar-wrap { border-radius: var(--r-md) !important; overflow: hidden !important; }
+.score-bar {
+  border-radius: var(--r-md) !important;
+  background: var(--grad-accent) !important;
+  transition: width 1s ease !important;
+}
+
+/* Results action buttons */
+.action-btn {
+  border-radius: var(--r-md) !important;
+  font-weight: 700 !important;
+  min-height: 48px !important;
+  transition: transform var(--ease-fast), box-shadow var(--ease-fast) !important;
+}
+.action-btn:hover { transform: translateY(-1px) !important; }
+
+/* ════════════════════════════════════════
+   ANALYTICS — Premium cards
+════════════════════════════════════════ */
+.analytics-root { background: var(--bg) !important; }
+
+.an-header { border-bottom: 1px solid var(--border) !important; }
+
+/* Analytics tab pills */
+.an-tabs {
+  display: flex !important;
+  gap: var(--sp-2) !important;
+  overflow-x: auto !important;
+  padding: var(--sp-2) 0 !important;
+  scrollbar-width: none !important;
+}
+.an-tabs::-webkit-scrollbar { display: none !important; }
+
+.an-tab {
+  border-radius: var(--r-pill) !important;
+  padding: var(--sp-2) var(--sp-4) !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text2) !important;
+  cursor: pointer !important;
+  transition: background var(--ease-fast), color var(--ease-fast), border-color var(--ease-fast) !important;
+}
+.an-tab.active {
+  background: var(--tag-bg) !important;
+  border-color: var(--tag-border) !important;
+  color: var(--accent) !important;
+}
+
+/* Analytics KPI cards */
+.an-stat-card, .an-kpi-card {
+  border-radius: var(--r-lg) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--elev-1) !important;
+}
+
+/* Weak question rows */
+.an-weak-row {
+  border-radius: var(--r-md) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  transition: border-color var(--ease-fast) !important;
+}
+.an-weak-row:hover { border-color: var(--accent) !important; }
+
+/* History items */
+.an-hist-row {
+  border-radius: var(--r-md) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* ════════════════════════════════════════
+   TEST PLAYER — Premium
+════════════════════════════════════════ */
+.tp-marks-badge {
+  border-radius: var(--r-pill) !important;
+  font-weight: 800 !important;
+  font-family: var(--font-mono) !important;
+}
+
+.tp-live-score {
+  border-radius: var(--r-pill) !important;
+  font-weight: 700 !important;
+  font-family: var(--font-mono) !important;
+}
+
+/* ════════════════════════════════════════
+   LIGHT THEME — student app overrides
+════════════════════════════════════════ */
+.theme-light .onboarding-card   { background: #fff !important; }
+.theme-light .top-nav           { background: rgba(255,255,255,0.92) !important; box-shadow: 0 1px 0 #e6e9ed, 0 2px 8px rgba(0,0,0,0.06) !important; }
+.theme-light .question-card     { background: #fff !important; border-color: #e6e9ed !important; }
+.theme-light .option-btn        { background: #fff !important; border-color: #d0d7de !important; }
+.theme-light .option-btn:hover:not(:disabled) { border-color: var(--accent) !important; background: #fff9f5 !important; }
+.theme-light .option-key        { background: #f0f2f5 !important; border-color: #d0d7de !important; }
+.theme-light .quiz-nav          { background: rgba(255,255,255,0.9) !important; border-color: #e6e9ed !important; }
+.theme-light .stat-card,
+.theme-light .batch-card,
+.theme-light .subject-card,
+.theme-light .chapter-item,
+.theme-light .lesson-card,
+.theme-light .test-card         { background: #fff !important; border-color: #e6e9ed !important; }
+.theme-light .results-card      { background: #fff !important; border-color: #e6e9ed !important; }
+.theme-light .quiz-header       { background: #fff !important; border-color: #e6e9ed !important; }
+
+/* ════════════════════════════════════════
+   HISTORY / ATTEMPT LIST — Home screen
+════════════════════════════════════════ */
+.history-item {
+  border-radius: var(--r-md) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  transition: border-color var(--ease-fast) !important;
+}
+.history-item:hover { border-color: var(--accent) !important; }
+
+/* ════════════════════════════════════════
+   SCROLLBAR — student app
+════════════════════════════════════════ */
+.screens-wrap::-webkit-scrollbar { width: 5px; }
+.screens-wrap::-webkit-scrollbar-track { background: transparent; }
+.screens-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

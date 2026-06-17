@@ -279,50 +279,6 @@ const UI = (() => {
     social: '🌐', physics: '⚡', chemistry: '🧪', biology: '🌱',
   };
 
-  async function renderSubjectGrid(batchName, onSubjectClick) {
-    const section = $('subject-section');
-    const grid    = $('subject-grid');
-    if (!section || !grid) return;
-
-    const questions = await DB.getQuestionsByBatch(batchName);
-    const storedSubjects = await DB.getSubjectsByBatch(batchName);
-    const fallbackSubjects = [...new Set(
-      questions.map(q => q.subject).filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b));
-    const subjects = storedSubjects.length
-      ? storedSubjects.map(item => item.name)
-      : fallbackSubjects;
-
-    grid.innerHTML = '';
-
-    if (!subjects.length) { section.classList.add('hidden'); return; }
-
-    const fragment = document.createDocumentFragment();
-    subjects.forEach(sub => {
-      const icon  = _subjectIcons[sub.toLowerCase()] || '📝';
-      const count = subjectCounts[sub] || 0;
-      const card  = document.createElement('div');
-      card.className = 'subject-card';
-      card.setAttribute('role', 'listitem');
-      card.innerHTML = `
-        <div class="subject-icon">${icon}</div>
-        <div class="subject-name">${sub}</div>
-        <div class="batch-count">${count} Q</div>
-      `;
-      card.addEventListener('click', () => {
-        grid.querySelectorAll('.subject-card').forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        if (onSubjectClick) onSubjectClick(sub);
-      });
-      fragment.appendChild(card);
-    });
-    grid.appendChild(fragment);
-
-    section.classList.remove('hidden');
-    $('chapter-section')?.classList.add('hidden');
-    $('lesson-section')?.classList.add('hidden');
-  }
-
   // ════════════════════════
   // CHAPTER LIST
   // ════════════════════════

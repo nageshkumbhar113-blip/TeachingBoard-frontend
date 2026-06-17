@@ -432,7 +432,7 @@ const ANALYTICS = (() => {
       } catch {
         APP.toast('Could not delete attempt', 'error');
       }
-    }, { once: true });
+    });
   }
 
   // ════════════════════════
@@ -608,7 +608,23 @@ const ANALYTICS = (() => {
         await DB.saveQuestion({ ...q, flagged: !q.flagged });
         q.flagged = !q.flagged;
         APP.toast(q.flagged ? '🚩 Flagged for revision' : 'Flag removed', 'info');
-        _renderWeakQs();
+        // Update only this button in-place — avoids full list re-render
+        btn.classList.toggle('flagged', q.flagged);
+        btn.textContent = q.flagged ? '🚩' : '🏴';
+        btn.title       = q.flagged ? 'Remove flag' : 'Flag for revision';
+        btn.setAttribute('aria-label', q.flagged ? 'Remove flag' : 'Flag for revision');
+        const metaRow = btn.closest('.an-weak-row')?.querySelector('.an-weak-meta');
+        if (metaRow) {
+          const badge = metaRow.querySelector('.an-flagged-badge');
+          if (q.flagged && !badge) {
+            const b = document.createElement('span');
+            b.className   = 'an-flagged-badge';
+            b.textContent = '🚩 Flagged';
+            metaRow.appendChild(b);
+          } else if (!q.flagged && badge) {
+            badge.remove();
+          }
+        }
       } catch {
         APP.toast('Could not update question', 'error');
       }

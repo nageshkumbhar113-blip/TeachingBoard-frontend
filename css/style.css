@@ -46,6 +46,11 @@
 
 
 /* ════════════════════════════════════════
+   00  DESIGN TOKENS (extended)
+════════════════════════════════════════ */
+@import "./design-tokens.css";
+
+/* ════════════════════════════════════════
    01  FONTS
 ════════════════════════════════════════ */
 
@@ -4234,4 +4239,213 @@ body.modal-open {
     content-visibility: auto;
     contain-intrinsic-size: 1px 280px;
   }
+}
+
+/* ════════════════════════════════════════
+   39  PREMIUM SHARED POLISH
+       Added for full UI redesign.
+       These are additive — nothing removed.
+════════════════════════════════════════ */
+
+/* ── Scrollbar global polish ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb, var(--border)) transparent;
+}
+*::-webkit-scrollbar       { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb, var(--border)); border-radius: 3px; }
+
+/* ── Focus ring — better visibility ── */
+:focus-visible {
+  outline: 2.5px solid var(--accent) !important;
+  outline-offset: 2px !important;
+  border-radius: var(--r-xs) !important;
+}
+
+/* ── Smooth transitions on theme change ── */
+body, .top-nav, .question-card, .stat-card,
+.batch-card, .subject-card, .chapter-item,
+.option-btn, .results-card, .quiz-nav,
+.quiz-header, .feedback-bar, .history-item {
+  transition:
+    background var(--ease-std),
+    border-color var(--ease-std),
+    color var(--ease-std),
+    box-shadow var(--ease-std) !important;
+}
+
+/* ── Card — glassmorphism variant ── */
+.card-glass {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(16px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;
+}
+
+/* ── Improved modal panels ── */
+.modal-panel {
+  border-radius: var(--r-2xl) !important;
+  box-shadow: var(--elev-4) !important;
+}
+
+.modal-header {
+  border-radius: var(--r-2xl) var(--r-2xl) 0 0 !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* ── Modal close button ── */
+.modal-close {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: var(--r-sm) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface2, var(--bg3)) !important;
+  color: var(--text2) !important;
+  font-size: 1rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background var(--ease-fast), color var(--ease-fast) !important;
+  flex-shrink: 0 !important;
+}
+.modal-close:hover { background: var(--badge-blocked-bg) !important; color: var(--wrong) !important; }
+
+/* ── Test builder panel — wider ── */
+.tb-panel {
+  max-width: 1000px !important;
+  border-radius: var(--r-2xl) !important;
+}
+
+/* ── Step indicator ── */
+.tb-steps-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  justify-content: center;
+}
+
+.tb-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface2, var(--bg3));
+  border: 2px solid var(--border);
+  color: var(--text2);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--ease-std), border-color var(--ease-std), color var(--ease-std);
+}
+.tb-step-dot.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tb-step-dot.done   { background: var(--correct); border-color: var(--correct); color: #fff; }
+
+.tb-step-line {
+  flex: 1;
+  max-width: 48px;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+}
+
+/* ── Toast notifications ── */
+.toast-container {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top, 16px));
+  right: 16px;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  pointer-events: none;
+  max-width: 360px;
+  width: calc(100vw - 32px);
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--elev-3);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text);
+  pointer-events: auto;
+  animation: slideInRight 0.28s var(--ease-bounce);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.toast.success { border-left: 4px solid var(--correct); }
+.toast.error   { border-left: 4px solid var(--wrong); }
+.toast.warning { border-left: 4px solid var(--accent); }
+.toast.info    { border-left: 4px solid var(--skip); }
+
+@keyframes slideInRight {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideOutRight {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
+}
+
+/* ── Loading skeleton improvements ── */
+.skeleton {
+  border-radius: var(--r-sm) !important;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 25%,
+    var(--surface2, var(--bg3)) 50%,
+    var(--surface) 75%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.4s infinite !important;
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  border: none;
+  margin: var(--sp-4) 0;
+}
+
+/* ── Badge generic ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badge-accent  { background: var(--tag-bg); border: 1px solid var(--tag-border); color: var(--accent); }
+.badge-correct { background: var(--badge-active-bg); color: var(--badge-active-text); }
+.badge-wrong   { background: var(--badge-blocked-bg); color: var(--badge-blocked-text); }
+
+/* ── Typography improvements ── */
+h1,h2,h3,h4,h5 {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* ── Selection color ── */
+::selection {
+  background: rgba(var(--accent-rgb), 0.25);
+  color: var(--text);
+}
+
+/* ── Reduced motion — respect user preference ── */
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-title { -webkit-text-fill-color: var(--text) !important; background: none !important; }
 }

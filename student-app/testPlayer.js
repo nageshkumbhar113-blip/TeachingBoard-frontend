@@ -466,11 +466,12 @@ const TEST_PLAYER = (() => {
     grid?.classList.remove('hidden');
     const prev = state.answers[q.q_id];
 
+    const tfAnswerText = q.options?.[q.answer] || q.answer;
     grid?.querySelectorAll('.tf-btn').forEach(btn => {
       btn.disabled  = !!prev;
       btn.className = 'tf-btn';
       if (prev) {
-        if (btn.dataset.val === q.answer)                         btn.classList.add('correct');
+        if (btn.dataset.val === tfAnswerText)                     btn.classList.add('correct');
         else if (btn.dataset.val === prev.given && !prev.correct) btn.classList.add('wrong');
       } else {
         btn.onclick = () => _selectTF(btn, btn.dataset.val, q);
@@ -483,15 +484,16 @@ const TEST_PLAYER = (() => {
     state.answered = true;
     _stopPerQTimer();
 
-    const isCorrect = selected === q.answer;
+    const tfAnswerText = q.options?.[q.answer] || q.answer;
+    const isCorrect = selected === tfAnswerText;
     $('tp-tf-grid')?.querySelectorAll('.tf-btn').forEach(b => {
       b.disabled = true;
-      if (b.dataset.val === q.answer)                       b.classList.add('correct');
+      if (b.dataset.val === tfAnswerText)                   b.classList.add('correct');
       else if (b.dataset.val === selected && !isCorrect)    b.classList.add('wrong');
     });
 
     _recordAnswer(q, selected, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer);
+    if (state.mode === 'practice') _showFeedback(isCorrect, tfAnswerText);
     if (state.mode === 'exam')     setTimeout(_nextQ, 700);
   }
 
@@ -693,7 +695,8 @@ const TEST_PLAYER = (() => {
     // Lock TF buttons
     $('tp-tf-grid')?.querySelectorAll('.tf-btn').forEach(b => {
       b.disabled = true;
-      if (b.dataset.val === q?.answer) b.classList.add('correct');
+      const tfAns = q?.options?.[q?.answer] || q?.answer;
+      if (b.dataset.val === tfAns) b.classList.add('correct');
     });
 
     // Lock FIB input
@@ -803,8 +806,13 @@ const TEST_PLAYER = (() => {
 
     // 4. Detect tab switching — warn on first two, auto-submit on third
     state._tabSwitchCount = 0;
+    state._lastTabSwitchAt = 0;
     state._lockVis = () => {
       if (!document.hidden || !state.locked) return;
+      // Debounce: ignore rapid re-fires within 2 seconds (keyboard/dialog events)
+      const now = Date.now();
+      if (now - state._lastTabSwitchAt < 2000) return;
+      state._lastTabSwitchAt = now;
       state._tabSwitchCount++;
       const remaining = 3 - state._tabSwitchCount;
       if (state._tabSwitchCount >= 3) {
@@ -812,7 +820,7 @@ const TEST_PLAYER = (() => {
         setTimeout(_submitTest, 1500);
       } else {
         APP.toast(
-          `⚠️ Tab switch detected (${state._tabSwitchCount}/3) — exam will auto-submit after ${remaining} more`,
+          `⚠️ Tab switch detected (${state._tabSwitchCount}/3) — ${remaining} more switch${remaining === 1 ? '' : 'es'} will auto-submit`,
           'error'
         );
       }
@@ -912,7 +920,10 @@ const TEST_PLAYER = (() => {
     }
 
     // Push to server (non-blocking — queued if offline)
-    SYNC.submitAttempt(storedAttempt).catch(() => {});
+    SYNC.submitAttempt(storedAttempt).catch(err => {
+      console.warn('Submit attempt sync failed:', err?.message);
+      APP.toast('Result save pending — Internet आल्यावर sync होईल', 'info');
+    });
 
     _showResults(storedAttempt, qs);
   }

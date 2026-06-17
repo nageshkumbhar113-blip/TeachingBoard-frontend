@@ -258,6 +258,10 @@ const APP = (() => {
       ['reg-name','reg-mobile','reg-school','reg-pin'].forEach(id => { const el = $(id); if (el) el.value = ''; });
       const err = document.getElementById('reg-error-msg');
       if (err) { err.textContent = ''; err.classList.add('hidden'); }
+      const sb = document.getElementById('reg-submit');
+      if (sb) { sb.style.display = ''; sb.disabled = false; }
+      const backBtn = document.getElementById('reg-back');
+      if (backBtn) backBtn.textContent = '← Login कडे परत जा';
     });
 
     $('reg-submit')?.addEventListener('click', async () => {
@@ -276,6 +280,7 @@ const APP = (() => {
 
       if (!name)        return _showErr('पूर्ण नाव टाका');
       if (!school_name) return _showErr('शाळेचे नाव टाका');
+      if (mobile && !/^\d{10}$/.test(mobile)) return _showErr('Mobile number 10 अंकी असणे आवश्यक आहे');
       if (!/^\d{4}$/.test(pin)) return _showErr('PIN 4 अंकी असणे आवश्यक आहे');
 
       submitBtn.disabled = true;
@@ -679,6 +684,11 @@ const APP = (() => {
 
   // Lightweight stats refresh — called after quiz end, admin changes, etc.
   async function refreshHome() {
+    // Keep profile button in sync with latest stored name (updated by auto-sync)
+    const _latestProfile = await DB.getSetting('student_profile', null).catch(() => null);
+    if (_latestProfile?.name || _latestProfile?.student_code) {
+      _updateProfileButton(_latestProfile.name || _latestProfile.student_code);
+    }
     await DB.syncHierarchyFromExisting?.();
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();

@@ -152,12 +152,15 @@ const SYNC = (() => {
 
   /**
    * Add an operation to the IDB-backed offline queue.
-   * Deduplicates by (op, serialised payload) to prevent repeated queuing.
+   * Deduplicates by stable ID (attempt_id / quiz_id) when available,
+   * falls back to full payload comparison.
    */
   async function _enqueue(op, payload) {
     if (!_queueReady) await _initQueue();
-    const key  = JSON.stringify(payload);
-    const dupe = _loadQueue().some(i => i.op === op && JSON.stringify(i.payload) === key);
+    const stableId = payload?.attempt_id || payload?.quizId || payload?.quiz_id || null;
+    const dupe = stableId
+      ? _loadQueue().some(i => i.op === op && (i.payload?.attempt_id || i.payload?.quizId || i.payload?.quiz_id) === stableId)
+      : _loadQueue().some(i => i.op === op && JSON.stringify(i.payload) === JSON.stringify(payload));
     if (!dupe) {
       const item = { id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`, op, payload, at: Date.now(), attempts: 0 };
       await DB.enqueueSyncItem(item).catch(err => console.warn('SYNC enqueue failed:', err.message));
@@ -892,6 +895,10 @@ const SYNC = (() => {
         API.syncStudentQuestions().catch(err => {
           console.warn('SYNC questions (student cycle):', err.message);
           return [];
+        }),
+        API.fetchStudentMe().catch(err => {
+          console.warn('SYNC profile (student cycle):', err.message);
+          return null;
         }),
       ]))
       .then(() => {
