@@ -113,7 +113,9 @@ const APP = (() => {
       }
 
       console.log('✅ App ready');
+      window.SPLASH?.done();
     } catch (err) {
+      window.SPLASH?.done();   // dismiss splash even on error
       _handleInitError(err);
     }
   }

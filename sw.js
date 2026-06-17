@@ -1,4 +1,4 @@
-const SW_VERSION = 'v10';
+const SW_VERSION = 'v11';
 const CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;
@@ -16,6 +16,8 @@ const CORE_ASSETS = [
   './icons/icon-512.png',
   './css/style.css',
   './css/design-tokens.css',
+  './js/splash.js',
+  './icons/nk-logo.png',
   './core/db.js',
   './core/helpers.js',
   './core/i18n.js',

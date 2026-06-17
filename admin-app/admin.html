@@ -25,6 +25,28 @@
     <div class="noscript-msg">TeachingBoard requires JavaScript. Please enable it in your browser.</div>
   </noscript>
 
+  <!-- ── SPLASH SCREEN ──────────────────────────────────── -->
+  <div id="app-splash" class="app-splash">
+    <div class="splash-inner">
+      <div class="splash-logo-wrap">
+        <img src="../icons/nk-logo.png" alt="NK Top Education" class="splash-logo" onerror="this.style.display='none';document.querySelector('.splash-logo-fallback').style.display='flex'" />
+        <div class="splash-logo-fallback" style="display:none">
+          <span class="splash-logo-nk">NK</span>
+          <span class="splash-logo-sub">TOP EDUCATION</span>
+        </div>
+      </div>
+      <div class="splash-tagline">
+        <span class="splash-tag-text">NK Top Education</span>
+        <span class="splash-tag-for"> Admin Panel</span>
+      </div>
+      <div class="splash-dots">
+        <span class="splash-dot"></span>
+        <span class="splash-dot"></span>
+        <span class="splash-dot"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════════
        ADMIN SHELL — full-page app container
        JS targets: #admin-overlay, .modal-overlay
@@ -676,6 +698,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
 
   <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
 
+  <script src="../js/splash.js"></script>
   <script src="../env.js"></script>
   <script src="../core/db.js" defer></script>
   <script src="../core/helpers.js" defer></script>

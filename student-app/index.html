@@ -25,6 +25,28 @@
     <div class="noscript-msg">TeachingBoard requires JavaScript. Please enable it in your browser.</div>
   </noscript>
 
+  <!-- ── SPLASH SCREEN ──────────────────────────────────── -->
+  <div id="app-splash" class="app-splash">
+    <div class="splash-inner">
+      <div class="splash-logo-wrap">
+        <img src="../icons/nk-logo.png" alt="NK Top Education" class="splash-logo" onerror="this.style.display='none';document.querySelector('.splash-logo-fallback').style.display='flex'" />
+        <div class="splash-logo-fallback" style="display:none">
+          <span class="splash-logo-nk">NK</span>
+          <span class="splash-logo-sub">TOP EDUCATION</span>
+        </div>
+      </div>
+      <div class="splash-tagline">
+        <span class="splash-tag-text">Free MCQ Practice</span>
+        <span class="splash-tag-for"> for Students</span>
+      </div>
+      <div class="splash-dots">
+        <span class="splash-dot"></span>
+        <span class="splash-dot"></span>
+        <span class="splash-dot"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- ── ONBOARDING ───────────────────────────────────────── -->
   <div id="onboarding-screen" class="onboarding-screen hidden" role="dialog" aria-modal="true" aria-label="Setup">
     <div class="onboarding-card">
@@ -457,6 +479,7 @@
 
   <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
 
+  <script src="../js/splash.js"></script>
   <script src="../env.js"></script>
   <script src="../core/db.js" defer></script>
   <script src="../core/helpers.js" defer></script>

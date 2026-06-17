@@ -35,7 +35,9 @@ const APP = (() => {
       await renderDashboardStats();
       ADMIN.open();
       _startBackground();
+      window.SPLASH?.done();
     } catch (err) {
+      window.SPLASH?.done();
       console.error('Admin app init error', err);
       toast('Admin app failed to start. Please refresh the page.', 'error');
     }

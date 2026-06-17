@@ -9,8 +9,8 @@ const outDir    = path.join(rootDir, 'dist-student');
 rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
-// Student app needs: student-app/, core/, css/, icons/
-const assets = ['student-app', 'core', 'css', 'icons'];
+// Student app needs: student-app/, core/, css/, icons/, js/
+const assets = ['student-app', 'core', 'css', 'icons', 'js'];
 for (const asset of assets) {
   const src = path.join(rootDir, asset);
   if (existsSync(src)) cpSync(src, path.join(outDir, asset), { recursive: true });
