@@ -227,31 +227,40 @@ const APP = (() => {
       : null;
 
     if (profile?.student_code) {
-      // ── Returning user: show PIN lock screen first ──
+      // ── Returning user: show PIN lock ──
       beforePrompt?.();
       const unlocked = await _showPinLock(profile);
-      if (!unlocked) return; // switched account — onboarding will handle it
+      if (!unlocked) return;  // switched account — _showPinLock handles the rest
 
-      // ── After PIN unlock: refresh profile from server ──
+      // ── PIN correct: refresh profile from server ──
       _updateProfileButton(profile.name || profile.student_code);
       if (navigator.onLine && window.API?.fetchStudentMe) {
         try {
           const refreshed = await API.fetchStudentMe();
           _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
         } catch {
-          // Session expired — force full login
+          // Session expired — force full re-login
           await API.clearStudentProfile?.().catch(() => {});
-          return new Promise(resolve => _showOnboarding(resolve, { force: true }));
+          return new Promise(resolve => _showOnboarding(async () => {
+            await _refreshProfileAfterLogin();
+            resolve();
+          }, { force: true }));
         }
       }
       return;
     }
     beforePrompt?.();
-    return new Promise(resolve => _showOnboarding(resolve));
+    return new Promise(resolve => _showOnboarding(async () => {
+      await _refreshProfileAfterLogin();
+      resolve();
+    }));
   }
 
   // ── PIN LOCK SCREEN ─────────────────────────────────────────
   // Returns true if unlocked, false if user chose "switch account"
+  // PIN lock screen.
+  // - Correct PIN → unlock (resolve true)
+  // - Switch Account → clear session → show onboarding login form (resolve false)
   async function _showPinLock(profile) {
     return new Promise(async resolve => {
       const screen    = $('pin-lock-screen');
@@ -262,14 +271,10 @@ const APP = (() => {
       const submitBtn = $('pin-lock-submit');
       const switchBtn = $('pin-lock-switch');
 
-      if (!screen) { resolve(true); return; }  // no HTML → skip lock
+      if (!screen) { resolve(true); return; }
 
-      // Populate student info
       if (nameEl) nameEl.textContent = profile.name || profile.student_code || 'Student';
-      if (avatarEl) {
-        const initials = (profile.name || 'S').trim()[0].toUpperCase();
-        avatarEl.textContent = initials;
-      }
+      if (avatarEl) avatarEl.textContent = (profile.name || 'S').trim()[0].toUpperCase();
       if (input) input.value = '';
       if (errorEl) errorEl.classList.add('hidden');
 
@@ -278,17 +283,19 @@ const APP = (() => {
 
       const storedPin = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
 
+      const ac = new AbortController();
+
+      function _unlock() {
+        ac.abort();
+        screen.classList.add('hidden');
+        resolve(true);
+      }
+
       function _attempt() {
         const entered = String(input?.value || '').trim();
         if (!entered) { input?.focus(); return; }
-
-        // If no stored PIN, any non-empty PIN unlocks (first-time setup)
-        if (!storedPin || entered === storedPin) {
-          screen.classList.add('hidden');
-          resolve(true);
-          return;
-        }
-        // Wrong PIN
+        if (!storedPin || entered === storedPin) { _unlock(); return; }
+        // Wrong PIN — shake, no bypass
         if (errorEl) errorEl.classList.remove('hidden');
         if (input) {
           input.classList.add('shake');
@@ -297,27 +304,41 @@ const APP = (() => {
         }
       }
 
-      submitBtn?.addEventListener('click', _attempt);
-      input?.addEventListener('keydown', e => { if (e.key === 'Enter') _attempt(); });
-
-      switchBtn?.addEventListener('click', async () => {
+      async function _switchAccount() {
+        ac.abort();
         screen.classList.add('hidden');
-        // Clear current profile so onboarding shows
-        if (window.API?.clearStudentProfile) await API.clearStudentProfile().catch(() => {});
-        else {
-          await Promise.all([
-            DB.setSetting('student_profile', null),
-            DB.setSetting('student_code', ''),
-            DB.setSetting('student_pin', ''),
-            DB.setSetting('student_allowed_batches', []),
-          ]).catch(() => {});
-          API.clearStudentToken?.();
-        }
+        // Clear current student session; new student must login fresh
+        await API.clearStudentProfile?.().catch(() => {});
+        API.clearStudentToken?.();
         resolve(false);
-        // Show onboarding after short delay
-        setTimeout(() => _showOnboarding(() => { loadHome(); }, { force: true }), 100);
-      });
+        // Show login form — after success, reload home
+        setTimeout(() => _showOnboarding(async () => {
+          await _refreshProfileAfterLogin();
+          loadHome();
+        }, { force: true }), 50);
+      }
+
+      submitBtn?.addEventListener('click', _attempt, { signal: ac.signal });
+      input?.addEventListener('keydown', e => { if (e.key === 'Enter') _attempt(); }, { signal: ac.signal });
+      switchBtn?.addEventListener('click', _switchAccount, { signal: ac.signal });
+      // Block Android back button on PIN screen
+      history.pushState(null, '');
+      window.addEventListener('popstate', () => { history.pushState(null, ''); }, { signal: ac.signal });
     });
+  }
+
+  // Refresh profile + allowed batches from server after any login
+  async function _refreshProfileAfterLogin() {
+    _updateProfileButton('');
+    if (navigator.onLine && window.API?.fetchStudentMe) {
+      try {
+        const p = await API.fetchStudentMe();
+        _updateProfileButton(p?.name || p?.student_code || '');
+      } catch {}
+    } else {
+      const p = await API.getStudentProfile().catch(() => null);
+      if (p) _updateProfileButton(p.name || p.student_code || '');
+    }
   }
 
   function _initRegistration() {
@@ -561,39 +582,38 @@ const APP = (() => {
     const code    = profile?.student_code || '';
     const batches = (profile?.assigned_batches || []).join(', ') || 'None';
 
-    // Simple info + logout modal
+    // Profile info modal with Switch Account option
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:24px';
     overlay.innerHTML = `
       <div style="background:var(--surface,#fff);border-radius:20px;padding:28px 24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);animation:splashFadeIn 0.25s ease">
-        <h2 style="margin:0 0 4px;font-size:1.1rem;color:var(--text1)">👤 ${_escHtml(name)}</h2>
-        <p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2)">Code: <b>${_escHtml(code)}</b></p>
-        <p style="margin:0 0 16px;font-size:0.8rem;color:var(--text2)">Classes: <b>${_escHtml(batches)}</b></p>
-        <button id="ps-edit-btn" style="width:100%;padding:12px;border:2px solid var(--accent,#e74c3c);border-radius:10px;background:transparent;color:var(--accent,#e74c3c);font-weight:600;cursor:pointer;margin-bottom:8px">✏️ Profile Edit करा</button>
-        <button id="ps-logout-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:#e74c3c;color:#fff;font-weight:600;cursor:pointer">🚪 Logout</button>
-        <button id="ps-close-btn" style="width:100%;padding:8px;border:none;background:transparent;color:var(--text2,#666);cursor:pointer;margin-top:4px">Cancel</button>
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent,#e74c3c);color:#fff;font-size:1.5rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+          ${_escHtml((name[0] || 'S').toUpperCase())}
+        </div>
+        <h2 style="margin:0 0 4px;font-size:1.1rem;color:var(--text1);text-align:center">${_escHtml(name)}</h2>
+        <p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">Code: <b>${_escHtml(code)}</b></p>
+        <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">Classes: <b>${_escHtml(batches)}</b></p>
+        <button id="ps-switch-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">↔ Switch Account</button>
+        <button id="ps-close-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent,#e74c3c);color:#fff;font-weight:600;cursor:pointer">Close</button>
       </div>
     `;
     document.body.appendChild(overlay);
 
     function _close() { overlay.remove(); }
-
     overlay.querySelector('#ps-close-btn')?.addEventListener('click', _close);
     overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
 
-    overlay.querySelector('#ps-edit-btn')?.addEventListener('click', () => {
+    overlay.querySelector('#ps-switch-btn')?.addEventListener('click', async () => {
       _close();
-      _showOnboarding(() => toast('Profile updated!', 'success'), { force: true });
-    });
-
-    overlay.querySelector('#ps-logout-btn')?.addEventListener('click', async () => {
-      if (!confirm('Logout करायचं? पुन्हा login करावं लागेल.')) return;
-      _close();
-      if (window.API?.clearStudentProfile) await API.clearStudentProfile().catch(() => {});
+      // Clear current session; show login for new student
+      await API.clearStudentProfile?.().catch(() => {});
       API.clearStudentToken?.();
-      toast('Logout successful', 'info');
       _updateProfileButton('');
-      setTimeout(() => _showOnboarding(() => { loadHome(); }, { force: true }), 200);
+      _screenHistory = [];
+      _showOnboarding(async () => {
+        await _refreshProfileAfterLogin();
+        loadHome();
+      }, { force: true });
     });
   }
 
@@ -653,7 +673,12 @@ const APP = (() => {
     });
 
     $('btn-tts')?.addEventListener('click', () => {
-      window.TTS?.toggle();
+      try {
+        if (!window.TTS) { toast('Text-to-Speech उपलब्ध नाही', 'error'); return; }
+        TTS.toggle();
+      } catch {
+        toast('Text-to-Speech browser मध्ये support नाही', 'error');
+      }
     });
 
     $('btn-profile')?.addEventListener('click', () => {
@@ -726,7 +751,7 @@ const APP = (() => {
 
     const labels = {
       home: 'Home', quiz: 'Practice', results: 'Results',
-      'test-player': 'Test', analytics: 'Analytics',
+      'test-player': 'Test', analytics: 'Analytics', 'deep-study': 'Deep Study',
     };
     UI.setBreadcrumb(labels[name] || name);
   }
@@ -772,6 +797,17 @@ const APP = (() => {
   function _bindChapterFlow(batchName, subject) {
     return async chapter => {
       _homeChapter = chapter;
+
+      // Show Deep Study launch button for this chapter
+      const dsBtn = $('btn-deep-study');
+      if (dsBtn) {
+        dsBtn.classList.remove('hidden');
+        dsBtn.onclick = null;
+        dsBtn.addEventListener('click', () => {
+          window.DEEP_STUDY?.open(batchName, subject, chapter);
+        }, { once: false });
+      }
+
       await UI.renderAvailableQuizzes({
         batch: batchName,
         subject,
@@ -785,6 +821,7 @@ const APP = (() => {
     return async subject => {
       _homeSubject = subject;
       _homeChapter = null;
+      $('btn-deep-study')?.classList.add('hidden');
       await UI.renderChapterList(batchName, subject, _bindChapterFlow(batchName, subject));
     };
   }
@@ -830,6 +867,7 @@ const APP = (() => {
     _homeBatch = null;
     _homeSubject = null;
     _homeChapter = null;
+    $('btn-deep-study')?.classList.add('hidden');
 
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();

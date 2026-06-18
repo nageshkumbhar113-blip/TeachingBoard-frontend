@@ -1038,7 +1038,10 @@ body.admin-app {
 .expiry-badge.expired { background: var(--badge-blocked-bg); color: var(--badge-blocked-text); }
 .expiry-badge.soon    { background: var(--badge-pending-bg); color: var(--badge-pending-text); }
 
-.device-badge { font-size: 0.85rem; cursor: default; }
+.device-badge { font-size: 0.8rem; cursor: default; padding: 2px 6px; border-radius: var(--r-pill); }
+.device-badge.bound  { background: #fef9c3; color: #854d0e; }
+.device-badge.free   { background: #f1f5f9; color: #64748b; }
+.device-badge.shared { background: #dbeafe; color: #1e40af; font-weight: 600; }
 
 /* ════════════════════════════════════════
    21. SYNC TAB

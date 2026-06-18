@@ -818,6 +818,67 @@ const API = (() => {
   }
 
   // ════════════════════════
+  // BATCH CATALOG CRUD
+  // ════════════════════════
+
+  async function createBatchCatalog(name, icon = '📚') {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request('/batches', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name, icon }),
+    }).catch(() => {});
+  }
+
+  async function deleteBatchCatalog(name) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }
+
+  async function addCatalogSubject(batch, subject) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(batch)}/subjects`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ subject }),
+    }).catch(() => {});
+  }
+
+  async function deleteCatalogSubject(batch, subject) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }
+
+  async function addCatalogChapter(batch, subject, chapter) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ chapter }),
+    }).catch(() => {});
+  }
+
+  async function deleteCatalogChapter(batch, subject, chapter) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters/${encodeURIComponent(chapter)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }
+
+  // ════════════════════════
   // PUBLIC API
   // ════════════════════════
 
@@ -839,6 +900,9 @@ const API = (() => {
     cacheQuizQuestions, cacheLessons,
     syncServerQuestions, syncStudentQuestions, syncServerLessons, syncServerBatches,
     fetchMyAttempts, syncMyAttempts,
+    createBatchCatalog, deleteBatchCatalog,
+    addCatalogSubject, deleteCatalogSubject,
+    addCatalogChapter, deleteCatalogChapter,
   };
 })();
 

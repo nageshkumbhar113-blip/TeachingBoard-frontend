@@ -395,6 +395,7 @@ const ADMIN = (() => {
           _loadChapterAdmin(),
           _loadBatchOptions(),
         ]);
+        if (navigator.onLine) API.deleteCatalogSubject(batch, subject.name).catch(() => {});
       });
       fragment.appendChild(item);
     }
@@ -444,6 +445,7 @@ const ADMIN = (() => {
           _loadChapterAdmin(),
           _loadBatchOptions(),
         ]);
+        if (navigator.onLine) API.deleteCatalogChapter(batch, subject, chapter.name).catch(() => {});
       });
       fragment.appendChild(item);
     }
@@ -464,6 +466,8 @@ const ADMIN = (() => {
       _loadSubjectAdmin(),
       _loadBatchOptions(),
     ]);
+    // Sync to backend (silent fail if offline)
+    if (navigator.onLine) API.addCatalogSubject(batch, name).catch(() => {});
     APP.toast(`Subject "${name}" added to ${batch}`, 'success');
   }
 
@@ -482,6 +486,8 @@ const ADMIN = (() => {
       _loadChapterAdmin(),
       _loadBatchOptions(),
     ]);
+    // Sync to backend (silent fail if offline)
+    if (navigator.onLine) API.addCatalogChapter(batch, subject, name).catch(() => {});
     APP.toast(`Chapter "${name}" added to ${subject}`, 'success');
   }
 
@@ -1171,6 +1177,7 @@ const ADMIN = (() => {
           _loadChapterAdmin(),
           _loadBatchOptions(),
         ]);
+        if (navigator.onLine) API.deleteBatchCatalog(name).catch(() => {});
         APP.refreshHome();
       });
       item.addEventListener('click', async e => {
@@ -1196,13 +1203,15 @@ const ADMIN = (() => {
     if (!name) return;
     const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
     const icon  = icons[Math.floor(Math.random() * icons.length)];
-      await DB.saveBatch({ name: name.trim(), icon });
-      await Promise.all([
-        _loadBatchAdmin(),
-        _loadSubjectAdmin(),
-        _loadChapterAdmin(),
-        _loadBatchOptions(),
-      ]);
+    await DB.saveBatch({ name: name.trim(), icon });
+    await Promise.all([
+      _loadBatchAdmin(),
+      _loadSubjectAdmin(),
+      _loadChapterAdmin(),
+      _loadBatchOptions(),
+    ]);
+    // Sync to backend (silent fail if offline)
+    if (navigator.onLine) API.createBatchCatalog(name.trim(), icon).catch(() => {});
     APP.refreshHome();
     APP.toast(`✅ Class "${name}" added`, 'success');
   }
@@ -1467,9 +1476,12 @@ const ADMIN = (() => {
 
     list.innerHTML = '';
     students.forEach(student => {
-      const deviceBadge = student.device_bound
-        ? '<span class="device-badge bound" title="Device bound">🔒</span>'
-        : '<span class="device-badge free" title="No device bound">🔓</span>';
+      const isShared = !!student.shared_device;
+      const deviceBadge = isShared
+        ? '<span class="device-badge shared" title="Shared device — multiple students allowed">👨‍👩‍👧 Shared</span>'
+        : student.device_bound
+          ? '<span class="device-badge bound" title="Device bound — one device only">🔒 Bound</span>'
+          : '<span class="device-badge free" title="No device bound yet">🔓</span>';
 
       let expiryBadge = '';
       if (student.expiry_date) {
@@ -1496,13 +1508,17 @@ const ADMIN = (() => {
           <div class="batch-admin-meta">${_escHtml((student.assigned_batches || []).join(', ') || 'No courses')}</div>
         </div>
         <div class="batch-admin-actions">
-          <button class="admin-btn-secondary student-edit-btn" type="button">Edit</button>
-          <button class="admin-btn-secondary student-toggle-btn" type="button">${student.status === 'blocked' ? 'Activate' : 'Block'}</button>
-          ${student.device_bound ? '<button class="admin-btn-secondary student-reset-device-btn" type="button" title="Reset device binding">🔓 Reset Device</button>' : ''}
+          <button class="admin-btn-secondary student-edit-btn" type="button">✏️ Edit</button>
+          <button class="admin-btn-secondary student-toggle-btn" type="button">${student.status === 'blocked' ? '✅ Activate' : '🚫 Block'}</button>
+          <button class="admin-btn-secondary student-shared-btn" type="button" title="${isShared ? 'एक device वर lock करा' : 'Shared device चालू करा'}">
+            ${isShared ? '🔒 Single Device' : '👨‍👩‍👧 Shared Device'}
+          </button>
+          ${student.device_bound && !isShared ? '<button class="admin-btn-secondary student-reset-device-btn" type="button" title="Reset device binding">🔓 Reset Device</button>' : ''}
         </div>
       `;
 
       item.querySelector('.student-edit-btn')?.addEventListener('click', () => _fillStudentForm(student));
+
       item.querySelector('.student-toggle-btn')?.addEventListener('click', async () => {
         const nextStatus = student.status === 'blocked' ? 'active' : 'blocked';
         try {
@@ -1513,6 +1529,22 @@ const ADMIN = (() => {
           APP.toast(err.message || 'Could not update student', 'error');
         }
       });
+
+      item.querySelector('.student-shared-btn')?.addEventListener('click', async () => {
+        const nextShared = !isShared;
+        const msg = nextShared
+          ? `"${student.name}" ला Shared Device चालू करायचं? एकाच phone वर दुसरा student पण login करू शकेल.`
+          : `"${student.name}" ला Single Device वर lock करायचं?`;
+        if (!confirm(msg)) return;
+        try {
+          await API.updateStudent(student.id, { shared_device: nextShared });
+          APP.toast(nextShared ? 'Shared device enabled ✅' : 'Single device mode set 🔒', 'success');
+          await _loadStudentsAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Update failed', 'error');
+        }
+      });
+
       item.querySelector('.student-reset-device-btn')?.addEventListener('click', async () => {
         if (!confirm(`"${student.name}" चं device binding reset करायचं?`)) return;
         try {

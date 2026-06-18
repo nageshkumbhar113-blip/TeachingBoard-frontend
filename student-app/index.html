@@ -58,7 +58,8 @@
         autocomplete="current-password" aria-label="PIN" />
       <div id="pin-lock-error" class="pin-lock-error hidden">चुकीचा PIN. पुन्हा प्रयत्न करा.</div>
       <button id="pin-lock-submit" class="pin-lock-btn">Unlock →</button>
-      <button id="pin-lock-switch" class="pin-lock-switch-btn">दुसरा account वापरा</button>
+      <p class="pin-lock-admin-note">PIN विसरलात? Admin ला सांगा.</p>
+      <button id="pin-lock-switch" class="pin-lock-switch-btn">↔ Switch Account</button>
     </div>
   </div>
 
@@ -249,6 +250,14 @@
         <section class="home-section hidden" id="chapter-section" aria-label="Chapters">
           <h3 class="section-label" data-i18n="chapters">Chapters</h3>
           <div class="chapter-list" id="chapter-list" role="list"></div>
+          <button id="btn-deep-study" class="ds-launch-btn hidden" aria-label="Open Deep Study flashcard mode">
+            <span class="ds-launch-icon">🧠</span>
+            <span class="ds-launch-text">
+              <strong>Deep Study Mode</strong>
+              <small>Flashcard practice — swipe to study</small>
+            </span>
+            <span class="ds-launch-arrow">→</span>
+          </button>
         </section>
 
         <section class="home-section hidden" id="lesson-section" aria-label="Latest Lessons">
@@ -486,6 +495,133 @@
         </div>
       </section>
 
+      <!-- ── DEEP STUDY SCREEN ──────────────────────────── -->
+      <section id="screen-deep-study" class="screen hidden" aria-label="Deep Study">
+        <div class="ds-container">
+
+          <!-- Loading state -->
+          <div class="ds-loading hidden" id="ds-loading">
+            <div class="ds-loading-spinner"></div>
+            <p>Questions load होत आहेत…</p>
+          </div>
+
+          <!-- Main content -->
+          <div id="ds-content">
+
+            <!-- Header -->
+            <div class="ds-header">
+              <div class="ds-breadcrumb" id="ds-breadcrumb">Deep Study</div>
+              <div class="ds-stat-row">
+                <span class="ds-stat-chip ds-stat-known"  id="ds-stat-known">0 ✓</span>
+                <span class="ds-stat-chip ds-stat-review" id="ds-stat-review">0 ↺</span>
+                <span class="ds-stat-chip ds-stat-total"  id="ds-stat-total">0</span>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="ds-progress-wrap" id="ds-progress-wrap">
+              <div class="ds-progress-track">
+                <div class="ds-progress-fill" id="ds-progress-fill"></div>
+              </div>
+              <span class="ds-progress-text" id="ds-progress-text">0 / 0</span>
+            </div>
+
+            <!-- Card area -->
+            <div class="ds-card-area" id="ds-card-area">
+
+              <!-- Swipe hint labels -->
+              <div class="ds-swipe-hint ds-swipe-left-hint" aria-hidden="true">
+                <span>🔴</span><span>Review</span>
+              </div>
+              <div class="ds-swipe-hint ds-swipe-right-hint" aria-hidden="true">
+                <span>✅</span><span>Known</span>
+              </div>
+
+              <!-- The 3‑D flip card -->
+              <div class="ds-card" id="ds-card" role="button" tabindex="0"
+                   aria-label="Flashcard — tap to reveal answer">
+
+                <!-- FRONT: Question -->
+                <div class="ds-card-face ds-card-front">
+                  <div class="ds-face-tag">Question</div>
+                  <div class="ds-q-counter">
+                    <span id="ds-q-num">1</span>
+                    <span class="ds-q-sep">/</span>
+                    <span id="ds-q-num-total">1</span>
+                  </div>
+                  <div class="ds-q-img-wrap hidden" id="ds-q-img-wrap">
+                    <img id="ds-q-img" src="" alt="Question image" class="ds-q-img" loading="lazy" />
+                  </div>
+                  <p class="ds-q-text" id="ds-q-text">Loading…</p>
+                  <div class="ds-tap-hint" aria-hidden="true">
+                    <span class="ds-tap-ripple"></span>
+                    <span>Tap to reveal</span>
+                  </div>
+                </div>
+
+                <!-- BACK: Answer -->
+                <div class="ds-card-face ds-card-back">
+                  <div class="ds-face-tag ds-face-tag-answer">✅ Answer</div>
+                  <p class="ds-answer-text" id="ds-answer-text"></p>
+                  <div class="ds-options-review hidden" id="ds-options-review"></div>
+                  <div class="ds-exp-wrap hidden" id="ds-exp-wrap">
+                    <div class="ds-exp-label">💡 Explanation</div>
+                    <p class="ds-exp-text" id="ds-exp-text"></p>
+                  </div>
+                  <div class="ds-back-hint" aria-hidden="true">
+                    <kbd>→</kbd> Know It &nbsp; <kbd>←</kbd> Review
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action bar -->
+            <div class="ds-action-bar" id="ds-action-bar">
+              <button class="ds-btn ds-btn-hard   hidden" id="ds-btn-hard">
+                <span class="ds-btn-icon">🔴</span>
+                <span class="ds-btn-label">Need Review</span>
+              </button>
+              <button class="ds-btn ds-btn-reveal" id="ds-btn-reveal">
+                <span class="ds-btn-icon">👁</span>
+                <span class="ds-btn-label">Reveal Answer</span>
+              </button>
+              <button class="ds-btn ds-btn-known  hidden" id="ds-btn-known">
+                <span class="ds-btn-icon">✅</span>
+                <span class="ds-btn-label">Know It!</span>
+              </button>
+            </div>
+
+            <!-- Minimap dots -->
+            <div class="ds-minimap-wrap" id="ds-minimap-wrap">
+              <div class="ds-minimap" id="ds-minimap" role="list" aria-label="Card progress"></div>
+            </div>
+
+            <!-- Summary (shown at end) -->
+            <div class="ds-summary hidden" id="ds-summary">
+              <div class="ds-summary-emoji" id="ds-summary-emoji">🏆</div>
+              <h2 class="ds-summary-title" id="ds-summary-title">Session Complete!</h2>
+              <div class="ds-summary-pct" id="ds-sum-pct">0%</div>
+              <div class="ds-summary-stats">
+                <div class="ds-sum-card ds-sum-known">
+                  <span class="ds-sum-num" id="ds-sum-known">0</span>
+                  <label>Known ✓</label>
+                </div>
+                <div class="ds-sum-card ds-sum-review">
+                  <span class="ds-sum-num" id="ds-sum-review">0</span>
+                  <label>Review ↺</label>
+                </div>
+              </div>
+              <div class="ds-summary-actions">
+                <button class="ds-btn ds-btn-hard" id="ds-btn-retry-weak">🔁 Review Weak Cards</button>
+                <button class="ds-btn ds-btn-reveal" id="ds-btn-restart">↺ Restart All</button>
+                <button class="ds-btn ds-btn-done" id="ds-btn-ds-done">🏠 Home</button>
+              </div>
+            </div>
+
+          </div><!-- /#ds-content -->
+        </div><!-- /.ds-container -->
+      </section>
+
       <section id="screen-analytics" class="screen hidden" aria-label="Analytics">
         <div id="analytics-root" class="analytics-root"></div>
       </section>
@@ -504,6 +640,7 @@
   <script src="quiz.js" defer></script>
   <script src="testPlayer.js" defer></script>
   <script src="analytics.js" defer></script>
+  <script src="deepStudy.js" defer></script>
   <script src="tts.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
