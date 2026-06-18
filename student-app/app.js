@@ -47,6 +47,7 @@ const APP = (() => {
   const UI_MODES = ['normal', 'board'];
 
   let _currentScreen = 'home';
+  let _screenHistory = [];          // back-stack: list of previous screen names
   let _homeBatch     = null;
   let _homeSubject   = null;
   let _homeChapter   = null;
@@ -213,7 +214,6 @@ const APP = (() => {
         API.setApiUrl(qrServer);
         await DB.setSetting('api_url', qrServer).catch(() => {});
       } catch {}
-      // Clean URL without reload
       history.replaceState(null, '', window.location.pathname);
     }
 
@@ -225,14 +225,22 @@ const APP = (() => {
     const profile = window.API?.getStudentProfile
       ? await API.getStudentProfile().catch(() => null)
       : null;
+
     if (profile?.student_code) {
+      // ── Returning user: show PIN lock screen first ──
+      beforePrompt?.();
+      const unlocked = await _showPinLock(profile);
+      if (!unlocked) return; // switched account — onboarding will handle it
+
+      // ── After PIN unlock: refresh profile from server ──
       _updateProfileButton(profile.name || profile.student_code);
       if (navigator.onLine && window.API?.fetchStudentMe) {
         try {
           const refreshed = await API.fetchStudentMe();
           _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
         } catch {
-          beforePrompt?.();
+          // Session expired — force full login
+          await API.clearStudentProfile?.().catch(() => {});
           return new Promise(resolve => _showOnboarding(resolve, { force: true }));
         }
       }
@@ -240,6 +248,76 @@ const APP = (() => {
     }
     beforePrompt?.();
     return new Promise(resolve => _showOnboarding(resolve));
+  }
+
+  // ── PIN LOCK SCREEN ─────────────────────────────────────────
+  // Returns true if unlocked, false if user chose "switch account"
+  async function _showPinLock(profile) {
+    return new Promise(async resolve => {
+      const screen    = $('pin-lock-screen');
+      const nameEl    = $('pin-lock-name');
+      const avatarEl  = $('pin-lock-avatar');
+      const input     = $('pin-lock-input');
+      const errorEl   = $('pin-lock-error');
+      const submitBtn = $('pin-lock-submit');
+      const switchBtn = $('pin-lock-switch');
+
+      if (!screen) { resolve(true); return; }  // no HTML → skip lock
+
+      // Populate student info
+      if (nameEl) nameEl.textContent = profile.name || profile.student_code || 'Student';
+      if (avatarEl) {
+        const initials = (profile.name || 'S').trim()[0].toUpperCase();
+        avatarEl.textContent = initials;
+      }
+      if (input) input.value = '';
+      if (errorEl) errorEl.classList.add('hidden');
+
+      screen.classList.remove('hidden');
+      setTimeout(() => input?.focus(), 100);
+
+      const storedPin = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+
+      function _attempt() {
+        const entered = String(input?.value || '').trim();
+        if (!entered) { input?.focus(); return; }
+
+        // If no stored PIN, any non-empty PIN unlocks (first-time setup)
+        if (!storedPin || entered === storedPin) {
+          screen.classList.add('hidden');
+          resolve(true);
+          return;
+        }
+        // Wrong PIN
+        if (errorEl) errorEl.classList.remove('hidden');
+        if (input) {
+          input.classList.add('shake');
+          input.value = '';
+          setTimeout(() => { input.classList.remove('shake'); input.focus(); }, 450);
+        }
+      }
+
+      submitBtn?.addEventListener('click', _attempt);
+      input?.addEventListener('keydown', e => { if (e.key === 'Enter') _attempt(); });
+
+      switchBtn?.addEventListener('click', async () => {
+        screen.classList.add('hidden');
+        // Clear current profile so onboarding shows
+        if (window.API?.clearStudentProfile) await API.clearStudentProfile().catch(() => {});
+        else {
+          await Promise.all([
+            DB.setSetting('student_profile', null),
+            DB.setSetting('student_code', ''),
+            DB.setSetting('student_pin', ''),
+            DB.setSetting('student_allowed_batches', []),
+          ]).catch(() => {});
+          API.clearStudentToken?.();
+        }
+        resolve(false);
+        // Show onboarding after short delay
+        setTimeout(() => _showOnboarding(() => { loadHome(); }, { force: true }), 100);
+      });
+    });
   }
 
   function _initRegistration() {
@@ -431,7 +509,9 @@ const APP = (() => {
     skipBtn?.addEventListener('click', async () => {
       if (!navigator.onLine) {
         const savedCode = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
-        if (!savedCode) {
+        const savedPin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+        // Require both code AND pin to be saved (means they've successfully logged in before)
+        if (!savedCode || !savedPin) {
           if (errorEl) {
             errorEl.textContent = 'First login online करणे आवश्यक आहे';
             errorEl.classList.remove('hidden');
@@ -476,10 +556,49 @@ const APP = (() => {
   }
 
   async function _openProfileSettings() {
-    return new Promise(resolve => _showOnboarding(() => {
-      toast('Profile updated!', 'success');
-      resolve();
-    }, { force: true }));
+    const profile = await API.getStudentProfile().catch(() => null);
+    const name    = profile?.name || profile?.student_code || 'Student';
+    const code    = profile?.student_code || '';
+    const batches = (profile?.assigned_batches || []).join(', ') || 'None';
+
+    // Simple info + logout modal
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:24px';
+    overlay.innerHTML = `
+      <div style="background:var(--surface,#fff);border-radius:20px;padding:28px 24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);animation:splashFadeIn 0.25s ease">
+        <h2 style="margin:0 0 4px;font-size:1.1rem;color:var(--text1)">👤 ${_escHtml(name)}</h2>
+        <p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2)">Code: <b>${_escHtml(code)}</b></p>
+        <p style="margin:0 0 16px;font-size:0.8rem;color:var(--text2)">Classes: <b>${_escHtml(batches)}</b></p>
+        <button id="ps-edit-btn" style="width:100%;padding:12px;border:2px solid var(--accent,#e74c3c);border-radius:10px;background:transparent;color:var(--accent,#e74c3c);font-weight:600;cursor:pointer;margin-bottom:8px">✏️ Profile Edit करा</button>
+        <button id="ps-logout-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:#e74c3c;color:#fff;font-weight:600;cursor:pointer">🚪 Logout</button>
+        <button id="ps-close-btn" style="width:100%;padding:8px;border:none;background:transparent;color:var(--text2,#666);cursor:pointer;margin-top:4px">Cancel</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    function _close() { overlay.remove(); }
+
+    overlay.querySelector('#ps-close-btn')?.addEventListener('click', _close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
+
+    overlay.querySelector('#ps-edit-btn')?.addEventListener('click', () => {
+      _close();
+      _showOnboarding(() => toast('Profile updated!', 'success'), { force: true });
+    });
+
+    overlay.querySelector('#ps-logout-btn')?.addEventListener('click', async () => {
+      if (!confirm('Logout करायचं? पुन्हा login करावं लागेल.')) return;
+      _close();
+      if (window.API?.clearStudentProfile) await API.clearStudentProfile().catch(() => {});
+      API.clearStudentToken?.();
+      toast('Logout successful', 'info');
+      _updateProfileButton('');
+      setTimeout(() => _showOnboarding(() => { loadHome(); }, { force: true }), 200);
+    });
+  }
+
+  function _escHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   function _handleInitError(err) {
@@ -504,6 +623,18 @@ const APP = (() => {
   // ════════════════════════
 
   function _bindNav() {
+    $('btn-back')?.addEventListener('click', goBack);
+
+    // Android hardware/gesture back button
+    window.addEventListener('popstate', e => {
+      e.preventDefault();
+      goBack();
+    });
+    // Push a dummy state so popstate fires on Android back
+    if (typeof history.pushState === 'function') {
+      history.pushState({ tb: true }, '');
+    }
+
     $('btn-home')?.addEventListener('click', () => loadHome());
 
     $('btn-theme')?.addEventListener('click', async () => {
@@ -557,8 +688,15 @@ const APP = (() => {
   // SCREEN ROUTING
   // ════════════════════════
 
-  function showScreen(name) {
+  function showScreen(name, { addToHistory = true } = {}) {
     if (!name) return;
+
+    // Push current screen to history before switching (skip 'home' as base)
+    if (addToHistory && _currentScreen && _currentScreen !== name) {
+      _screenHistory.push(_currentScreen);
+      if (_screenHistory.length > 10) _screenHistory.shift(); // cap stack
+    }
+
     _currentScreen = name;
 
     if (!_screenEls.length) _cacheScreens();
@@ -579,7 +717,24 @@ const APP = (() => {
       console.warn(`showScreen: no element #screen-${name}`);
     }
 
-    UI.setBreadcrumb(name === 'home' ? 'Home' : null);
+    // Show/hide back button — always hide on home; show when there's history
+    const backBtn = $('btn-back');
+    if (backBtn) {
+      const showBack = name !== 'home' && _screenHistory.length > 0;
+      backBtn.classList.toggle('hidden', !showBack);
+    }
+
+    const labels = {
+      home: 'Home', quiz: 'Practice', results: 'Results',
+      'test-player': 'Test', analytics: 'Analytics',
+    };
+    UI.setBreadcrumb(labels[name] || name);
+  }
+
+  function goBack() {
+    if (_screenHistory.length === 0) { showScreen('home', { addToHistory: false }); return; }
+    const prev = _screenHistory.pop();
+    showScreen(prev, { addToHistory: false });
   }
 
   // Alias kept for backward compat (quiz.js, etc.)
@@ -664,7 +819,8 @@ const APP = (() => {
   }
 
   async function loadHome() {
-    showScreen('home');
+    _screenHistory = [];   // clear back-stack when going to home
+    showScreen('home', { addToHistory: false });
     await DB.syncHierarchyFromExisting?.();
 
     // Hide drill-down sections immediately
@@ -967,6 +1123,7 @@ const APP = (() => {
     init,
     // Routing
     showScreen,
+    goBack,
     navigate,         // alias — kept for quiz.js / other callers
     currentScreen,
     setBreadcrumb,

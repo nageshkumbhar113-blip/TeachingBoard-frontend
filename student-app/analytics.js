@@ -60,6 +60,11 @@ const ANALYTICS = (() => {
   }
 
   async function _loadData() {
+    // Pull attempts from server first so new-device analytics isn't empty
+    if (navigator.onLine && window.API?.syncMyAttempts) {
+      await API.syncMyAttempts().catch(() => {});
+    }
+
     const [attempts, weakQs, allQs, profile] = await Promise.all([
       DB.getAllAttempts(),
       DB.getWeakQuestions(),

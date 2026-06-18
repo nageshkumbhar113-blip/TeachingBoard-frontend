@@ -1563,3 +1563,68 @@ body.student-app.mode-board.theme-board-light::before {
 .screens-wrap::-webkit-scrollbar { width: 5px; }
 .screens-wrap::-webkit-scrollbar-track { background: transparent; }
 .screens-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ════════════════════════════════════════
+   PIN LOCK SCREEN
+════════════════════════════════════════ */
+.pin-lock-screen {
+  position: fixed; inset: 0; z-index: 9998;
+  background: var(--bg, #fff);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.pin-lock-screen.hidden { display: none; }
+.pin-lock-card {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  width: 100%; max-width: 320px;
+  padding: 32px 24px; border-radius: 20px;
+  background: var(--surface, #f8f8f8);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  animation: splashFadeIn 0.3s ease;
+}
+.pin-lock-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--accent, #e74c3c);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+}
+.pin-lock-name {
+  font-size: 1.2rem; font-weight: 700;
+  color: var(--text1, #111);
+}
+.pin-lock-sub { font-size: 0.85rem; color: var(--text2, #666); }
+.pin-lock-input {
+  width: 100%; padding: 14px 16px; font-size: 1.4rem;
+  text-align: center; letter-spacing: 8px;
+  border: 2px solid var(--border, #ddd); border-radius: 12px;
+  background: var(--bg, #fff); color: var(--text1, #111);
+  outline: none; transition: border-color 0.2s;
+}
+.pin-lock-input:focus { border-color: var(--accent, #e74c3c); }
+.pin-lock-input.shake {
+  animation: pinShake 0.4s ease;
+}
+@keyframes pinShake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-6px); }
+  80%      { transform: translateX(6px); }
+}
+.pin-lock-error {
+  font-size: 0.8rem; color: var(--danger, #e74c3c);
+  text-align: center;
+}
+.pin-lock-error.hidden { display: none; }
+.pin-lock-btn {
+  width: 100%; padding: 14px; border: none; border-radius: 12px;
+  background: var(--accent, #e74c3c); color: #fff;
+  font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s;
+}
+.pin-lock-btn:hover { opacity: 0.88; }
+.pin-lock-switch-btn {
+  background: none; border: none; color: var(--text2, #888);
+  font-size: 0.82rem; cursor: pointer; padding: 4px 8px;
+  text-decoration: underline;
+}

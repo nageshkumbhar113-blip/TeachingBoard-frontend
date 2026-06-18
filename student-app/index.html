@@ -47,6 +47,21 @@
     </div>
   </div>
 
+  <!-- ── PIN LOCK SCREEN ──────────────────────────────────── -->
+  <div id="pin-lock-screen" class="pin-lock-screen hidden" role="dialog" aria-modal="true" aria-label="PIN Lock">
+    <div class="pin-lock-card">
+      <div class="pin-lock-avatar" id="pin-lock-avatar">👤</div>
+      <div class="pin-lock-name" id="pin-lock-name">Student</div>
+      <div class="pin-lock-sub">तुमचा PIN टाका</div>
+      <input type="password" id="pin-lock-input" class="pin-lock-input"
+        inputmode="numeric" maxlength="6" placeholder="● ● ● ●"
+        autocomplete="current-password" aria-label="PIN" />
+      <div id="pin-lock-error" class="pin-lock-error hidden">चुकीचा PIN. पुन्हा प्रयत्न करा.</div>
+      <button id="pin-lock-submit" class="pin-lock-btn">Unlock →</button>
+      <button id="pin-lock-switch" class="pin-lock-switch-btn">दुसरा account वापरा</button>
+    </div>
+  </div>
+
   <!-- ── ONBOARDING ───────────────────────────────────────── -->
   <div id="onboarding-screen" class="onboarding-screen hidden" role="dialog" aria-modal="true" aria-label="Setup">
     <div class="onboarding-card">

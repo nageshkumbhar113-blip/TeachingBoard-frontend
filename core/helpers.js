@@ -765,6 +765,59 @@ const API = (() => {
   }
 
   // ════════════════════════
+  // BATCH HIERARCHY SYNC
+  // ════════════════════════
+
+  // ════════════════════════
+  // STUDENT ATTEMPT SYNC
+  // ════════════════════════
+
+  async function fetchMyAttempts() {
+    const token = await ensureStudentSession().catch(() => '');
+    if (!token) return [];
+    const payload = await request('/attempts/my', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function syncMyAttempts() {
+    const remote = await fetchMyAttempts();
+    if (!remote.length) return [];
+    // Save remote attempts that aren't in local DB yet
+    const local = await DB.getAllAttempts().catch(() => []);
+    const localIds = new Set(local.map(a => a.attempt_id).filter(Boolean));
+    const toSave = remote.filter(a => a.attempt_id && !localIds.has(a.attempt_id));
+    for (const a of toSave) {
+      await DB.saveAttempt(a).catch(() => {});
+    }
+    return remote;
+  }
+
+  async function syncServerBatches() {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    const payload = await request('/batches', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const batches = payload?.data || [];
+    // Merge into local IndexedDB hierarchy
+    for (const b of batches) {
+      await DB.saveBatch({ name: b.name, icon: b.icon || '📚' }).catch(() => {});
+      for (const subject of (b.subjects || [])) {
+        await DB.saveBatchSubject({ batch: b.name, name: subject }, { queueOnFailure: false }).catch(() => {});
+        const chapters = (b.chapters || []).filter(c => c.subject === subject);
+        for (const ch of chapters) {
+          await DB.saveSubjectChapter(
+            { batch: b.name, subject, name: ch.name }, { queueOnFailure: false }
+          ).catch(() => {});
+        }
+      }
+    }
+    return batches;
+  }
+
+  // ════════════════════════
   // PUBLIC API
   // ════════════════════════
 
@@ -784,7 +837,8 @@ const API = (() => {
     safeFetch,
     toFrontendQuestion, toBackendQuestion,
     cacheQuizQuestions, cacheLessons,
-    syncServerQuestions, syncStudentQuestions, syncServerLessons,
+    syncServerQuestions, syncStudentQuestions, syncServerLessons, syncServerBatches,
+    fetchMyAttempts, syncMyAttempts,
   };
 })();
 

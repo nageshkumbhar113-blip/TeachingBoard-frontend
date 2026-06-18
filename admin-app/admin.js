@@ -182,11 +182,12 @@ const ADMIN = (() => {
     const savedApiUrl = await DB.getSetting('api_url', API.DEFAULT_API_URL);
     try { API.setApiUrl(savedApiUrl || API.DEFAULT_API_URL); } catch {}
 
-    // If online, fetch questions from backend first so batch/subject/chapter catalog is up-to-date
+    // If online, fetch questions + batch hierarchy from backend
     if (navigator.onLine && API.getAdminToken()) {
-      try {
-        await API.syncServerQuestions();
-      } catch { /* offline or auth — proceed with local */ }
+      await Promise.allSettled([
+        API.syncServerQuestions(),
+        API.syncServerBatches(),
+      ]);
     }
 
     await DB.syncHierarchyFromExisting?.();

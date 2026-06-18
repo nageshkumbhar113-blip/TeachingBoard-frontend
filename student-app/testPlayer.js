@@ -129,7 +129,7 @@ const TEST_PLAYER = (() => {
     // Offline + no cache → clear error
     const fallback = await DB.getQuiz(quiz_id).catch(() => null);
     if (!fallback) {
-      throw new Error('Quiz not available offline. Please connect once to download it.');
+      throw new Error('Internet नाही! हा quiz offline साठी download झालेला नाही. एकदा online होऊन quiz उघडा म्हणजे पुढच्या वेळी offline पण चालेल.');
     }
     return fallback;
   }

@@ -413,11 +413,20 @@ const UI = (() => {
     section.classList.remove('hidden');
     list.innerHTML = '';
 
+    // Pre-check which quizzes have questions cached locally
+    const cachedQIds = new Set(
+      (await DB.getAllQuestions().catch(() => [])).map(q => q.quiz_id).filter(Boolean)
+    );
+
     const fragment = document.createDocumentFragment();
     published.forEach(quiz => {
       const totalQ = Array.isArray(quiz.questions) && quiz.questions.length
         ? quiz.questions.length
         : (quiz.sections || []).reduce((s, sec) => s + (sec.question_ids?.length || 0), 0);
+
+      const isOfflineReady = cachedQIds.has(quiz.quiz_id) ||
+        (Array.isArray(quiz.questions) && quiz.questions.length > 0);
+
       const card   = document.createElement('div');
       card.className = 'quiz-portal-card';
       card.innerHTML = `
@@ -426,11 +435,16 @@ const UI = (() => {
           <div class="quiz-portal-meta">
             ${_escHtml(quiz.batch || '')}${quiz.subject ? ' · ' + _escHtml(quiz.subject) : ''}
             · ${totalQ} questions
+            ${isOfflineReady ? '<span class="offline-badge" title="Offline उपलब्ध">📶✓</span>' : ''}
           </div>
         </div>
         <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
       `;
       card.querySelector('.quiz-portal-btn').addEventListener('click', () => {
+        if (!navigator.onLine && !isOfflineReady) {
+          APP.toast('Internet नाही! एकदा online होऊन हा quiz उघडा, मग offline पण चालेल.', 'error');
+          return;
+        }
         if (onStart) onStart(quiz);
       });
       fragment.appendChild(card);

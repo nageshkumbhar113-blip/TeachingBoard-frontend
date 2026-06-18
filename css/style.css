@@ -4217,6 +4217,13 @@ body.modal-open {
   transition: opacity 0.15s;
 }
 .quiz-portal-btn:hover { opacity: 0.85; }
+.offline-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-left: 4px;
+  vertical-align: middle;
+}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
