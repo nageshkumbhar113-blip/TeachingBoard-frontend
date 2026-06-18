@@ -233,36 +233,38 @@ const UI = (() => {
       DB.getAllQuestions(),
       _getAllowedBatches(),
     ]);
-    const visibleBatches = batches.filter(batch => allowedBatches.includes(String(batch?.name || '').trim()));
-    const visibleQuestions = _filterByAllowedBatches(questions, allowedBatches);
 
     grid.innerHTML = '';
 
-    if (!visibleBatches.length) {
+    if (!allowedBatches.length) {
       grid.innerHTML = '<p class="empty-hint" style="grid-column:1/-1">No classes assigned yet. Contact your admin.</p>';
       return;
     }
 
+    // Use allowedBatches as source of truth — show class even if local DB has no questions yet
+    const batchMeta = new Map(batches.map(b => [String(b?.name || '').trim(), b]));
+    const visibleQuestions = _filterByAllowedBatches(questions, allowedBatches);
     const questionCounts = visibleQuestions.reduce((counts, q) => {
       counts[q.batch] = (counts[q.batch] || 0) + 1;
       return counts;
     }, {});
-    const fragment = document.createDocumentFragment();
 
-    visibleBatches.forEach(b => {
-      const count = questionCounts[b.name] || 0;
+    const fragment = document.createDocumentFragment();
+    allowedBatches.forEach(batchName => {
+      const meta  = batchMeta.get(batchName) || { name: batchName, icon: '📚' };
+      const count = questionCounts[batchName] || 0;
       const card  = document.createElement('div');
       card.className = 'batch-card';
       card.setAttribute('role', 'listitem');
       card.innerHTML = `
-        <div class="batch-icon">${b.icon || '📚'}</div>
-        <div class="batch-name">${b.name}</div>
+        <div class="batch-icon">${meta.icon || '📚'}</div>
+        <div class="batch-name">${batchName}</div>
         <div class="batch-count">${count} questions</div>
       `;
       card.addEventListener('click', () => {
         grid.querySelectorAll('.batch-card').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
-        if (onBatchClick) onBatchClick(b);
+        if (onBatchClick) onBatchClick(meta);
       });
       fragment.appendChild(card);
     });

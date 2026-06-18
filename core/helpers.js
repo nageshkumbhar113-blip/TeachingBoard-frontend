@@ -656,6 +656,14 @@ const API = (() => {
     });
   }
 
+  async function deleteStudent(studentId) {
+    const token = await ensureAdminSession();
+    return request(`/students/${encodeURIComponent(studentId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function submitQuiz(studentName, answers) {
     const token = studentName ? await ensureStudentSession() : '';
     return request('/submit', {
@@ -891,7 +899,7 @@ const API = (() => {
     getStudentProfile, clearStudentProfile,
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
-    fetchStudents, createStudent, updateStudent, resetStudentDevice, selfRegister,
+    fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,
     request,

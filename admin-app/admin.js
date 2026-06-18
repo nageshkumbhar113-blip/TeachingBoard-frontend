@@ -1514,6 +1514,7 @@ const ADMIN = (() => {
             ${isShared ? '🔒 Single Device' : '👨‍👩‍👧 Shared Device'}
           </button>
           ${student.device_bound && !isShared ? '<button class="admin-btn-secondary student-reset-device-btn" type="button" title="Reset device binding">🔓 Reset Device</button>' : ''}
+          <button class="admin-btn-danger student-delete-btn" type="button" title="Delete student permanently">🗑️ Delete</button>
         </div>
       `;
 
@@ -1553,6 +1554,17 @@ const ADMIN = (() => {
           await _loadStudentsAdmin();
         } catch (err) {
           APP.toast(err.message || 'Device reset failed', 'error');
+        }
+      });
+
+      item.querySelector('.student-delete-btn')?.addEventListener('click', async () => {
+        if (!confirm(`"${student.name}" (${student.student_code}) ला permanently delete करायचं?\n\nहे action undo होणार नाही!`)) return;
+        try {
+          await API.deleteStudent(student.id);
+          APP.toast(`${student.name} deleted ✅`, 'success');
+          await _loadStudentsAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Delete failed', 'error');
         }
       });
 
