@@ -1635,11 +1635,91 @@ body.student-app.mode-board.theme-board-light::before {
 .pin-lock-switch-btn:hover { background: var(--surface2, #f0f0f0); }
 
 /* ════════════════════════════════════════════════════
-   MOBILE: hide Board Mode button (not useful on phone)
+   MOBILE: Board Mode button moved to bottom nav
 ════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   #btn-ui-mode,
   #board-zoom-control { display: none !important; }
+}
+
+/* ════════════════════════════════════════════════════
+   BOTTOM NAVIGATION
+════════════════════════════════════════════════════ */
+.bottom-nav { display: none; }
+
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 62px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--nav, #161b22);
+    border-top: 1px solid var(--border, #30363d);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.45);
+    z-index: 950;
+  }
+
+  .bnav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    color: var(--text2, #8b949e);
+    cursor: pointer;
+    padding: 6px 4px;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    transition: color 0.15s;
+  }
+
+  .bnav-icon {
+    font-size: 1.45rem;
+    line-height: 1;
+    display: block;
+    transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .bnav-label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .bnav-btn.bnav-active { color: var(--accent, #f0883e); }
+
+  .bnav-btn.bnav-active .bnav-icon {
+    transform: translateY(-3px) scale(1.2);
+  }
+
+  .bnav-btn.bnav-active::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 30px; height: 3px;
+    background: var(--accent, #f0883e);
+    border-radius: 0 0 4px 4px;
+  }
+
+  /* Push content up so it's not hidden behind bottom nav */
+  .screens-wrap { padding-bottom: 72px; }
+
+  /* Board mode active — highlight mode button */
+  body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
+}
+
+/* Light theme bottom nav */
+.theme-light .bottom-nav {
+  background: var(--nav, #ffffff);
+  border-top-color: var(--border, #d0d7de);
+  box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
 }
 
 /* ════════════════════════════════════════════════════

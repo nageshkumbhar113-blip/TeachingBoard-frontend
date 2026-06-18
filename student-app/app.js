@@ -708,6 +708,17 @@ const APP = (() => {
     $('btn-board-zoom-in')?.addEventListener('click', async () => {
       await setBoardZoom(_boardZoom + BOARD_ZOOM_STEP);
     });
+
+    // ── Bottom Navigation ────────────────────────────
+    $('bnav-home')?.addEventListener('click', () => loadHome());
+    $('bnav-analytics')?.addEventListener('click', () => window.ANALYTICS?.open());
+    $('bnav-mode')?.addEventListener('click', async () => {
+      const next = _activeUiMode() === 'board' ? 'normal' : 'board';
+      setUiMode(next);
+      await DB.setSetting('ui_mode', next);
+      await _applyStoredThemeForMode({ silent: true });
+    });
+    $('bnav-me')?.addEventListener('click', () => _openProfileSettings());
   }
 
   // ════════════════════════
@@ -755,6 +766,24 @@ const APP = (() => {
       'test-player': 'Test', analytics: 'Analytics', 'deep-study': 'Deep Study',
     };
     UI.setBreadcrumb(labels[name] || name);
+    _updateBottomNav(name);
+  }
+
+  function _updateBottomNav(screen) {
+    const tabMap = {
+      home: 'bnav-home',
+      analytics: 'bnav-analytics',
+      quiz: null,
+      'test-player': null,
+      results: 'bnav-home',
+      'deep-study': 'bnav-home',
+    };
+    document.querySelectorAll('.bnav-btn').forEach(btn => btn.classList.remove('bnav-active'));
+    const activeId = tabMap[screen] ?? 'bnav-home';
+    if (activeId) $(activeId)?.classList.add('bnav-active');
+
+    const navEl = $('bottom-nav');
+    if (navEl) navEl.style.display = ['quiz', 'test-player'].includes(screen) ? 'none' : '';
   }
 
   function goBack() {
@@ -1071,8 +1100,8 @@ const APP = (() => {
 
   function _setModeButtonState(btn, isBoard) {
     if (!btn) return;
-    const icon  = btn.querySelector('.nav-btn-icon');
-    const label = btn.querySelector('.nav-btn-label');
+    const icon  = btn.querySelector('.nav-btn-icon, .bnav-icon');
+    const label = btn.querySelector('.nav-btn-label, .bnav-label');
 
     if (icon && label) {
       icon.textContent  = isBoard ? '📱' : '🖥️';
@@ -1094,6 +1123,7 @@ const APP = (() => {
       btn.title       = isBoard ? 'Switch to Normal Mode' : 'Switch to Board Mode (4K display)';
       btn.setAttribute('aria-pressed', String(isBoard));
     }
+    _setModeButtonState($('bnav-mode'), isBoard);
 
     _updateBoardZoomUi();
     _setThemeButtonState(_activeTheme());
