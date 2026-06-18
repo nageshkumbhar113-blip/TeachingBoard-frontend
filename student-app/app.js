@@ -409,6 +409,7 @@ const APP = (() => {
     _appShellRevealed = true;
     $('screen-home')?.classList.remove('hidden');
     UI.hideSplash();
+    window.SPLASH?.done();
   }
 
   function _showOnboarding(onDone, opts = {}) {
