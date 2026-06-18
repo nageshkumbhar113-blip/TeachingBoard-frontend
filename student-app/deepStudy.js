@@ -10,14 +10,14 @@ const DEEP_STUDY = (() => {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // ─── State ────────────────────────────────────────────────
-  let _questions = [];
-  let _states    = [];  // 'pending' | 'known' | 'review'
-  let _idx       = 0;
-  let _revealed  = false;
-  let _batch     = '';
-  let _subject   = '';
-  let _chapter   = '';
-  let _keyHandler = null;
+  let _questions  = [];
+  let _states     = [];  // 'pending' | 'known' | 'review'
+  let _idx        = 0;
+  let _revealed   = false;
+  let _batch      = '';
+  let _subject    = '';
+  let _chapter    = '';
+  let _sessionAC  = null;
 
   // ─── Entry Point ─────────────────────────────────────────
   async function open(batch, subject, chapter) {
@@ -116,10 +116,10 @@ const DEEP_STUDY = (() => {
     const optionsEl = $('ds-options-review');
     if (optionsEl) {
       const opts = [
-        { label: 'A', text: q.option_a },
-        { label: 'B', text: q.option_b },
-        { label: 'C', text: q.option_c },
-        { label: 'D', text: q.option_d },
+        { label: 'A', text: q.options?.A },
+        { label: 'B', text: q.options?.B },
+        { label: 'C', text: q.options?.C },
+        { label: 'D', text: q.options?.D },
       ].filter(o => o.text);
 
       if (opts.length) {
@@ -313,48 +313,47 @@ const DEEP_STUDY = (() => {
 
   // ─── Events ───────────────────────────────────────────────
   function _bindEvents() {
-    // Card flip on click (front only)
-    $('ds-card')?.addEventListener('click', e => {
-      if ($('ds-card')?.classList.contains('is-flipped')) return;
-      _reveal();
-    });
+    // Abort previous session's listeners before re-adding (prevents accumulation on re-open)
+    if (_sessionAC) _sessionAC.abort();
+    _sessionAC = new AbortController();
+    const sig = _sessionAC.signal;
 
-    $('ds-btn-reveal')?.addEventListener('click', _reveal);
-    $('ds-btn-known')?.addEventListener('click', _markKnown);
-    $('ds-btn-hard')?.addEventListener('click', _markReview);
-    $('ds-btn-retry-weak')?.addEventListener('click', _retryWeak);
-    $('ds-btn-restart')?.addEventListener('click', _restart);
-    $('ds-btn-ds-done')?.addEventListener('click', () => APP.loadHome());
+    $('ds-card')?.addEventListener('click', () => {
+      if (!$('ds-card')?.classList.contains('is-flipped')) _reveal();
+    }, { signal: sig });
 
-    // Keyboard
-    if (_keyHandler) document.removeEventListener('keydown', _keyHandler);
-    _keyHandler = e => {
+    $('ds-btn-reveal')?.addEventListener('click', _reveal, { signal: sig });
+    $('ds-btn-known')?.addEventListener('click', _markKnown, { signal: sig });
+    $('ds-btn-hard')?.addEventListener('click', _markReview, { signal: sig });
+    $('ds-btn-retry-weak')?.addEventListener('click', _retryWeak, { signal: sig });
+    $('ds-btn-restart')?.addEventListener('click', _restart, { signal: sig });
+    $('ds-btn-ds-done')?.addEventListener('click', () => APP.loadHome(), { signal: sig });
+
+    document.addEventListener('keydown', e => {
       if (APP.currentScreen() !== 'deep-study') return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === ' ' || e.key === 'ArrowUp')   { _reveal(); e.preventDefault(); }
       if (e.key === 'ArrowRight' || e.key === 'k') { _markKnown(); e.preventDefault(); }
       if (e.key === 'ArrowLeft'  || e.key === 'r') { _markReview(); e.preventDefault(); }
-    };
-    document.addEventListener('keydown', _keyHandler);
+    }, { signal: sig });
 
-    // Touch swipe
-    _setupSwipe($('ds-card-area'));
+    _setupSwipe($('ds-card-area'), sig);
   }
 
-  function _setupSwipe(el) {
+  function _setupSwipe(el, signal) {
     if (!el) return;
     let sx = 0, sy = 0;
     el.addEventListener('touchstart', e => {
       sx = e.touches[0].clientX;
       sy = e.touches[0].clientY;
-    }, { passive: true });
+    }, { passive: true, signal });
     el.addEventListener('touchend', e => {
       const dx = e.changedTouches[0].clientX - sx;
       const dy = e.changedTouches[0].clientY - sy;
       if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 55) return;
       if (!_revealed) { _reveal(); return; }
       if (dx > 0) _markKnown(); else _markReview();
-    }, { passive: true });
+    }, { passive: true, signal });
   }
 
   return { open };

@@ -496,7 +496,7 @@ const API = (() => {
   async function fetchQuiz(limit = 20) {
     const profile = await getStudentProfile();
     const token   = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
-    const query   = `/quiz?limit=${limit}`;
+    const query   = `/questions?limit=${limit}`;
     const payload = await request(query, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
