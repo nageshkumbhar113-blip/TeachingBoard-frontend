@@ -1226,19 +1226,49 @@ const ADMIN = (() => {
   // TEST PORTAL — QUIZ LIST
   // ════════════════════════
 
-  async function _populateQuizBatchFilter(quizzes) {
-    const sel = $('quiz-batch-filter');
-    if (!sel) return;
-    const currentVal = sel.value;
+  function _populateQuizBatchFilter(quizzes) {
+    const batchSel   = $('quiz-batch-filter');
+    const subjectSel = $('quiz-subject-filter');
+    const chapterSel = $('quiz-chapter-filter');
+
+    const batchVal   = batchSel?.value   || '';
+    const subjectVal = subjectSel?.value || '';
+    const chapterVal = chapterSel?.value || '';
+
     const batches = [...new Set(quizzes.map(q => q.batch).filter(Boolean))].sort();
-    sel.innerHTML = '<option value="">All Classes</option>';
-    batches.forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b;
-      opt.textContent = b;
-      if (b === currentVal) opt.selected = true;
-      sel.appendChild(opt);
-    });
+    if (batchSel) {
+      batchSel.innerHTML = '<option value="">All Classes</option>';
+      batches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        if (b === batchVal) opt.selected = true;
+        batchSel.appendChild(opt);
+      });
+    }
+
+    const byBatch   = batchVal   ? quizzes.filter(q => q.batch   === batchVal)   : quizzes;
+    const subjects  = [...new Set(byBatch.map(q => q.subject).filter(Boolean))].sort();
+    if (subjectSel) {
+      subjectSel.innerHTML = '<option value="">All Subjects</option>';
+      subjects.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        if (s === subjectVal) opt.selected = true;
+        subjectSel.appendChild(opt);
+      });
+    }
+
+    const bySubject  = subjectVal ? byBatch.filter(q => q.subject === subjectVal) : byBatch;
+    const chapters   = [...new Set(bySubject.map(q => q.chapter).filter(Boolean))].sort();
+    if (chapterSel) {
+      chapterSel.innerHTML = '<option value="">All Chapters</option>';
+      chapters.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        if (c === chapterVal) opt.selected = true;
+        chapterSel.appendChild(opt);
+      });
+    }
   }
 
   async function loadQuizList() {
@@ -1246,14 +1276,18 @@ const ADMIN = (() => {
 
     await _populateQuizBatchFilter(all);
 
-    const search      = ($('quiz-search')?.value || '').trim().toLowerCase();
-    const batchFilter = $('quiz-batch-filter')?.value || '';
-    const statusFilter = $('quiz-status-filter')?.value || '';
+    const search        = ($('quiz-search')?.value        || '').trim().toLowerCase();
+    const batchFilter   = $('quiz-batch-filter')?.value   || '';
+    const subjectFilter = $('quiz-subject-filter')?.value || '';
+    const chapterFilter = $('quiz-chapter-filter')?.value || '';
+    const statusFilter  = $('quiz-status-filter')?.value  || '';
 
     let filtered = all;
-    if (batchFilter) filtered = filtered.filter(q => q.batch === batchFilter);
+    if (batchFilter)   filtered = filtered.filter(q => q.batch   === batchFilter);
+    if (subjectFilter) filtered = filtered.filter(q => q.subject === subjectFilter);
+    if (chapterFilter) filtered = filtered.filter(q => q.chapter === chapterFilter);
     if (search) filtered = filtered.filter(q =>
-      (q.title || '').toLowerCase().includes(search) ||
+      (q.title   || '').toLowerCase().includes(search) ||
       (q.subject || '').toLowerCase().includes(search) ||
       (q.chapter || '').toLowerCase().includes(search)
     );
@@ -2337,8 +2371,17 @@ const ADMIN = (() => {
       clearTimeout(_quizSearchTimer);
       _quizSearchTimer = setTimeout(() => loadQuizList(), 200);
     });
-    $('quiz-batch-filter')?.addEventListener('change', () => loadQuizList());
-    $('quiz-status-filter')?.addEventListener('change', () => loadQuizList());
+    $('quiz-batch-filter')?.addEventListener('change', () => {
+      const sub = $('quiz-subject-filter'); if (sub) sub.value = '';
+      const ch  = $('quiz-chapter-filter'); if (ch)  ch.value  = '';
+      loadQuizList();
+    });
+    $('quiz-subject-filter')?.addEventListener('change', () => {
+      const ch = $('quiz-chapter-filter'); if (ch) ch.value = '';
+      loadQuizList();
+    });
+    $('quiz-chapter-filter')?.addEventListener('change', () => loadQuizList());
+    $('quiz-status-filter')?.addEventListener('change',  () => loadQuizList());
 
     // Batch
     $('btn-add-batch')?.addEventListener('click', _addBatch);
