@@ -38,6 +38,7 @@ const ADMIN = (() => {
   let _editingQId  = null;
   let _questionBankLimit = 150;
   let _questionSearchTimer = null;
+  let _quizSearchTimer = null;
   let _studentsCache = [];
   let _studentSearchTimer = null;
 
@@ -1220,10 +1221,54 @@ const ADMIN = (() => {
   // TEST PORTAL — QUIZ LIST
   // ════════════════════════
 
+  async function _populateQuizBatchFilter(quizzes) {
+    const sel = $('quiz-batch-filter');
+    if (!sel) return;
+    const currentVal = sel.value;
+    const batches = [...new Set(quizzes.map(q => q.batch).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">All Classes</option>';
+    batches.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      if (b === currentVal) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
   async function loadQuizList() {
-    const all      = await DB.getAllQuizzes();
-    const drafts   = all.filter(q => q.status === 'draft');
-    const published = all.filter(q => q.status === 'published');
+    const all = await DB.getAllQuizzes();
+
+    await _populateQuizBatchFilter(all);
+
+    const search      = ($('quiz-search')?.value || '').trim().toLowerCase();
+    const batchFilter = $('quiz-batch-filter')?.value || '';
+    const statusFilter = $('quiz-status-filter')?.value || '';
+
+    let filtered = all;
+    if (batchFilter) filtered = filtered.filter(q => q.batch === batchFilter);
+    if (search) filtered = filtered.filter(q =>
+      (q.title || '').toLowerCase().includes(search) ||
+      (q.subject || '').toLowerCase().includes(search) ||
+      (q.chapter || '').toLowerCase().includes(search)
+    );
+
+    const drafts    = filtered.filter(q => q.status === 'draft');
+    const published = filtered.filter(q => q.status === 'published');
+
+    const draftSection     = $('quiz-list-draft-section');
+    const publishedSection = $('quiz-list-published-section');
+
+    if (statusFilter === 'draft') {
+      if (draftSection)     draftSection.style.display = '';
+      if (publishedSection) publishedSection.style.display = 'none';
+    } else if (statusFilter === 'published') {
+      if (draftSection)     draftSection.style.display = 'none';
+      if (publishedSection) publishedSection.style.display = '';
+    } else {
+      if (draftSection)     draftSection.style.display = '';
+      if (publishedSection) publishedSection.style.display = '';
+    }
 
     _renderQuizGroup('quiz-list-draft',     drafts);
     _renderQuizGroup('quiz-list-published', published);
@@ -1896,6 +1941,12 @@ const ADMIN = (() => {
 
     // Test portal
     $('btn-create-quiz')?.addEventListener('click', () => TEST_BUILDER.open());
+    $('quiz-search')?.addEventListener('input', () => {
+      clearTimeout(_quizSearchTimer);
+      _quizSearchTimer = setTimeout(() => loadQuizList(), 200);
+    });
+    $('quiz-batch-filter')?.addEventListener('change', () => loadQuizList());
+    $('quiz-status-filter')?.addEventListener('change', () => loadQuizList());
 
     // Batch
     $('btn-add-batch')?.addEventListener('click', _addBatch);

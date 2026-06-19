@@ -200,12 +200,24 @@
               <h2 class="admin-page-title">🧪 Tests & Quizzes</h2>
               <button id="btn-create-quiz" class="admin-btn-primary">+ Create Quiz</button>
             </div>
-            <div class="quiz-list-section">
-              <h4 class="quiz-list-label">📝 Drafts</h4>
-              <div id="quiz-list-draft" role="list"><p class="empty-hint">No drafts yet</p></div>
+            <div class="quiz-filter-bar">
+              <input type="search" id="quiz-search" class="admin-input"
+                placeholder="🔍 Title search..." autocomplete="off" aria-label="Search quizzes by title" />
+              <select id="quiz-batch-filter" class="admin-select" aria-label="Filter by class">
+                <option value="">All Classes</option>
+              </select>
+              <select id="quiz-status-filter" class="admin-select" aria-label="Filter by status">
+                <option value="">All</option>
+                <option value="draft">Drafts</option>
+                <option value="published">Published</option>
+              </select>
             </div>
-            <div class="quiz-list-section">
-              <h4 class="quiz-list-label">🚀 Published</h4>
+            <div id="quiz-list-draft-section" class="quiz-list-section">
+              <h4 class="quiz-list-label">📝 DRAFTS</h4>
+              <div id="quiz-list-draft" role="list"><p class="empty-hint">None yet</p></div>
+            </div>
+            <div id="quiz-list-published-section" class="quiz-list-section">
+              <h4 class="quiz-list-label">🚀 PUBLISHED</h4>
               <div id="quiz-list-published" role="list"><p class="empty-hint">No published quizzes yet</p></div>
             </div>
           </div>

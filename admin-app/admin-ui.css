@@ -757,6 +757,24 @@ body.admin-app {
 /* ════════════════════════════════════════
    16. QUIZ / TEST LIST
 ════════════════════════════════════════ */
+.quiz-filter-bar {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: var(--sp-4);
+}
+.quiz-filter-bar .admin-input {
+  flex: 1;
+  min-width: 160px;
+  width: auto;
+}
+.quiz-filter-bar .admin-select {
+  min-width: 120px;
+  width: auto;
+  display: block;
+}
+
 .quiz-list-section {
   margin-bottom: var(--sp-6);
 }
