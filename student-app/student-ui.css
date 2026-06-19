@@ -2627,3 +2627,61 @@ body.student-app.mode-board.theme-board-light::before {
 .theme-light .td-student-name { color: #0f172a; }
 .theme-light .td-attempt-row { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.07); }
 .theme-light .td-attempt-title { color: #0f172a; }
+
+/* ── Parent Study Report Suggestions ── */
+.pd-sug-card {
+  background: var(--card-bg, #1e293b);
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 12px 0 8px;
+}
+.pd-sug-header {
+  font-weight: 700;
+  font-size: 0.92rem;
+  margin-bottom: 10px;
+  color: var(--text1, #f1f5f9);
+  letter-spacing: 0.02em;
+}
+.pd-sug-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.pd-sug-row:last-of-type { border-bottom: none; }
+.pd-sug-subject {
+  flex: 1;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text1, #e2e8f0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pd-sug-pct {
+  font-size: 0.84rem;
+  font-weight: 700;
+  min-width: 38px;
+  text-align: right;
+}
+.pd-sug-tag {
+  font-size: 0.76rem;
+  color: var(--text2, #94a3b8);
+  min-width: 140px;
+  text-align: right;
+}
+.pd-sug-overall {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.78rem;
+  color: var(--text2, #94a3b8);
+  text-align: center;
+}
+.theme-light .pd-sug-card { background: #fff; border-color: rgba(0,0,0,0.08); }
+.theme-light .pd-sug-header { color: #0f172a; }
+.theme-light .pd-sug-subject { color: #1e293b; }
+.theme-light .pd-sug-row { border-bottom-color: rgba(0,0,0,0.06); }
+.theme-light .pd-sug-overall { border-top-color: rgba(0,0,0,0.06); color: #64748b; }

@@ -103,6 +103,10 @@ const PARENT_DASHBOARD = (() => {
 
     try {
       const attempts = await API.fetchChildAttempts(studentCode);
+
+      const sugEl = $('pd-suggestions');
+      if (sugEl) sugEl.innerHTML = attempts.length ? _buildSuggestions(attempts) : '';
+
       if (!attempts.length) {
         attemptsEl.innerHTML = '<p class="td-hint">कोणतेही test attempts नाहीत.</p>';
         return;
@@ -120,8 +124,51 @@ const PARENT_DASHBOARD = (() => {
         </div>`;
       }).join('');
     } catch (err) {
+      const sugEl = $('pd-suggestions');
+      if (sugEl) sugEl.innerHTML = '';
       attemptsEl.innerHTML = `<p class="td-hint">${_esc(err.message || 'Failed to load attempts')}</p>`;
     }
+  }
+
+  // ── Study Report ─────────────────────────────────────────────────────────────
+
+  function _buildSuggestions(attempts) {
+    const subMap = {};
+    attempts.forEach(a => {
+      const key = a.subject || a.quiz_title || 'General';
+      if (!subMap[key]) subMap[key] = { total: 0, correct: 0 };
+      subMap[key].total   += a.total_questions || 0;
+      subMap[key].correct += a.score || 0;
+    });
+
+    const overallTotal   = attempts.reduce((s, a) => s + (a.total_questions || 0), 0);
+    const overallCorrect = attempts.reduce((s, a) => s + (a.score || 0), 0);
+    const overallPct     = overallTotal > 0 ? Math.round((overallCorrect / overallTotal) * 100) : 0;
+    const overallCls     = overallPct >= 70 ? 'td-score-good' : overallPct >= 40 ? 'td-score-avg' : 'td-score-low';
+
+    const rows = Object.entries(subMap).map(([sub, d]) => {
+      const pct = d.total > 0 ? Math.round((d.correct / d.total) * 100) : 0;
+      const cls = pct >= 70 ? 'td-score-good' : pct >= 40 ? 'td-score-avg' : 'td-score-low';
+      const tag = pct >= 70
+        ? '🌟 Excellent work!'
+        : pct >= 40
+        ? '📈 Keep improving'
+        : '⚠️ Needs more practice';
+      return `<div class="pd-sug-row">
+        <span class="pd-sug-subject">${_esc(sub)}</span>
+        <span class="pd-sug-pct ${cls}">${pct}%</span>
+        <span class="pd-sug-tag">${tag}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="pd-sug-card">
+      <div class="pd-sug-header">📊 Study Report</div>
+      ${rows}
+      <div class="pd-sug-overall">
+        ${attempts.length} test${attempts.length !== 1 ? 's' : ''} completed &nbsp;·&nbsp;
+        Overall average: <span class="${overallCls}">${overallPct}%</span>
+      </div>
+    </div>`;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
