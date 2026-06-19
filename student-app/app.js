@@ -157,9 +157,11 @@ const APP = (() => {
 
   function _initModules() {
     const modules = [
-      { name: 'QUIZ',         mod: window.QUIZ },
-      { name: 'TEST_PLAYER',  mod: window.TEST_PLAYER },
-      { name: 'ANALYTICS',    mod: window.ANALYTICS },
+      { name: 'QUIZ',               mod: window.QUIZ },
+      { name: 'TEST_PLAYER',        mod: window.TEST_PLAYER },
+      { name: 'ANALYTICS',          mod: window.ANALYTICS },
+      { name: 'TEACHER_DASHBOARD',  mod: window.TEACHER_DASHBOARD },
+      { name: 'PARENT_DASHBOARD',   mod: window.PARENT_DASHBOARD },
     ];
     for (const { name, mod } of modules) {
       if (mod?.init) {
@@ -176,11 +178,104 @@ const APP = (() => {
       _primeQuizCache().catch(err => console.warn('initial quiz cache warm failed', err));
     });
 
+    // Version check — runs 3 seconds after app ready so it doesn't block startup
+    setTimeout(() => {
+      _checkAppUpdate().catch(err => console.warn('version check failed', err));
+    }, 3000);
+
     // Student auto-sync: replay attempts + refresh published quizzes
     if (window.SYNC?.autoSyncStudent) {
       SYNC.autoSyncStudent().catch(err => console.warn('student autoSync error', err));
     } else if (window.SYNC?.fetchQuizzes && navigator.onLine) {
       SYNC.fetchQuizzes({ silent: true, status: 'published' }).catch(err => console.warn('student fetchQuizzes error', err));
+    }
+  }
+
+  // ════════════════════════
+  // APP UPDATE
+  // ════════════════════════
+
+  let _pendingUpdate = null;
+
+  function _isNewerVersion(remote, local) {
+    const parse = v => String(v || '0.0.0').split('.').map(n => parseInt(n, 10) || 0);
+    const [rMaj, rMin, rPatch] = parse(remote);
+    const [lMaj, lMin, lPatch] = parse(local);
+    if (rMaj !== lMaj) return rMaj > lMaj;
+    if (rMin !== lMin) return rMin > lMin;
+    return rPatch > lPatch;
+  }
+
+  async function _checkAppUpdate() {
+    if (!navigator.onLine) return;
+    const localVersion = String(window.APP_VERSION || '').trim();
+    if (!localVersion) return;
+
+    const remote = await API.fetchLatestAppVersion().catch(() => null);
+    if (!remote?.version) return;
+    if (!_isNewerVersion(remote.version, localVersion)) return;
+
+    _pendingUpdate = remote;
+    _showUpdateBanner(localVersion, remote);
+  }
+
+  function _showUpdateBanner(currentVersion, remote) {
+    const banner = $('update-banner');
+    if (!banner) return;
+    const textEl = $('update-banner-text');
+    if (textEl) textEl.textContent = `🚀 Update v${remote.version} आले आहे!`;
+    banner.classList.remove('hidden');
+
+    $('update-banner-btn')?.addEventListener('click', () => {
+      _openUpdateSheet(currentVersion, remote);
+    }, { once: true });
+  }
+
+  function _openUpdateSheet(currentVersion, remote) {
+    const backdrop = $('update-sheet-backdrop');
+    const sheet    = $('update-sheet');
+    if (!sheet) return;
+
+    const curEl = $('update-cur-ver');
+    const newEl = $('update-new-ver');
+    if (curEl) curEl.textContent = `v${currentVersion}`;
+    if (newEl) newEl.textContent = `v${remote.version}`;
+
+    const notesEl = $('update-notes');
+    if (notesEl) notesEl.textContent = remote.release_notes || 'Bug fixes and improvements.';
+
+    backdrop?.classList.remove('hidden');
+    sheet.classList.remove('hidden');
+
+    $('btn-download-update')?.addEventListener('click', () => _startDownload(remote), { once: true });
+    $('update-sheet-close')?.addEventListener('click', _closeUpdateSheet, { once: true });
+    backdrop?.addEventListener('click', _closeUpdateSheet, { once: true });
+  }
+
+  function _closeUpdateSheet() {
+    $('update-sheet-backdrop')?.classList.add('hidden');
+    $('update-sheet')?.classList.add('hidden');
+  }
+
+  function _startDownload(remote) {
+    const url = String(remote?.apk_url || '').trim();
+    if (!url) { toast('Download link उपलब्ध नाही.', 'error'); return; }
+
+    _closeUpdateSheet();
+
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      toast('APK download होत आहे… Chrome मध्ये install करा', 'info', 4000);
+    }
+
+    // _system → opens in OS browser (Chrome) on Android → handles APK download + install
+    // _blank  → fallback for web browsers
+    try {
+      if (!window.open(url, '_system')) {
+        window.open(url, '_blank');
+      }
+    } catch {
+      window.open(url, '_blank');
     }
   }
 
@@ -226,10 +321,37 @@ const APP = (() => {
       ? await API.getStudentProfile().catch(() => null)
       : null;
 
+    // ── Returning Teacher ──────────────────────────────────────────────────────
+    const teacherProfile = window.API?.getTeacherProfile
+      ? await API.getTeacherProfile().catch(() => null)
+      : null;
+    if (teacherProfile?.teacher_code) {
+      beforePrompt?.();
+      const unlocked = await _showPinLock(teacherProfile, 'teacher');
+      if (!unlocked) return;
+      _updateProfileButton(teacherProfile.name || teacherProfile.teacher_code);
+      _showTeacherDashboard();
+      return;
+    }
+
+    // ── Returning Parent ───────────────────────────────────────────────────────
+    const parentProfile = window.API?.getParentProfile
+      ? await API.getParentProfile().catch(() => null)
+      : null;
+    if (parentProfile?.parent_code) {
+      beforePrompt?.();
+      const unlocked = await _showPinLock(parentProfile, 'parent');
+      if (!unlocked) return;
+      _updateProfileButton(parentProfile.name || parentProfile.parent_code);
+      _showParentDashboard();
+      return;
+    }
+
+    // ── Returning Student ──────────────────────────────────────────────────────
     if (profile?.student_code) {
       // ── Returning user: show PIN lock ──
       beforePrompt?.();
-      const unlocked = await _showPinLock(profile);
+      const unlocked = await _showPinLock(profile, 'student');
       if (!unlocked) return;  // switched account — _showPinLock handles the rest
 
       // ── PIN correct: refresh profile from server ──
@@ -258,10 +380,7 @@ const APP = (() => {
 
   // ── PIN LOCK SCREEN ─────────────────────────────────────────
   // Returns true if unlocked, false if user chose "switch account"
-  // PIN lock screen.
-  // - Correct PIN → unlock (resolve true)
-  // - Switch Account → clear session → show onboarding login form (resolve false)
-  async function _showPinLock(profile) {
+  async function _showPinLock(profile, role = 'student') {
     return new Promise(async resolve => {
       const screen    = $('pin-lock-screen');
       const nameEl    = $('pin-lock-name');
@@ -273,15 +392,17 @@ const APP = (() => {
 
       if (!screen) { resolve(true); return; }
 
-      if (nameEl) nameEl.textContent = profile.name || profile.student_code || 'Student';
-      if (avatarEl) avatarEl.textContent = (profile.name || 'S').trim()[0].toUpperCase();
-      if (input) input.value = '';
-      if (errorEl) errorEl.classList.add('hidden');
+      const displayName = profile.name || profile.teacher_code || profile.parent_code || profile.student_code || 'User';
+      if (nameEl)   nameEl.textContent   = displayName;
+      if (avatarEl) avatarEl.textContent = (displayName[0] || 'U').toUpperCase();
+      if (input)    input.value          = '';
+      if (errorEl)  errorEl.classList.add('hidden');
 
       screen.classList.remove('hidden');
       setTimeout(() => input?.focus(), 100);
 
-      const storedPin = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+      const pinKey = role === 'teacher' ? 'teacher_pin' : role === 'parent' ? 'parent_pin' : 'student_pin';
+      const storedPin = String(await DB.getSetting(pinKey, '').catch(() => '') || '').trim();
 
       const ac = new AbortController();
 
@@ -307,11 +428,14 @@ const APP = (() => {
       async function _switchAccount() {
         ac.abort();
         screen.classList.add('hidden');
-        // Clear current student session; new student must login fresh
+        // Clear current session regardless of role
         await API.clearStudentProfile?.().catch(() => {});
+        await API.clearTeacherProfile?.().catch(() => {});
+        await API.clearParentProfile?.().catch(() => {});
         API.clearStudentToken?.();
+        API.clearTeacherToken?.();
+        API.clearParentToken?.();
         resolve(false);
-        // Show login form — after success, reload home
         setTimeout(() => _showOnboarding(async () => {
           await _refreshProfileAfterLogin();
           loadHome();
@@ -428,17 +552,37 @@ const APP = (() => {
     const continueBtn    = document.getElementById('ob-continue');
     const skipBtn        = document.getElementById('ob-skip');
     const errorEl        = document.getElementById('ob-error-msg');
-    const subEl          = document.querySelector('.onboarding-sub');
+    const subEl          = document.getElementById('ob-role-sub');
+    const codeLabelEl    = document.getElementById('ob-code-label');
+    const roleTabs       = document.querySelectorAll('.ob-role-tab');
+
+    // Role state — tracks which role is selected in the onboarding form
+    let _selectedRole = 'student';
+
+    const ROLE_META = {
+      student: { sub: 'Student access साठी code आणि PIN टाका', label: 'Student Code', placeholder: 'उदा. STU001' },
+      teacher: { sub: 'Teacher login — teacher code आणि PIN टाका', label: 'Teacher Code', placeholder: 'उदा. TCH123' },
+      parent:  { sub: 'Parent login — parent code आणि PIN टाका', label: 'Parent Code', placeholder: 'उदा. PAR123' },
+    };
+
+    function _applyRole(role) {
+      _selectedRole = role;
+      const meta = ROLE_META[role] || ROLE_META.student;
+      if (subEl) subEl.textContent = opts.force ? 'पुन्हा authenticate करा' : meta.sub;
+      if (codeLabelEl) codeLabelEl.firstChild.textContent = meta.label + ' ';
+      if (codeInput) codeInput.placeholder = meta.placeholder;
+      roleTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.role === role));
+    }
+
+    roleTabs.forEach(tab => {
+      tab.addEventListener('click', () => _applyRole(tab.dataset.role));
+    });
+
+    _applyRole('student');
 
     // Pre-fill server URL with the auto-detected default
     const defaultUrl = window.API?.DEFAULT_API_URL || '';
     const isProduction = defaultUrl.includes('onrender.com') || defaultUrl.includes('render.com');
-
-    if (subEl) {
-      subEl.textContent = opts.force
-        ? 'Access renew/login साठी पुन्हा authenticate करा'
-        : 'Student access साठी code आणि PIN टाका';
-    }
 
     if (serverInput && !serverInput.value) {
       serverInput.value = defaultUrl;
@@ -470,11 +614,11 @@ const APP = (() => {
     const { signal } = ac;
 
     async function _save() {
-      const studentCode = (codeInput?.value || '').trim().toUpperCase();
-      const pin         = (pinInput?.value || '').trim();
-      const server      = (serverInput?.value || '').trim() || defaultUrl;
+      const code   = (codeInput?.value || '').trim().toUpperCase();
+      const pin    = (pinInput?.value || '').trim();
+      const server = (serverInput?.value || '').trim() || defaultUrl;
 
-      if (!studentCode) {
+      if (!code) {
         codeInput?.classList.add('ob-error');
         codeInput?.focus();
         codeInput?.setAttribute('aria-invalid', 'true');
@@ -503,9 +647,28 @@ const APP = (() => {
           }
         }
 
+        if (_selectedRole === 'teacher') {
+          const payload = await API.loginTeacher(code, pin);
+          _updateProfileButton(payload?.user?.name || payload?.user?.teacher_code || code);
+          ac.abort();
+          screen.classList.add('hidden');
+          _showTeacherDashboard();
+          return;
+        }
+
+        if (_selectedRole === 'parent') {
+          const payload = await API.loginParent(code, pin);
+          _updateProfileButton(payload?.user?.name || payload?.user?.parent_code || code);
+          ac.abort();
+          screen.classList.add('hidden');
+          _showParentDashboard();
+          return;
+        }
+
+        // Student login (default)
         const deviceId = _getDeviceId();
-        const payload = await API.loginStudent({ student_code: studentCode, pin, device_id: deviceId });
-        _updateProfileButton(payload?.user?.name || payload?.user?.student_code || studentCode);
+        const payload = await API.loginStudent({ student_code: code, pin, device_id: deviceId });
+        _updateProfileButton(payload?.user?.name || payload?.user?.student_code || code);
         ac.abort();
         screen.classList.add('hidden');
         onDone?.();
@@ -563,13 +726,38 @@ const APP = (() => {
       DB.getSetting('student_code', '').catch(() => ''),
       DB.getSetting('api_url', defaultUrl).catch(() => defaultUrl),
     ]).then(([studentCode, savedServer]) => {
-      if (codeInput) codeInput.value = String(studentCode || '').trim().toUpperCase();
+      // Only pre-fill code for student role (teacher/parent enter their own code)
+      if (codeInput && _selectedRole === 'student') codeInput.value = String(studentCode || '').trim().toUpperCase();
       if (serverInput) serverInput.value = String(savedServer || defaultUrl).trim() || defaultUrl;
       if (pinInput) pinInput.value = '';
     }).catch(() => {});
 
     if (skipBtn) skipBtn.style.display = navigator.onLine ? 'none' : 'inline-block';
     codeInput?.focus();
+  }
+
+  function _showTeacherDashboard() {
+    // Hide all screens, show teacher dashboard
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    const screen = $('screen-teacher-dashboard');
+    if (screen) screen.classList.remove('hidden');
+    // Hide student bottom nav (not relevant for teacher)
+    const bnav = $('bottom-nav');
+    if (bnav) bnav.style.display = 'none';
+    if (window.TEACHER_DASHBOARD?.loadDashboard) {
+      TEACHER_DASHBOARD.loadDashboard().catch(err => console.warn('teacher dashboard load failed', err));
+    }
+  }
+
+  function _showParentDashboard() {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    const screen = $('screen-parent-dashboard');
+    if (screen) screen.classList.remove('hidden');
+    const bnav = $('bottom-nav');
+    if (bnav) bnav.style.display = 'none';
+    if (window.PARENT_DASHBOARD?.loadDashboard) {
+      PARENT_DASHBOARD.loadDashboard().catch(err => console.warn('parent dashboard load failed', err));
+    }
   }
 
   function _updateProfileButton(name) {

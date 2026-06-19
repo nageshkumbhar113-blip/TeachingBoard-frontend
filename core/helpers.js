@@ -10,6 +10,8 @@ const API = (() => {
   const DEFAULT_API_URL   = resolveDefaultApiUrl();
   const ADMIN_TOKEN_KEY   = 'teachingboard_admin_token';
   const STUDENT_TOKEN_KEY = 'teachingboard_student_token';
+  const TEACHER_TOKEN_KEY = 'teachingboard_teacher_token';
+  const PARENT_TOKEN_KEY  = 'teachingboard_parent_token';
   const EXPIRED_STATE_KEY = 'teachingboard_expired_state';
   const REMOTE_BATCH      = 'Live Server';
   const REMOTE_SUBJECT    = 'General';
@@ -72,12 +74,18 @@ const API = (() => {
 
   function getAdminToken()   { return localStorage.getItem(ADMIN_TOKEN_KEY) || ''; }
   function getStudentToken() { return localStorage.getItem(STUDENT_TOKEN_KEY) || ''; }
+  function getTeacherToken() { return localStorage.getItem(TEACHER_TOKEN_KEY) || ''; }
+  function getParentToken()  { return localStorage.getItem(PARENT_TOKEN_KEY) || ''; }
 
   function setAdminToken(token)   { if (token) localStorage.setItem(ADMIN_TOKEN_KEY, token); }
   function setStudentToken(token) { if (token) localStorage.setItem(STUDENT_TOKEN_KEY, token); }
+  function setTeacherToken(token) { if (token) localStorage.setItem(TEACHER_TOKEN_KEY, token); }
+  function setParentToken(token)  { if (token) localStorage.setItem(PARENT_TOKEN_KEY, token); }
 
   function clearAdminToken()   { localStorage.removeItem(ADMIN_TOKEN_KEY); }
   function clearStudentToken() { localStorage.removeItem(STUDENT_TOKEN_KEY); }
+  function clearTeacherToken() { localStorage.removeItem(TEACHER_TOKEN_KEY); }
+  function clearParentToken()  { localStorage.removeItem(PARENT_TOKEN_KEY); }
 
   function getExpiredState() {
     try { return JSON.parse(localStorage.getItem(EXPIRED_STATE_KEY) || 'null'); }
@@ -172,6 +180,60 @@ const API = (() => {
     ]);
   }
 
+  async function _storeTeacherProfile(user = {}, credentials = {}) {
+    const profile = {
+      id: user.id || '',
+      name: String(user.name || '').trim(),
+      teacher_code: String(user.teacher_code || credentials.teacher_code || '').trim().toUpperCase(),
+      mobile: String(user.mobile || '').trim(),
+      assigned_students: Array.isArray(user.assigned_students) ? user.assigned_students : [],
+    };
+    await Promise.all([
+      DB.setSetting('teacher_profile', profile).catch(() => {}),
+      DB.setSetting('teacher_code', profile.teacher_code).catch(() => {}),
+    ]);
+    return profile;
+  }
+
+  async function getTeacherProfile() {
+    return await DB.getSetting('teacher_profile', null).catch(() => null);
+  }
+
+  async function clearTeacherProfile() {
+    await Promise.all([
+      DB.setSetting('teacher_profile', null).catch(() => {}),
+      DB.setSetting('teacher_code', '').catch(() => {}),
+      DB.setSetting('teacher_pin', '').catch(() => {}),
+    ]);
+  }
+
+  async function _storeParentProfile(user = {}, credentials = {}) {
+    const profile = {
+      id: user.id || '',
+      name: String(user.name || '').trim(),
+      parent_code: String(user.parent_code || credentials.parent_code || '').trim().toUpperCase(),
+      mobile: String(user.mobile || '').trim(),
+      children: Array.isArray(user.children) ? user.children : [],
+    };
+    await Promise.all([
+      DB.setSetting('parent_profile', profile).catch(() => {}),
+      DB.setSetting('parent_code', profile.parent_code).catch(() => {}),
+    ]);
+    return profile;
+  }
+
+  async function getParentProfile() {
+    return await DB.getSetting('parent_profile', null).catch(() => null);
+  }
+
+  async function clearParentProfile() {
+    await Promise.all([
+      DB.setSetting('parent_profile', null).catch(() => {}),
+      DB.setSetting('parent_code', '').catch(() => {}),
+      DB.setSetting('parent_pin', '').catch(() => {}),
+    ]);
+  }
+
   function markExpired(message, expiryDate = '') {
     const payload = { message: message || 'Account expired', expiryDate, at: Date.now() };
     clearAdminToken();
@@ -220,6 +282,22 @@ const API = (() => {
     if (payload.role === 'student') {
       clearStudentToken();
       const loginPayload = await loginStudent({ student_code: payload.student_code || '' });
+      return loginPayload?.token || '';
+    }
+
+    if (payload.role === 'teacher') {
+      clearTeacherToken();
+      const savedPin = String(await DB.getSetting('teacher_pin', '').catch(() => '') || '').trim();
+      if (!savedPin) return '';
+      const loginPayload = await loginTeacher(payload.teacher_code || '', savedPin);
+      return loginPayload?.token || '';
+    }
+
+    if (payload.role === 'parent') {
+      clearParentToken();
+      const savedPin = String(await DB.getSetting('parent_pin', '').catch(() => '') || '').trim();
+      if (!savedPin) return '';
+      const loginPayload = await loginParent(payload.parent_code || '', savedPin);
       return loginPayload?.token || '';
     }
 
@@ -332,6 +410,66 @@ const API = (() => {
       await _storeStudentProfile(payload.user);
     }
     return payload?.user || null;
+  }
+
+  async function loginTeacher(teacher_code, pin) {
+    const code = String(teacher_code || '').trim().toUpperCase();
+    const p    = String(pin || '').trim();
+    if (!code) throw new Error('Teacher code is required');
+    if (!p)    throw new Error('Teacher PIN is required');
+
+    const payload = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ role: 'teacher', teacher_code: code, pin: p }),
+    });
+    if (payload?.token) setTeacherToken(payload.token);
+    await Promise.all([
+      DB.setSetting('teacher_pin', p).catch(() => {}),
+      _storeTeacherProfile(payload?.user || {}, { teacher_code: code }),
+    ]);
+    return payload;
+  }
+
+  async function loginParent(parent_code, pin) {
+    const code = String(parent_code || '').trim().toUpperCase();
+    const p    = String(pin || '').trim();
+    if (!code) throw new Error('Parent code is required');
+    if (!p)    throw new Error('Parent PIN is required');
+
+    const payload = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ role: 'parent', parent_code: code, pin: p }),
+    });
+    if (payload?.token) setParentToken(payload.token);
+    await Promise.all([
+      DB.setSetting('parent_pin', p).catch(() => {}),
+      _storeParentProfile(payload?.user || {}, { parent_code: code }),
+    ]);
+    return payload;
+  }
+
+  async function ensureTeacherSession() {
+    const existing = getTeacherToken();
+    if (existing && !_isTokenExpired(existing)) return existing;
+    clearTeacherToken();
+    const profile = await getTeacherProfile().catch(() => null);
+    const code    = String(profile?.teacher_code || '').trim();
+    const pin     = String(await DB.getSetting('teacher_pin', '').catch(() => '') || '').trim();
+    if (!code || !pin) throw new Error('Teacher session expired — please log in again');
+    const payload = await loginTeacher(code, pin);
+    return payload.token;
+  }
+
+  async function ensureParentSession() {
+    const existing = getParentToken();
+    if (existing && !_isTokenExpired(existing)) return existing;
+    clearParentToken();
+    const profile = await getParentProfile().catch(() => null);
+    const code    = String(profile?.parent_code || '').trim();
+    const pin     = String(await DB.getSetting('parent_pin', '').catch(() => '') || '').trim();
+    if (!code || !pin) throw new Error('Parent session expired — please log in again');
+    const payload = await loginParent(code, pin);
+    return payload.token;
   }
 
   // ════════════════════════
@@ -613,6 +751,212 @@ const API = (() => {
     });
   }
 
+  // ── Teacher dashboard ────────────────────────────────────────────────────────
+
+  // ── Teacher: Analytics ────────────────────────────────────────────────────────
+
+  async function fetchTeacherWeekly() {
+    const token = await ensureTeacherSession();
+    const res = await request('/teacher/analytics/weekly', { headers: { Authorization: `Bearer ${token}` } });
+    return res?.data || [];
+  }
+
+  async function fetchTeacherMonthly() {
+    const token = await ensureTeacherSession();
+    const res = await request('/teacher/analytics/monthly', { headers: { Authorization: `Bearer ${token}` } });
+    return res?.data || [];
+  }
+
+  async function fetchTeacherWeakTopics() {
+    const token = await ensureTeacherSession();
+    const res = await request('/teacher/analytics/weak-topics', { headers: { Authorization: `Bearer ${token}` } });
+    return res?.data || [];
+  }
+
+  async function fetchTeacherStrongTopics() {
+    const token = await ensureTeacherSession();
+    const res = await request('/teacher/analytics/strong-topics', { headers: { Authorization: `Bearer ${token}` } });
+    return res?.data || [];
+  }
+
+  async function fetchTeacherRanking() {
+    const token = await ensureTeacherSession();
+    const res = await request('/teacher/analytics/ranking', { headers: { Authorization: `Bearer ${token}` } });
+    return res?.data || [];
+  }
+
+  async function fetchTeacherStudents() {
+    const token = await ensureTeacherSession();
+    const payload = await request('/teacher/students', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function fetchStudentAttemptsForTeacher(studentCode) {
+    const token = await ensureTeacherSession();
+    const code  = encodeURIComponent(String(studentCode || '').trim().toUpperCase());
+    const payload = await request(`/teacher/students/${code}/attempts`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function updateTeacherDeviceToken(deviceToken) {
+    const token = await ensureTeacherSession();
+    return request('/teacher/device-token', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ device_token: deviceToken }),
+    });
+  }
+
+  // ── Parent dashboard ──────────────────────────────────────────────────────────
+
+  async function fetchParentChildren() {
+    const token = await ensureParentSession();
+    const payload = await request('/parent/children', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function fetchChildAttempts(studentCode) {
+    const token = await ensureParentSession();
+    const code  = encodeURIComponent(String(studentCode || '').trim().toUpperCase());
+    const payload = await request(`/parent/children/${code}/attempts`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function updateParentDeviceToken(deviceToken) {
+    const token = await ensureParentSession();
+    return request('/parent/device-token', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ device_token: deviceToken }),
+    });
+  }
+
+  // ── Admin: Teacher CRUD ───────────────────────────────────────────────────────
+
+  async function fetchTeachers(pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/teachers', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function createTeacher(teacher, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/teachers', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(teacher),
+    });
+    return payload;
+  }
+
+  async function updateTeacher(teacherId, teacher, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request(`/teachers/${encodeURIComponent(teacherId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(teacher),
+    });
+    return payload?.data || null;
+  }
+
+  async function deleteTeacher(teacherId, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(`/teachers/${encodeURIComponent(teacherId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // ── Admin: Parent CRUD ────────────────────────────────────────────────────────
+
+  async function fetchParents(pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/parents', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function createParent(parent, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/parents', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(parent),
+    });
+    return payload;
+  }
+
+  async function updateParent(parentId, parent, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request(`/parents/${encodeURIComponent(parentId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(parent),
+    });
+    return payload?.data || null;
+  }
+
+  async function deleteParent(parentId, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(`/parents/${encodeURIComponent(parentId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // ── App Version ───────────────────────────────────────────────────────────────
+
+  async function fetchLatestAppVersion() {
+    try {
+      return await request('/app-version/latest');
+    } catch {
+      return null;
+    }
+  }
+
+  async function fetchAllAppVersions(pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request('/app-version', { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async function createAppVersion(data, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request('/app-version', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async function activateAppVersion(versionId, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(`/app-version/${encodeURIComponent(versionId)}/activate`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function deleteAppVersion(versionId, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(`/app-version/${encodeURIComponent(versionId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // ── Admin: Students ───────────────────────────────────────────────────────────
+
   async function fetchStudents(pin = '') {
     const token = await ensureAdminSession(pin);
     const payload = await request('/students', {
@@ -893,13 +1237,24 @@ const API = (() => {
   return {
     DEFAULT_API_URL, REMOTE_BATCH, REMOTE_SUBJECT, REMOTE_CHAPTER,
     getApiUrl, setApiUrl,
-    getAdminToken, getStudentToken, clearAdminToken, clearStudentToken,
+    getAdminToken, getStudentToken, getTeacherToken, getParentToken,
+    clearAdminToken, clearStudentToken, clearTeacherToken, clearParentToken,
+    setTeacherToken, setParentToken,
     getExpiredState, isExpiredLocally, clearExpiredState, markExpired,
-    loginAdmin, loginStudent, ensureAdminSession, ensureStudentSession, fetchStudentMe,
+    loginAdmin, loginStudent, loginTeacher, loginParent,
+    ensureAdminSession, ensureStudentSession, ensureTeacherSession, ensureParentSession,
+    fetchStudentMe,
     getStudentProfile, clearStudentProfile,
+    getTeacherProfile, clearTeacherProfile,
+    getParentProfile, clearParentProfile,
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
+    fetchTeachers, createTeacher, updateTeacher, deleteTeacher,
+    fetchParents, createParent, updateParent, deleteParent,
+    fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
+    fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
+    fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,
     request,
@@ -911,6 +1266,7 @@ const API = (() => {
     createBatchCatalog, deleteBatchCatalog,
     addCatalogSubject, deleteCatalogSubject,
     addCatalogChapter, deleteCatalogChapter,
+    fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,
   };
 })();
 

@@ -1485,3 +1485,32 @@ body.admin-app {
   .sync-status-text { display: none; }
   .sync-status-bar { padding: 4px 8px; min-width: 0; }
 }
+
+/* ── App Version cards ─────────────────────────────────── */
+.ver-card { gap: 10px; }
+.ver-badge-latest {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(52,211,153,0.15);
+  color: #34d399;
+  border: 1px solid rgba(52,211,153,0.3);
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.ver-notes {
+  font-size: 0.78rem;
+  color: var(--text2);
+  white-space: pre-wrap;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ver-link {
+  color: var(--accent);
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+.ver-link:hover { text-decoration: underline; }

@@ -68,10 +68,17 @@
     <div class="onboarding-card">
       <div class="onboarding-logo" aria-hidden="true">🎯</div>
       <h1 class="onboarding-title">TeachingBoard</h1>
-      <p class="onboarding-sub">Student access साठी code आणि PIN टाका</p>
+      <p class="onboarding-sub" id="ob-role-sub">Student access साठी code आणि PIN टाका</p>
+
+      <!-- Role selector -->
+      <div class="ob-role-tabs" role="group" aria-label="Login as">
+        <button type="button" class="ob-role-tab active" data-role="student">👨‍🎓 Student</button>
+        <button type="button" class="ob-role-tab" data-role="teacher">👩‍🏫 Teacher</button>
+        <button type="button" class="ob-role-tab" data-role="parent">👨‍👩‍👧 Parent</button>
+      </div>
 
       <div class="onboarding-field">
-        <label for="ob-student-code" class="onboarding-label">Student Code <span class="ob-required">*</span></label>
+        <label for="ob-student-code" class="onboarding-label" id="ob-code-label">Student Code <span class="ob-required">*</span></label>
         <input id="ob-student-code" type="text" class="onboarding-input"
           placeholder="उदा. STU001"
           autocomplete="username" autocapitalize="characters" spellcheck="false" />
@@ -223,6 +230,13 @@
         </button>
       </nav>
     </header>
+
+    <!-- ── UPDATE BANNER ──────────────────────────────── -->
+    <div id="update-banner" class="update-banner hidden" role="alert" aria-live="polite">
+      <span class="update-banner-icon" aria-hidden="true">🚀</span>
+      <span class="update-banner-text" id="update-banner-text">नवीन Update आले आहे!</span>
+      <button id="update-banner-btn" class="update-banner-btn" type="button">पाहा →</button>
+    </div>
 
     <main class="screens-wrap" id="screens-wrap">
       <section id="screen-home" class="screen hidden" aria-label="Home">
@@ -625,6 +639,60 @@
       <section id="screen-analytics" class="screen hidden" aria-label="Analytics">
         <div id="analytics-root" class="analytics-root"></div>
       </section>
+
+      <!-- ── TEACHER DASHBOARD ──────────────────────────────── -->
+      <section id="screen-teacher-dashboard" class="screen hidden" aria-label="Teacher Dashboard">
+        <div class="td-topbar">
+          <button id="td-back-btn" class="td-back hidden" aria-label="Back">‹ Back</button>
+          <h2 class="td-title" id="td-detail-name">Teacher Dashboard</h2>
+          <button id="td-refresh-btn" class="td-refresh-btn" aria-label="Refresh">↺</button>
+        </div>
+
+        <!-- Tab row: Students | Analytics -->
+        <div class="td-tab-row" role="tablist" aria-label="Dashboard sections" id="td-tab-row">
+          <button class="td-tab active" data-tdtab="students" role="tab" aria-selected="true">👨‍🎓 Students</button>
+          <button class="td-tab" data-tdtab="analytics" role="tab" aria-selected="false">📊 Analytics</button>
+        </div>
+
+        <!-- Students tab -->
+        <div id="td-tab-students" class="td-tab-pane">
+          <div id="td-student-list-view">
+            <p class="td-hint">Assigned students यादी</p>
+            <div id="td-student-list"></div>
+          </div>
+          <div id="td-student-detail-view" class="hidden">
+            <div id="td-attempts-list"></div>
+          </div>
+        </div>
+
+        <!-- Analytics tab -->
+        <div id="td-tab-analytics" class="td-tab-pane hidden">
+          <div id="td-analytics-content">
+            <p class="td-hint" id="td-analytics-loading">Loading analytics...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PARENT DASHBOARD ────────────────────────────────── -->
+      <section id="screen-parent-dashboard" class="screen hidden" aria-label="Parent Dashboard">
+        <div class="td-topbar">
+          <button id="pd-back-btn" class="td-back hidden" aria-label="Back to children list">‹ Back</button>
+          <h2 class="td-title" id="pd-detail-name">Parent Dashboard</h2>
+          <button id="pd-refresh-btn" class="td-refresh-btn" aria-label="Refresh">↺</button>
+        </div>
+        <div id="pd-content">
+          <!-- Child list view -->
+          <div id="pd-child-list-view">
+            <p class="td-hint">मुलांची यादी</p>
+            <div id="pd-child-list"></div>
+          </div>
+          <!-- Child detail view -->
+          <div id="pd-child-detail-view" class="hidden">
+            <div id="pd-attempts-list"></div>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- ── BOTTOM NAVIGATION (mobile) ─────────────────── -->
@@ -649,6 +717,22 @@
 
   </div>
 
+  <!-- ── UPDATE BOTTOM SHEET ─────────────────────────── -->
+  <div id="update-sheet-backdrop" class="update-sheet-backdrop hidden" aria-hidden="true"></div>
+  <div id="update-sheet" class="update-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="update-sheet-title">
+    <div class="update-sheet-handle" aria-hidden="true"></div>
+    <h2 class="update-sheet-title" id="update-sheet-title">🚀 नवीन Update उपलब्ध</h2>
+    <p class="update-version-row">
+      <span id="update-cur-ver" class="update-ver-old"></span>
+      <span class="update-ver-arrow" aria-hidden="true">→</span>
+      <span id="update-new-ver" class="update-ver-new"></span>
+    </p>
+    <p class="update-sheet-subtitle">नवीन version मध्ये:</p>
+    <div class="update-notes" id="update-notes"></div>
+    <button id="btn-download-update" class="update-download-btn" type="button">⬇️ Download &amp; Install</button>
+    <button id="update-sheet-close" class="update-close-btn" type="button">नंतर करतो</button>
+  </div>
+
   <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
 
   <script src="../js/splash.js"></script>
@@ -663,6 +747,8 @@
   <script src="analytics.js" defer></script>
   <script src="deepStudy.js" defer></script>
   <script src="tts.js" defer></script>
+  <script src="teacherDashboard.js" defer></script>
+  <script src="parentDashboard.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
   <script src="student-mobile.js" defer></script>

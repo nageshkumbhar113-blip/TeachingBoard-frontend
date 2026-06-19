@@ -202,10 +202,15 @@ const ADMIN = (() => {
       _loadChapterAdmin(),
       _renderStudentBatchOptions(),
       _loadStudentsAdmin(),
+      _loadTeachersAdmin(),
+      _loadParentsAdmin(),
+      _loadVersionsAdmin(),
       _loadSettings(),
       loadQuizList(),
     ]);
     _resetStudentForm();
+    _resetTeacherForm();
+    _resetParentForm();
     APP.renderDashboardStats?.();
   }
 
@@ -1767,6 +1772,393 @@ const ADMIN = (() => {
     }
   }
 
+  // ════════════════════════
+  // TEACHER MANAGEMENT
+  // ════════════════════════
+
+  let _teachersCache = [];
+  let _teacherSearchTimer = null;
+
+  function _autoTeacherCode(name) {
+    const prefix = String(name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'TCH';
+    return prefix + String(Math.floor(100 + Math.random() * 900));
+  }
+
+  function _resetTeacherForm() {
+    _setValue('teacher-edit-id', '');
+    _setValue('teacher-name', '');
+    _setValue('teacher-code', '');
+    _setValue('teacher-mobile', '');
+    _setValue('teacher-pin', '');
+    _setValue('teacher-assigned-students', '');
+  }
+
+  function _renderTeacherList(search = '') {
+    const list = $('teacher-admin-list');
+    if (!list) return;
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? _teachersCache.filter(t =>
+          (t.name || '').toLowerCase().includes(q) ||
+          (t.teacher_code || '').toLowerCase().includes(q)
+        )
+      : _teachersCache;
+
+    if (!filtered.length) {
+      list.innerHTML = '<p class="empty-hint">No teachers found</p>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(t => {
+      const stuCount = Array.isArray(t.assigned_students) ? t.assigned_students.length : 0;
+      return `<div class="student-row" data-id="${_escHtml(t.id)}">
+        <div class="student-row-main">
+          <span class="student-row-code">${_escHtml(t.teacher_code || '—')}</span>
+          <span class="student-row-name">${_escHtml(t.name)}</span>
+          <span class="student-status-badge active">${stuCount} students</span>
+        </div>
+        <div class="student-row-actions">
+          <button class="admin-btn-secondary" data-teacher-edit="${_escHtml(t.id)}">Edit</button>
+          <button class="admin-btn-danger" data-teacher-delete="${_escHtml(t.id)}">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-teacher-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = _teachersCache.find(x => x.id === btn.dataset.teacherEdit);
+        if (!t) return;
+        _setValue('teacher-edit-id', t.id);
+        _setValue('teacher-name', t.name);
+        _setValue('teacher-code', t.teacher_code || '');
+        _setValue('teacher-mobile', t.mobile || '');
+        _setValue('teacher-assigned-students', (t.assigned_students || []).join(', '));
+        $('atab-teachers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    list.querySelectorAll('[data-teacher-delete]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const t = _teachersCache.find(x => x.id === btn.dataset.teacherDelete);
+        if (!t) return;
+        if (!confirm(`Delete teacher "${t.name}"?`)) return;
+        try {
+          await API.deleteTeacher(t.id);
+          APP.toast('Teacher deleted', 'success');
+          await _loadTeachersAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Could not delete teacher', 'error');
+        }
+      });
+    });
+  }
+
+  async function _loadTeachersAdmin() {
+    const list = $('teacher-admin-list');
+    if (!list) return;
+    list.innerHTML = '<p class="empty-hint">Loading...</p>';
+    try {
+      _teachersCache = await API.fetchTeachers();
+      _renderTeacherList($('teacher-search')?.value || '');
+    } catch (err) {
+      list.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load teachers')}</p>`;
+    }
+  }
+
+  function _showTeacherCredsModal(code, pin, students) {
+    const modal = $('teacher-creds-modal');
+    if (!modal) return;
+    document.getElementById('teacher-creds-code').textContent    = code;
+    document.getElementById('teacher-creds-pin').textContent     = pin;
+    document.getElementById('teacher-creds-students').textContent = students.join(', ') || '—';
+    modal.classList.remove('hidden');
+    const msg = `👩‍🏫 TeachingBoard Teacher Login\nCode: ${code}\nPIN: ${pin}\nStudents: ${students.join(', ')}`;
+    $('btn-copy-teacher-creds').onclick = () => { navigator.clipboard?.writeText(msg).catch(() => {}); APP.toast('Copied!', 'success'); };
+    $('btn-wa-teacher-creds').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+    $('btn-close-teacher-creds').onclick = () => modal.classList.add('hidden');
+  }
+
+  async function _saveTeacherAccount() {
+    try {
+      const teacherId = String($('teacher-edit-id')?.value || '').trim();
+      const name      = String($('teacher-name')?.value || '').trim();
+      const code      = String($('teacher-code')?.value || '').trim().toUpperCase();
+      const pin       = String($('teacher-pin')?.value || '').trim();
+      const mobile    = String($('teacher-mobile')?.value || '').trim();
+      const rawStudents = String($('teacher-assigned-students')?.value || '').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+
+      if (!name) { APP.toast('Name is required', 'error'); return; }
+
+      const payload = { name, mobile, assigned_students: rawStudents };
+      if (code)  payload.teacher_code = code;
+      if (pin) {
+        if (!/^\d{4}$/.test(pin)) { APP.toast('PIN must be 4 digits', 'error'); return; }
+        payload.pin = pin;
+      }
+
+      if (teacherId) {
+        await API.updateTeacher(teacherId, payload);
+        APP.toast('Teacher updated', 'success');
+      } else {
+        if (!pin) { APP.toast('PIN is required for new teacher', 'error'); return; }
+        const result = await API.createTeacher(payload);
+        const created = result?.data || {};
+        _showTeacherCredsModal(created.teacher_code || code, result?.pin || pin, rawStudents);
+      }
+      _resetTeacherForm();
+      await _loadTeachersAdmin();
+    } catch (err) {
+      APP.toast(err.message || 'Could not save teacher', 'error');
+    }
+  }
+
+  // ════════════════════════
+  // PARENT MANAGEMENT
+  // ════════════════════════
+
+  let _parentsCache = [];
+  let _parentSearchTimer = null;
+
+  function _autoParentCode(name) {
+    const prefix = String(name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2) || 'PA';
+    return 'P' + prefix + String(Math.floor(100 + Math.random() * 900));
+  }
+
+  function _resetParentForm() {
+    _setValue('parent-edit-id', '');
+    _setValue('parent-name', '');
+    _setValue('parent-code', '');
+    _setValue('parent-mobile', '');
+    _setValue('parent-pin', '');
+    _setValue('parent-children', '');
+  }
+
+  function _renderParentList(search = '') {
+    const list = $('parent-admin-list');
+    if (!list) return;
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? _parentsCache.filter(p =>
+          (p.name || '').toLowerCase().includes(q) ||
+          (p.parent_code || '').toLowerCase().includes(q)
+        )
+      : _parentsCache;
+
+    if (!filtered.length) {
+      list.innerHTML = '<p class="empty-hint">No parents found</p>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(p => {
+      const childCount = Array.isArray(p.children) ? p.children.length : 0;
+      return `<div class="student-row" data-id="${_escHtml(p.id)}">
+        <div class="student-row-main">
+          <span class="student-row-code">${_escHtml(p.parent_code || '—')}</span>
+          <span class="student-row-name">${_escHtml(p.name)}</span>
+          <span class="student-status-badge active">${childCount} children</span>
+        </div>
+        <div class="student-row-actions">
+          <button class="admin-btn-secondary" data-parent-edit="${_escHtml(p.id)}">Edit</button>
+          <button class="admin-btn-danger" data-parent-delete="${_escHtml(p.id)}">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-parent-edit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = _parentsCache.find(x => x.id === btn.dataset.parentEdit);
+        if (!p) return;
+        _setValue('parent-edit-id', p.id);
+        _setValue('parent-name', p.name);
+        _setValue('parent-code', p.parent_code || '');
+        _setValue('parent-mobile', p.mobile || '');
+        _setValue('parent-children', (p.children || []).join(', '));
+        $('atab-parents')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    list.querySelectorAll('[data-parent-delete]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const p = _parentsCache.find(x => x.id === btn.dataset.parentDelete);
+        if (!p) return;
+        if (!confirm(`Delete parent "${p.name}"?`)) return;
+        try {
+          await API.deleteParent(p.id);
+          APP.toast('Parent deleted', 'success');
+          await _loadParentsAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Could not delete parent', 'error');
+        }
+      });
+    });
+  }
+
+  async function _loadParentsAdmin() {
+    const list = $('parent-admin-list');
+    if (!list) return;
+    list.innerHTML = '<p class="empty-hint">Loading...</p>';
+    try {
+      _parentsCache = await API.fetchParents();
+      _renderParentList($('parent-search')?.value || '');
+    } catch (err) {
+      list.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load parents')}</p>`;
+    }
+  }
+
+  function _showParentCredsModal(code, pin, children) {
+    const modal = $('parent-creds-modal');
+    if (!modal) return;
+    document.getElementById('parent-creds-code').textContent    = code;
+    document.getElementById('parent-creds-pin').textContent     = pin;
+    document.getElementById('parent-creds-children').textContent = children.join(', ') || '—';
+    modal.classList.remove('hidden');
+    const msg = `👨‍👩‍👧 TeachingBoard Parent Login\nCode: ${code}\nPIN: ${pin}\nChildren: ${children.join(', ')}`;
+    $('btn-copy-parent-creds').onclick = () => { navigator.clipboard?.writeText(msg).catch(() => {}); APP.toast('Copied!', 'success'); };
+    $('btn-wa-parent-creds').onclick = () => window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+    $('btn-close-parent-creds').onclick = () => modal.classList.add('hidden');
+  }
+
+  async function _saveParentAccount() {
+    try {
+      const parentId = String($('parent-edit-id')?.value || '').trim();
+      const name     = String($('parent-name')?.value || '').trim();
+      const code     = String($('parent-code')?.value || '').trim().toUpperCase();
+      const pin      = String($('parent-pin')?.value || '').trim();
+      const mobile   = String($('parent-mobile')?.value || '').trim();
+      const rawChildren = String($('parent-children')?.value || '').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+
+      if (!name) { APP.toast('Name is required', 'error'); return; }
+
+      const payload = { name, mobile, children: rawChildren };
+      if (code)  payload.parent_code = code;
+      if (pin) {
+        if (!/^\d{4}$/.test(pin)) { APP.toast('PIN must be 4 digits', 'error'); return; }
+        payload.pin = pin;
+      }
+
+      if (parentId) {
+        await API.updateParent(parentId, payload);
+        APP.toast('Parent updated', 'success');
+      } else {
+        if (!pin) { APP.toast('PIN is required for new parent', 'error'); return; }
+        const result = await API.createParent(payload);
+        const created = result?.data || {};
+        _showParentCredsModal(created.parent_code || code, result?.pin || pin, rawChildren);
+      }
+      _resetParentForm();
+      await _loadParentsAdmin();
+    } catch (err) {
+      APP.toast(err.message || 'Could not save parent', 'error');
+    }
+  }
+
+  // ════════════════════════
+  // APP VERSIONS
+  // ════════════════════════
+
+  let _versionsCache = [];
+
+  async function _loadVersionsAdmin() {
+    const listEl = $('version-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<p class="empty-hint">Loading…</p>';
+    try {
+      _versionsCache = await API.fetchAllAppVersions();
+      _renderVersionList();
+    } catch (err) {
+      listEl.innerHTML = `<p class="empty-hint">${String(err?.message || 'Failed to load versions')}</p>`;
+    }
+  }
+
+  function _renderVersionList() {
+    const listEl = $('version-list');
+    if (!listEl) return;
+    if (!_versionsCache.length) {
+      listEl.innerHTML = '<p class="empty-hint">कोणतेही versions नाहीत. वर form भरा.</p>';
+      return;
+    }
+    listEl.innerHTML = _versionsCache.map(v => {
+      const badge = v.is_latest
+        ? '<span class="ver-badge-latest">● LATEST</span>'
+        : '';
+      const date = v.created_at
+        ? new Date(v.created_at).toLocaleDateString('mr-IN')
+        : '';
+      const platformLabel = { android: '🤖 Android', web: '🌐 Web', all: '📱 All' }[v.platform] || v.platform;
+      return `<div class="student-card ver-card">
+        <div class="student-card-main">
+          <div class="student-card-name">v${_esc(v.version)} ${badge}</div>
+          <div class="student-card-meta">${platformLabel} · ${date}</div>
+          ${v.release_notes ? `<div class="student-card-meta ver-notes">${_esc(v.release_notes)}</div>` : ''}
+          ${v.apk_url ? `<div class="student-card-meta"><a href="${_esc(v.apk_url)}" target="_blank" rel="noopener" class="ver-link">🔗 Download URL</a></div>` : ''}
+        </div>
+        <div class="student-card-actions">
+          ${!v.is_latest
+            ? `<button class="admin-btn-secondary btn-activate-ver" data-id="${_esc(v.version_id)}">✓ Activate</button>`
+            : ''}
+          <button class="admin-btn-danger btn-delete-ver" data-id="${_esc(v.version_id)}">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.btn-activate-ver').forEach(btn => {
+      btn.addEventListener('click', () => _activateVersion(btn.dataset.id));
+    });
+    listEl.querySelectorAll('.btn-delete-ver').forEach(btn => {
+      btn.addEventListener('click', () => _deleteVersion(btn.dataset.id));
+    });
+  }
+
+  async function _saveVersion() {
+    const version  = String($('ver-version')?.value  || '').trim();
+    const apk_url  = String($('ver-apk-url')?.value  || '').trim();
+    const notes    = String($('ver-notes')?.value     || '').trim();
+    const platform = $('ver-platform')?.value || 'android';
+    const activate = $('ver-activate')?.checked ?? true;
+
+    if (!version) { APP.toast('Version number आवश्यक आहे (उदा. 1.2.0)', 'error'); return; }
+    if (!/^\d+\.\d+\.\d+$/.test(version)) { APP.toast('Format: 1.2.0 असा असावा', 'error'); return; }
+
+    try {
+      await API.createAppVersion({ version, apk_url, release_notes: notes, platform, activate });
+      APP.toast(`v${version} added${activate ? ' and activated' : ''}`, 'success');
+      if ($('ver-version'))  $('ver-version').value  = '';
+      if ($('ver-apk-url'))  $('ver-apk-url').value  = '';
+      if ($('ver-notes'))    $('ver-notes').value    = '';
+      if ($('ver-activate')) $('ver-activate').checked = true;
+      await _loadVersionsAdmin();
+    } catch (err) {
+      APP.toast(err.message || 'Version save failed', 'error');
+    }
+  }
+
+  async function _activateVersion(versionId) {
+    if (!versionId) return;
+    try {
+      await API.activateAppVersion(versionId);
+      APP.toast('Version activated — students ला update दिसेल', 'success');
+      await _loadVersionsAdmin();
+    } catch (err) {
+      APP.toast(err.message || 'Activation failed', 'error');
+    }
+  }
+
+  async function _deleteVersion(versionId) {
+    if (!versionId) return;
+    if (!confirm('हे version delete करायचे आहे का?')) return;
+    try {
+      await API.deleteAppVersion(versionId);
+      APP.toast('Version deleted', 'success');
+      await _loadVersionsAdmin();
+    } catch (err) {
+      APP.toast(err.message || 'Delete failed', 'error');
+    }
+  }
+
+  function _esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   async function _loadSettings() {
     _setValue('default-timer', await DB.getSetting('timer', '30'));
     _setValue('default-theme', await DB.getSetting('admin_theme', 'theme-light'));
@@ -1989,6 +2381,44 @@ const ADMIN = (() => {
       _studentSearchTimer = setTimeout(() => _renderStudentList(e.target.value), 120);
     });
     $('student-course-filter')?.addEventListener('change', () => _renderStudentList($('student-search')?.value || ''));
+
+    // Teachers
+    $('btn-save-teacher')?.addEventListener('click', _saveTeacherAccount);
+    $('btn-reset-teacher')?.addEventListener('click', _resetTeacherForm);
+    $('btn-refresh-teachers')?.addEventListener('click', _loadTeachersAdmin);
+    $('btn-gen-teacher-code')?.addEventListener('click', () => {
+      const name = String($('teacher-name')?.value || '').trim();
+      if ($('teacher-code')) $('teacher-code').value = _autoTeacherCode(name);
+    });
+    $('btn-gen-teacher-pin')?.addEventListener('click', () => {
+      const pin = _genPin();
+      if ($('teacher-pin')) { $('teacher-pin').value = pin; $('teacher-pin').type = 'text'; }
+    });
+    $('teacher-search')?.addEventListener('input', e => {
+      clearTimeout(_teacherSearchTimer);
+      _teacherSearchTimer = setTimeout(() => _renderTeacherList(e.target.value), 120);
+    });
+
+    // Parents
+    $('btn-save-parent')?.addEventListener('click', _saveParentAccount);
+    $('btn-reset-parent')?.addEventListener('click', _resetParentForm);
+    $('btn-refresh-parents')?.addEventListener('click', _loadParentsAdmin);
+    $('btn-gen-parent-code')?.addEventListener('click', () => {
+      const name = String($('parent-name')?.value || '').trim();
+      if ($('parent-code')) $('parent-code').value = _autoParentCode(name);
+    });
+    $('btn-gen-parent-pin')?.addEventListener('click', () => {
+      const pin = _genPin();
+      if ($('parent-pin')) { $('parent-pin').value = pin; $('parent-pin').type = 'text'; }
+    });
+    $('parent-search')?.addEventListener('input', e => {
+      clearTimeout(_parentSearchTimer);
+      _parentSearchTimer = setTimeout(() => _renderParentList(e.target.value), 120);
+    });
+
+    // App Versions
+    $('btn-save-version')?.addEventListener('click', _saveVersion);
+    $('btn-refresh-versions')?.addEventListener('click', _loadVersionsAdmin);
 
     // Sync
     $('btn-share-url-qr')?.addEventListener('click', _generateServerUrlQR);

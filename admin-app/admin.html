@@ -154,9 +154,21 @@
               <span class="atab-icon" aria-hidden="true">👨‍🎓</span>
               <span class="atab-label">Students</span>
             </button>
+            <button class="atab" role="tab" data-tab="teachers" aria-controls="atab-teachers" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">👩‍🏫</span>
+              <span class="atab-label">Teachers</span>
+            </button>
+            <button class="atab" role="tab" data-tab="parents" aria-controls="atab-parents" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">👨‍👩‍👧</span>
+              <span class="atab-label">Parents</span>
+            </button>
             <button class="atab" role="tab" data-tab="sync" aria-controls="atab-sync" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">🔗</span>
               <span class="atab-label">Sync</span>
+            </button>
+            <button class="atab" role="tab" data-tab="versions" aria-controls="atab-versions" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">🚀</span>
+              <span class="atab-label">Updates</span>
             </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
@@ -433,6 +445,130 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </div>
 
+          <!-- ── Teachers Panel ────────────────────────── -->
+          <div class="atab-content hidden" id="atab-teachers" role="tabpanel" aria-labelledby="atab-btn-teachers">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">👩‍🏫 Teachers</h2>
+            </div>
+
+            <section class="import-section admin-card" aria-label="Add / Edit Teacher">
+              <h3 class="admin-section-title">Teacher Account</h3>
+              <p class="import-hint">Teacher ला code + PIN द्या — ते Student App मध्ये Teacher म्हणून login करतील.</p>
+              <input type="hidden" id="teacher-edit-id" />
+              <div class="import-target">
+                <input id="teacher-name"  class="admin-input" placeholder="Teacher name" aria-label="Teacher name" />
+                <div class="student-code-row">
+                  <input id="teacher-code" class="admin-input" placeholder="Teacher code (auto)" aria-label="Teacher code" />
+                  <button id="btn-gen-teacher-code" class="admin-btn-secondary icon-btn" type="button" title="Auto-generate code">⚡</button>
+                </div>
+                <input id="teacher-mobile" class="admin-input" placeholder="Mobile (optional)" aria-label="Mobile" />
+              </div>
+              <div class="import-target">
+                <div class="pin-input-row">
+                  <input id="teacher-pin" class="admin-input short" placeholder="4 digit PIN" maxlength="4" inputmode="numeric" aria-label="Teacher PIN" type="password" />
+                  <button id="btn-gen-teacher-pin" class="admin-btn-secondary icon-btn" type="button" title="Generate random PIN">🎲</button>
+                </div>
+              </div>
+              <div class="student-batch-box">
+                <p class="import-hint">Assigned Students (student codes, comma-separated)</p>
+                <textarea id="teacher-assigned-students" class="admin-textarea" rows="3"
+                  placeholder="STU001, STU002, STU003…" aria-label="Assigned student codes"></textarea>
+              </div>
+              <div class="admin-toolbar">
+                <button id="btn-save-teacher" class="admin-btn-primary">Save Teacher</button>
+                <button id="btn-reset-teacher" class="admin-btn-secondary" type="button">Reset</button>
+              </div>
+            </section>
+
+            <section class="import-section admin-card" aria-label="Teacher List">
+              <div class="admin-toolbar">
+                <input id="teacher-search" class="admin-input" type="search" placeholder="Search name / code" aria-label="Search teachers" />
+                <button id="btn-refresh-teachers" class="admin-btn-secondary" type="button">Refresh</button>
+              </div>
+              <div id="teacher-admin-list" class="batch-admin-list" role="list" aria-label="Teacher list"></div>
+            </section>
+
+            <!-- Teacher credentials modal -->
+            <div id="teacher-creds-modal" class="creds-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Teacher credentials">
+              <div class="creds-modal-card">
+                <h3 class="creds-modal-title">✅ Teacher तयार!</h3>
+                <div class="creds-box">
+                  <div class="creds-row"><span>Code</span><strong id="teacher-creds-code"></strong></div>
+                  <div class="creds-row"><span>PIN</span><strong id="teacher-creds-pin"></strong></div>
+                  <div class="creds-row"><span>Students</span><span id="teacher-creds-students"></span></div>
+                </div>
+                <p class="import-hint" style="margin-top:8px">Student App मध्ये "Teacher" select करून login करा.</p>
+                <div class="admin-toolbar" style="margin-top:12px">
+                  <button id="btn-copy-teacher-creds" class="admin-btn-secondary" type="button">📋 Copy</button>
+                  <button id="btn-wa-teacher-creds"   class="admin-btn-primary" type="button">📱 WhatsApp</button>
+                  <button id="btn-close-teacher-creds" class="admin-btn-secondary" type="button">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Parents Panel ─────────────────────────── -->
+          <div class="atab-content hidden" id="atab-parents" role="tabpanel" aria-labelledby="atab-btn-parents">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">👨‍👩‍👧 Parents</h2>
+            </div>
+
+            <section class="import-section admin-card" aria-label="Add / Edit Parent">
+              <h3 class="admin-section-title">Parent Account</h3>
+              <p class="import-hint">Parent ला code + PIN द्या — ते Student App मध्ये Parent म्हणून login करून मुलांचा progress पाहतील.</p>
+              <input type="hidden" id="parent-edit-id" />
+              <div class="import-target">
+                <input id="parent-name"   class="admin-input" placeholder="Parent name" aria-label="Parent name" />
+                <div class="student-code-row">
+                  <input id="parent-code"  class="admin-input" placeholder="Parent code (auto)" aria-label="Parent code" />
+                  <button id="btn-gen-parent-code" class="admin-btn-secondary icon-btn" type="button" title="Auto-generate code">⚡</button>
+                </div>
+                <input id="parent-mobile" class="admin-input" placeholder="Mobile (optional)" aria-label="Mobile" />
+              </div>
+              <div class="import-target">
+                <div class="pin-input-row">
+                  <input id="parent-pin" class="admin-input short" placeholder="4 digit PIN" maxlength="4" inputmode="numeric" aria-label="Parent PIN" type="password" />
+                  <button id="btn-gen-parent-pin" class="admin-btn-secondary icon-btn" type="button" title="Generate random PIN">🎲</button>
+                </div>
+              </div>
+              <div class="student-batch-box">
+                <p class="import-hint">Children (student codes, comma-separated)</p>
+                <textarea id="parent-children" class="admin-textarea" rows="2"
+                  placeholder="STU001, STU002…" aria-label="Children student codes"></textarea>
+              </div>
+              <div class="admin-toolbar">
+                <button id="btn-save-parent" class="admin-btn-primary">Save Parent</button>
+                <button id="btn-reset-parent" class="admin-btn-secondary" type="button">Reset</button>
+              </div>
+            </section>
+
+            <section class="import-section admin-card" aria-label="Parent List">
+              <div class="admin-toolbar">
+                <input id="parent-search" class="admin-input" type="search" placeholder="Search name / code" aria-label="Search parents" />
+                <button id="btn-refresh-parents" class="admin-btn-secondary" type="button">Refresh</button>
+              </div>
+              <div id="parent-admin-list" class="batch-admin-list" role="list" aria-label="Parent list"></div>
+            </section>
+
+            <!-- Parent credentials modal -->
+            <div id="parent-creds-modal" class="creds-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Parent credentials">
+              <div class="creds-modal-card">
+                <h3 class="creds-modal-title">✅ Parent तयार!</h3>
+                <div class="creds-box">
+                  <div class="creds-row"><span>Code</span><strong id="parent-creds-code"></strong></div>
+                  <div class="creds-row"><span>PIN</span><strong id="parent-creds-pin"></strong></div>
+                  <div class="creds-row"><span>Children</span><span id="parent-creds-children"></span></div>
+                </div>
+                <p class="import-hint" style="margin-top:8px">Student App मध्ये "Parent" select करून login करा.</p>
+                <div class="admin-toolbar" style="margin-top:12px">
+                  <button id="btn-copy-parent-creds" class="admin-btn-secondary" type="button">📋 Copy</button>
+                  <button id="btn-wa-parent-creds"   class="admin-btn-primary" type="button">📱 WhatsApp</button>
+                  <button id="btn-close-parent-creds" class="admin-btn-secondary" type="button">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Sync Panel ──────────────────────────── -->
           <div class="atab-content hidden" id="atab-sync" role="tabpanel" aria-labelledby="atab-btn-sync">
             <div class="admin-page-header">
@@ -463,6 +599,74 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <input type="url" id="api-url" class="admin-input" placeholder="http://server:4000/api" aria-label="API server URL" />
               <button id="btn-api-sync" class="admin-btn-secondary">🔄 Delta Sync</button>
             </section>
+          </div>
+
+          <!-- ── App Versions Panel ────────────────────── -->
+          <div class="atab-content hidden" id="atab-versions" role="tabpanel" aria-labelledby="atab-btn-versions">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">🚀 App Updates</h2>
+              <button id="btn-refresh-versions" class="admin-btn-secondary">↺ Refresh</button>
+            </div>
+
+            <div class="admin-card">
+              <h3 class="admin-section-title">नवीन Version Add करा</h3>
+              <div class="settings-list">
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <label for="ver-version" class="setting-label">Version Number</label>
+                    <p class="setting-hint">उदा. 1.2.0</p>
+                  </div>
+                  <div class="setting-control">
+                    <input id="ver-version" type="text" class="admin-input short" placeholder="1.0.0" />
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <label for="ver-platform" class="setting-label">Platform</label>
+                  </div>
+                  <div class="setting-control">
+                    <select id="ver-platform" class="admin-select">
+                      <option value="android">Android APK</option>
+                      <option value="web">Web PWA</option>
+                      <option value="all">All Platforms</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <label for="ver-apk-url" class="setting-label">APK / Update URL</label>
+                    <p class="setting-hint">Cloudinary / direct download link</p>
+                  </div>
+                  <div class="setting-control">
+                    <input id="ver-apk-url" type="url" class="admin-input" placeholder="https://res.cloudinary.com/..." />
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <label for="ver-notes" class="setting-label">Release Notes</label>
+                    <p class="setting-hint">नवीन update मध्ये काय आहे</p>
+                  </div>
+                  <div class="setting-control">
+                    <textarea id="ver-notes" class="admin-textarea" rows="3" placeholder="Bug fixes, new features..."></textarea>
+                  </div>
+                </div>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <label for="ver-activate" class="setting-label">Activate as Latest</label>
+                    <p class="setting-hint">Students ला हे update दाखवायचे का?</p>
+                  </div>
+                  <div class="setting-control">
+                    <input type="checkbox" id="ver-activate" class="admin-checkbox" checked />
+                  </div>
+                </div>
+              </div>
+              <div style="padding:0 16px 16px">
+                <button id="btn-save-version" class="admin-btn-primary">+ Add Version</button>
+              </div>
+            </div>
+
+            <h3 class="admin-section-title" style="padding:12px 4px 4px">Version History</h3>
+            <div id="version-list" class="student-list"></div>
           </div>
 
           <!-- ── Settings Panel ──────────────────────── -->
@@ -583,8 +787,17 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       <button class="abn-drawer-item" data-tab="classes">
         <span>🏫</span> Classes
       </button>
+      <button class="abn-drawer-item" data-tab="teachers">
+        <span>👩‍🏫</span> Teachers
+      </button>
+      <button class="abn-drawer-item" data-tab="parents">
+        <span>👨‍👩‍👧</span> Parents
+      </button>
       <button class="abn-drawer-item" data-tab="sync">
         <span>🔗</span> Sync
+      </button>
+      <button class="abn-drawer-item" data-tab="versions">
+        <span>🚀</span> Updates
       </button>
       <button class="abn-drawer-item" data-tab="settings">
         <span>⚙️</span> Settings
