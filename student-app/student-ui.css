@@ -2685,3 +2685,50 @@ body.student-app.mode-board.theme-board-light::before {
 .theme-light .pd-sug-subject { color: #1e293b; }
 .theme-light .pd-sug-row { border-bottom-color: rgba(0,0,0,0.06); }
 .theme-light .pd-sug-overall { border-top-color: rgba(0,0,0,0.06); color: #64748b; }
+
+/* ── Install Guide ── */
+.install-guide {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+}
+.install-guide-inner {
+  background: var(--card-bg, #1e293b);
+  border-radius: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.install-guide-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text1, #f1f5f9);
+  margin-bottom: 14px;
+}
+.install-guide-steps {
+  padding-left: 20px;
+  margin: 0 0 16px;
+  color: var(--text1, #e2e8f0);
+  font-size: 0.88rem;
+  line-height: 1.9;
+}
+.install-guide-steps strong { color: #f8882e; }
+.install-guide-close {
+  width: 100%;
+  padding: 12px;
+  background: #f8882e;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.theme-light .install-guide-inner { background: #fff; }
+.theme-light .install-guide-title { color: #0f172a; }
+.theme-light .install-guide-steps { color: #1e293b; }

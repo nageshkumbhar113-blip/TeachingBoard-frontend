@@ -257,26 +257,40 @@ const APP = (() => {
     $('update-sheet')?.classList.add('hidden');
   }
 
+  function _showInstallGuide() {
+    const existing = $('install-guide');
+    if (existing) existing.remove();
+
+    const div = document.createElement('div');
+    div.id = 'install-guide';
+    div.className = 'install-guide';
+    div.innerHTML = `
+      <div class="install-guide-inner">
+        <div class="install-guide-title">📲 Install Steps</div>
+        <ol class="install-guide-steps">
+          <li>Chrome madhe APK <strong>download</strong> hote aahe</li>
+          <li>Screen varun <strong>swipe down</strong> kara</li>
+          <li>Download notification var <strong>"Open" tap</strong> kara</li>
+          <li><strong>"Install"</strong> button tap kara</li>
+        </ol>
+        <button class="install-guide-close" id="install-guide-close">Samjhle ✓</button>
+      </div>`;
+    document.body.appendChild(div);
+    $('install-guide-close')?.addEventListener('click', () => div.remove());
+  }
+
   function _startDownload(remote) {
     const url = String(remote?.apk_url || '').trim();
     if (!url) { toast('Download link उपलब्ध नाही.', 'error'); return; }
 
     _closeUpdateSheet();
 
-    const isAndroid = /android/i.test(navigator.userAgent);
-    if (isAndroid) {
-      toast('APK download होत आहे… Chrome मध्ये install करा', 'info', 4000);
-    }
-
-    // _system → opens in OS browser (Chrome) on Android → handles APK download + install
-    // _blank  → fallback for web browsers
     try {
-      if (!window.open(url, '_system')) {
-        window.open(url, '_blank');
-      }
-    } catch {
-      window.open(url, '_blank');
-    }
+      if (!window.open(url, '_system')) { window.open(url, '_blank'); }
+    } catch { window.open(url, '_blank'); }
+
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) { _showInstallGuide(); }
   }
 
   async function _primeQuizCache() {
