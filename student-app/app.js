@@ -747,6 +747,7 @@ const APP = (() => {
     if (window.TEACHER_DASHBOARD?.loadDashboard) {
       TEACHER_DASHBOARD.loadDashboard().catch(err => console.warn('teacher dashboard load failed', err));
     }
+    _setupPushNotifications('teacher');
   }
 
   function _showParentDashboard() {
@@ -757,6 +758,45 @@ const APP = (() => {
     if (bnav) bnav.style.display = 'none';
     if (window.PARENT_DASHBOARD?.loadDashboard) {
       PARENT_DASHBOARD.loadDashboard().catch(err => console.warn('parent dashboard load failed', err));
+    }
+    _setupPushNotifications('parent');
+  }
+
+  let _pushSetupDone = false;
+
+  async function _setupPushNotifications(role) {
+    if (_pushSetupDone) return;
+    if (!window.Capacitor?.isNativePlatform()) return;
+    const Push = window.Capacitor?.Plugins?.PushNotifications;
+    if (!Push) return;
+    _pushSetupDone = true;
+
+    try {
+      const perm = await Push.requestPermissions();
+      if (perm.receive !== 'granted') return;
+      await Push.register();
+
+      Push.addListener('registration', async ({ value: deviceToken }) => {
+        if (!deviceToken) return;
+        try {
+          if (role === 'teacher') await API.updateTeacherDeviceToken(deviceToken);
+          else if (role === 'parent') await API.updateParentDeviceToken(deviceToken);
+        } catch (e) { console.warn('FCM token register failed', e); }
+      });
+
+      Push.addListener('notificationActionPerformed', action => {
+        const studentCode = action.notification?.data?.student_code || '';
+        if (role === 'teacher') {
+          _showTeacherDashboard();
+          if (studentCode) {
+            setTimeout(() => window.TEACHER_DASHBOARD?.openStudent?.(studentCode), 600);
+          }
+        } else if (role === 'parent') {
+          _showParentDashboard();
+        }
+      });
+    } catch (e) {
+      console.warn('Push notification setup failed', e);
     }
   }
 

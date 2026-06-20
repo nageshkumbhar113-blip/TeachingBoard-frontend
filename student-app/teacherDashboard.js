@@ -310,7 +310,7 @@ const TEACHER_DASHBOARD = (() => {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  return { init, loadDashboard };
+  return { init, loadDashboard, openStudent: _openStudentDetail };
 })();
 
 window.TEACHER_DASHBOARD = TEACHER_DASHBOARD;
