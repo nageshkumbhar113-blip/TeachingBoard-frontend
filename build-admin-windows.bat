@@ -1,4 +1,14 @@
 @echo off
+:: Auto-elevate to Administrator
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+  echo Requesting Administrator access...
+  powershell -Command "Start-Process '%~f0' -Verb RunAs"
+  exit /b
+)
+
+cd /d "%~dp0"
+
 echo ========================================
 echo  TeachingBoard — ADMIN Windows Build
 echo ========================================
@@ -27,7 +37,7 @@ echo  Output folder : dist-electron\
 echo.
 echo  Dusrya PC var install karayla:
 echo  1. dist-electron\ folder copy kara
-echo  2. install-tb-admin.bat — Right-click Run as Administrator
+echo  2. install-tb-admin.bat Right-click - Run as Administrator
 echo.
 explorer dist-electron
 pause
