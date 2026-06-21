@@ -2701,8 +2701,22 @@ const ADMIN = (() => {
     if (!batch || !subject) return APP.toast('Select batch and subject first', 'error');
 
     const raw  = $('bulk-words-textarea')?.value || '';
-    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-    if (!lines.length) return APP.toast('Paste some words first', 'error');
+
+    // Parse: comma-separated on one line → split into multiple words
+    //        pipe-separated → word | meaning_mr | phonics
+    //        plain line     → single word
+    const entries = [];
+    for (const line of raw.split('\n').map(l => l.trim()).filter(Boolean)) {
+      if (line.includes('|')) {
+        entries.push(line); // pipe format — keep as-is
+      } else {
+        // comma-separated or single word
+        for (const w of line.split(',').map(w => w.trim()).filter(Boolean)) {
+          entries.push(w);
+        }
+      }
+    }
+    if (!entries.length) return APP.toast('Paste some words first', 'error');
 
     const progress = $('bulk-progress-wrap');
     const bar      = $('bulk-progress-bar');
@@ -2716,8 +2730,8 @@ const ADMIN = (() => {
     _bulkPreviewData = [];
     if (previewBody) previewBody.innerHTML = '';
 
-    for (let i = 0; i < lines.length; i++) {
-      const parts = lines[i].split('|').map(p => p.trim());
+    for (let i = 0; i < entries.length; i++) {
+      const parts = entries[i].split('|').map(p => p.trim());
       const word  = parts[0];
       let row = {
         word,
@@ -2746,9 +2760,9 @@ const ADMIN = (() => {
 
       _bulkPreviewData.push(row);
 
-      const pct = Math.round(((i + 1) / lines.length) * 100);
+      const pct = Math.round(((i + 1) / entries.length) * 100);
       if (bar) bar.style.width = pct + '%';
-      if (txt) txt.textContent = `${i + 1} / ${lines.length}`;
+      if (txt) txt.textContent = `${i + 1} / ${entries.length}`;
 
       // Render preview row
       if (previewBody) {
