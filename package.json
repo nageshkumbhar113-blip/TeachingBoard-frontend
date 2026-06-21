@@ -34,8 +34,15 @@
       "dist-admin/**/*"
     ],
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "icon": "icons/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TB Admin"
     },
     "directories": {
       "output": "dist-electron"
