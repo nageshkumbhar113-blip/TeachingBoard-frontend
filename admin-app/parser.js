@@ -394,18 +394,19 @@ const PARSER = (() => {
    */
   function _stripMd(text) {
     return String(text || '')
-      // ***triple*** | **double** | *single*
-      .replace(/\*{1,3}([^*\n]+?)\*{1,3}/g, '$1')
-      // _italic_ — only when NOT flanked by alphanumeric (preserves H_2O)
+      // bold/italic — only strip when NOT adjacent to alphanumeric chars
+      // Preserves math symbols: 3*4, x*y, 2**3, E=mc*c, H2SO4*2 etc.
+      .replace(/(?<![A-Za-z0-9\u0080-\uFFFF])\*{1,3}([^*\n]+?)\*{1,3}(?![A-Za-z0-9\u0080-\uFFFF])/g, '$1')
+      // _italic_ — only when NOT flanked by alphanumeric (preserves H_2O, x_1, subscripts)
       .replace(/(?<![A-Za-z0-9\u0080-\uFFFF])_([^_\n]+?)_(?![A-Za-z0-9\u0080-\uFFFF])/g, '$1')
-      // `inline code` — keep content
+      // `inline code` — keep content (useful for formula notation)
       .replace(/`([^`\n]+?)`/g, '$1')
       // ~~strikethrough~~
       .replace(/~~([^~\n]+?)~~/g, '$1')
       // ## heading prefix
       .replace(/^#{1,6}\s+/gm, '')
-      // Stray leading asterisks not part of a pair (e.g. leftover after partial strip)
-      .replace(/^\*+\s*/, '')
+      // Stray leading asterisk only when followed by space (not math like *3 or *x)
+      .replace(/^\*+(?=\s)/, '')
       .trim();
   }
 

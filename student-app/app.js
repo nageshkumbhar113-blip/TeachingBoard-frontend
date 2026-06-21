@@ -100,10 +100,11 @@ const APP = (() => {
       // 8. Reveal app shell before home rendering so one failing widget does not trap the user on splash
       _revealAppShell();
 
-      // 9. Render from IndexedDB first so the app becomes interactive quickly
-      await loadHome();
-
-      await _handleInitialRoute();
+      // 9. Render from IndexedDB first — skip for teacher/parent (they have their own dashboard)
+      if (!_isTeacherOrParentMode) {
+        await loadHome();
+        await _handleInitialRoute();
+      }
 
       // 10. Background tasks — non-blocking
       _startBackground();
@@ -751,11 +752,10 @@ const APP = (() => {
   }
 
   function _showTeacherDashboard() {
-    // Hide all screens, show teacher dashboard
+    _isTeacherOrParentMode = true;
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-teacher-dashboard');
     if (screen) screen.classList.remove('hidden');
-    // Hide student bottom nav (not relevant for teacher)
     const bnav = $('bottom-nav');
     if (bnav) bnav.style.display = 'none';
     if (window.TEACHER_DASHBOARD?.loadDashboard) {
@@ -765,6 +765,7 @@ const APP = (() => {
   }
 
   function _showParentDashboard() {
+    _isTeacherOrParentMode = true;
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-parent-dashboard');
     if (screen) screen.classList.remove('hidden');
@@ -777,6 +778,7 @@ const APP = (() => {
   }
 
   let _pushSetupDone = false;
+  let _isTeacherOrParentMode = false;
 
   async function _setupPushNotifications(role) {
     if (_pushSetupDone) return;

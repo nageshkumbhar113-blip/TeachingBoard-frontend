@@ -5,7 +5,12 @@ const config: CapacitorConfig = {
   appName: 'TB Student',
   webDir:  'dist-student',
   bundledWebRuntime: false,
-  server: { androidScheme: 'https' }
+  server: { androidScheme: 'https' },
+  plugins: {
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
+  },
 };
 
 export default config;
