@@ -378,6 +378,9 @@ const TEST_PLAYER = (() => {
     else if (type === 'fib') _renderFIB(q);
     else                     await _renderMCQ(q);
 
+    // Render math symbols (KaTeX)
+    if (window.MATH) MATH.renderElement($('tp-question-card'));
+
     // Restore previous answer on back-nav
     const prev = state.answers[q.q_id];
     if (prev) {

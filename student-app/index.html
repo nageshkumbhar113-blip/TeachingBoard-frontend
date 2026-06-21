@@ -19,6 +19,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="student-ui.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 </head>
 <body class="theme-dark student-app" data-lang="en">
   <noscript>
@@ -648,10 +651,12 @@
           <button id="td-refresh-btn" class="td-refresh-btn" aria-label="Refresh">↺</button>
         </div>
 
-        <!-- Tab row: Students | Analytics -->
+        <!-- Tab row: Students | Analytics | Notifications -->
         <div class="td-tab-row" role="tablist" aria-label="Dashboard sections" id="td-tab-row">
           <button class="td-tab active" data-tdtab="students" role="tab" aria-selected="true">👨‍🎓 Students</button>
           <button class="td-tab" data-tdtab="analytics" role="tab" aria-selected="false">📊 Analytics</button>
+          <button class="td-tab" data-tdtab="notifications" role="tab" aria-selected="false">🔔 Notify</button>
+          <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
         </div>
 
         <!-- Students tab -->
@@ -662,6 +667,14 @@
           </div>
           <div id="td-student-detail-view" class="hidden">
             <div id="td-attempts-list"></div>
+            <div class="td-section-divider"></div>
+            <div id="td-notify-parent-section">
+              <button id="td-notify-parent-btn" class="td-notify-btn">🔔 Parent ला Notify करा</button>
+              <div id="td-notify-history" class="hidden">
+                <h4 class="td-notify-history-title">Notification इतिहास</h4>
+                <div id="td-notify-history-list"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -671,7 +684,61 @@
             <p class="td-hint" id="td-analytics-loading">Loading analytics...</p>
           </div>
         </div>
+
+        <!-- Vocab Scores tab -->
+        <div id="td-tab-vocab" class="td-tab-pane hidden">
+          <div class="td-vocab-filter-bar">
+            <select id="td-vocab-batch-sel" class="td-modal-select" style="flex:1">
+              <option value="">All Batches</option>
+            </select>
+            <select id="td-vocab-subject-sel" class="td-modal-select" style="flex:1">
+              <option value="">All Subjects</option>
+            </select>
+            <button id="td-vocab-load-btn" class="td-send-notif-btn">Load</button>
+          </div>
+          <div id="td-vocab-scores-list">
+            <p class="td-hint td-hint-sm">Batch आणि Subject निवडा.</p>
+          </div>
+        </div>
+
+        <!-- Notifications tab -->
+        <div id="td-tab-notifications" class="td-tab-pane hidden">
+          <div class="td-notify-tab-header">
+            <button id="td-send-batch-btn" class="td-send-notif-btn">+ Batch Notification पाठवा</button>
+          </div>
+          <div id="td-notif-history-all">
+            <p class="td-hint td-hint-sm">Sent notifications येथे दिसतील.</p>
+          </div>
+        </div>
       </section>
+
+      <!-- Notification send modal -->
+      <div id="td-notif-modal" class="td-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="td-modal-title">
+        <div class="td-modal">
+          <h3 class="td-modal-title" id="td-modal-title">Notification पाठवा</h3>
+          <div id="td-modal-batch-row" class="td-modal-field">
+            <label class="td-modal-label" for="td-modal-batch">Batch</label>
+            <select id="td-modal-batch" class="td-modal-select"></select>
+          </div>
+          <div id="td-modal-student-row" class="td-modal-field hidden">
+            <label class="td-modal-label">Student</label>
+            <p id="td-modal-student-name" class="td-modal-static"></p>
+          </div>
+          <div class="td-modal-field">
+            <label class="td-modal-label" for="td-modal-title-input">Title</label>
+            <input id="td-modal-title-input" class="td-modal-input" type="text" maxlength="80" placeholder="e.g. आजचा अभ्यास">
+          </div>
+          <div class="td-modal-field">
+            <label class="td-modal-label" for="td-modal-body-input">Message</label>
+            <textarea id="td-modal-body-input" class="td-modal-textarea" rows="3" maxlength="200" placeholder="पालकांसाठी संदेश लिहा..."></textarea>
+          </div>
+          <p id="td-modal-error" class="td-modal-error hidden"></p>
+          <div class="td-modal-actions">
+            <button id="td-modal-cancel" class="td-modal-btn td-modal-btn-secondary">रद्द करा</button>
+            <button id="td-modal-send" class="td-modal-btn td-modal-btn-primary">पाठवा</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ── PARENT DASHBOARD ────────────────────────────────── -->
       <section id="screen-parent-dashboard" class="screen hidden" aria-label="Parent Dashboard">
@@ -694,6 +761,99 @@
         </div>
       </section>
 
+      <!-- ── VOCABULARY / WORD LEARNING SCREEN ──────────── -->
+      <section id="screen-vocab" class="screen hidden" aria-label="Word Learning">
+
+        <!-- Test list view -->
+        <div id="vocab-test-list-view">
+          <header class="quiz-header">
+            <button id="vocab-back-btn" class="back-btn" aria-label="Back">‹</button>
+            <h2 class="quiz-title" id="vocab-list-title">Word Learning</h2>
+          </header>
+
+          <!-- Meaning language selector -->
+          <div class="vocab-lang-bar">
+            <span class="vocab-lang-label">Meaning :</span>
+            <label class="vocab-lang-opt">
+              <input type="radio" name="meaning-lang" value="marathi" checked /> Marathi
+            </label>
+            <label class="vocab-lang-opt">
+              <input type="radio" name="meaning-lang" value="english" /> English
+            </label>
+          </div>
+
+          <div class="vocab-subject-bar">
+            <select id="vocab-subject-select" class="vocab-select">
+              <option value="">Select Subject</option>
+            </select>
+          </div>
+
+          <div id="vocab-test-grid" class="vocab-test-grid"></div>
+          <div id="vocab-list-empty" class="vocab-empty hidden">No words found for this subject.</div>
+        </div>
+
+        <!-- Test player view -->
+        <div id="vocab-player-view" class="hidden">
+          <header class="quiz-header">
+            <button id="vocab-player-back" class="back-btn" aria-label="Back to test list">‹</button>
+            <h2 class="quiz-title" id="vocab-player-title">Test 1</h2>
+            <span class="vocab-progress-label" id="vocab-progress-label">1 / 20</span>
+          </header>
+
+          <div id="vocab-section-label" class="vocab-section-label"></div>
+
+          <div id="vocab-question-card" class="vocab-question-card">
+            <div id="vocab-word-display" class="vocab-word-display"></div>
+            <div id="vocab-phonics-display" class="vocab-phonics-display"></div>
+            <button id="vocab-tts-btn" class="vocab-tts-btn hidden" aria-label="Listen">
+              <span aria-hidden="true">&#128264;</span> Listen
+            </button>
+            <div id="vocab-options" class="vocab-options"></div>
+            <div id="vocab-spelling-input-wrap" class="hidden">
+              <input type="text" id="vocab-spelling-input" class="vocab-spelling-input" placeholder="Type the word..." autocomplete="off" autocorrect="off" spellcheck="false" />
+              <button id="vocab-spelling-submit" class="vocab-submit-btn">Submit</button>
+            </div>
+          </div>
+
+          <div id="vocab-feedback" class="vocab-feedback hidden"></div>
+          <button id="vocab-next-btn" class="vocab-next-btn hidden">Next</button>
+        </div>
+
+        <!-- Score summary view -->
+        <div id="vocab-score-view" class="hidden">
+          <header class="quiz-header">
+            <button id="vocab-score-back" class="back-btn" aria-label="Back to test list">‹</button>
+            <h2 class="quiz-title">Test Complete!</h2>
+          </header>
+          <div class="vocab-score-card">
+            <div id="vocab-score-total" class="vocab-score-total"></div>
+            <div class="vocab-score-breakdown" id="vocab-score-breakdown"></div>
+            <div id="vocab-pass-badge" class="vocab-pass-badge hidden">Passed!</div>
+            <div id="vocab-fail-badge" class="vocab-fail-badge hidden">Keep Practicing!</div>
+            <button id="vocab-retry-btn" class="vocab-next-btn">Retry Test</button>
+            <button id="vocab-score-home-btn" class="vocab-back-home-btn">Test List</button>
+          </div>
+        </div>
+
+        <!-- Add word modal -->
+        <div id="vocab-add-word-backdrop" class="vocab-modal-backdrop hidden" role="dialog" aria-modal="true">
+          <div class="vocab-modal">
+            <h3 class="vocab-modal-title">Add Unknown Word</h3>
+            <input type="text" id="vocab-add-word-input" class="admin-input" placeholder="Type word..." />
+            <button id="vocab-add-word-autofill" class="vocab-submit-btn" style="width:100%;margin-top:8px">Auto-fill</button>
+            <div id="vocab-add-word-preview" class="vocab-add-preview hidden"></div>
+            <div id="vocab-add-word-err" class="vocab-add-err hidden"></div>
+            <div class="vocab-modal-footer">
+              <button id="vocab-add-cancel" class="vocab-back-home-btn">Cancel</button>
+              <button id="vocab-add-submit" class="vocab-next-btn" disabled>Add to Bank</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating add-word button -->
+        <button id="vocab-add-word-btn" class="vocab-fab-btn" title="Add unknown word">+</button>
+      </section>
+
     </main>
 
     <!-- ── BOTTOM NAVIGATION (mobile) ─────────────────── -->
@@ -709,6 +869,10 @@
       <button class="bnav-btn" id="bnav-mode" aria-label="Toggle Board Mode">
         <span class="bnav-icon">🖥️</span>
         <span class="bnav-label">Board</span>
+      </button>
+      <button class="bnav-btn" id="bnav-vocab" aria-label="Word Learning">
+        <span class="bnav-icon">📚</span>
+        <span class="bnav-label">Words</span>
       </button>
       <button class="bnav-btn" id="bnav-me" aria-label="My Profile">
         <span class="bnav-icon">👤</span>
@@ -740,6 +904,7 @@
   <script src="../env.js"></script>
   <script src="../core/db.js" defer></script>
   <script src="../core/helpers.js" defer></script>
+  <script src="../core/math.js" defer></script>
   <script src="../core/i18n.js" defer></script>
   <script src="../core/pdf.js" defer></script>
   <script src="../core/sync.js" defer></script>
@@ -750,6 +915,7 @@
   <script src="tts.js" defer></script>
   <script src="teacherDashboard.js" defer></script>
   <script src="parentDashboard.js" defer></script>
+  <script src="vocabPlayer.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
   <script src="student-mobile.js" defer></script>

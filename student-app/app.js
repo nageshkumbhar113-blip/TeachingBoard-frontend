@@ -184,11 +184,13 @@ const APP = (() => {
       _checkAppUpdate().catch(err => console.warn('version check failed', err));
     }, 3000);
 
-    // Student auto-sync: replay attempts + refresh published quizzes
-    if (window.SYNC?.autoSyncStudent) {
-      SYNC.autoSyncStudent().catch(err => console.warn('student autoSync error', err));
-    } else if (window.SYNC?.fetchQuizzes && navigator.onLine) {
-      SYNC.fetchQuizzes({ silent: true, status: 'published' }).catch(err => console.warn('student fetchQuizzes error', err));
+    // Student auto-sync: replay attempts + refresh published quizzes (students only)
+    if (!_isTeacherOrParentMode) {
+      if (window.SYNC?.autoSyncStudent) {
+        SYNC.autoSyncStudent().catch(err => console.warn('student autoSync error', err));
+      } else if (window.SYNC?.fetchQuizzes && navigator.onLine) {
+        SYNC.fetchQuizzes({ silent: true, status: 'published' }).catch(err => console.warn('student fetchQuizzes error', err));
+      }
     }
   }
 
@@ -1021,6 +1023,7 @@ const APP = (() => {
       'test-player': null,
       results: 'bnav-home',
       'deep-study': 'bnav-home',
+      vocab: 'bnav-vocab',
     };
     document.querySelectorAll('.bnav-btn').forEach(btn => btn.classList.remove('bnav-active'));
     const activeId = tabMap[screen] ?? 'bnav-home';

@@ -150,6 +150,9 @@ const DEEP_STUDY = (() => {
     _updateActionBar();
     _updateProgress();
     _highlightMinimap();
+
+    // Render math symbols on both card faces (KaTeX)
+    if (window.MATH) MATH.renderElement($('ds-card'));
   }
 
   function _normalize(s) {

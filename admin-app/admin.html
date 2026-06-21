@@ -19,6 +19,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin-ui.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 </head>
 <body class="theme-light admin-app" data-lang="en">
   <noscript>
@@ -169,6 +172,10 @@
             <button class="atab" role="tab" data-tab="versions" aria-controls="atab-versions" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">🚀</span>
               <span class="atab-label">Updates</span>
+            </button>
+            <button class="atab" role="tab" data-tab="words" aria-controls="atab-words" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📚</span>
+              <span class="atab-label">Words</span>
             </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
@@ -675,6 +682,82 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             <div id="version-list" class="student-list"></div>
           </div>
 
+          <!-- ── Words / Vocabulary Panel ───────────── -->
+          <div class="atab-content hidden" id="atab-words" role="tabpanel" aria-labelledby="atab-btn-words">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">Word Bank</h2>
+              <button id="btn-add-word" class="admin-btn-primary">+ Add Word</button>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="words-filter-bar">
+              <select id="words-filter-batch" class="admin-select words-sel">
+                <option value="">All Batches</option>
+              </select>
+              <select id="words-filter-subject" class="admin-select words-sel">
+                <option value="">All Subjects</option>
+              </select>
+              <input type="search" id="words-search" class="admin-input words-search-input" placeholder="Search word..." />
+              <button id="btn-words-search" class="admin-btn-secondary">Search</button>
+            </div>
+
+            <!-- Word list -->
+            <div id="words-list-wrap" class="words-list-wrap">
+              <table class="words-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Word</th>
+                    <th>Meaning (MR)</th>
+                    <th>Meaning (EN)</th>
+                    <th>Phonics</th>
+                    <th>Difficulty</th>
+                    <th>Added By</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="words-table-body"></tbody>
+              </table>
+            </div>
+            <div class="words-pagination" id="words-pagination"></div>
+
+            <!-- Sub-section divider -->
+            <hr class="words-divider" />
+
+            <!-- Bulk import -->
+            <div class="admin-page-header">
+              <h3 class="admin-section-title">Bulk Import</h3>
+            </div>
+            <div class="admin-card words-bulk-card">
+              <p class="words-hint">Paste words below — one per line, or <code>word | meaning_mr | phonics</code> format.</p>
+              <div class="words-bulk-meta">
+                <select id="word-bulk-batch" class="admin-select words-sel">
+                  <option value="">Select Batch</option>
+                </select>
+                <select id="word-bulk-subject" class="admin-select words-sel">
+                  <option value="">Select Subject</option>
+                </select>
+              </div>
+              <textarea id="bulk-words-textarea" class="words-bulk-textarea" placeholder="apple&#10;mango&#10;banana | केळ | ba-na-na&#10;..."></textarea>
+              <div class="words-bulk-actions">
+                <button id="btn-bulk-autofill" class="admin-btn-secondary">Auto-fill All</button>
+                <button id="btn-bulk-save" class="admin-btn-primary" disabled>Save All</button>
+              </div>
+              <div id="bulk-progress-wrap" class="words-bulk-progress hidden">
+                <div id="bulk-progress-bar" class="words-progress-bar"></div>
+                <span id="bulk-progress-text" class="words-progress-text">0 / 0</span>
+              </div>
+              <div id="bulk-preview-wrap" class="hidden">
+                <table class="words-table words-preview-table">
+                  <thead>
+                    <tr><th>Word</th><th>Meaning MR</th><th>Meaning EN</th><th>Phonics</th><th>Status</th></tr>
+                  </thead>
+                  <tbody id="bulk-preview-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Settings Panel ──────────────────────── -->
           <div class="atab-content hidden" id="atab-settings" role="tabpanel" aria-labelledby="atab-btn-settings">
             <div class="admin-page-header">
@@ -805,6 +888,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       <button class="abn-drawer-item" data-tab="versions">
         <span>🚀</span> Updates
       </button>
+      <button class="abn-drawer-item" data-tab="words">
+        <span>📚</span> Words
+      </button>
       <button class="abn-drawer-item" data-tab="settings">
         <span>⚙️</span> Settings
       </button>
@@ -831,6 +917,80 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       </div>
       <div class="tb-body" id="tb-body"></div>
       <div class="tb-footer" id="tb-footer"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       WORD EDITOR MODAL
+  ═══════════════════════════════════════════ -->
+  <div id="word-edit-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="word-edit-title">
+    <div class="modal-panel word-edit-panel">
+      <div class="modal-header">
+        <h2 id="word-edit-title">Add Word</h2>
+        <button class="modal-close" id="word-edit-close" aria-label="Close word editor">✕</button>
+      </div>
+      <form id="word-edit-form" class="word-edit-form" autocomplete="off" novalidate>
+        <input type="hidden" id="we-word-id" value="" />
+
+        <div class="we-row">
+          <label class="we-label" for="we-word">Word</label>
+          <div class="we-input-group">
+            <input type="text" id="we-word" class="admin-input we-full" placeholder="e.g. apple" required />
+            <button type="button" id="btn-we-autofill" class="admin-btn-secondary we-autofill-btn">Auto-fill</button>
+          </div>
+        </div>
+
+        <div class="we-row">
+          <label class="we-label" for="we-batch">Batch</label>
+          <select id="we-batch" class="admin-select we-full" required>
+            <option value="">Select Batch</option>
+          </select>
+        </div>
+
+        <div class="we-row">
+          <label class="we-label" for="we-subject">Subject</label>
+          <select id="we-subject" class="admin-select we-full" required>
+            <option value="">Select Subject</option>
+          </select>
+        </div>
+
+        <div class="we-row">
+          <label class="we-label" for="we-meaning-mr">Meaning (Marathi)</label>
+          <input type="text" id="we-meaning-mr" class="admin-input we-full" placeholder="सफरचंद" />
+        </div>
+
+        <div class="we-row">
+          <label class="we-label" for="we-meaning-en">Meaning (English)</label>
+          <input type="text" id="we-meaning-en" class="admin-input we-full" placeholder="A round fruit..." />
+        </div>
+
+        <div class="we-row">
+          <label class="we-label" for="we-phonics">Phonics</label>
+          <input type="text" id="we-phonics" class="admin-input we-full" placeholder="/ˈæp.əl/" />
+        </div>
+
+        <div class="we-row">
+          <label class="we-label" for="we-image-url">Image URL</label>
+          <input type="url" id="we-image-url" class="admin-input we-full" placeholder="https://imagebb.com/..." />
+        </div>
+
+        <div class="we-row">
+          <label class="we-label" for="we-difficulty">Difficulty</label>
+          <select id="we-difficulty" class="admin-select">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div id="we-autofill-status" class="we-status hidden"></div>
+        <div id="we-error" class="admin-error-msg hidden"></div>
+
+        <div class="we-footer">
+          <button type="button" id="btn-we-cancel" class="admin-btn-secondary">Cancel</button>
+          <button type="submit" id="btn-we-save" class="admin-btn-primary">Save Word</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -919,6 +1079,15 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
           <input id="qe-tags" class="admin-input" placeholder="e.g. photosynthesis, biology" aria-label="Tags" />
         </div>
 
+        <!-- Live Math Preview -->
+        <div class="qe-preview-wrap" id="qe-preview-wrap">
+          <div class="qe-preview-label">👁️ Preview</div>
+          <div id="qe-preview-box" class="qe-preview-box">
+            <p id="qe-preview-q" class="qe-preview-q"></p>
+            <div id="qe-preview-opts" class="qe-preview-opts"></div>
+          </div>
+        </div>
+
         <div class="qedit-actions">
           <button type="button" id="btn-qe-delete" class="admin-btn-danger hidden" aria-label="Delete question">🗑️ Delete</button>
           <button type="submit" id="btn-qe-save" class="admin-btn-primary" aria-label="Save question">💾 Save Question</button>
@@ -933,6 +1102,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="../env.js"></script>
   <script src="../core/db.js" defer></script>
   <script src="../core/helpers.js" defer></script>
+  <script src="../core/math.js" defer></script>
   <script src="../core/i18n.js" defer></script>
   <script src="../core/pdf.js" defer></script>
   <script src="../core/sync.js" defer></script>

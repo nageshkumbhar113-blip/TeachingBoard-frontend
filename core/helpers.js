@@ -811,6 +811,140 @@ const API = (() => {
     });
   }
 
+  async function sendTeacherNotification({ type, batch, student_code, title, body }) {
+    const token = await ensureTeacherSession();
+    return request('/teacher/send-notification', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ type, batch, student_code, title, body }),
+    });
+  }
+
+  async function fetchTeacherNotificationHistory(studentCode) {
+    const token = await ensureTeacherSession();
+    const qs    = studentCode ? `?student_code=${encodeURIComponent(studentCode)}` : '';
+    const res   = await request(`/teacher/notification-history${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res?.data || [];
+  }
+
+  // ── Vocabulary: Admin ────────────────────────────────────────────────────────
+
+  async function autoFillWord(word) {
+    const token = await ensureAdminSession();
+    return request('/admin/words/auto-fill', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ word }),
+    });
+  }
+
+  async function fetchAdminWords({ batch = '', subject = '', search = '', skip = 0, limit = 50 } = {}) {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams();
+    if (batch)   qs.set('batch',   batch);
+    if (subject) qs.set('subject', subject);
+    if (search)  qs.set('search',  search);
+    if (skip)    qs.set('skip',    skip);
+    if (limit)   qs.set('limit',   limit);
+    const res = await request(`/admin/words${qs.toString() ? '?' + qs.toString() : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res;
+  }
+
+  async function createAdminWord(data) {
+    const token = await ensureAdminSession();
+    return request('/admin/words', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async function updateAdminWord(wordId, data) {
+    const token = await ensureAdminSession();
+    return request(`/admin/words/${encodeURIComponent(wordId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async function deleteAdminWord(wordId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/words/${encodeURIComponent(wordId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function bulkCreateAdminWords(words) {
+    const token = await ensureAdminSession();
+    return request('/admin/words/bulk', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ words }),
+    });
+  }
+
+  // ── Vocabulary: Student ───────────────────────────────────────────────────────
+
+  async function autoFillWordForStudent(word) {
+    const token = await ensureStudentSession();
+    return request(`/vocab/auto-fill?word=${encodeURIComponent(word)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function fetchVocabTestList(batch, subject) {
+    const token = await ensureStudentSession();
+    const qs = new URLSearchParams({ batch, subject });
+    return request(`/vocab/test-list?${qs.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function fetchVocabTest(testNum, batch, subject, meaningLang = 'marathi') {
+    const token = await ensureStudentSession();
+    const qs = new URLSearchParams({ batch, subject, meaning_lang: meaningLang });
+    return request(`/vocab/test/${testNum}?${qs.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function submitVocabAttempt(payload) {
+    const token = await ensureStudentSession();
+    return request('/vocab/attempt', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async function addStudentWord(data) {
+    const token = await ensureStudentSession();
+    return request('/student/words', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ── Vocabulary: Teacher ───────────────────────────────────────────────────────
+
+  async function fetchTeacherVocabScores({ batch = '', subject = '' } = {}) {
+    const token = await ensureTeacherSession();
+    const qs = new URLSearchParams();
+    if (batch)   qs.set('batch',   batch);
+    if (subject) qs.set('subject', subject);
+    const res = await request(`/teacher/vocab-scores${qs.toString() ? '?' + qs.toString() : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res?.data || [];
+  }
+
   // ── Parent dashboard ──────────────────────────────────────────────────────────
 
   async function fetchParentChildren() {
@@ -1254,6 +1388,10 @@ const API = (() => {
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
+    sendTeacherNotification, fetchTeacherNotificationHistory,
+    autoFillWord, fetchAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
+    autoFillWordForStudent, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
+    fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,

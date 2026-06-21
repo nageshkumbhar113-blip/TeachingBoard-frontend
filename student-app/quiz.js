@@ -222,6 +222,9 @@ const QUIZ = (() => {
     else if (type === 'fib') _renderFIB(q);
     else if (type === 'mtp') _renderMTP(q);
 
+    // Render math symbols (KaTeX)
+    if (window.MATH) MATH.renderElement($('question-card'));
+
     // Card animation
     const card = $('question-card');
     if (card) {

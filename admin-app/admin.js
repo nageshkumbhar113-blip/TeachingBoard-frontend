@@ -233,6 +233,7 @@ const ADMIN = (() => {
         tab.setAttribute('aria-selected', 'true');
         const content = $('atab-' + tab.dataset.tab);
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
+        if (tab.dataset.tab === 'words') _loadWordBank();
       });
     });
   }
@@ -254,6 +255,9 @@ const ADMIN = (() => {
       { id: 'qe-batch', placeholder: 'Select Class' },
       { id: 'class-subject-batch', placeholder: 'Select Class' },
       { id: 'class-chapter-batch', placeholder: 'Select Class' },
+      { id: 'words-filter-batch', placeholder: 'All Batches' },
+      { id: 'word-bulk-batch',    placeholder: 'Select Batch' },
+      { id: 'we-batch',           placeholder: 'Select Batch' },
     ];
 
     selectConfigs.forEach(({ id, placeholder }) => {
@@ -614,6 +618,8 @@ const ADMIN = (() => {
       fragment.appendChild(item);
     });
     list.appendChild(fragment);
+    // Render math symbols in question list (KaTeX)
+    if (window.MATH) MATH.renderElement(list);
   }
 
   // ════════════════════════
@@ -663,6 +669,7 @@ const ADMIN = (() => {
     }
 
     _updateQETypeView();
+    _updateQEPreview();
     $('qedit-overlay')?.classList.remove('hidden');
     $('qe-question')?.focus();
   }
@@ -672,6 +679,46 @@ const ADMIN = (() => {
     $('qe-mcq-opts')?.classList.toggle('hidden', type !== 'mcq');
     $('qe-fib-opts')?.classList.toggle('hidden', type !== 'fib');
     $('qe-tf-opts')?.classList.toggle('hidden', type !== 'tf');
+  }
+
+  function _updateQEPreview() {
+    const qEl   = $('qe-preview-q');
+    const optsEl = $('qe-preview-opts');
+    const box   = $('qe-preview-box');
+    if (!qEl || !optsEl || !box) return;
+
+    const qText = ($('qe-question')?.value || '').trim();
+    const type  = $('qe-type')?.value || 'mcq';
+
+    qEl.textContent = qText || '(question text येथे दिसेल…)';
+    qEl.classList.toggle('qe-preview-placeholder', !qText);
+
+    if (type === 'mcq') {
+      const opts = [
+        { k: 'A', v: ($('qe-a')?.value || '').trim() },
+        { k: 'B', v: ($('qe-b')?.value || '').trim() },
+        { k: 'C', v: ($('qe-c')?.value || '').trim() },
+        { k: 'D', v: ($('qe-d')?.value || '').trim() },
+      ].filter(o => o.v);
+      optsEl.innerHTML = opts.map(o =>
+        `<div class="qe-prev-opt"><span class="qe-prev-key">${o.k})</span><span class="qe-prev-val"></span></div>`
+      ).join('');
+      // Set text via textContent to keep it XSS-safe, KaTeX will render in-place
+      optsEl.querySelectorAll('.qe-prev-val').forEach((el, i) => {
+        el.textContent = opts[i].v;
+      });
+    } else if (type === 'fib') {
+      const ans = ($('qe-fib-answer')?.value || '').trim();
+      optsEl.innerHTML = '';
+      const d = document.createElement('div');
+      d.className = 'qe-prev-opt';
+      d.textContent = ans ? `Answer: ${ans}` : '';
+      optsEl.appendChild(d);
+    } else {
+      optsEl.innerHTML = '<div class="qe-prev-opt">A) True &nbsp;&nbsp; B) False</div>';
+    }
+
+    if (window.MATH) MATH.renderElement(box);
   }
 
   function _validateQ(type, q) {
@@ -2277,6 +2324,11 @@ const ADMIN = (() => {
     $('qedit-overlay')?.addEventListener('click', e => {
       if (e.target === $('qedit-overlay')) $('qedit-overlay')?.classList.add('hidden');
     });
+    $('word-edit-overlay')?.addEventListener('click', e => {
+      if (e.target === $('word-edit-overlay')) $('word-edit-overlay')?.classList.add('hidden');
+    });
+
+    _initWordsTab();
 
     // Question editor
     $('btn-add-question')?.addEventListener('click', () => _openQEditor());
@@ -2284,6 +2336,9 @@ const ADMIN = (() => {
     $('qedit-form')?.addEventListener('submit', _saveQEditor);
     $('btn-qe-delete')?.addEventListener('click', _deleteCurrentQ);
     $('qe-type')?.addEventListener('change', _updateQETypeView);
+    // Live preview — delegation on form catches all input/change inside it
+    $('qedit-form')?.addEventListener('input',  _updateQEPreview);
+    $('qedit-form')?.addEventListener('change', _updateQEPreview);
     $('qe-batch')?.addEventListener('change', () => _refreshFormHierarchy({
       batchId: 'qe-batch',
       subjectId: 'qe-subject',
@@ -2488,6 +2543,329 @@ const ADMIN = (() => {
         APP.refreshHome();
         await _loadAdminContent();
       }
+    });
+  }
+
+  // ════════════════════════
+  // WORDS / VOCABULARY
+  // ════════════════════════
+
+  let _wordsSkip = 0;
+  const _wordsLimit = 50;
+  let _wordsTotal   = 0;
+  let _bulkPreviewData = [];
+
+  async function _loadWordBank() {
+    const batch   = $('words-filter-batch')?.value || '';
+    const subject = $('words-filter-subject')?.value || '';
+    const search  = $('words-search')?.value || '';
+    const tbody   = $('words-table-body');
+    const pagination = $('words-pagination');
+    if (!tbody) return;
+
+    try {
+      const res = await API.fetchAdminWords({ batch, subject, search, skip: _wordsSkip, limit: _wordsLimit });
+      _wordsTotal = res.total || 0;
+      const words = res.data || [];
+
+      tbody.innerHTML = '';
+      if (!words.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text2)">No words found</td></tr>`;
+      } else {
+        words.forEach(w => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="words-seq">${w.seq_num}</td>
+            <td class="words-word-cell">${_esc(w.word)}</td>
+            <td class="words-meaning-cell">${_esc(w.meaning_mr)}</td>
+            <td class="words-meaning-cell">${_esc(w.meaning_en)}</td>
+            <td class="words-phonics-cell">${_esc(w.phonics)}</td>
+            <td><span class="words-diff-badge words-diff-${w.difficulty}">${w.difficulty}</span></td>
+            <td class="words-addedby-badge">${w.added_by}</td>
+            <td class="words-actions">
+              <button class="admin-btn-secondary words-btn-edit" data-wid="${_esc(w.word_id)}">Edit</button>
+              <button class="admin-btn-secondary words-btn-delete" data-wid="${_esc(w.word_id)}" data-wname="${_esc(w.word)}">Del</button>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+      }
+
+      if (pagination) {
+        const page = Math.floor(_wordsSkip / _wordsLimit) + 1;
+        const pages = Math.ceil(_wordsTotal / _wordsLimit) || 1;
+        pagination.innerHTML = `
+          <button class="admin-btn-secondary" id="words-prev" ${_wordsSkip === 0 ? 'disabled' : ''}>&#8249;</button>
+          <span>Page ${page} / ${pages} &nbsp;(${_wordsTotal} words)</span>
+          <button class="admin-btn-secondary" id="words-next" ${_wordsSkip + _wordsLimit >= _wordsTotal ? 'disabled' : ''}>&#8250;</button>`;
+        $('words-prev')?.addEventListener('click', () => { _wordsSkip = Math.max(0, _wordsSkip - _wordsLimit); _loadWordBank(); });
+        $('words-next')?.addEventListener('click', () => { _wordsSkip += _wordsLimit; _loadWordBank(); });
+      }
+    } catch (err) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:#f87171;padding:12px">${_esc(err.message)}</td></tr>`;
+    }
+  }
+
+  async function _openWordEditor(wordData) {
+    const overlay = $('word-edit-overlay');
+    const title   = $('word-edit-title');
+    if (!overlay) return;
+
+    $('we-word-id').value    = wordData?.word_id || '';
+    $('we-word').value       = wordData?.word       || '';
+    $('we-meaning-mr').value = wordData?.meaning_mr || '';
+    $('we-meaning-en').value = wordData?.meaning_en || '';
+    $('we-phonics').value    = wordData?.phonics     || '';
+    $('we-image-url').value  = wordData?.image_url   || '';
+    $('we-difficulty').value = wordData?.difficulty  || 'medium';
+
+    // Populate batch options then subject options
+    const weBatch = $('we-batch');
+    if (weBatch) {
+      const filterBatch = $('words-filter-batch');
+      if (filterBatch) weBatch.innerHTML = filterBatch.innerHTML;
+      if (wordData?.batch) weBatch.value = wordData.batch;
+
+      const batch = weBatch.value;
+      const subjects = batch ? (await DB.getSubjectsByBatch(batch).catch(() => [])).map(s => s.name) : [];
+      _setSelectOptions($('we-subject'), subjects, 'Select Subject');
+      if (wordData?.subject) $('we-subject').value = wordData.subject;
+    }
+
+    if (title) title.textContent = wordData?.word_id ? 'Edit Word' : 'Add Word';
+    $('we-error').classList.add('hidden');
+    $('we-autofill-status').classList.add('hidden');
+    overlay.classList.remove('hidden');
+    $('we-word').focus();
+  }
+
+  async function _weAutoFill() {
+    const word = ($('we-word')?.value || '').trim();
+    if (!word) return APP.toast('Enter a word first', 'error');
+    const status = $('we-autofill-status');
+    if (status) { status.textContent = 'Fetching...'; status.classList.remove('hidden'); }
+    try {
+      const res = await API.autoFillWord(word);
+      const d = res.data || {};
+      if (d.meaning_mr && !$('we-meaning-mr')?.value) $('we-meaning-mr').value = d.meaning_mr;
+      if (d.meaning_en && !$('we-meaning-en')?.value) $('we-meaning-en').value = d.meaning_en;
+      if (d.phonics    && !$('we-phonics')?.value)    $('we-phonics').value    = d.phonics;
+      if (status) status.textContent = 'Auto-fill complete';
+    } catch (err) {
+      if (status) status.textContent = 'Auto-fill failed: ' + err.message;
+    }
+  }
+
+  async function _weSubmit(e) {
+    e.preventDefault();
+    const wordId  = $('we-word-id')?.value || '';
+    const errEl   = $('we-error');
+
+    const data = {
+      word:       ($('we-word')?.value       || '').trim(),
+      batch:      ($('we-batch')?.value      || '').trim(),
+      subject:    ($('we-subject')?.value    || '').trim(),
+      meaning_mr: ($('we-meaning-mr')?.value || '').trim(),
+      meaning_en: ($('we-meaning-en')?.value || '').trim(),
+      phonics:    ($('we-phonics')?.value    || '').trim(),
+      image_url:  ($('we-image-url')?.value  || '').trim(),
+      difficulty: $('we-difficulty')?.value  || 'medium',
+    };
+
+    if (!data.word)    { if (errEl) { errEl.textContent = 'Word is required'; errEl.classList.remove('hidden'); } return; }
+    if (!data.batch)   { if (errEl) { errEl.textContent = 'Batch is required'; errEl.classList.remove('hidden'); } return; }
+    if (!data.subject) { if (errEl) { errEl.textContent = 'Subject is required'; errEl.classList.remove('hidden'); } return; }
+
+    const btn = $('btn-we-save');
+    if (btn) btn.disabled = true;
+    try {
+      if (wordId) {
+        await API.updateAdminWord(wordId, data);
+        APP.toast('Word updated', 'success');
+      } else {
+        await API.createAdminWord(data);
+        APP.toast('Word added', 'success');
+      }
+      $('word-edit-overlay').classList.add('hidden');
+      _wordsSkip = 0;
+      _loadWordBank();
+    } catch (err) {
+      if (errEl) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function _bulkAutoFill() {
+    const batch   = $('word-bulk-batch')?.value?.trim();
+    const subject = $('word-bulk-subject')?.value?.trim();
+    if (!batch || !subject) return APP.toast('Select batch and subject first', 'error');
+
+    const raw  = $('bulk-words-textarea')?.value || '';
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return APP.toast('Paste some words first', 'error');
+
+    const progress = $('bulk-progress-wrap');
+    const bar      = $('bulk-progress-bar');
+    const txt      = $('bulk-progress-text');
+    const btn      = $('btn-bulk-autofill');
+    const previewWrap = $('bulk-preview-wrap');
+    const previewBody = $('bulk-preview-body');
+
+    if (progress) progress.classList.remove('hidden');
+    if (btn) btn.disabled = true;
+    _bulkPreviewData = [];
+    if (previewBody) previewBody.innerHTML = '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const parts = lines[i].split('|').map(p => p.trim());
+      const word  = parts[0];
+      let row = {
+        word,
+        batch,
+        subject,
+        meaning_mr: parts[1] || '',
+        meaning_en: '',
+        phonics:    parts[2] || '',
+        status: 'pending',
+      };
+
+      if (!row.meaning_mr || !row.phonics) {
+        try {
+          const res = await API.autoFillWord(word);
+          const d = res.data || {};
+          if (!row.meaning_mr) row.meaning_mr = d.meaning_mr || '';
+          if (!row.meaning_en) row.meaning_en = d.meaning_en || '';
+          if (!row.phonics)    row.phonics    = d.phonics    || '';
+          row.status = 'ok';
+        } catch {
+          row.status = 'skip';
+        }
+      } else {
+        row.status = 'ok';
+      }
+
+      _bulkPreviewData.push(row);
+
+      const pct = Math.round(((i + 1) / lines.length) * 100);
+      if (bar) bar.style.width = pct + '%';
+      if (txt) txt.textContent = `${i + 1} / ${lines.length}`;
+
+      // Render preview row
+      if (previewBody) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${_esc(row.word)}</td>
+          <td>${_esc(row.meaning_mr)}</td>
+          <td>${_esc(row.meaning_en)}</td>
+          <td>${_esc(row.phonics)}</td>
+          <td class="${row.status === 'ok' ? 'words-preview-ok' : 'words-preview-skip'}">${row.status}</td>`;
+        previewBody.appendChild(tr);
+      }
+
+      await new Promise(r => setTimeout(r, 120)); // brief pause between API calls
+    }
+
+    if (previewWrap) previewWrap.classList.remove('hidden');
+    const saveBtn = $('btn-bulk-save');
+    if (saveBtn) saveBtn.disabled = false;
+    if (btn) btn.disabled = false;
+    APP.toast(`${_bulkPreviewData.filter(r => r.status === 'ok').length} words ready to save`, 'info');
+  }
+
+  async function _bulkSave() {
+    const toSave = _bulkPreviewData.filter(r => r.status === 'ok');
+    if (!toSave.length) return APP.toast('Nothing to save', 'error');
+    const btn = $('btn-bulk-save');
+    if (btn) btn.disabled = true;
+    try {
+      await API.bulkCreateAdminWords(toSave);
+      APP.toast(`${toSave.length} words saved`, 'success');
+      $('bulk-words-textarea').value = '';
+      $('bulk-preview-wrap').classList.add('hidden');
+      $('bulk-progress-wrap').classList.add('hidden');
+      _bulkPreviewData = [];
+      _wordsSkip = 0;
+      _loadWordBank();
+    } catch (err) {
+      APP.toast('Save failed: ' + err.message, 'error');
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function _initWordsTab() {
+    // Filter events
+    $('btn-words-search')?.addEventListener('click', () => { _wordsSkip = 0; _loadWordBank(); });
+    $('words-search')?.addEventListener('keydown', e => { if (e.key === 'Enter') { _wordsSkip = 0; _loadWordBank(); } });
+    $('words-filter-batch')?.addEventListener('change', async () => {
+      // Populate words-filter-subject based on batch selection
+      const batch = $('words-filter-batch')?.value || '';
+      const subjects = batch ? (await DB.getSubjectsByBatch(batch)).map(s => s.name) : [];
+      _setSelectOptions($('words-filter-subject'), subjects, 'All Subjects');
+      _wordsSkip = 0;
+      _loadWordBank();
+    });
+    $('words-filter-subject')?.addEventListener('change', () => { _wordsSkip = 0; _loadWordBank(); });
+
+    // Word list delegation (edit/delete)
+    $('words-table-body')?.addEventListener('click', async e => {
+      const editBtn = e.target.closest('.words-btn-edit');
+      const delBtn  = e.target.closest('.words-btn-delete');
+      if (editBtn) {
+        const wid = editBtn.dataset.wid;
+        const tbody = $('words-table-body');
+        const row = tbody?.querySelector(`[data-wid="${wid}"]`)?.closest('tr');
+        if (!row) return;
+        const cells = row.querySelectorAll('td');
+        await _openWordEditor({
+          word_id:    wid,
+          batch:      $('words-filter-batch')?.value   || '',
+          subject:    $('words-filter-subject')?.value || '',
+          word:       cells[1]?.textContent || '',
+          meaning_mr: cells[2]?.textContent || '',
+          meaning_en: cells[3]?.textContent || '',
+          phonics:    cells[4]?.textContent || '',
+          difficulty: cells[5]?.querySelector('span')?.textContent?.trim() || 'medium',
+        });
+      }
+      if (delBtn) {
+        const wid  = delBtn.dataset.wid;
+        const name = delBtn.dataset.wname;
+        if (!confirm(`Delete word "${name}"?`)) return;
+        try {
+          await API.deleteAdminWord(wid);
+          APP.toast('Word deleted', 'success');
+          _loadWordBank();
+        } catch (err) {
+          APP.toast('Delete failed: ' + err.message, 'error');
+        }
+      }
+    });
+
+    // Add word button
+    $('btn-add-word')?.addEventListener('click', () => _openWordEditor(null));
+
+    // Word editor modal
+    $('word-edit-close')?.addEventListener('click', () => $('word-edit-overlay')?.classList.add('hidden'));
+    $('btn-we-cancel')?.addEventListener('click', () => $('word-edit-overlay')?.classList.add('hidden'));
+    $('btn-we-autofill')?.addEventListener('click', _weAutoFill);
+    $('word-edit-form')?.addEventListener('submit', _weSubmit);
+
+    // we-batch → populate we-subject
+    $('we-batch')?.addEventListener('change', async () => {
+      const batch = $('we-batch')?.value || '';
+      const subjects = batch ? (await DB.getSubjectsByBatch(batch)).map(s => s.name) : [];
+      _setSelectOptions($('we-subject'), subjects, 'Select Subject');
+    });
+
+    // Bulk import
+    $('btn-bulk-autofill')?.addEventListener('click', _bulkAutoFill);
+    $('btn-bulk-save')?.addEventListener('click', _bulkSave);
+
+    // word-bulk-batch → populate word-bulk-subject
+    $('word-bulk-batch')?.addEventListener('change', async () => {
+      const batch = $('word-bulk-batch')?.value || '';
+      const subjects = batch ? (await DB.getSubjectsByBatch(batch)).map(s => s.name) : [];
+      _setSelectOptions($('word-bulk-subject'), subjects, 'Select Subject');
     });
   }
 
