@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,5 +33,10 @@ cpSync(
   path.join(rootDir, 'admin-app', 'manifest.json'),
   path.join(outDir, 'manifest.json')
 );
+
+// Remove <base href> from admin.html — it breaks file:// protocol in Electron
+const adminHtmlPath = path.join(outDir, 'admin-app', 'admin.html');
+const adminHtml = readFileSync(adminHtmlPath, 'utf8');
+writeFileSync(adminHtmlPath, adminHtml.replace(/<base href="[^"]*"\s*\/?>\s*/i, ''));
 
 console.log('✅ dist-admin/ ready');
