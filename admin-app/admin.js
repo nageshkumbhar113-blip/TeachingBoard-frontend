@@ -2699,19 +2699,154 @@ const ADMIN = (() => {
 
     if (batch && subject && total > 0) {
       const tc = Math.ceil(total / 20);
-      let detail = '';
+      let chips = '';
       for (let i = 1; i <= tc; i++) {
         const from = (i - 1) * 20 + 1;
         const to   = Math.min(i * 20, total);
-        detail += `Test ${i} (${from}–${to})${i < tc ? ' · ' : ''}`;
+        chips += `<span class="tpi-chip" data-testnum="${i}" data-from="${from}" data-to="${to}" title="Preview Test ${i}">Test ${i} (${from}–${to})</span>`;
       }
-      text.innerHTML = `📝 <strong>${tc} test${tc !== 1 ? 's' : ''} ready</strong> — ${total} words, groups of 20 &nbsp;|&nbsp; <span style="color:var(--text2)">${detail}</span>`;
+      text.innerHTML = `📝 <strong>${tc} test${tc !== 1 ? 's' : ''} ready</strong> — ${total} words &nbsp;|&nbsp; <span class="tpi-chips">${chips}</span>`;
+
+      // Chip click → open preview
+      text.querySelectorAll('.tpi-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          _openTestPreview(
+            parseInt(chip.dataset.testnum),
+            batch, subject,
+            parseInt(chip.dataset.from),
+            parseInt(chip.dataset.to)
+          );
+        });
+      });
+
       bar.classList.remove('hidden');
       if (btn) btn.style.display = '';
     } else {
       bar.classList.add('hidden');
       if (btn) btn.style.display = 'none';
     }
+  }
+
+  async function _openTestPreview(testNum, batch, subject, wordFrom, wordTo) {
+    const overlay = $('test-preview-overlay');
+    const title   = $('test-preview-title');
+    const meta    = $('test-preview-meta');
+    const body    = $('test-preview-body');
+    if (!overlay) return;
+
+    if (title) title.textContent = `Test ${testNum} — Preview`;
+    if (meta)  meta.textContent  = `${batch} / ${subject} · Words ${wordFrom}–${wordTo}`;
+    if (body)  body.innerHTML    = '<div class="test-preview-loading">Loading…</div>';
+    overlay.classList.remove('hidden');
+
+    // Store context for re-load after word edit
+    overlay.dataset.testNum  = testNum;
+    overlay.dataset.batch    = batch;
+    overlay.dataset.subject  = subject;
+    overlay.dataset.wordFrom = wordFrom;
+    overlay.dataset.wordTo   = wordTo;
+
+    await _refreshTestPreview();
+  }
+
+  async function _refreshTestPreview() {
+    const overlay = $('test-preview-overlay');
+    const body    = $('test-preview-body');
+    if (!overlay || !body) return;
+
+    const batch    = overlay.dataset.batch    || '';
+    const subject  = overlay.dataset.subject  || '';
+    const wordFrom = parseInt(overlay.dataset.wordFrom) || 1;
+    const wordTo   = parseInt(overlay.dataset.wordTo)   || 20;
+    const skip     = wordFrom - 1;
+    const limit    = wordTo - wordFrom + 1;
+
+    try {
+      const res   = await API.fetchAdminWords({ batch, subject, skip, limit });
+      const words = res.data || [];
+
+      if (!words.length) {
+        body.innerHTML = '<div class="test-preview-loading">No words found.</div>';
+        return;
+      }
+
+      let rows = '';
+      words.forEach(w => {
+        rows += `
+          <tr>
+            <td class="tp-seq">${w.seq_num}</td>
+            <td class="tp-word">${_esc(w.word)}</td>
+            <td class="tp-meaning">${_esc(w.meaning_mr || '—')}</td>
+            <td class="tp-meaning">${_esc(w.meaning_en || '—')}</td>
+            <td class="tp-phonics">${_esc(w.phonics || '—')}</td>
+            <td class="tp-actions">
+              <button class="admin-btn-secondary admin-btn-sm tp-edit-btn"
+                data-wid="${_esc(w.word_id)}"
+                data-word="${_esc(w.word)}"
+                data-meaning-mr="${_esc(w.meaning_mr || '')}"
+                data-meaning-en="${_esc(w.meaning_en || '')}"
+                data-phonics="${_esc(w.phonics || '')}"
+                data-image-url="${_esc(w.image_url || '')}"
+                data-emoji="${_esc(w.emoji || '')}"
+                data-difficulty="${_esc(w.difficulty || 'medium')}"
+                data-batch="${_esc(batch)}"
+                data-subject="${_esc(subject)}">Edit</button>
+            </td>
+          </tr>`;
+      });
+
+      body.innerHTML = `
+        <table class="test-preview-table">
+          <thead>
+            <tr>
+              <th class="tp-seq">#</th>
+              <th>Word</th>
+              <th>Meaning (MR)</th>
+              <th>Meaning (EN)</th>
+              <th>Phonics</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+
+      // Edit button delegation inside preview
+      body.querySelectorAll('.tp-edit-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await _openWordEditor({
+            word_id:    btn.dataset.wid,
+            word:       btn.dataset.word,
+            meaning_mr: btn.dataset.meaningMr,
+            meaning_en: btn.dataset.meaningEn,
+            phonics:    btn.dataset.phonics,
+            image_url:  btn.dataset.imageUrl,
+            emoji:      btn.dataset.emoji,
+            difficulty: btn.dataset.difficulty,
+            batch:      btn.dataset.batch,
+            subject:    btn.dataset.subject,
+          });
+          // After editor closes, refresh preview automatically
+          _schedulePreviewRefresh();
+        });
+      });
+    } catch (err) {
+      body.innerHTML = `<div class="test-preview-loading" style="color:#f87171">${_esc(err.message)}</div>`;
+    }
+  }
+
+  let _previewRefreshTimer = null;
+  function _schedulePreviewRefresh() {
+    // Refresh preview 400ms after word-edit-overlay closes
+    const observer = new MutationObserver(() => {
+      const overlay = $('word-edit-overlay');
+      if (overlay?.classList.contains('hidden')) {
+        observer.disconnect();
+        clearTimeout(_previewRefreshTimer);
+        _previewRefreshTimer = setTimeout(() => _refreshTestPreview(), 300);
+      }
+    });
+    const target = $('word-edit-overlay');
+    if (target) observer.observe(target, { attributes: true, attributeFilter: ['class'] });
   }
 
   async function _openWordEditor(wordData) {
@@ -3043,6 +3178,12 @@ const ADMIN = (() => {
 
     // Add word button
     $('btn-add-word')?.addEventListener('click', () => _openWordEditor(null));
+
+    // Test preview modal
+    $('test-preview-close')?.addEventListener('click', () => $('test-preview-overlay')?.classList.add('hidden'));
+    $('test-preview-overlay')?.addEventListener('click', e => {
+      if (e.target === $('test-preview-overlay')) $('test-preview-overlay').classList.add('hidden');
+    });
 
     // Word editor modal
     $('word-edit-close')?.addEventListener('click', () => $('word-edit-overlay')?.classList.add('hidden'));

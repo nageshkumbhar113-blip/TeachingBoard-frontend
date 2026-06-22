@@ -1144,6 +1144,20 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>
 
+  <!-- Test Preview Modal -->
+  <div id="test-preview-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="test-preview-title">
+    <div class="modal-panel test-preview-panel">
+      <div class="modal-header">
+        <h3 id="test-preview-title" class="modal-title">Test Preview</h3>
+        <button id="test-preview-close" class="modal-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div id="test-preview-meta" class="test-preview-meta"></div>
+      <div id="test-preview-body" class="test-preview-body">
+        <div class="test-preview-loading">Loading…</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Student Action Drawer -->
   <div id="student-action-overlay" class="student-action-overlay hidden"></div>
   <div id="student-action-drawer" class="student-action-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-student-name">
