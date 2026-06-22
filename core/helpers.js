@@ -889,6 +889,23 @@ const API = (() => {
     });
   }
 
+  async function getVocabConfig(batch, subject) {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams({ batch, subject });
+    return request(`/admin/words/vocab-config?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function saveVocabConfig(batch, subject, active_sections) {
+    const token = await ensureAdminSession();
+    return request('/admin/words/vocab-config', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ batch, subject, active_sections }),
+    });
+  }
+
   // ── Vocabulary: Student ───────────────────────────────────────────────────────
 
   async function autoFillWordForStudent(word) {
@@ -1397,6 +1414,7 @@ const API = (() => {
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
     sendTeacherNotification, fetchTeacherNotificationHistory,
     autoFillWord, fetchAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
+    getVocabConfig, saveVocabConfig,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
     fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,

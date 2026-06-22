@@ -2939,6 +2939,27 @@ const ADMIN = (() => {
     }
   }
 
+  async function _loadVocabSectionsCard() {
+    const batch   = $('words-filter-batch')?.value  || '';
+    const subject = $('words-filter-subject')?.value || '';
+    const card    = $('vocab-sections-card');
+    if (!card) return;
+    if (!batch || !subject) { card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    const status = $('vocab-sections-status');
+    if (status) status.textContent = 'Loading…';
+    try {
+      const res = await API.getVocabConfig(batch, subject);
+      const active = res?.data?.active_sections || ['listen','meaning','picture','spelling'];
+      card.querySelectorAll('input[name="vsec"]').forEach(cb => {
+        cb.checked = active.includes(cb.value);
+      });
+      if (status) status.textContent = '';
+    } catch (e) {
+      if (status) status.textContent = 'Could not load sections config.';
+    }
+  }
+
   function _initWordsTab() {
     // Filter events
     $('btn-words-search')?.addEventListener('click', () => { _wordsSkip = 0; _loadWordBank(); });
@@ -2949,6 +2970,7 @@ const ADMIN = (() => {
       _setSelectOptions($('words-filter-subject'), subjects, 'All Subjects');
       _wordsSkip = 0;
       _loadWordBank();
+      _loadVocabSectionsCard();
     });
 
     // "Tests" button — scroll to / highlight the test info bar
@@ -2960,7 +2982,29 @@ const ADMIN = (() => {
         setTimeout(() => { bar.style.outline = ''; }, 1800);
       }
     });
-    $('words-filter-subject')?.addEventListener('change', () => { _wordsSkip = 0; _loadWordBank(); });
+    $('words-filter-subject')?.addEventListener('change', () => {
+      _wordsSkip = 0;
+      _loadWordBank();
+      _loadVocabSectionsCard();
+    });
+
+    // Save sections config
+    $('btn-save-sections')?.addEventListener('click', async () => {
+      const batch   = $('words-filter-batch')?.value  || '';
+      const subject = $('words-filter-subject')?.value || '';
+      if (!batch || !subject) return;
+      const active_sections = [...document.querySelectorAll('input[name="vsec"]:checked')].map(cb => cb.value);
+      if (!active_sections.length) { alert('At least one section must be selected.'); return; }
+      const status = $('vocab-sections-status');
+      if (status) status.textContent = 'Saving…';
+      try {
+        await API.saveVocabConfig(batch, subject, active_sections);
+        if (status) status.textContent = 'Saved!';
+        setTimeout(() => { if (status) status.textContent = ''; }, 2000);
+      } catch (e) {
+        if (status) status.textContent = 'Save failed: ' + (e?.message || 'error');
+      }
+    });
 
     // Word list delegation (edit/delete)
     $('words-table-body')?.addEventListener('click', async e => {

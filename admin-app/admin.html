@@ -710,6 +710,21 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <button id="btn-words-search" class="admin-btn-secondary">Search</button>
             </div>
 
+            <!-- Sections config card — shown when batch+subject selected -->
+            <div id="vocab-sections-card" class="admin-card vocab-sections-card hidden">
+              <div class="vocab-sections-header">
+                <span class="vocab-sections-title">Active Test Sections</span>
+                <button id="btn-save-sections" class="admin-btn-primary admin-btn-sm">Save</button>
+              </div>
+              <div class="vocab-sections-checks">
+                <label class="vocab-section-label"><input type="checkbox" name="vsec" value="listen" /> Listen</label>
+                <label class="vocab-section-label"><input type="checkbox" name="vsec" value="meaning" /> Meaning</label>
+                <label class="vocab-section-label"><input type="checkbox" name="vsec" value="picture" /> Picture</label>
+                <label class="vocab-section-label"><input type="checkbox" name="vsec" value="spelling" /> Spelling</label>
+              </div>
+              <p id="vocab-sections-status" class="vocab-sections-status"></p>
+            </div>
+
             <!-- Word list -->
             <div id="words-list-wrap" class="words-list-wrap">
               <table class="words-table">

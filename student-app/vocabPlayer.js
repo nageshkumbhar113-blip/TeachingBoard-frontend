@@ -5,7 +5,8 @@
 ════════════════════════════════════════ */
 
 const VOCAB = (() => {
-  const SECTIONS = ['listen', 'meaning', 'picture', 'spelling'];
+  const ALL_SECTIONS = ['listen', 'meaning', 'picture', 'spelling'];
+  let   SECTIONS = [...ALL_SECTIONS];
   const SECTION_LABELS = {
     listen:   'Section 1: Listen',
     meaning:  'Section 2: Meaning',
@@ -170,6 +171,13 @@ const VOCAB = (() => {
         _showView('test-list');
         return;
       }
+      const serverSections = Array.isArray(res.active_sections) ? res.active_sections : [];
+      SECTIONS = serverSections.filter(s => ALL_SECTIONS.includes(s));
+      if (!SECTIONS.length) SECTIONS = [...ALL_SECTIONS];
+      _section = SECTIONS[0];
+      _wordIdx = 0;
+      _scores  = { listen: 0, meaning: 0, picture: 0, spelling: 0 };
+      _wordScores = {};
       _renderCurrentQuestion();
     } catch (err) {
       APP.toast(err.message, 'error');
@@ -393,7 +401,7 @@ const VOCAB = (() => {
   }
 
   function _isLastQuestion() {
-    return _wordIdx >= _words.length - 1 && _section === 'spelling';
+    return _wordIdx >= _words.length - 1 && _section === SECTIONS[SECTIONS.length - 1];
   }
 
   function _onNext() {
@@ -410,7 +418,7 @@ const VOCAB = (() => {
     if (_wordIdx >= _words.length) {
       _wordIdx = 0;
       const sIdx = SECTIONS.indexOf(_section);
-      _section = SECTIONS[sIdx + 1] || 'spelling';
+      _section = SECTIONS[sIdx + 1] || SECTIONS[SECTIONS.length - 1];
     }
   }
 
@@ -430,7 +438,7 @@ const VOCAB = (() => {
   async function _submitTest() {
     _showView('score');
 
-    const totalPossible = _words.length * 4;
+    const totalPossible = _words.length * SECTIONS.length;
     const totalScore = _scores.listen + _scores.meaning + _scores.picture + _scores.spelling;
     const pct = Math.round((totalScore / totalPossible) * 100);
     const passed = pct >= 60;

@@ -1789,3 +1789,54 @@ body.admin-app {
 .theme-light .student-action-drawer { background: #fff; }
 .theme-light .drawer-action-btn { background: #f6f8fa; }
 .theme-light .drawer-cancel-btn { background: #f6f8fa; }
+
+/* ── Section 32: Vocab Subject Sections Config ── */
+.vocab-sections-card {
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border: 1px solid rgba(99,179,237,0.3);
+  border-radius: var(--r-md);
+  background: rgba(99,179,237,0.06);
+}
+.vocab-sections-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.vocab-sections-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.vocab-sections-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+.vocab-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--text1);
+  cursor: pointer;
+  user-select: none;
+}
+.vocab-section-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.vocab-sections-status {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--text2);
+  min-height: 1em;
+}
+.admin-btn-sm {
+  padding: 5px 14px;
+  font-size: 0.82rem;
+}
+
