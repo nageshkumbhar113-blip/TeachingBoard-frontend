@@ -1,6 +1,6 @@
 {
   "name": "teachingboard-split-apps",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "private": true,
   "type": "module",
   "main": "electron-main.mjs",
@@ -42,6 +42,7 @@
     }
   },
   "dependencies": {
+    "@capacitor-community/text-to-speech": "^8.0.2",
     "@capacitor/push-notifications": "^8.1.1"
   }
 }

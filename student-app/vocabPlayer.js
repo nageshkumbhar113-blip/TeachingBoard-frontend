@@ -547,40 +547,14 @@ const VOCAB = (() => {
 
   // ─── TTS ────────────────────────────────────────────────────────────────────
 
-  function _speakWord(text) {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-
-    function _doSpeak() {
-      const utt = new SpeechSynthesisUtterance(String(text || ''));
-      utt.lang  = 'en-US';
-      utt.rate  = 0.85;
-      utt.pitch = 1;
-      const vs = synth.getVoices();
-      const v  = vs.find(v => v.lang === 'en-US')
-              || vs.find(v => v.lang.startsWith('en'))
-              || vs[0]
-              || null;
-      if (v) utt.voice = v;
-      synth.speak(utt);
-    }
-
-    // Android WebView loads voices asynchronously; getVoices() returns [] on first call
-    const voices = synth.getVoices();
-    if (voices.length) {
-      _doSpeak();
-    } else {
-      let fired = false;
-      synth.onvoiceschanged = () => {
-        if (fired) return;
-        fired = true;
-        synth.onvoiceschanged = null;
-        _doSpeak();
-      };
-      // Fallback: some WebViews never fire onvoiceschanged
-      setTimeout(() => { if (!fired) { fired = true; _doSpeak(); } }, 800);
-    }
+  async function _speakWord(text) {
+    const str = String(text || '').trim();
+    if (!str) return;
+    const TTS = window.Capacitor?.Plugins?.TextToSpeech;
+    if (!TTS) return;
+    try {
+      await TTS.speak({ text: str, lang: 'en-US', rate: 1.0, pitch: 1.0, volume: 1.0 });
+    } catch (e) {}
   }
 
   // ─── View management ─────────────────────────────────────────────────────────
