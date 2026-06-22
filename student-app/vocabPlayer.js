@@ -527,13 +527,19 @@ const VOCAB = (() => {
   // ─── TTS ────────────────────────────────────────────────────────────────────
 
   function _speakWord(text) {
-    if (window.TTS?.speak) {
-      TTS.speak(text);
-    } else if (window.speechSynthesis) {
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.lang = 'en-US';
-      speechSynthesis.speak(utt);
-    }
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    synth.cancel();
+    const utt = new SpeechSynthesisUtterance(String(text || ''));
+    utt.lang  = 'en-US';
+    utt.rate  = 0.85;
+    utt.pitch = 1;
+    const voices = synth.getVoices();
+    const voice  = voices.find(v => v.lang === 'en-US')
+                || voices.find(v => v.lang.startsWith('en'))
+                || null;
+    if (voice) utt.voice = voice;
+    synth.speak(utt);
   }
 
   // ─── View management ─────────────────────────────────────────────────────────
