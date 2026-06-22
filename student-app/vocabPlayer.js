@@ -51,10 +51,12 @@ const VOCAB = (() => {
 
   async function _loadTestList() {
     _showView('test-list');
-    const titleEl = $id('vocab-list-title');
-    if (titleEl) titleEl.textContent = `${_subject} — Words`;
 
     await _populateSubjectSelect();
+
+    // Update title AFTER subject is resolved
+    const titleEl = $id('vocab-list-title');
+    if (titleEl) titleEl.textContent = _subject ? `${_subject} — Words` : 'Word Learning';
 
     const grid = $id('vocab-test-grid');
     const empty = $id('vocab-list-empty');

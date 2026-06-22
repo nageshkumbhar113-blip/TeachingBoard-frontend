@@ -2617,7 +2617,6 @@ const ADMIN = (() => {
 
     if (batch && subject && total > 0) {
       const tc = Math.ceil(total / 20);
-      const lastSize = total % 20 || 20;
       let detail = '';
       for (let i = 1; i <= tc; i++) {
         const from = (i - 1) * 20 + 1;
