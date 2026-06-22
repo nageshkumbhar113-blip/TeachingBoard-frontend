@@ -1,16 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId:   'com.teachingboard.student',
-  appName: 'TB Student',
-  webDir:  'dist-student',
+  appId:   'com.teachingboard.admin',
+  appName: 'TB Admin',
+  webDir:  'dist-admin',
   bundledWebRuntime: false,
-  server: { androidScheme: 'https' },
-  plugins: {
-    PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert'],
-    },
-  },
+  server: { androidScheme: 'https' }
 };
 
 export default config;

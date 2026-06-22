@@ -2213,6 +2213,38 @@ const ADMIN = (() => {
     }
   }
 
+  async function _fetchFromGitHub() {
+    const btn = $('btn-fetch-github');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching...'; }
+    try {
+      const REPO = 'nageshkumbhar113-blip/TeachingBoard-frontend';
+      const res  = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+      const data = await res.json();
+
+      const apkAsset = (data.assets || []).find(a => a.name.endsWith('.apk'));
+      const version  = String(data.tag_name || '').replace(/^v/i, '').trim();
+      const apkUrl   = apkAsset?.browser_download_url || '';
+      const notes    = String(data.body || '').trim().slice(0, 500);
+
+      if (!version) throw new Error('GitHub release tag सापडला नाही');
+
+      if ($('ver-version'))  $('ver-version').value  = version;
+      if ($('ver-apk-url'))  $('ver-apk-url').value  = apkUrl;
+      if ($('ver-notes'))    $('ver-notes').value    = notes;
+      if ($('ver-platform')) $('ver-platform').value = 'android';
+
+      const sizeKb = apkAsset ? Math.round(apkAsset.size / 1024) : 0;
+      APP.toast(`v${version} fetch झाले${sizeKb ? ` (${sizeKb} KB)` : ''} — खाली Save करा`, 'success');
+    } catch (err) {
+      APP.toast('GitHub fetch failed: ' + (err.message || 'Unknown error'), 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📦 GitHub वरून Fetch करा'; }
+    }
+  }
+
   async function _activateVersion(versionId) {
     if (!versionId) return;
     try {
@@ -2517,6 +2549,7 @@ const ADMIN = (() => {
     // App Versions
     $('btn-save-version')?.addEventListener('click', _saveVersion);
     $('btn-refresh-versions')?.addEventListener('click', _loadVersionsAdmin);
+    $('btn-fetch-github')?.addEventListener('click', _fetchFromGitHub);
 
     // Sync
     $('btn-share-url-qr')?.addEventListener('click', _generateServerUrlQR);
