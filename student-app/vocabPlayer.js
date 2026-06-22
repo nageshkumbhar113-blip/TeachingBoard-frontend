@@ -491,12 +491,19 @@ const VOCAB = (() => {
   // ─── Add unknown word ────────────────────────────────────────────────────────
 
   function _openAddWord() {
+    if (!_subject) {
+      APP.toast('Please select a subject first', 'error');
+      return;
+    }
+    const ctx = $id('vocab-add-context');
+    if (ctx) ctx.textContent = `Adding to: ${_batch} / ${_subject}`;
     $id('vocab-add-word-backdrop')?.classList.remove('hidden');
     $id('vocab-add-word-input').value  = '';
     $id('vocab-add-word-err')?.classList.add('hidden');
     $id('vocab-add-word-preview')?.classList.add('hidden');
     $id('vocab-add-submit').disabled   = true;
     _addWordFillData = null;
+    setTimeout(() => $id('vocab-add-word-input')?.focus(), 100);
   }
 
   async function _autoFillAddWord() {
@@ -573,6 +580,9 @@ const VOCAB = (() => {
       const el = $id(id);
       if (el) el.classList.toggle('hidden', !id.includes(name));
     });
+    // FAB only on test-list view
+    const fab = $id('vocab-add-word-btn');
+    if (fab) fab.classList.toggle('vocab-fab-visible', name === 'test-list');
   }
 
   // ─── Init ────────────────────────────────────────────────────────────────────
