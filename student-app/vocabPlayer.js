@@ -240,12 +240,12 @@ const VOCAB = (() => {
         const img = document.createElement('img');
         img.src = word.image_url;
         img.className = 'vocab-word-img';
-        img.alt = '';
-        img.onerror = () => { img.remove(); };
+        img.alt = word.word;
+        img.onerror = () => { img.replaceWith(document.createTextNode(word.word)); };
         wordDisplay.innerHTML = '';
         wordDisplay.appendChild(img);
       } else {
-        wordDisplay.textContent = '';
+        wordDisplay.textContent = word.word;
       }
     }
 
