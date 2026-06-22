@@ -3,281 +3,767 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d1117" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="description" content="TeachingBoard Student App — Class 1 ते 12 साठी Quiz, Test, Vocabulary आणि बरेच काही. आत्ताच Download करा!" />
   <title>TeachingBoard — Student App Download</title>
   <link rel="icon" href="/icons/icon-72.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --accent:  #f0883e;
-      --green:   #34d399;
-      --bg:      #0d1117;
-      --bg2:     #161b22;
-      --border:  #30363d;
-      --text:    #e6edf3;
-      --text2:   #8b949e;
-      --wa:      #25D366;
-      --radius:  16px;
+      --p1: #1565C0; --p2: #0d47a1; --p3: #1976D2;
+      --accent: #f0883e;
+      --green:  #10b981;
+      --cyan:   #06b6d4;
+      --purple: #8b5cf6;
+      --rose:   #f43f5e;
+      --amber:  #f59e0b;
+      --wa:     #25D366;
+      --bg:     #0a0e1a;
+      --bg2:    #111827;
+      --bg3:    #1a2236;
+      --border: #1e293b;
+      --text:   #f1f5f9;
+      --text2:  #94a3b8;
+      --r:      18px;
+      --ease:   cubic-bezier(.4,0,.2,1);
     }
 
+    html { scroll-behavior: smooth; overflow-x: hidden; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      padding: 0 0 env(safe-area-inset-bottom, 0);
+      overflow-x: hidden;
+      line-height: 1.6;
     }
+    a { text-decoration: none; color: inherit; }
 
-    /* ── Hero ── */
-    .hero {
-      background: linear-gradient(160deg, #0f1724 0%, #0d1117 60%);
-      padding: 48px 20px 40px;
-      text-align: center;
+    .gt  { background: linear-gradient(135deg, #60a5fa, #38bdf8, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .gt2 { background: linear-gradient(135deg, var(--accent), #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+
+    .fade-up { opacity: 0; transform: translateY(28px); transition: opacity .65s var(--ease), transform .65s var(--ease); }
+    .fade-up.visible { opacity: 1; transform: none; }
+
+    /* ══ NAV ══ */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
-      position: relative;
-      overflow: hidden;
+      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .hero::before {
+    .nav-brand { font-size: 1.1rem; font-weight: 800; letter-spacing: -.02em; }
+    .nav-download {
+      padding: 8px 18px; border-radius: 999px;
+      background: var(--p1); color: #fff;
+      font-size: 0.85rem; font-weight: 700;
+      transition: background .15s;
+    }
+    .nav-download:hover { background: var(--p3); }
+
+    /* ══ HERO ══ */
+    .hero {
+      padding: 60px 20px 50px;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% -20%, rgba(21,101,192,0.35) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, rgba(240,136,62,0.1) 0%, transparent 50%),
+                  var(--bg);
+      position: relative; overflow: hidden;
+    }
+    .hero::after {
       content: '';
       position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 0%, rgba(240,136,62,0.12), transparent 60%);
+      top: -200px; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(21,101,192,0.2), transparent 70%);
       pointer-events: none;
     }
-    .app-icon {
-      width: 96px; height: 96px;
-      border-radius: 22px;
-      background: linear-gradient(135deg, #1565C0, #0d47a1);
+    .hero-icon {
+      width: 100px; height: 100px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, var(--p1), var(--p2));
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 20px;
-      box-shadow: 0 12px 40px rgba(21,101,192,0.35);
+      margin: 0 auto 24px;
+      box-shadow: 0 20px 60px rgba(21,101,192,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+      position: relative; z-index: 1;
     }
-    .app-icon img { width: 64px; height: 64px; object-fit: contain; }
-    .app-name {
-      font-size: 2rem; font-weight: 800;
-      letter-spacing: -0.02em;
-      background: linear-gradient(135deg, #fff 30%, var(--accent));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
+    .hero-icon img { width: 68px; height: 68px; object-fit: contain; }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      font-weight: 900; letter-spacing: -.03em;
+      line-height: 1.1; margin-bottom: 6px;
+      position: relative; z-index: 1;
     }
-    .app-tagline {
-      margin-top: 8px; font-size: 1rem; color: var(--text2); line-height: 1.5;
+    .hero-sub {
+      font-size: clamp(1rem, 3vw, 1.25rem);
+      color: var(--text2); margin-bottom: 20px;
+      position: relative; z-index: 1;
     }
-    .badges {
+    .hero-class-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 16px; border-radius: 999px;
+      background: rgba(240,136,62,0.12);
+      border: 1px solid rgba(240,136,62,0.3);
+      color: var(--accent); font-size: 0.85rem; font-weight: 700;
+      margin-bottom: 28px; position: relative; z-index: 1;
+    }
+    .hero-badges {
       display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-      margin-top: 16px;
+      margin-bottom: 32px; position: relative; z-index: 1;
     }
     .badge {
-      padding: 4px 12px; border-radius: 999px;
-      font-size: 0.75rem; font-weight: 600;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text2);
+      padding: 5px 13px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1); color: var(--text2);
     }
-    .badge.green { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.3); color: var(--green); }
+    .badge.b-green { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--green); }
+    .badge.b-cyan  { background: rgba(6,182,212,0.1);  border-color: rgba(6,182,212,0.3);  color: var(--cyan); }
+    .badge.b-amber { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: var(--amber); }
 
-    /* ── Download card ── */
-    .section { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+    .btn-hero-download {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 18px 40px;
+      background: linear-gradient(135deg, var(--p1), var(--p3));
+      color: #fff; border-radius: 14px;
+      font-size: 1.1rem; font-weight: 800;
+      box-shadow: 0 8px 32px rgba(21,101,192,0.45);
+      transition: transform .15s, box-shadow .15s;
+      position: relative; z-index: 1;
+    }
+    .btn-hero-download:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(21,101,192,0.55); }
+    .btn-hero-download:active { transform: scale(0.98); }
 
-    .download-card {
+    .hero-hint { margin-top: 12px; font-size: 0.8rem; color: var(--text2); position: relative; z-index: 1; }
+
+    /* ══ STATS ══ */
+    .stats-bar {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 20px;
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0; max-width: 700px; margin: 0 auto;
+    }
+    .stat-item {
+      text-align: center; padding: 12px 8px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num { font-size: 1.6rem; font-weight: 900; letter-spacing: -.03em; }
+    .stat-lbl { font-size: 0.72rem; color: var(--text2); margin-top: 2px; }
+
+    /* ══ SECTIONS ══ */
+    section { padding: 60px 20px; }
+    .section-label {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: .1em;
+      color: var(--cyan); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-weight: 900; letter-spacing: -.025em; margin-bottom: 14px;
+      line-height: 1.2;
+    }
+    .section-sub { color: var(--text2); font-size: 1rem; max-width: 560px; }
+
+    /* ══ FEATURES ══ */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px; margin-top: 36px;
+    }
+    .feat-card {
       background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      text-align: center;
+      border-radius: var(--r); padding: 24px;
+      transition: border-color .2s, transform .2s;
     }
-    .download-card h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
-    .download-card p  { font-size: 0.85rem; color: var(--text2); margin-bottom: 20px; }
-
-    .btn-download {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      width: 100%; padding: 16px 20px;
-      background: var(--accent); color: #fff;
-      border: none; border-radius: 12px;
-      font-size: 1rem; font-weight: 700; cursor: pointer;
-      text-decoration: none;
-      transition: opacity 0.15s, transform 0.1s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .btn-download:active { opacity: 0.88; transform: scale(0.98); }
-    .btn-download svg { flex-shrink: 0; }
-
-    .file-info {
-      margin-top: 12px; font-size: 0.75rem; color: var(--text2);
-      display: flex; gap: 16px; justify-content: center;
-    }
-
-    /* ── Steps ── */
-    .steps-title {
-      font-size: 1rem; font-weight: 700; margin-bottom: 16px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .step {
-      display: flex; gap: 14px; align-items: flex-start;
-      padding: 16px;
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      margin-bottom: 10px;
-    }
-    .step-num {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: rgba(240,136,62,0.15);
-      border: 1.5px solid rgba(240,136,62,0.4);
-      color: var(--accent);
-      font-size: 0.85rem; font-weight: 800;
+    .feat-card:hover { border-color: rgba(21,101,192,0.5); transform: translateY(-3px); }
+    .feat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+      font-size: 1.5rem; margin-bottom: 14px;
     }
-    .step-body h3 { font-size: 0.92rem; font-weight: 700; margin-bottom: 3px; }
-    .step-body p  { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
-    .step-body code {
-      background: rgba(255,255,255,0.06); padding: 2px 6px;
-      border-radius: 4px; font-size: 0.8rem; color: var(--accent);
-    }
+    .feat-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .feat-card p  { font-size: 0.85rem; color: var(--text2); line-height: 1.6; }
 
-    /* ── Warning box ── */
-    .warn-box {
-      background: rgba(251,191,36,0.08);
-      border: 1px solid rgba(251,191,36,0.25);
+    /* ══ CLASS GRID ══ */
+    .class-section { background: var(--bg2); }
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px; margin-top: 32px;
+    }
+    .class-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 10px;
+      text-align: center;
+      transition: border-color .2s, background .2s;
+    }
+    .class-card:hover { border-color: rgba(21,101,192,0.5); background: rgba(21,101,192,0.08); }
+    .class-card .class-num { font-size: 1.3rem; font-weight: 900; color: #60a5fa; }
+    .class-card .class-lbl { font-size: 0.7rem; color: var(--text2); margin-top: 2px; }
+    .class-subjects { font-size: 0.68rem; color: var(--text2); margin-top: 6px; line-height: 1.4; }
+
+    /* ══ BENEFITS ══ */
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px; margin-top: 32px;
+    }
+    .benefit-row {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px;
+    }
+    .benefit-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+    .benefit-row h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 3px; }
+    .benefit-row p  { font-size: 0.8rem; color: var(--text2); line-height: 1.5; }
+
+    /* ══ HOW IT WORKS ══ */
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px; margin-top: 32px;
+    }
+    .how-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 24px; text-align: center;
+      position: relative;
+    }
+    .how-num {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--p1), var(--cyan));
+      color: #fff; font-size: 0.9rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 14px;
+    }
+    .how-card h3 { font-size: 0.92rem; font-weight: 700; margin-bottom: 6px; }
+    .how-card p  { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
+
+    /* ══ VOCAB FEATURE HIGHLIGHT ══ */
+    .vocab-highlight {
+      background: linear-gradient(135deg, rgba(21,101,192,0.15), rgba(6,182,212,0.08));
+      border: 1px solid rgba(21,101,192,0.25);
+      border-radius: var(--r); padding: 32px; margin-top: 36px;
+    }
+    .vocab-highlight h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
+    .vocab-highlight p  { color: var(--text2); font-size: 0.9rem; margin-bottom: 20px; }
+    .vocab-sections {
+      display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .vocab-sec {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 10px; padding: 12px 14px;
-      font-size: 0.82rem; color: #fbbf24;
+    }
+    .vocab-sec .vs-icon { font-size: 1.2rem; margin-bottom: 4px; }
+    .vocab-sec h4 { font-size: 0.85rem; font-weight: 700; }
+    .vocab-sec p  { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+
+    /* ══ INSTALL GUIDE ══ */
+    .install-section { background: var(--bg2); }
+    .install-steps { margin-top: 28px; }
+    .install-step {
+      display: flex; gap: 16px; align-items: flex-start;
+      padding: 18px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: 10px;
+    }
+    .install-step-num {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(240,136,62,0.12);
+      border: 1.5px solid rgba(240,136,62,0.4);
+      color: var(--accent); font-size: 0.9rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .install-step h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .install-step p  { font-size: 0.83rem; color: var(--text2); line-height: 1.5; }
+    .install-step code {
+      background: rgba(255,255,255,0.07); padding: 2px 7px;
+      border-radius: 5px; font-size: 0.8rem; color: var(--accent);
+    }
+    .warn-box {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 10px; padding: 12px 16px;
+      font-size: 0.83rem; color: #fbbf24;
       line-height: 1.6; margin-bottom: 20px;
     }
 
-    /* ── WhatsApp ── */
-    .wa-btn {
+    /* ══ DOWNLOAD CTA ══ */
+    .cta-section { text-align: center; padding: 64px 20px; }
+    .cta-card {
+      max-width: 500px; margin: 0 auto;
+      background: linear-gradient(135deg, rgba(21,101,192,0.2), rgba(6,182,212,0.1));
+      border: 1px solid rgba(21,101,192,0.3);
+      border-radius: 24px; padding: 40px 32px;
+    }
+    .cta-card h2 { font-size: 1.5rem; font-weight: 900; margin-bottom: 8px; }
+    .cta-card p  { color: var(--text2); font-size: 0.9rem; margin-bottom: 24px; }
+    .btn-cta {
       display: flex; align-items: center; justify-content: center; gap: 10px;
-      width: 100%; padding: 14px 20px;
+      padding: 16px 28px; width: 100%;
+      background: linear-gradient(135deg, var(--p1), var(--p3));
+      color: #fff; border-radius: 12px;
+      font-size: 1rem; font-weight: 800;
+      box-shadow: 0 8px 28px rgba(21,101,192,0.4);
+      transition: transform .15s, box-shadow .15s;
+      margin-bottom: 12px;
+    }
+    .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(21,101,192,0.5); }
+    .file-meta { font-size: 0.78rem; color: var(--text2); margin-bottom: 20px; }
+
+    .btn-wa {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 13px 20px; width: 100%;
       background: var(--wa); color: #fff;
-      border-radius: 12px;
-      font-size: 0.95rem; font-weight: 700;
-      text-decoration: none;
-      transition: opacity 0.15s, transform 0.1s;
-      -webkit-tap-highlight-color: transparent;
+      border-radius: 12px; font-size: 0.95rem; font-weight: 700;
+      transition: opacity .15s;
     }
-    .wa-btn:active { opacity: 0.88; transform: scale(0.98); }
+    .btn-wa:active { opacity: 0.88; }
 
-    .section-divider {
-      border: none; border-top: 1px solid var(--border); margin: 4px 0 20px;
-    }
-
-    /* ── Footer ── */
+    /* ══ FOOTER ══ */
     .footer {
-      text-align: center; padding: 20px 16px 32px;
+      text-align: center; padding: 24px 20px 36px;
       font-size: 0.76rem; color: var(--text2);
       border-top: 1px solid var(--border);
     }
+    .footer a { color: var(--cyan); }
 
-    @media (max-width: 400px) {
-      .app-name { font-size: 1.6rem; }
-      .app-icon { width: 80px; height: 80px; }
-      .app-icon img { width: 52px; height: 52px; }
+    /* ══ RESPONSIVE ══ */
+    @media (max-width: 600px) {
+      .stats-grid   { grid-template-columns: repeat(2, 1fr); }
+      .stat-item:nth-child(2) { border-right: none; }
+      .class-grid   { grid-template-columns: repeat(3, 1fr); }
+      .vocab-sections { grid-template-columns: 1fr; }
+      .btn-hero-download { width: 100%; max-width: 340px; }
+    }
+    @media (max-width: 420px) {
+      .class-grid   { grid-template-columns: repeat(2, 1fr); }
+      .how-grid     { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ── HERO ── -->
-  <div class="hero">
-    <div class="app-icon">
-      <img src="/icons/icon-192.png" alt="TeachingBoard" />
+  <!-- ══ NAV ══ -->
+  <nav class="nav">
+    <div class="nav-brand"><span class="gt">TeachingBoard</span></div>
+    <a id="nav-dl-btn" href="#download" class="nav-download">📥 Download</a>
+  </nav>
+
+  <!-- ══ HERO ══ -->
+  <section class="hero">
+    <div class="hero-icon">
+      <img src="/icons/icon-192.png" alt="TeachingBoard" onerror="this.style.display='none'" />
     </div>
-    <h1 class="app-name">TeachingBoard</h1>
-    <p class="app-tagline">Student App — Quizzes, Lessons &amp; Practice Tests<br>आपल्या शाळेसाठी</p>
-    <div class="badges">
-      <span class="badge">📱 Android</span>
-      <span class="badge green">✓ Free</span>
-      <span class="badge">🔒 Offline Ready</span>
+    <div class="hero-class-badge">🏫 इयत्ता 1 ली ते 12 वी साठी</div>
+    <h1><span class="gt">TeachingBoard</span></h1>
+    <p class="hero-sub">स्मार्ट Student App — Quiz, Test, Vocabulary &amp; बरेच काही</p>
+    <div class="hero-badges">
+      <span class="badge b-green">✓ Free</span>
+      <span class="badge b-cyan">📱 Android</span>
+      <span class="badge b-amber">🌐 Offline Ready</span>
+      <span class="badge">🔔 Push Notifications</span>
+      <span class="badge">📚 Vocabulary Tests</span>
     </div>
-  </div>
-
-  <!-- ── DOWNLOAD ── -->
-  <div class="section">
-    <div class="download-card">
-      <h2>📥 Student App Download करा</h2>
-      <p>खालील button वर click करून APK download करा आणि install करा.</p>
-      <a id="apk-link" href="#" class="btn-download" download>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        TB Student App Download करा
-      </a>
-      <div class="file-info">
-        <span id="apk-version">Version: Latest</span>
-        <span id="apk-size">Platform: Android</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── INSTALL STEPS ── -->
-  <div class="section" style="padding-top:0">
-    <p class="steps-title">📋 Install कसा करायचा?</p>
-
-    <div class="warn-box">
-      ⚠️ <strong>महत्त्वाचे:</strong> हा app Google Play Store वर नाही. Install करण्यापूर्वी खाली दिलेल्या steps follow करा.
-    </div>
-
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-body">
-        <h3>Unknown Sources Allow करा</h3>
-        <p>Phone Settings → <code>Security</code> → <code>Install Unknown Apps</code> → Browser किंवा File Manager → Allow</p>
-      </div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-body">
-        <h3>APK Download करा</h3>
-        <p>वरील <strong>"TB Student App Download"</strong> button वर click करा. File <code>Downloads</code> folder मध्ये save होईल.</p>
-      </div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-body">
-        <h3>APK File उघडा</h3>
-        <p>Downloads folder मध्ये जा → <code>TB-Student.apk</code> वर tap करा → Install दाबा → Done!</p>
-      </div>
-    </div>
-
-    <div class="step">
-      <div class="step-num">4</div>
-      <div class="step-body">
-        <h3>Login करा</h3>
-        <p>Admin कडून मिळालेला <strong>Student Code</strong> आणि <strong>PIN</strong> टाका. किंवा नवीन Registration करा — Admin approve केल्यावर access मिळेल.</p>
-      </div>
-    </div>
-
-    <hr class="section-divider" />
-
-    <p class="steps-title">💬 मदत हवी आहे?</p>
-    <a href="https://wa.me/918390484545?text=I%20want%20help%20with%20TeachingBoard%20Student%20App"
-       target="_blank" rel="noopener noreferrer"
-       class="wa-btn">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      WhatsApp वर संपर्क करा — 8390484545
+    <a id="hero-dl-btn" href="#" class="btn-hero-download">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      APK Download करा — Free
     </a>
+    <p class="hero-hint">Android 7.0+ · ~5 MB · कोणत्याही Android phone वर चालतो</p>
+  </section>
+
+  <!-- ══ STATS ══ -->
+  <div class="stats-bar fade-up">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-num gt">12</div>
+        <div class="stat-lbl">Classes Supported</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num gt">4</div>
+        <div class="stat-lbl">Vocab Test Sections</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num gt">∞</div>
+        <div class="stat-lbl">Practice Tests</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num gt">100%</div>
+        <div class="stat-lbl">Free to Use</div>
+      </div>
+    </div>
   </div>
 
-  <div class="footer">
-    TeachingBoard &copy; 2026 · शिक्षणासाठी तंत्रज्ञान
-  </div>
+  <!-- ══ FEATURES ══ -->
+  <section>
+    <div class="container">
+      <div class="fade-up">
+        <div class="section-label">✨ Features</div>
+        <h2 class="section-title">App मध्ये काय काय आहे?</h2>
+        <p class="section-sub">TeachingBoard मध्ये शिक्षणासाठी लागणाऱ्या सर्व गोष्टी एकाच ठिकाणी आहेत.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(21,101,192,0.15)">📝</div>
+          <h3>Quiz Practice</h3>
+          <p>MCQ quizzes — प्रत्येक chapter साठी वेगवेगळे quiz. चुकलेले answers लगेच कळतात. Image questions आणि Math symbols पण support.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(6,182,212,0.15)">📋</div>
+          <h3>Practice Tests</h3>
+          <p>Chapter-wise test papers — Sequential test numbers, timer, score breakdown. Teacher ने assign केलेले tests automatically दिसतात.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(16,185,129,0.15)">📚</div>
+          <h3>Vocabulary Tests</h3>
+          <p>English words शिकण्यासाठी — Listen (TTS), Meaning, Picture, Spelling असे 4 sections. Marathi किंवा English meaning निवडा.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(139,92,246,0.15)">📖</div>
+          <h3>Deep Study</h3>
+          <p>Notes, lessons आणि explanations — Teacher ने दिलेले study material offline सुद्धा वाचता येते.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(245,158,11,0.15)">📊</div>
+          <h3>Performance Analytics</h3>
+          <p>Weekly आणि Monthly performance chart — कोणत्या subject मध्ये कमी आहे ते कळते. Strong / Weak topics वेगळे दिसतात.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(244,63,94,0.15)">🔔</div>
+          <h3>Push Notifications</h3>
+          <p>Teacher ने नवीन test assign केला, quiz publish केला किंवा message पाठवला की लगेच notification येतो.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(240,136,62,0.15)">👨‍👩‍👧</div>
+          <h3>Parent Tracking</h3>
+          <p>Parents ला student चा progress, test scores आणि vocabulary results notifications येतात — app install नाही लागत!</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(21,101,192,0.15)">📶</div>
+          <h3>Offline Ready</h3>
+          <p>Internet नसताना पण questions, lessons आणि notes वाचता येतात. Internet आल्यावर automatically sync होते.</p>
+        </div>
+      </div>
+
+      <!-- Vocab Highlight -->
+      <div class="vocab-highlight fade-up">
+        <h3>🆕 नवीन: Vocabulary Test Feature</h3>
+        <p>English शब्द शिकण्यासाठी 4 प्रकारचे tests — एकाच session मध्ये ऐकणे, अर्थ, चित्र आणि spelling practice!</p>
+        <div class="vocab-sections">
+          <div class="vocab-sec">
+            <div class="vs-icon">🔊</div>
+            <h4>Section 1 — Listen</h4>
+            <p>शब्द ऐका आणि अर्थ निवडा</p>
+          </div>
+          <div class="vocab-sec">
+            <div class="vs-icon">💬</div>
+            <h4>Section 2 — Meaning</h4>
+            <p>Marathi / English अर्थ MCQ</p>
+          </div>
+          <div class="vocab-sec">
+            <div class="vs-icon">🖼️</div>
+            <h4>Section 3 — Picture</h4>
+            <p>चित्र बघून शब्द ओळखा</p>
+          </div>
+          <div class="vocab-sec">
+            <div class="vs-icon">✏️</div>
+            <h4>Section 4 — Spelling</h4>
+            <p>Phonics बघून spelling लिहा</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ CLASS GRID ══ -->
+  <section class="class-section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="section-label">🏫 Classes</div>
+        <h2 class="section-title">इयत्ता <span class="gt">1 ली ते 12 वी</span> साठी</h2>
+        <p class="section-sub">सर्व class साठी वेगवेगळे quizzes, tests आणि vocabulary — teacher ने batch-wise content assign केलेले असते.</p>
+      </div>
+      <div class="class-grid fade-up">
+        <div class="class-card"><div class="class-num">1st</div><div class="class-lbl">इयत्ता पहिली</div><div class="class-subjects">English, Marathi, Maths</div></div>
+        <div class="class-card"><div class="class-num">2nd</div><div class="class-lbl">इयत्ता दुसरी</div><div class="class-subjects">English, Marathi, Maths</div></div>
+        <div class="class-card"><div class="class-num">3rd</div><div class="class-lbl">इयत्ता तिसरी</div><div class="class-subjects">English, Marathi, Maths, EVS</div></div>
+        <div class="class-card"><div class="class-num">4th</div><div class="class-lbl">इयत्ता चौथी</div><div class="class-subjects">English, Marathi, Maths, EVS</div></div>
+        <div class="class-card"><div class="class-num">5th</div><div class="class-lbl">इयत्ता पाचवी</div><div class="class-subjects">English, Marathi, Maths, Science</div></div>
+        <div class="class-card"><div class="class-num">6th</div><div class="class-lbl">इयत्ता सहावी</div><div class="class-subjects">All Subjects</div></div>
+        <div class="class-card"><div class="class-num">7th</div><div class="class-lbl">इयत्ता सातवी</div><div class="class-subjects">All Subjects</div></div>
+        <div class="class-card"><div class="class-num">8th</div><div class="class-lbl">इयत्ता आठवी</div><div class="class-subjects">All Subjects</div></div>
+        <div class="class-card"><div class="class-num">9th</div><div class="class-lbl">इयत्ता नववी</div><div class="class-subjects">All Subjects</div></div>
+        <div class="class-card"><div class="class-num">10th</div><div class="class-lbl">इयत्ता दहावी</div><div class="class-subjects">Board Exam Prep</div></div>
+        <div class="class-card"><div class="class-num">11th</div><div class="class-lbl">इयत्ता अकरावी</div><div class="class-subjects">Science / Commerce / Arts</div></div>
+        <div class="class-card"><div class="class-num">12th</div><div class="class-lbl">इयत्ता बारावी</div><div class="class-subjects">Board Exam Prep</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ BENEFITS ══ -->
+  <section>
+    <div class="container">
+      <div class="fade-up">
+        <div class="section-label">💡 Benefits</div>
+        <h2 class="section-title">TeachingBoard चे <span class="gt2">फायदे</span></h2>
+      </div>
+      <div class="benefits-grid">
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">🎯</div>
+          <div>
+            <h4>Exam Ready Practice</h4>
+            <p>Chapter-wise MCQ questions — बोर्ड परीक्षेच्या pattern नुसार practice करा.</p>
+          </div>
+        </div>
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">⚡</div>
+          <div>
+            <h4>Instant Feedback</h4>
+            <p>Quiz केल्यानंतर लगेच चुका कळतात — चुकलेला answer आणि बरोबर answer दिसतो.</p>
+          </div>
+        </div>
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">🏆</div>
+          <div>
+            <h4>Progress Tracking</h4>
+            <p>Weekly / Monthly chart — किती improve झालो ते स्वतःच बघता येते.</p>
+          </div>
+        </div>
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">🌐</div>
+          <div>
+            <h4>English Vocabulary</h4>
+            <p>रोज नवीन English words — Marathi अर्थासकट. Listening, Spelling सुद्धा practice होते.</p>
+          </div>
+        </div>
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">📵</div>
+          <div>
+            <h4>Offline Support</h4>
+            <p>गावात internet नसलं तरी app वापरता येतो — questions आणि lessons offline उपलब्ध.</p>
+          </div>
+        </div>
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">👨‍👩‍👧</div>
+          <div>
+            <h4>Parent ला Updates</h4>
+            <p>Test दिल्यावर लगेच Parents ला score notification — घरी बसून progress कळते.</p>
+          </div>
+        </div>
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">🔔</div>
+          <div>
+            <h4>Teacher Alerts</h4>
+            <p>Teacher ने नवीन quiz किंवा test assign केला की notification येतो — miss होत नाही.</p>
+          </div>
+        </div>
+        <div class="benefit-row fade-up">
+          <div class="benefit-icon">🆓</div>
+          <div>
+            <h4>पूर्णपणे Free</h4>
+            <p>कोणतेही hidden charges नाहीत — School / Teacher कडून code मिळाला की वापरा.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ HOW IT WORKS ══ -->
+  <section style="background:var(--bg2)">
+    <div class="container">
+      <div class="fade-up">
+        <div class="section-label">🚀 How it Works</div>
+        <h2 class="section-title">App कसा वापरायचा?</h2>
+      </div>
+      <div class="how-grid">
+        <div class="how-card fade-up">
+          <div class="how-num">1</div>
+          <h3>Download &amp; Install</h3>
+          <p>APK download करा → Install करा → App उघडा</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">2</div>
+          <h3>Login करा</h3>
+          <p>Teacher कडून मिळालेला Student Code आणि PIN टाका</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">3</div>
+          <h3>Quiz / Test निवडा</h3>
+          <p>Home screen वर assigned quizzes, tests आणि vocabulary दिसेल</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">4</div>
+          <h3>Practice करा</h3>
+          <p>Quiz करा, test द्या, vocabulary शिका — रोज थोडे थोडे</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">5</div>
+          <h3>Score बघा</h3>
+          <p>Analytics tab मध्ये progress chart आणि weak topics बघा</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">6</div>
+          <h3>Improve करा</h3>
+          <p>चुकलेले answers review करा → पुन्हा practice करा → Exam Ready!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ INSTALL GUIDE ══ -->
+  <section class="install-section" id="download">
+    <div class="container">
+      <div class="fade-up">
+        <div class="section-label">📥 Install Guide</div>
+        <h2 class="section-title">APK Install कसा करायचा?</h2>
+      </div>
+
+      <div class="warn-box fade-up">
+        ⚠️ <strong>महत्त्वाचे:</strong> हा app Google Play Store वर नाही. खाली दिलेल्या 4 steps follow केल्यावर install होईल — 2 मिनिटांत!
+      </div>
+
+      <div class="install-steps">
+        <div class="install-step fade-up">
+          <div class="install-step-num">1</div>
+          <div>
+            <h3>⚙️ Unknown Sources Allow करा</h3>
+            <p>Phone <code>Settings</code> → <code>Security</code> → <code>Install Unknown Apps</code> → Browser निवडा → <code>Allow</code> करा</p>
+          </div>
+        </div>
+        <div class="install-step fade-up">
+          <div class="install-step-num">2</div>
+          <div>
+            <h3>📥 APK Download करा</h3>
+            <p>खालील <strong>"APK Download करा"</strong> button वर click करा. File <code>Downloads</code> folder मध्ये save होईल.</p>
+          </div>
+        </div>
+        <div class="install-step fade-up">
+          <div class="install-step-num">3</div>
+          <div>
+            <h3>📂 APK File उघडा</h3>
+            <p>Notification मधून किंवा <code>Downloads</code> folder मध्ये जाऊन file वर tap करा → <strong>Install</strong> दाबा.</p>
+          </div>
+        </div>
+        <div class="install-step fade-up">
+          <div class="install-step-num">4</div>
+          <div>
+            <h3>🔑 Login करा</h3>
+            <p>Teacher कडून मिळालेला <strong>Student Code</strong> आणि <strong>PIN</strong> टाका. पहिल्यांदा registration केल्यास Teacher approve केल्यावर access मिळेल.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ DOWNLOAD CTA ══ -->
+  <section class="cta-section">
+    <div class="cta-card fade-up">
+      <h2>आत्ताच सुरू करा! 🚀</h2>
+      <p>Free Download करा आणि आजपासूनच smart study सुरू करा.</p>
+      <a id="cta-dl-btn" href="#" class="btn-cta">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        📱 TB Student APK Download करा
+      </a>
+      <p class="file-meta">Android 7.0+ · Free · TeachingBoard v2.0.0</p>
+      <a href="https://wa.me/918390484545?text=मला%20TeachingBoard%20Student%20App%20बद्दल%20मदत%20हवी%20आहे"
+         target="_blank" rel="noopener noreferrer" class="btn-wa">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp वर मदत मागा — 8390484545
+      </a>
+    </div>
+  </section>
+
+  <!-- ══ FOOTER ══ -->
+  <footer class="footer">
+    <p>TeachingBoard &copy; 2026 · शिक्षणासाठी तंत्रज्ञान</p>
+    <p style="margin-top:6px">Made with ❤️ for students of Class 1–12</p>
+  </footer>
 
   <script>
-    // ── APK Download Link Config ──────────────────────────────
-    // APK नवीन version आल्यावर फक्त हा link update करा:
-    const APK_URL = 'https://drive.google.com/uc?export=download&id=1flaVnnZ_KuwsVn2OeIxRPvj6iUzruFfP';
+    // ── GitHub Releases Auto-fetch ────────────────────────────
+    const GITHUB_REPO = 'nageshkumbhar113-blip/TeachingBoard-frontend';
 
-    const link = document.getElementById('apk-link');
-    if (APK_URL && APK_URL !== 'YOUR_APK_LINK_HERE') {
-      link.href = APK_URL;
-    } else {
-      link.addEventListener('click', e => {
-        e.preventDefault();
-        alert('APK link लवकरच येईल! WhatsApp वर संपर्क करा.');
+    const dlBtnIds = ['hero-dl-btn', 'cta-dl-btn'];
+    const fileMeta = document.querySelector('.file-meta');
+
+    function setLoading() {
+      dlBtnIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.opacity = '0.6'; el.style.pointerEvents = 'none'; }
       });
     }
+    function setDownloadLinks(url, version, size) {
+      dlBtnIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.href = url;
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+      });
+      const navBtn = document.getElementById('nav-dl-btn');
+      if (navBtn) navBtn.href = url;
+      if (fileMeta && version) {
+        const sizeTxt = size ? ` · ${(size / 1024 / 1024).toFixed(1)} MB` : '';
+        fileMeta.textContent = `Android 7.0+ · Free · TeachingBoard v${version}${sizeTxt}`;
+      }
+    }
+    function setError() {
+      dlBtnIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.style.opacity = '';
+          el.style.pointerEvents = '';
+          el.addEventListener('click', e => {
+            e.preventDefault();
+            alert('APK download करण्यात problem आला. WhatsApp वर संपर्क करा: 8390484545');
+          });
+        }
+      });
+    }
+
+    async function fetchLatestApk() {
+      setLoading();
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
+          { headers: { Accept: 'application/vnd.github+json' } }
+        );
+        if (!res.ok) throw new Error('no release');
+        const data = await res.json();
+        const apkAsset = (data.assets || []).find(a => a.name.endsWith('.apk'));
+        if (!apkAsset) throw new Error('no apk');
+        setDownloadLinks(
+          apkAsset.browser_download_url,
+          (data.tag_name || '').replace(/^v/i, ''),
+          apkAsset.size
+        );
+      } catch {
+        // Fallback to hardcoded link if API fails or no release yet
+        const FALLBACK = 'https://drive.google.com/uc?export=download&id=1flaVnnZ_KuwsVn2OeIxRPvj6iUzruFfP';
+        if (FALLBACK) setDownloadLinks(FALLBACK, '', 0);
+        else setError();
+      }
+    }
+
+    // ── Fade-up animation ─────────────────────────────────────
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+
+    fetchLatestApk();
   </script>
 
 </body>
