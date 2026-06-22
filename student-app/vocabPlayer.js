@@ -227,7 +227,7 @@ const VOCAB = (() => {
   }
 
   function _renderListenQuestion(word) {
-    // Play word via TTS, show MCQ for meaning
+    // Show word + pronunciation; TTS button replays it
     const ttsBtn = $id('vocab-tts-btn');
     if (ttsBtn) {
       ttsBtn.classList.remove('hidden');
@@ -235,12 +235,11 @@ const VOCAB = (() => {
     }
     _speakWord(word.word);
 
-    const question = _meaningLang === 'english'
-      ? 'What is the meaning of the word you heard?'
-      : 'ऐकलेल्या शब्दाचा अर्थ कोणता?';
-
     const wordDisplay = $id('vocab-word-display');
-    if (wordDisplay) wordDisplay.textContent = question;
+    if (wordDisplay) wordDisplay.textContent = word.word;
+
+    const phonicsDisplay = $id('vocab-phonics-display');
+    if (phonicsDisplay) phonicsDisplay.textContent = word.pronunciation || '';
 
     _renderMCQOptions(word, 'meaning');
   }
@@ -530,16 +529,36 @@ const VOCAB = (() => {
     const synth = window.speechSynthesis;
     if (!synth) return;
     synth.cancel();
-    const utt = new SpeechSynthesisUtterance(String(text || ''));
-    utt.lang  = 'en-US';
-    utt.rate  = 0.85;
-    utt.pitch = 1;
+
+    function _doSpeak() {
+      const utt = new SpeechSynthesisUtterance(String(text || ''));
+      utt.lang  = 'en-US';
+      utt.rate  = 0.85;
+      utt.pitch = 1;
+      const vs = synth.getVoices();
+      const v  = vs.find(v => v.lang === 'en-US')
+              || vs.find(v => v.lang.startsWith('en'))
+              || vs[0]
+              || null;
+      if (v) utt.voice = v;
+      synth.speak(utt);
+    }
+
+    // Android WebView loads voices asynchronously; getVoices() returns [] on first call
     const voices = synth.getVoices();
-    const voice  = voices.find(v => v.lang === 'en-US')
-                || voices.find(v => v.lang.startsWith('en'))
-                || null;
-    if (voice) utt.voice = voice;
-    synth.speak(utt);
+    if (voices.length) {
+      _doSpeak();
+    } else {
+      let fired = false;
+      synth.onvoiceschanged = () => {
+        if (fired) return;
+        fired = true;
+        synth.onvoiceschanged = null;
+        _doSpeak();
+      };
+      // Fallback: some WebViews never fire onvoiceschanged
+      setTimeout(() => { if (!fired) { fired = true; _doSpeak(); } }, 800);
+    }
   }
 
   // ─── View management ─────────────────────────────────────────────────────────
