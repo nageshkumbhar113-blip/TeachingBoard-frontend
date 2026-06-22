@@ -595,10 +595,21 @@ const VOCAB = (() => {
     $id('vocab-add-word-autofill')?.addEventListener('click', _autoFillAddWord);
     $id('vocab-add-submit')?.addEventListener('click', _submitAddWord);
 
-    // Bottom nav Words button
+    // Bottom nav Words button — always fetch fresh profile from server so
+    // batch is correct even if assigned after last login
     $id('bnav-vocab')?.addEventListener('click', async () => {
-      const profile = await API.getStudentProfile().catch(() => null);
-      const batch   = Array.isArray(profile?.assigned_batches) ? profile.assigned_batches[0] : '';
+      let batches = [];
+      if (navigator.onLine && window.API?.fetchStudentMe) {
+        try {
+          const fresh = await API.fetchStudentMe();
+          batches = Array.isArray(fresh?.assigned_batches) ? fresh.assigned_batches : [];
+        } catch {}
+      }
+      if (!batches.length) {
+        const profile = await API.getStudentProfile().catch(() => null);
+        batches = Array.isArray(profile?.assigned_batches) ? profile.assigned_batches : [];
+      }
+      const batch = batches[0] || '';
       await openVocabScreen(batch, _subject || '');
     });
   }
