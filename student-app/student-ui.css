@@ -2999,6 +2999,15 @@ body.student-app.mode-board.theme-board-light::before {
   cursor: pointer;
   margin-bottom: 16px;
 }
+.vocab-word-emoji {
+  display: block;
+  font-size: 5rem;
+  line-height: 1.1;
+  text-align: center;
+  margin: 4px 0 8px;
+  user-select: none;
+}
+
 .vocab-tts-prominent {
   display: flex;
   justify-content: center;

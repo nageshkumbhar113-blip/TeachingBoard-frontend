@@ -2725,6 +2725,8 @@ const ADMIN = (() => {
     $('we-meaning-en').value = wordData?.meaning_en || '';
     $('we-phonics').value    = wordData?.phonics     || '';
     $('we-image-url').value  = wordData?.image_url   || '';
+    $('we-emoji').value      = wordData?.emoji        || '';
+    $('we-emoji-preview').textContent = wordData?.emoji || '';
     $('we-difficulty').value = wordData?.difficulty  || 'medium';
 
     // Populate batch options then subject options
@@ -2777,6 +2779,7 @@ const ADMIN = (() => {
       meaning_en: ($('we-meaning-en')?.value || '').trim(),
       phonics:    ($('we-phonics')?.value    || '').trim(),
       image_url:  ($('we-image-url')?.value  || '').trim(),
+      emoji:      ($('we-emoji')?.value      || '').trim(),
       difficulty: $('we-difficulty')?.value  || 'medium',
     };
 
@@ -3002,6 +3005,10 @@ const ADMIN = (() => {
     $('btn-we-cancel')?.addEventListener('click', () => $('word-edit-overlay')?.classList.add('hidden'));
     $('btn-we-autofill')?.addEventListener('click', _weAutoFill);
     $('word-edit-form')?.addEventListener('submit', _weSubmit);
+    $('we-emoji')?.addEventListener('input', e => {
+      const preview = $('we-emoji-preview');
+      if (preview) preview.textContent = e.target.value.trim();
+    });
 
     // we-batch → populate we-subject
     $('we-batch')?.addEventListener('change', async () => {

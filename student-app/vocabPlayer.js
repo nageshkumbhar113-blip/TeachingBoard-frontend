@@ -242,20 +242,7 @@ const VOCAB = (() => {
       };
     }
 
-    const wordDisplay = $id('vocab-word-display');
-    if (wordDisplay) {
-      if (word.image_url) {
-        const img = document.createElement('img');
-        img.src = word.image_url;
-        img.className = 'vocab-word-img';
-        img.alt = word.word;
-        img.onerror = () => { img.replaceWith(document.createTextNode(word.word)); };
-        wordDisplay.innerHTML = '';
-        wordDisplay.appendChild(img);
-      } else {
-        wordDisplay.textContent = word.word;
-      }
-    }
+    _renderWordVisual($id('vocab-word-display'), word);
 
     const phonicsDisplay = $id('vocab-phonics-display');
     if (phonicsDisplay) phonicsDisplay.textContent = '👆 वरील button tap करा';
@@ -277,17 +264,7 @@ const VOCAB = (() => {
   }
 
   function _renderPictureQuestion(word) {
-    const wordDisplay = $id('vocab-word-display');
-    if (word.image_url) {
-      const img = document.createElement('img');
-      img.src = word.image_url;
-      img.className = 'vocab-word-img';
-      img.alt = 'Picture';
-      img.onerror = () => { img.replaceWith(document.createTextNode(word.word)); };
-      if (wordDisplay) { wordDisplay.innerHTML = ''; wordDisplay.appendChild(img); }
-    } else {
-      if (wordDisplay) wordDisplay.textContent = word.word;
-    }
+    _renderWordVisual($id('vocab-word-display'), word);
 
     const question = _meaningLang === 'english'
       ? 'What is the correct meaning?'
@@ -542,6 +519,25 @@ const VOCAB = (() => {
       const errEl = $id('vocab-add-word-err');
       if (errEl) { errEl.textContent = err.message; errEl.classList.remove('hidden'); }
       if (btn) btn.disabled = false;
+    }
+  }
+
+  // ─── Word visual helper ──────────────────────────────────────────────────────
+
+  function _renderWordVisual(el, word) {
+    if (!el) return;
+    if (word.image_url) {
+      const img = document.createElement('img');
+      img.src = word.image_url;
+      img.className = 'vocab-word-img';
+      img.alt = word.word;
+      img.onerror = () => { img.replaceWith(document.createTextNode(word.word)); };
+      el.innerHTML = '';
+      el.appendChild(img);
+    } else if (word.emoji) {
+      el.innerHTML = `<span class="vocab-word-emoji">${word.emoji}</span>`;
+    } else {
+      el.textContent = word.word;
     }
   }
 
