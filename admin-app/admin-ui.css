@@ -983,7 +983,7 @@ body.admin-app {
 }
 .batch-admin-item:hover { border-color: var(--accent); }
 .batch-admin-name { flex: 1; font-weight: 600; color: var(--text); }
-.batch-admin-actions { display: flex; gap: var(--sp-1); }
+.batch-admin-actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 
 /* ════════════════════════════════════════
    20. STUDENT SECTION
