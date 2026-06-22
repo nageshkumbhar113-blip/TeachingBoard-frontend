@@ -898,6 +898,13 @@ const API = (() => {
     });
   }
 
+  async function fetchVocabSubjects(batch) {
+    const token = await ensureStudentSession();
+    return request(`/vocab/subjects?batch=${encodeURIComponent(batch)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function fetchVocabTestList(batch, subject) {
     const token = await ensureStudentSession();
     const qs = new URLSearchParams({ batch, subject });
@@ -1390,7 +1397,7 @@ const API = (() => {
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
     sendTeacherNotification, fetchTeacherNotificationHistory,
     autoFillWord, fetchAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
-    autoFillWordForStudent, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
+    autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
     fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,

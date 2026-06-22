@@ -2600,8 +2600,36 @@ const ADMIN = (() => {
         $('words-prev')?.addEventListener('click', () => { _wordsSkip = Math.max(0, _wordsSkip - _wordsLimit); _loadWordBank(); });
         $('words-next')?.addEventListener('click', () => { _wordsSkip += _wordsLimit; _loadWordBank(); });
       }
+
+      // Test info bar — show how many tests are ready for this batch+subject
+      _updateTestInfoBar(batch, subject, _wordsTotal);
+
     } catch (err) {
       if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:#f87171;padding:12px">${_esc(err.message)}</td></tr>`;
+    }
+  }
+
+  function _updateTestInfoBar(batch, subject, total) {
+    const bar  = $('words-test-info-bar');
+    const text = $('words-test-info-text');
+    const btn  = $('btn-words-test-info');
+    if (!bar || !text) return;
+
+    if (batch && subject && total > 0) {
+      const tc = Math.ceil(total / 20);
+      const lastSize = total % 20 || 20;
+      let detail = '';
+      for (let i = 1; i <= tc; i++) {
+        const from = (i - 1) * 20 + 1;
+        const to   = Math.min(i * 20, total);
+        detail += `Test ${i} (${from}–${to})${i < tc ? ' · ' : ''}`;
+      }
+      text.innerHTML = `📝 <strong>${tc} test${tc !== 1 ? 's' : ''} ready</strong> — ${total} words, groups of 20 &nbsp;|&nbsp; <span style="color:var(--text2)">${detail}</span>`;
+      bar.classList.remove('hidden');
+      if (btn) btn.style.display = '';
+    } else {
+      bar.classList.add('hidden');
+      if (btn) btn.style.display = 'none';
     }
   }
 
@@ -2789,17 +2817,38 @@ const ADMIN = (() => {
   async function _bulkSave() {
     const toSave = _bulkPreviewData.filter(r => r.status === 'ok');
     if (!toSave.length) return APP.toast('Nothing to save', 'error');
-    const btn = $('btn-bulk-save');
+    const btn     = $('btn-bulk-save');
     if (btn) btn.disabled = true;
+    const batch   = $('word-bulk-batch')?.value   || '';
+    const subject = $('word-bulk-subject')?.value || '';
     try {
       await API.bulkCreateAdminWords(toSave);
-      APP.toast(`${toSave.length} words saved`, 'success');
       $('bulk-words-textarea').value = '';
       $('bulk-preview-wrap').classList.add('hidden');
       $('bulk-progress-wrap').classList.add('hidden');
       _bulkPreviewData = [];
       _wordsSkip = 0;
-      _loadWordBank();
+
+      // Sync filter bar to the saved batch+subject so test info shows
+      if (batch && $('words-filter-batch')) {
+        $('words-filter-batch').value = batch;
+        const subjects = batch ? (await DB.getSubjectsByBatch(batch).catch(() => [])).map(s => s.name) : [];
+        _setSelectOptions($('words-filter-subject'), subjects, 'All Subjects');
+        if (subject) {
+          const subSel = $('words-filter-subject');
+          if (subSel && !subSel.querySelector(`option[value="${subject}"]`)) {
+            const opt = document.createElement('option');
+            opt.value = subject;
+            opt.textContent = subject;
+            subSel.appendChild(opt);
+          }
+          if (subSel) subSel.value = subject;
+        }
+      }
+
+      await _loadWordBank();
+      const tc = Math.ceil(_wordsTotal / 20);
+      APP.toast(`${toSave.length} words saved · ${tc} test${tc !== 1 ? 's' : ''} ready for students ✓`, 'success');
     } catch (err) {
       APP.toast('Save failed: ' + err.message, 'error');
       if (btn) btn.disabled = false;
@@ -2811,12 +2860,21 @@ const ADMIN = (() => {
     $('btn-words-search')?.addEventListener('click', () => { _wordsSkip = 0; _loadWordBank(); });
     $('words-search')?.addEventListener('keydown', e => { if (e.key === 'Enter') { _wordsSkip = 0; _loadWordBank(); } });
     $('words-filter-batch')?.addEventListener('change', async () => {
-      // Populate words-filter-subject based on batch selection
       const batch = $('words-filter-batch')?.value || '';
-      const subjects = batch ? (await DB.getSubjectsByBatch(batch)).map(s => s.name) : [];
+      const subjects = batch ? (await DB.getSubjectsByBatch(batch).catch(() => [])).map(s => s.name) : [];
       _setSelectOptions($('words-filter-subject'), subjects, 'All Subjects');
       _wordsSkip = 0;
       _loadWordBank();
+    });
+
+    // "Tests" button — scroll to / highlight the test info bar
+    $('btn-words-test-info')?.addEventListener('click', () => {
+      const bar = $('words-test-info-bar');
+      if (bar) {
+        bar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        bar.style.outline = '2px solid #60a5fa';
+        setTimeout(() => { bar.style.outline = ''; }, 1800);
+      }
     });
     $('words-filter-subject')?.addEventListener('change', () => { _wordsSkip = 0; _loadWordBank(); });
 

@@ -686,7 +686,13 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
           <div class="atab-content hidden" id="atab-words" role="tabpanel" aria-labelledby="atab-btn-words">
             <div class="admin-page-header">
               <h2 class="admin-page-title">Word Bank</h2>
-              <button id="btn-add-word" class="admin-btn-primary">+ Add Word</button>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button id="btn-words-test-info" class="admin-btn-secondary" style="display:none">📝 Tests</button>
+                <button id="btn-add-word" class="admin-btn-primary">+ Add Word</button>
+              </div>
+            </div>
+            <div id="words-test-info-bar" class="hidden" style="background:rgba(21,101,192,0.1);border:1px solid rgba(21,101,192,0.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.85rem;color:#93c5fd;display:flex;align-items:center;gap:8px">
+              <span id="words-test-info-text"></span>
             </div>
 
             <!-- Filter bar -->

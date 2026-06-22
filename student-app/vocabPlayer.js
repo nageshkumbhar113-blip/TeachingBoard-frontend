@@ -101,27 +101,37 @@ const VOCAB = (() => {
   }
 
   async function _populateSubjectSelect() {
-    const profile  = await API.getStudentProfile().catch(() => null);
-    const batches  = Array.isArray(profile?.assigned_batches) ? profile.assigned_batches : [];
+    const profile = await API.getStudentProfile().catch(() => null);
+    const batches = Array.isArray(profile?.assigned_batches) ? profile.assigned_batches : [];
     if (!_batch && batches.length) _batch = batches[0];
 
     const sel = $id('vocab-subject-select');
-    if (!sel) return;
+    if (!sel || !_batch) return;
 
-    if (window.DB?.getSubjectsByBatch) {
-      const subjects = await DB.getSubjectsByBatch(_batch).catch(() => []);
-      sel.innerHTML = '<option value="">Select Subject</option>';
-      subjects.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.name;
-        opt.textContent = s.name;
-        if (s.name === _subject) opt.selected = true;
-        sel.appendChild(opt);
-      });
-      if (!_subject && subjects.length) {
-        _subject = subjects[0].name;
-        sel.value = _subject;
+    let subjects = [];
+    try {
+      const res = await API.fetchVocabSubjects(_batch);
+      subjects = res.subjects || [];
+    } catch {
+      // fallback: local DB (works if admin synced subjects)
+      if (window.DB?.getSubjectsByBatch) {
+        const rows = await DB.getSubjectsByBatch(_batch).catch(() => []);
+        subjects = rows.map(s => s.name).filter(Boolean);
       }
+    }
+
+    sel.innerHTML = '<option value="">Select Subject</option>';
+    subjects.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s;
+      opt.textContent = s;
+      if (s === _subject) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    if (!_subject && subjects.length) {
+      _subject = subjects[0];
+      sel.value = _subject;
     }
   }
 
