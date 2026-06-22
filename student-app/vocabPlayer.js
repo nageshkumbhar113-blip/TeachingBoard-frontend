@@ -308,16 +308,21 @@ const VOCAB = (() => {
       : w.word) || w.word;
 
     const correctVal = getVal(correctWord);
-    const distractors = _words
+    const seen = new Set([correctVal]);
+    const distractors = [];
+    const shuffled = _words
       .filter(w => w.word_id !== correctWord.word_id)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .map(getVal)
-      .filter(v => v && v !== correctVal);
+      .sort(() => Math.random() - 0.5);
 
-    while (distractors.length < 3) {
-      distractors.push(`—`);
+    for (const w of shuffled) {
+      if (distractors.length >= 3) break;
+      const val = getVal(w);
+      if (!val || seen.has(val)) continue;
+      seen.add(val);
+      distractors.push(val);
     }
+
+    while (distractors.length < 3) distractors.push('—');
 
     const options = [correctVal, ...distractors].sort(() => Math.random() - 0.5);
 
