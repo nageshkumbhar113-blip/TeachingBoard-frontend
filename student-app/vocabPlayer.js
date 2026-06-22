@@ -227,7 +227,6 @@ const VOCAB = (() => {
   }
 
   function _renderListenQuestion(word) {
-    // Show word + pronunciation; TTS button replays it
     const ttsBtn = $id('vocab-tts-btn');
     if (ttsBtn) {
       ttsBtn.classList.remove('hidden');
@@ -236,10 +235,19 @@ const VOCAB = (() => {
     _speakWord(word.word);
 
     const wordDisplay = $id('vocab-word-display');
-    if (wordDisplay) wordDisplay.textContent = word.word;
-
-    const phonicsDisplay = $id('vocab-phonics-display');
-    if (phonicsDisplay) phonicsDisplay.textContent = word.pronunciation || '';
+    if (wordDisplay) {
+      if (word.image_url) {
+        const img = document.createElement('img');
+        img.src = word.image_url;
+        img.className = 'vocab-word-img';
+        img.alt = '';
+        img.onerror = () => { img.remove(); };
+        wordDisplay.innerHTML = '';
+        wordDisplay.appendChild(img);
+      } else {
+        wordDisplay.textContent = '';
+      }
+    }
 
     _renderMCQOptions(word, 'meaning');
   }
