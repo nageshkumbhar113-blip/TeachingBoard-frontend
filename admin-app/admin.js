@@ -1571,6 +1571,107 @@ const ADMIN = (() => {
     };
   }
 
+  function _closeStudentDrawer() {
+    const overlay = $('student-action-overlay');
+    const drawer  = $('student-action-drawer');
+    if (!drawer) return;
+    drawer.classList.remove('open');
+    setTimeout(() => overlay?.classList.add('hidden'), 260);
+  }
+
+  function _openStudentDrawer(student) {
+    const overlay = $('student-action-overlay');
+    const drawer  = $('student-action-drawer');
+    const nameEl  = $('drawer-student-name');
+    const codeEl  = $('drawer-student-code');
+    const actions = $('drawer-actions');
+    if (!drawer || !overlay || !actions) return;
+
+    if (nameEl) nameEl.textContent = student.name;
+    if (codeEl) codeEl.textContent = student.student_code || '';
+
+    const isShared = !!student.shared_device;
+
+    function _mkBtn(icon, label, dangerClass) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'drawer-action-btn' + (dangerClass ? ' danger' : '');
+      b.innerHTML = `<span style="font-size:1.1em">${icon}</span><span>${label}</span>`;
+      return b;
+    }
+
+    actions.innerHTML = '';
+
+    // Edit
+    const editBtn = _mkBtn('✏️', 'Edit');
+    editBtn.addEventListener('click', () => { _closeStudentDrawer(); _fillStudentForm(student); });
+    actions.appendChild(editBtn);
+
+    // Block / Activate
+    const isBlocked = student.status === 'blocked';
+    const toggleBtn = _mkBtn(isBlocked ? '✅' : '🚫', isBlocked ? 'Activate' : 'Block');
+    toggleBtn.addEventListener('click', async () => {
+      _closeStudentDrawer();
+      const nextStatus = isBlocked ? 'active' : 'blocked';
+      try {
+        await API.updateStudent(student.id, { status: nextStatus });
+        APP.toast(`Student ${nextStatus === 'blocked' ? 'blocked' : 'activated'}`, 'success');
+        await _loadStudentsAdmin();
+      } catch (err) { APP.toast(err.message || 'Could not update student', 'error'); }
+    });
+    actions.appendChild(toggleBtn);
+
+    // Shared Device toggle
+    const sharedBtn = _mkBtn(
+      isShared ? '🔒' : '👨‍👩‍👧',
+      isShared ? 'Single Device वर lock करा' : 'Shared Device चालू करा'
+    );
+    sharedBtn.addEventListener('click', async () => {
+      _closeStudentDrawer();
+      const nextShared = !isShared;
+      if (!confirm(nextShared
+        ? `"${student.name}" ला Shared Device चालू करायचं?`
+        : `"${student.name}" ला Single Device वर lock करायचं?`)) return;
+      try {
+        await API.updateStudent(student.id, { shared_device: nextShared });
+        APP.toast(nextShared ? 'Shared device enabled ✅' : 'Single device mode set 🔒', 'success');
+        await _loadStudentsAdmin();
+      } catch (err) { APP.toast(err.message || 'Update failed', 'error'); }
+    });
+    actions.appendChild(sharedBtn);
+
+    // Reset Device (only if bound and not shared)
+    if (student.device_bound && !isShared) {
+      const resetBtn = _mkBtn('🔓', 'Reset Device Binding');
+      resetBtn.addEventListener('click', async () => {
+        _closeStudentDrawer();
+        if (!confirm(`"${student.name}" चं device binding reset करायचं?`)) return;
+        try {
+          await API.resetStudentDevice(student.id);
+          APP.toast('Device binding reset झालं', 'success');
+          await _loadStudentsAdmin();
+        } catch (err) { APP.toast(err.message || 'Device reset failed', 'error'); }
+      });
+      actions.appendChild(resetBtn);
+    }
+
+    // Delete
+    const deleteBtn = _mkBtn('🗑️', 'Delete Student', true);
+    deleteBtn.addEventListener('click', async () => {
+      _closeStudentDrawer();
+      if (!confirm(`"${student.name}" (${student.student_code}) ला permanently delete करायचं?\n\nहे action undo होणार नाही!`)) return;
+      try {
+        await API.deleteStudent(student.id);
+        APP.toast(`${student.name} deleted ✅`, 'success');
+        await _loadStudentsAdmin();
+      } catch (err) { APP.toast(err.message || 'Delete failed', 'error'); }
+    });
+    actions.appendChild(deleteBtn);
+
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => drawer.classList.add('open'));
+  }
+
   function _fillStudentForm(student) {
     _setValue('student-edit-id', student?.id || '');
     _setValue('student-code', student?.student_code || '');
@@ -1624,7 +1725,7 @@ const ADMIN = (() => {
       const item = document.createElement('div');
       item.className = 'batch-admin-item';
       item.innerHTML = `
-        <div>
+        <div class="student-card-info">
           <div class="batch-admin-name">
             ${_escHtml(student.name)}
             <span class="student-status-badge ${_escHtml(student.status || 'active')}">${_escHtml(student.status || 'active')}</span>
@@ -1638,66 +1739,10 @@ const ADMIN = (() => {
           </div>
           <div class="batch-admin-meta">${_escHtml((student.assigned_batches || []).join(', ') || 'No courses')}</div>
         </div>
-        <div class="batch-admin-actions">
-          <button class="admin-btn-secondary student-edit-btn" type="button">✏️ Edit</button>
-          <button class="admin-btn-secondary student-toggle-btn" type="button">${student.status === 'blocked' ? '✅ Activate' : '🚫 Block'}</button>
-          <button class="admin-btn-secondary student-shared-btn" type="button" title="${isShared ? 'एक device वर lock करा' : 'Shared device चालू करा'}">
-            ${isShared ? '🔒 Single Device' : '👨‍👩‍👧 Shared Device'}
-          </button>
-          ${student.device_bound && !isShared ? '<button class="admin-btn-secondary student-reset-device-btn" type="button" title="Reset device binding">🔓 Reset Device</button>' : ''}
-          <button class="admin-btn-danger student-delete-btn" type="button" title="Delete student permanently">🗑️ Delete</button>
-        </div>
+        <button class="student-menu-btn" type="button" aria-label="Actions for ${_escHtml(student.name)}">⋮</button>
       `;
 
-      item.querySelector('.student-edit-btn')?.addEventListener('click', () => _fillStudentForm(student));
-
-      item.querySelector('.student-toggle-btn')?.addEventListener('click', async () => {
-        const nextStatus = student.status === 'blocked' ? 'active' : 'blocked';
-        try {
-          await API.updateStudent(student.id, { status: nextStatus });
-          APP.toast(`Student ${nextStatus === 'blocked' ? 'blocked' : 'activated'}`, 'success');
-          await _loadStudentsAdmin();
-        } catch (err) {
-          APP.toast(err.message || 'Could not update student', 'error');
-        }
-      });
-
-      item.querySelector('.student-shared-btn')?.addEventListener('click', async () => {
-        const nextShared = !isShared;
-        const msg = nextShared
-          ? `"${student.name}" ला Shared Device चालू करायचं? एकाच phone वर दुसरा student पण login करू शकेल.`
-          : `"${student.name}" ला Single Device वर lock करायचं?`;
-        if (!confirm(msg)) return;
-        try {
-          await API.updateStudent(student.id, { shared_device: nextShared });
-          APP.toast(nextShared ? 'Shared device enabled ✅' : 'Single device mode set 🔒', 'success');
-          await _loadStudentsAdmin();
-        } catch (err) {
-          APP.toast(err.message || 'Update failed', 'error');
-        }
-      });
-
-      item.querySelector('.student-reset-device-btn')?.addEventListener('click', async () => {
-        if (!confirm(`"${student.name}" चं device binding reset करायचं?`)) return;
-        try {
-          await API.resetStudentDevice(student.id);
-          APP.toast('Device binding reset झालं', 'success');
-          await _loadStudentsAdmin();
-        } catch (err) {
-          APP.toast(err.message || 'Device reset failed', 'error');
-        }
-      });
-
-      item.querySelector('.student-delete-btn')?.addEventListener('click', async () => {
-        if (!confirm(`"${student.name}" (${student.student_code}) ला permanently delete करायचं?\n\nहे action undo होणार नाही!`)) return;
-        try {
-          await API.deleteStudent(student.id);
-          APP.toast(`${student.name} deleted ✅`, 'success');
-          await _loadStudentsAdmin();
-        } catch (err) {
-          APP.toast(err.message || 'Delete failed', 'error');
-        }
-      });
+      item.querySelector('.student-menu-btn').addEventListener('click', () => _openStudentDrawer(student));
 
       list.appendChild(item);
     });
@@ -2511,6 +2556,10 @@ const ADMIN = (() => {
       _studentSearchTimer = setTimeout(() => _renderStudentList(e.target.value), 120);
     });
     $('student-course-filter')?.addEventListener('change', () => _renderStudentList($('student-search')?.value || ''));
+
+    // Student drawer close
+    $('student-action-overlay')?.addEventListener('click', _closeStudentDrawer);
+    $('drawer-cancel-btn')?.addEventListener('click', _closeStudentDrawer);
 
     // Teachers
     $('btn-save-teacher')?.addEventListener('click', _saveTeacherAccount);

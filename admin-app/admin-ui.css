@@ -1696,3 +1696,96 @@ body.admin-app {
 /* Light theme overrides */
 .theme-light .words-bulk-textarea { background: #fff; }
 .theme-light .we-status { background: rgba(22,163,74,0.1); color: #16a34a; }
+
+/* ════════════════════════════════════════
+   31. STUDENT ACTION DRAWER
+════════════════════════════════════════ */
+.student-card-info { flex: 1; min-width: 0; }
+
+.student-menu-btn {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2, var(--bg3));
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--ease-fast);
+}
+.student-menu-btn:active { background: var(--tag-bg); }
+
+.student-action-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+}
+.student-action-overlay.hidden { display: none; }
+
+.student-action-drawer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom));
+  z-index: 1001;
+  transform: translateY(100%);
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.student-action-drawer.open { transform: translateY(0); }
+
+.drawer-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto var(--sp-3);
+}
+.drawer-header {
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+.drawer-student-name { display: block; font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.drawer-student-code { font-size: var(--text-sm); color: var(--text2); }
+
+.drawer-actions { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.drawer-action-btn {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface2, var(--bg3));
+  color: var(--text);
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+  display: flex; align-items: center; gap: var(--sp-3);
+  transition: background var(--ease-fast);
+}
+.drawer-action-btn:active { background: var(--tag-bg); }
+.drawer-action-btn.danger {
+  color: #c62828;
+  border-color: #ffcdd2;
+  background: rgba(198,40,40,0.06);
+}
+
+.drawer-cancel-btn {
+  width: 100%;
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+
+.theme-light .student-action-drawer { background: #fff; }
+.theme-light .drawer-action-btn { background: #f6f8fa; }
+.theme-light .drawer-cancel-btn { background: #f6f8fa; }

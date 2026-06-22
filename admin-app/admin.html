@@ -1120,5 +1120,17 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>
+
+  <!-- Student Action Drawer -->
+  <div id="student-action-overlay" class="student-action-overlay hidden"></div>
+  <div id="student-action-drawer" class="student-action-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-student-name">
+    <div class="drawer-handle" aria-hidden="true"></div>
+    <div class="drawer-header">
+      <span id="drawer-student-name" class="drawer-student-name"></span>
+      <span id="drawer-student-code" class="drawer-student-code"></span>
+    </div>
+    <div id="drawer-actions" class="drawer-actions"></div>
+    <button id="drawer-cancel-btn" class="drawer-cancel-btn" type="button">रद्द करा</button>
+  </div>
 </body>
 </html>
