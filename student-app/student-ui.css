@@ -2999,6 +2999,26 @@ body.student-app.mode-board.theme-board-light::before {
   cursor: pointer;
   margin-bottom: 16px;
 }
+.vocab-tts-prominent {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 280px;
+  margin: 12px auto 8px;
+  padding: 14px 24px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+@keyframes vocab-pulse {
+  0%   { transform: scale(1);    box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+  50%  { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,0,0,0.28); }
+  100% { transform: scale(1);    box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+}
+.vocab-tts-pulse {
+  animation: vocab-pulse 0.9s ease-in-out 3;
+}
 
 .vocab-options {
   display: flex;

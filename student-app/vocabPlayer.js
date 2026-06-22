@@ -206,7 +206,11 @@ const VOCAB = (() => {
     // Reset
     if (wordDisplay)    wordDisplay.textContent    = '';
     if (phonicsDisplay) phonicsDisplay.textContent = '';
-    if (ttsBtn)   ttsBtn.classList.add('hidden');
+    if (ttsBtn) {
+      ttsBtn.classList.add('hidden');
+      ttsBtn.classList.remove('vocab-tts-prominent', 'vocab-tts-pulse');
+      ttsBtn.innerHTML = '<span aria-hidden="true">&#128264;</span> Listen';
+    }
     if (optionsEl) optionsEl.innerHTML = '';
     if (spellingWrap) spellingWrap.classList.add('hidden');
 
@@ -230,9 +234,13 @@ const VOCAB = (() => {
     const ttsBtn = $id('vocab-tts-btn');
     if (ttsBtn) {
       ttsBtn.classList.remove('hidden');
-      ttsBtn.onclick = () => _speakWord(word.word);
+      ttsBtn.classList.add('vocab-tts-prominent');
+      ttsBtn.innerHTML = '<span style="font-size:1.4em">🔊</span> Word ऐका';
+      ttsBtn.onclick = () => {
+        _speakWord(word.word);
+        ttsBtn.classList.remove('vocab-tts-pulse');
+      };
     }
-    _speakWord(word.word);
 
     const wordDisplay = $id('vocab-word-display');
     if (wordDisplay) {
@@ -248,6 +256,12 @@ const VOCAB = (() => {
         wordDisplay.textContent = word.word;
       }
     }
+
+    const phonicsDisplay = $id('vocab-phonics-display');
+    if (phonicsDisplay) phonicsDisplay.textContent = '👆 वरील button tap करा';
+
+    // Start pulse animation to draw attention to the button
+    setTimeout(() => ttsBtn?.classList.add('vocab-tts-pulse'), 100);
 
     _renderMCQOptions(word, 'meaning');
   }
