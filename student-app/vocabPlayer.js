@@ -103,8 +103,17 @@ const VOCAB = (() => {
   }
 
   async function _populateSubjectSelect() {
-    const profile = await API.getStudentProfile().catch(() => null);
-    const batches = Array.isArray(profile?.assigned_batches) ? profile.assigned_batches : [];
+    let profile = await API.getStudentProfile().catch(() => null);
+    let batches = Array.isArray(profile?.assigned_batches) ? profile.assigned_batches : [];
+
+    // Local profile may be stale (batch assigned after last login) — refresh from server
+    if (!batches.length && navigator.onLine && window.API?.fetchStudentMe) {
+      try {
+        const fresh = await API.fetchStudentMe();
+        batches = Array.isArray(fresh?.assigned_batches) ? fresh.assigned_batches : [];
+      } catch {}
+    }
+
     if (!_batch && batches.length) _batch = batches[0];
 
     const sel = $id('vocab-subject-select');
