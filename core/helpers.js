@@ -849,6 +849,15 @@ const API = (() => {
     });
   }
 
+  async function uploadWordImage(base64DataUrl) {
+    const token = await ensureAdminSession();
+    return request('/admin/words/upload-image', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ data: base64DataUrl }),
+    });
+  }
+
   async function fetchAdminWords({ batch = '', subject = '', search = '', skip = 0, limit = 50 } = {}) {
     const token = await ensureAdminSession();
     const qs = new URLSearchParams();
@@ -1439,7 +1448,7 @@ const API = (() => {
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
     sendTeacherNotification, fetchTeacherNotificationHistory,
-    autoFillWord, suggestEmoji, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
+    autoFillWord, suggestEmoji, uploadWordImage, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
     getVocabConfig, saveVocabConfig,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
     fetchTeacherVocabScores,

@@ -1024,10 +1024,20 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
           <div id="we-emoji-suggestions" style="display:none;margin-top:8px;gap:8px;flex-wrap:wrap"></div>
         </div>
 
-        <!-- Image URL Field (shown when image selected) -->
+        <!-- Image Upload (shown when image selected) -->
         <div class="we-row" id="we-image-row">
-          <label class="we-label" for="we-image-url">Image URL</label>
-          <input type="url" id="we-image-url" class="admin-input we-full" placeholder="https://..." />
+          <label class="we-label">Image</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button type="button" id="btn-we-upload-image" class="admin-btn-secondary" style="font-size:0.82rem">📤 Upload Image</button>
+            <span id="we-upload-status" style="font-size:0.78rem;color:var(--text2)"></span>
+          </div>
+          <input type="file" id="we-image-file" accept="image/*" style="display:none" />
+          <div id="we-image-preview-wrap" style="display:none;margin-top:8px">
+            <img id="we-image-preview-img" src="" alt="preview" style="max-width:160px;max-height:120px;border-radius:8px;object-fit:cover;border:1px solid var(--border)" />
+            <button type="button" id="btn-we-remove-image" style="display:block;margin-top:4px;font-size:0.75rem;color:#f87171;background:none;border:none;cursor:pointer">✕ Remove</button>
+          </div>
+          <!-- Hidden URL field — populated by upload, also accepts manual paste -->
+          <input type="url" id="we-image-url" class="admin-input we-full" placeholder="या manual URL paste करा..." style="margin-top:6px" />
         </div>
 
         <div class="we-row">

@@ -2320,6 +2320,40 @@ const ADMIN = (() => {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  // Compress image file using Canvas API → returns base64 WebP data URL
+  // maxW/maxH: max dimensions; quality: 0-1 WebP quality
+  function _compressImage(file, maxW, maxH, quality) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('File read failed'));
+      reader.onload = ev => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Image decode failed'));
+        img.onload = () => {
+          let { width: w, height: h } = img;
+          if (w > maxW || h > maxH) {
+            const ratio = Math.min(maxW / w, maxH / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width  = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          // Try WebP; fall back to JPEG if browser doesn't support WebP output
+          let dataUrl = canvas.toDataURL('image/webp', quality);
+          if (!dataUrl.startsWith('data:image/webp')) {
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+          resolve(dataUrl);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function _loadSettings() {
     _setValue('default-timer', await DB.getSetting('timer', '30'));
     _setValue('default-theme', await DB.getSetting('admin_theme', 'theme-light'));
@@ -2892,6 +2926,19 @@ const ADMIN = (() => {
     $('we-difficulty').value = wordData?.difficulty  || 'medium';
     _weSetVisualType(wordData?.visual_type || 'word');
 
+    // Image preview for existing image_url
+    const imgUrl = wordData?.image_url || '';
+    const imgPreviewWrap = $('we-image-preview-wrap');
+    const imgPreviewEl   = $('we-image-preview-img');
+    const uploadStatus   = $('we-upload-status');
+    if (imgUrl && imgPreviewWrap && imgPreviewEl) {
+      imgPreviewEl.src = imgUrl;
+      imgPreviewWrap.style.display = '';
+    } else if (imgPreviewWrap) {
+      imgPreviewWrap.style.display = 'none';
+    }
+    if (uploadStatus) uploadStatus.textContent = '';
+
     // Clear previous emoji suggestions
     const sugBox = $('we-emoji-suggestions');
     if (sugBox) { sugBox.innerHTML = ''; sugBox.style.display = 'none'; }
@@ -3294,6 +3341,65 @@ const ADMIN = (() => {
         APP.toast('Emoji suggest failed: ' + err.message, 'error');
       } finally {
         if (btn) btn.disabled = false;
+      }
+    });
+
+    // Image upload button
+    $('btn-we-upload-image')?.addEventListener('click', () => {
+      $('we-image-file')?.click();
+    });
+
+    $('we-image-url')?.addEventListener('input', e => {
+      const url = e.target.value.trim();
+      const wrap = $('we-image-preview-wrap');
+      const img  = $('we-image-preview-img');
+      if (url && wrap && img) {
+        img.src = url;
+        wrap.style.display = '';
+      } else if (wrap) {
+        wrap.style.display = 'none';
+      }
+    });
+
+    $('btn-we-remove-image')?.addEventListener('click', () => {
+      const urlInput = $('we-image-url');
+      const wrap = $('we-image-preview-wrap');
+      if (urlInput) urlInput.value = '';
+      if (wrap) wrap.style.display = 'none';
+    });
+
+    $('we-image-file')?.addEventListener('change', async e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = '';
+
+      const status = $('we-upload-status');
+      const uploadBtn = $('btn-we-upload-image');
+      if (status) status.textContent = 'Compressing...';
+      if (uploadBtn) uploadBtn.disabled = true;
+
+      try {
+        // Client-side compression via Canvas — target max 200KB, WebP
+        const base64 = await _compressImage(file, 1200, 900, 0.80);
+
+        if (status) status.textContent = 'Uploading...';
+        const res = await API.uploadWordImage(base64);
+        const url = res.url;
+
+        const urlInput = $('we-image-url');
+        if (urlInput) urlInput.value = url;
+
+        const wrap = $('we-image-preview-wrap');
+        const img  = $('we-image-preview-img');
+        if (wrap && img) { img.src = url; wrap.style.display = ''; }
+
+        if (status) status.textContent = '✓ Uploaded';
+        APP.toast('Image uploaded', 'success');
+      } catch (err) {
+        APP.toast('Upload failed: ' + err.message, 'error');
+        if (status) status.textContent = 'Upload failed';
+      } finally {
+        if (uploadBtn) uploadBtn.disabled = false;
       }
     });
 
