@@ -343,6 +343,8 @@ const API = (() => {
         markExpired(payload.message, payload.expiryDate);
       } else if (response.status === 403 && ['ACCOUNT_BLOCKED', 'ACCOUNT_PENDING'].includes(payload?.code)) {
         clearStudentToken();
+      } else if (response.status === 401 && path !== '/auth/login') {
+        window.dispatchEvent(new CustomEvent('teachingboard:unauthorized', { detail: { path } }));
       }
       const err = new Error(payload?.message || `Request failed: ${response.status}`);
       if (payload?.code) err.code = payload.code;
@@ -852,6 +854,23 @@ const API = (() => {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res;
+  }
+
+  async function resequenceAdminWords({ batch, subject }) {
+    const token = await ensureAdminSession();
+    return request('/admin/words/resequence', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ batch, subject }),
+    });
+  }
+
+  async function fetchAdminTestWords({ batch, subject, testNum }) {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams({ batch, subject, test_num: testNum });
+    return request(`/admin/words/test-words?${qs.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
   }
 
   async function createAdminWord(data) {
@@ -1413,7 +1432,7 @@ const API = (() => {
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
     sendTeacherNotification, fetchTeacherNotificationHistory,
-    autoFillWord, fetchAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
+    autoFillWord, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
     getVocabConfig, saveVocabConfig,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
     fetchTeacherVocabScores,

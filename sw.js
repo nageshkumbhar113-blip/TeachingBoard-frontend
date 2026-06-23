@@ -1,4 +1,4 @@
-const SW_VERSION = 'v24';
+const SW_VERSION = 'v26';
 const CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;
@@ -20,6 +20,7 @@ const CORE_ASSETS = [
   './icons/nk-logo.png',
   './core/db.js',
   './core/helpers.js',
+  './core/math.js',
   './core/i18n.js',
   './core/pdf.js',
   './core/sync.js',

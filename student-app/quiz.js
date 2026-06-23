@@ -41,7 +41,8 @@ const QUIZ = (() => {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
   async function _resolveImageSrc(ref) {
     if (!ref) return null;
@@ -743,7 +744,7 @@ const QUIZ = (() => {
   // PUBLIC API
   // ════════════════════════
 
-  return { init, startQuiz, loadRemoteQuiz, nextQuestion, prevQuestion, getSession, getQuestions };
+  return { init, startQuiz, loadRemoteQuiz, nextQuestion, prevQuestion, getSession, getQuestions, stopTimer: _stopTimer };
 })();
 
 // ════════════════════════════════════════
@@ -843,8 +844,8 @@ const RESULTS = (() => {
       const color = score >= 70 ? 'var(--correct)' : score >= 40 ? 'var(--medium)' : 'var(--wrong)';
       item.innerHTML = `
         <div class="history-info">
-          <div class="history-title">${s.subject} › ${s.chapter}</div>
-          <div class="history-meta">${date} · ${s.batch} · ${_formatTime(s.duration)}</div>
+          <div class="history-title">${_escHtml(s.subject)} › ${_escHtml(s.chapter)}</div>
+          <div class="history-meta">${date} · ${_escHtml(s.batch)} · ${_formatTime(s.duration)}</div>
         </div>
         <div class="history-score" style="color:${color}">${score}%</div>
       `;

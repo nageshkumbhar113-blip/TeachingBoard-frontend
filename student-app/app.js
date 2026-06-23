@@ -149,6 +149,17 @@ const APP = (() => {
           : (payload.message || 'Account expired'),
       });
     });
+
+    let _reloginPending = false;
+    window.addEventListener('teachingboard:unauthorized', () => {
+      if (_reloginPending) return;
+      _reloginPending = true;
+      _showOnboarding(async () => {
+        _reloginPending = false;
+        await _refreshProfileAfterLogin();
+        loadHome();
+      }, { force: true });
+    });
   }
 
   function _applyDeviceFlags() {
@@ -445,6 +456,7 @@ const APP = (() => {
       async function _switchAccount() {
         ac.abort();
         screen.classList.add('hidden');
+        _isTeacherOrParentMode = false;
         // Clear current session regardless of role
         await API.clearStudentProfile?.().catch(() => {});
         await API.clearTeacherProfile?.().catch(() => {});
@@ -820,7 +832,8 @@ const APP = (() => {
 
   function _updateProfileButton(name) {
     const label = document.getElementById('nav-student-name');
-    if (label) label.textContent = name.length > 10 ? name.slice(0, 10) + '…' : name;
+    const safeName = String(name || '');
+    if (label) label.textContent = safeName.length > 10 ? safeName.slice(0, 10) + '…' : safeName;
   }
 
   async function _openProfileSettings() {
@@ -973,6 +986,11 @@ const APP = (() => {
 
   function showScreen(name, { addToHistory = true } = {}) {
     if (!name) return;
+
+    // Stop quiz timer when navigating away from quiz screen
+    if (_currentScreen === 'quiz' && name !== 'quiz' && window.QUIZ?.stopTimer) {
+      window.QUIZ.stopTimer();
+    }
 
     // Push current screen to history before switching (skip 'home' as base)
     if (addToHistory && _currentScreen && _currentScreen !== name) {

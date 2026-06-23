@@ -853,7 +853,7 @@ const ADMIN = (() => {
       item.innerHTML = `
         <div class="lesson-admin-header">
           <div>
-            <div class="lesson-admin-title">${lesson.title || 'Untitled'}</div>
+            <div class="lesson-admin-title">${_escHtml(lesson.title || 'Untitled')}</div>
             <div class="lesson-admin-meta">Updated ${lesson.updated_at
               ? new Date(lesson.updated_at).toLocaleString() : 'now'}</div>
           </div>
@@ -949,7 +949,8 @@ const ADMIN = (() => {
 
   function _escHtml(s) {
     return String(s || '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // ════════════════════════
@@ -1070,6 +1071,7 @@ const ADMIN = (() => {
   async function _importCSV() {
     const file    = $('csv-file-input').files[0];
     if (!file) { APP.toast('Select a CSV file first', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { APP.toast('CSV file too large (max 5 MB)', 'error'); return; }
 
     const batch   = $('import-batch').value;
     const subject = $('import-subject').value;
@@ -2244,6 +2246,7 @@ const ADMIN = (() => {
 
     if (!version) { APP.toast('Version number आवश्यक आहे (उदा. 1.2.0)', 'error'); return; }
     if (!/^\d+\.\d+\.\d+$/.test(version)) { APP.toast('Format: 1.2.0 असा असावा', 'error'); return; }
+    if (apk_url && !/^https?:\/\/.+/.test(apk_url)) { APP.toast('APK URL https:// ने सुरू असावा', 'error'); return; }
 
     try {
       await API.createAppVersion({ version, apk_url, release_notes: notes, platform, activate });
@@ -2555,7 +2558,10 @@ const ADMIN = (() => {
       clearTimeout(_studentSearchTimer);
       _studentSearchTimer = setTimeout(() => _renderStudentList(e.target.value), 120);
     });
-    $('student-course-filter')?.addEventListener('change', () => _renderStudentList($('student-search')?.value || ''));
+    $('student-course-filter')?.addEventListener('change', () => {
+      clearTimeout(_studentSearchTimer);
+      _renderStudentList($('student-search')?.value || '');
+    });
 
     // Student drawer close
     $('student-action-overlay')?.addEventListener('click', _closeStudentDrawer);
@@ -2692,10 +2698,13 @@ const ADMIN = (() => {
   }
 
   function _updateTestInfoBar(batch, subject, total) {
-    const bar  = $('words-test-info-bar');
-    const text = $('words-test-info-text');
-    const btn  = $('btn-words-test-info');
+    const bar     = $('words-test-info-bar');
+    const text    = $('words-test-info-text');
+    const btn     = $('btn-words-test-info');
+    const reseqBtn = $('btn-resequence-words');
     if (!bar || !text) return;
+
+    if (reseqBtn) reseqBtn.style.display = (batch && subject) ? '' : 'none';
 
     if (batch && subject && total > 0) {
       const tc = Math.ceil(total / 20);
@@ -2754,15 +2763,12 @@ const ADMIN = (() => {
     const body    = $('test-preview-body');
     if (!overlay || !body) return;
 
-    const batch    = overlay.dataset.batch    || '';
-    const subject  = overlay.dataset.subject  || '';
-    const wordFrom = parseInt(overlay.dataset.wordFrom) || 1;
-    const wordTo   = parseInt(overlay.dataset.wordTo)   || 20;
-    const skip     = wordFrom - 1;
-    const limit    = wordTo - wordFrom + 1;
+    const batch   = overlay.dataset.batch    || '';
+    const subject = overlay.dataset.subject  || '';
+    const testNum = parseInt(overlay.dataset.testNum) || 1;
 
     try {
-      const res   = await API.fetchAdminWords({ batch, subject, skip, limit });
+      const res   = await API.fetchAdminTestWords({ batch, subject, testNum });
       const words = res.data || [];
 
       if (!words.length) {
@@ -3117,6 +3123,25 @@ const ADMIN = (() => {
         setTimeout(() => { bar.style.outline = ''; }, 1800);
       }
     });
+
+    // "Re-sequence" button — renumber seq_num 1,2,3… for current batch+subject
+    $('btn-resequence-words')?.addEventListener('click', async () => {
+      const batch   = $('words-filter-batch')?.value  || '';
+      const subject = $('words-filter-subject')?.value || '';
+      if (!batch || !subject) {
+        alert('Please select a Batch and Subject first.');
+        return;
+      }
+      if (!confirm(`Re-sequence all words in "${batch} / ${subject}"?\nThis renumbers seq_num 1,2,3… in current order and fixes test boundaries.`)) return;
+      try {
+        const res = await API.resequenceAdminWords({ batch, subject });
+        alert(`✅ Re-sequenced ${res.count} words.`);
+        _loadWordBank();
+      } catch (err) {
+        alert('Re-sequence failed: ' + (err?.message || 'unknown error'));
+      }
+    });
+
     $('words-filter-subject')?.addEventListener('change', () => {
       _wordsSkip = 0;
       _loadWordBank();

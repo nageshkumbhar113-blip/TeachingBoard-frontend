@@ -26,6 +26,9 @@ const VOCAB = (() => {
   let _addWordFillData = null;
 
   function $id(id) { return document.getElementById(id); }
+  const _escHtml = s => String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
   // ─── Public entry ──────────────────────────────────────────────────────────
 
@@ -318,9 +321,12 @@ const VOCAB = (() => {
     const correctVal = getVal(correctWord);
     const seen = new Set([correctVal]);
     const distractors = [];
-    const shuffled = _words
-      .filter(w => w.word_id !== correctWord.word_id)
-      .sort(() => Math.random() - 0.5);
+    const pool = _words.filter(w => w.word_id !== correctWord.word_id);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const shuffled = pool;
 
     for (const w of shuffled) {
       if (distractors.length >= 3) break;
@@ -439,7 +445,7 @@ const VOCAB = (() => {
     _showView('score');
 
     const totalPossible = _words.length * SECTIONS.length;
-    const totalScore = _scores.listen + _scores.meaning + _scores.picture + _scores.spelling;
+    const totalScore = SECTIONS.reduce((sum, s) => sum + _scores[s], 0);
     const pct = Math.round((totalScore / totalPossible) * 100);
     const passed = pct >= 60;
 
@@ -448,23 +454,11 @@ const VOCAB = (() => {
 
     const breakdownEl = $id('vocab-score-breakdown');
     if (breakdownEl) {
-      breakdownEl.innerHTML = `
+      breakdownEl.innerHTML = SECTIONS.map(s => `
         <div class="vocab-breakdown-row">
-          <span>Listen</span>
-          <span>${_scores.listen} / ${_words.length}</span>
-        </div>
-        <div class="vocab-breakdown-row">
-          <span>Meaning</span>
-          <span>${_scores.meaning} / ${_words.length}</span>
-        </div>
-        <div class="vocab-breakdown-row">
-          <span>Picture</span>
-          <span>${_scores.picture} / ${_words.length}</span>
-        </div>
-        <div class="vocab-breakdown-row">
-          <span>Spelling</span>
-          <span>${_scores.spelling} / ${_words.length}</span>
-        </div>`;
+          <span>${SECTION_LABELS[s]}</span>
+          <span>${_scores[s]} / ${_words.length}</span>
+        </div>`).join('');
     }
 
     $id('vocab-pass-badge')?.classList.toggle('hidden', !passed);
@@ -498,10 +492,12 @@ const VOCAB = (() => {
     const ctx = $id('vocab-add-context');
     if (ctx) ctx.textContent = `Adding to: ${_batch} / ${_subject}`;
     $id('vocab-add-word-backdrop')?.classList.remove('hidden');
-    $id('vocab-add-word-input').value  = '';
+    const addInput = $id('vocab-add-word-input');
+    if (addInput) addInput.value = '';
     $id('vocab-add-word-err')?.classList.add('hidden');
     $id('vocab-add-word-preview')?.classList.add('hidden');
-    $id('vocab-add-submit').disabled   = true;
+    const addSubmit = $id('vocab-add-submit');
+    if (addSubmit) addSubmit.disabled = true;
     _addWordFillData = null;
     setTimeout(() => $id('vocab-add-word-input')?.focus(), 100);
   }
@@ -515,9 +511,9 @@ const VOCAB = (() => {
       const prev = $id('vocab-add-word-preview');
       if (prev) {
         prev.innerHTML = `
-          <div><b>Meaning (MR):</b> ${_addWordFillData.meaning_mr || '—'}</div>
-          <div><b>Meaning (EN):</b> ${_addWordFillData.meaning_en || '—'}</div>
-          <div><b>Phonics:</b> ${_addWordFillData.phonics || '—'}</div>`;
+          <div><b>Meaning (MR):</b> ${_escHtml(_addWordFillData.meaning_mr || '—')}</div>
+          <div><b>Meaning (EN):</b> ${_escHtml(_addWordFillData.meaning_en || '—')}</div>
+          <div><b>Phonics:</b> ${_escHtml(_addWordFillData.phonics || '—')}</div>`;
         prev.classList.remove('hidden');
       }
       $id('vocab-add-submit').disabled = false;

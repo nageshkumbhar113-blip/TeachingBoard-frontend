@@ -495,7 +495,7 @@ const SYNC = (() => {
       APP.refreshHome().catch(() => {});
     }
 
-    return { drained, remaining: remaining.length };
+    return { drained, remaining: _queueCache.length };
   }
 
   // ════════════════════════
