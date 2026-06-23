@@ -2980,6 +2980,14 @@ body.student-app.mode-board.theme-board-light::before {
   object-fit: cover;
   margin-bottom: 8px;
 }
+.vocab-emoji-img {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin: 4px auto 8px;
+  object-fit: contain;
+  user-select: none;
+}
 .vocab-phonics-display {
   font-size: 0.85rem;
   color: var(--accent);

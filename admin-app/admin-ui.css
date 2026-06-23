@@ -1683,6 +1683,39 @@ body.admin-app {
 .we-input-group { display: flex; gap: 8px; align-items: center; }
 .we-input-group .admin-input { flex: 1; }
 .we-autofill-btn { white-space: nowrap; flex-shrink: 0; }
+.we-vt-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  padding: 5px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+.we-vt-label:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(245,130,32,0.08);
+  color: var(--accent);
+  font-weight: 600;
+}
+.we-vt-label input[type="radio"] { display: none; }
+.we-emoji-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 1.6rem;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.we-emoji-chip:hover { border-color: var(--accent); transform: scale(1.1); }
+.we-emoji-chip span { font-size: 0.72rem; color: var(--text2); }
 .we-status {
   font-size: 0.78rem;
   padding: 6px 10px;

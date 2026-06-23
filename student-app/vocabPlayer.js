@@ -542,17 +542,53 @@ const VOCAB = (() => {
 
   function _renderWordVisual(el, word) {
     if (!el) return;
-    if (word.image_url) {
+    const vt = word.visual_type || 'word';
+
+    if (vt === 'image' && word.image_url) {
       const img = document.createElement('img');
       img.src = word.image_url;
       img.className = 'vocab-word-img';
       img.alt = word.word;
-      img.onerror = () => { img.replaceWith(document.createTextNode(word.word)); };
+      img.onerror = () => {
+        // Image broken — fall back to emoji SVG, then Unicode, then word text
+        if (word.emoji_svg) {
+          el.innerHTML = '';
+          const ei = document.createElement('img');
+          ei.src = word.emoji_svg;
+          ei.className = 'vocab-emoji-img';
+          ei.alt = word.emoji || word.word;
+          el.appendChild(ei);
+        } else if (word.emoji) {
+          el.innerHTML = `<span class="vocab-word-emoji">${_escHtml(word.emoji)}</span>`;
+        } else {
+          img.replaceWith(document.createTextNode(word.word));
+        }
+      };
       el.innerHTML = '';
       el.appendChild(img);
-    } else if (word.emoji) {
-      el.innerHTML = `<span class="vocab-word-emoji">${word.emoji}</span>`;
+
+    } else if (vt === 'emoji') {
+      if (word.emoji_svg) {
+        // OpenEmoji SVG — consistent across all devices
+        const img = document.createElement('img');
+        img.src = word.emoji_svg;
+        img.className = 'vocab-emoji-img';
+        img.alt = word.emoji || word.word;
+        img.onerror = () => {
+          // SVG data URL shouldn't fail, but fallback just in case
+          el.innerHTML = `<span class="vocab-word-emoji">${_escHtml(word.emoji || word.word)}</span>`;
+        };
+        el.innerHTML = '';
+        el.appendChild(img);
+      } else if (word.emoji) {
+        // Emoji set but SVG not cached yet — show Unicode character
+        el.innerHTML = `<span class="vocab-word-emoji">${_escHtml(word.emoji)}</span>`;
+      } else {
+        el.textContent = word.word;
+      }
+
     } else {
+      // visual_type === 'word' (default)
       el.textContent = word.word;
     }
   }

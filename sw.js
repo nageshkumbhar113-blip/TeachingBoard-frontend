@@ -1,4 +1,4 @@
-const SW_VERSION = 'v26';
+const SW_VERSION = 'v27';
 const CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;

@@ -994,17 +994,40 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
           <input type="text" id="we-phonics" class="admin-input we-full" placeholder="/ˈæp.əl/" />
         </div>
 
+        <!-- Visual Type Selector -->
         <div class="we-row">
-          <label class="we-label" for="we-image-url">Image URL</label>
-          <input type="url" id="we-image-url" class="admin-input we-full" placeholder="https://imagebb.com/..." />
+          <label class="we-label">Test मध्ये काय दाखवायचे?</label>
+          <div id="we-visual-type-group" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">
+            <label class="we-vt-label">
+              <input type="radio" name="we-visual-type" value="word" checked />
+              <span>📝 Word</span>
+            </label>
+            <label class="we-vt-label">
+              <input type="radio" name="we-visual-type" value="emoji" />
+              <span>🎨 Emoji</span>
+            </label>
+            <label class="we-vt-label">
+              <input type="radio" name="we-visual-type" value="image" />
+              <span>🖼️ Image</span>
+            </label>
+          </div>
         </div>
 
-        <div class="we-row">
-          <label class="we-label" for="we-emoji">Emoji <span style="font-size:0.78rem;color:var(--text2)">(Image नसेल तर — LKG/UKG साठी)</span></label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="text" id="we-emoji" class="admin-input" style="width:72px;font-size:1.6rem;text-align:center" placeholder="🍎" maxlength="4" />
-            <span id="we-emoji-preview" style="font-size:2.5rem;line-height:1"></span>
+        <!-- Emoji Field (shown when emoji selected) -->
+        <div class="we-row" id="we-emoji-row">
+          <label class="we-label">Emoji</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="we-emoji" class="admin-input" style="width:72px;font-size:1.6rem;text-align:center" placeholder="🍎" maxlength="8" />
+            <span id="we-emoji-preview" style="font-size:2.5rem;line-height:1;min-width:40px"></span>
+            <button type="button" id="btn-we-suggest-emoji" class="admin-btn-secondary" style="font-size:0.82rem">🎯 Suggest</button>
           </div>
+          <div id="we-emoji-suggestions" style="display:none;margin-top:8px;gap:8px;flex-wrap:wrap"></div>
+        </div>
+
+        <!-- Image URL Field (shown when image selected) -->
+        <div class="we-row" id="we-image-row">
+          <label class="we-label" for="we-image-url">Image URL</label>
+          <input type="url" id="we-image-url" class="admin-input we-full" placeholder="https://..." />
         </div>
 
         <div class="we-row">

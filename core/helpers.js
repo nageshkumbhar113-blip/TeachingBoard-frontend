@@ -842,6 +842,13 @@ const API = (() => {
     });
   }
 
+  async function suggestEmoji(word) {
+    const token = await ensureAdminSession();
+    return request(`/admin/words/suggest-emoji?word=${encodeURIComponent(word)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function fetchAdminWords({ batch = '', subject = '', search = '', skip = 0, limit = 50 } = {}) {
     const token = await ensureAdminSession();
     const qs = new URLSearchParams();
@@ -1432,7 +1439,7 @@ const API = (() => {
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
     sendTeacherNotification, fetchTeacherNotificationHistory,
-    autoFillWord, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
+    autoFillWord, suggestEmoji, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
     getVocabConfig, saveVocabConfig,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
     fetchTeacherVocabScores,

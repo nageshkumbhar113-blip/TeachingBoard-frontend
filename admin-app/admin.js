@@ -2671,7 +2671,11 @@ const ADMIN = (() => {
             <td><span class="words-diff-badge words-diff-${w.difficulty}">${w.difficulty}</span></td>
             <td class="words-addedby-badge">${w.added_by}</td>
             <td class="words-actions">
-              <button class="admin-btn-secondary words-btn-edit" data-wid="${_esc(w.word_id)}">Edit</button>
+              <button class="admin-btn-secondary words-btn-edit"
+                data-wid="${_esc(w.word_id)}"
+                data-emoji="${_esc(w.emoji || '')}"
+                data-image-url="${_esc(w.image_url || '')}"
+                data-visual-type="${_esc(w.visual_type || 'word')}">Edit</button>
               <button class="admin-btn-secondary words-btn-delete" data-wid="${_esc(w.word_id)}" data-wname="${_esc(w.word)}">Del</button>
             </td>`;
           tbody.appendChild(tr);
@@ -2794,6 +2798,7 @@ const ADMIN = (() => {
                 data-phonics="${_esc(w.phonics || '')}"
                 data-image-url="${_esc(w.image_url || '')}"
                 data-emoji="${_esc(w.emoji || '')}"
+                data-visual-type="${_esc(w.visual_type || 'word')}"
                 data-difficulty="${_esc(w.difficulty || 'medium')}"
                 data-batch="${_esc(batch)}"
                 data-subject="${_esc(subject)}">Edit</button>
@@ -2820,16 +2825,17 @@ const ADMIN = (() => {
       body.querySelectorAll('.tp-edit-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           await _openWordEditor({
-            word_id:    btn.dataset.wid,
-            word:       btn.dataset.word,
-            meaning_mr: btn.dataset.meaningMr,
-            meaning_en: btn.dataset.meaningEn,
-            phonics:    btn.dataset.phonics,
-            image_url:  btn.dataset.imageUrl,
-            emoji:      btn.dataset.emoji,
-            difficulty: btn.dataset.difficulty,
-            batch:      btn.dataset.batch,
-            subject:    btn.dataset.subject,
+            word_id:     btn.dataset.wid,
+            word:        btn.dataset.word,
+            meaning_mr:  btn.dataset.meaningMr,
+            meaning_en:  btn.dataset.meaningEn,
+            phonics:     btn.dataset.phonics,
+            image_url:   btn.dataset.imageUrl,
+            emoji:       btn.dataset.emoji,
+            visual_type: btn.dataset.visualType || 'word',
+            difficulty:  btn.dataset.difficulty,
+            batch:       btn.dataset.batch,
+            subject:     btn.dataset.subject,
           });
           // After editor closes, refresh preview automatically
           _schedulePreviewRefresh();
@@ -2855,6 +2861,21 @@ const ADMIN = (() => {
     if (target) observer.observe(target, { attributes: true, attributeFilter: ['class'] });
   }
 
+  function _weSetVisualType(vt) {
+    const valid = ['word', 'emoji', 'image'].includes(vt) ? vt : 'word';
+    document.querySelectorAll('input[name="we-visual-type"]').forEach(r => {
+      r.checked = (r.value === valid);
+    });
+    const emojiRow = $('we-emoji-row');
+    const imageRow = $('we-image-row');
+    if (emojiRow) emojiRow.style.display = valid === 'emoji' ? '' : 'none';
+    if (imageRow) imageRow.style.display = valid === 'image' ? '' : 'none';
+  }
+
+  function _weGetVisualType() {
+    return document.querySelector('input[name="we-visual-type"]:checked')?.value || 'word';
+  }
+
   async function _openWordEditor(wordData) {
     const overlay = $('word-edit-overlay');
     const title   = $('word-edit-title');
@@ -2869,6 +2890,11 @@ const ADMIN = (() => {
     $('we-emoji').value      = wordData?.emoji        || '';
     $('we-emoji-preview').textContent = wordData?.emoji || '';
     $('we-difficulty').value = wordData?.difficulty  || 'medium';
+    _weSetVisualType(wordData?.visual_type || 'word');
+
+    // Clear previous emoji suggestions
+    const sugBox = $('we-emoji-suggestions');
+    if (sugBox) { sugBox.innerHTML = ''; sugBox.style.display = 'none'; }
 
     // Populate batch options then subject options
     const weBatch = $('we-batch');
@@ -2913,15 +2939,16 @@ const ADMIN = (() => {
     const errEl   = $('we-error');
 
     const data = {
-      word:       ($('we-word')?.value       || '').trim(),
-      batch:      ($('we-batch')?.value      || '').trim(),
-      subject:    ($('we-subject')?.value    || '').trim(),
-      meaning_mr: ($('we-meaning-mr')?.value || '').trim(),
-      meaning_en: ($('we-meaning-en')?.value || '').trim(),
-      phonics:    ($('we-phonics')?.value    || '').trim(),
-      image_url:  ($('we-image-url')?.value  || '').trim(),
-      emoji:      ($('we-emoji')?.value      || '').trim(),
-      difficulty: $('we-difficulty')?.value  || 'medium',
+      word:         ($('we-word')?.value       || '').trim(),
+      batch:        ($('we-batch')?.value      || '').trim(),
+      subject:      ($('we-subject')?.value    || '').trim(),
+      meaning_mr:   ($('we-meaning-mr')?.value || '').trim(),
+      meaning_en:   ($('we-meaning-en')?.value || '').trim(),
+      phonics:      ($('we-phonics')?.value    || '').trim(),
+      image_url:    ($('we-image-url')?.value  || '').trim(),
+      emoji:        ($('we-emoji')?.value      || '').trim(),
+      visual_type:  _weGetVisualType(),
+      difficulty:   $('we-difficulty')?.value  || 'medium',
     };
 
     if (!data.word)    { if (errEl) { errEl.textContent = 'Word is required'; errEl.classList.remove('hidden'); } return; }
@@ -3177,14 +3204,17 @@ const ADMIN = (() => {
         if (!row) return;
         const cells = row.querySelectorAll('td');
         await _openWordEditor({
-          word_id:    wid,
-          batch:      $('words-filter-batch')?.value   || '',
-          subject:    $('words-filter-subject')?.value || '',
-          word:       cells[1]?.textContent || '',
-          meaning_mr: cells[2]?.textContent || '',
-          meaning_en: cells[3]?.textContent || '',
-          phonics:    cells[4]?.textContent || '',
-          difficulty: cells[5]?.querySelector('span')?.textContent?.trim() || 'medium',
+          word_id:     wid,
+          batch:       $('words-filter-batch')?.value   || '',
+          subject:     $('words-filter-subject')?.value || '',
+          word:        cells[1]?.textContent || '',
+          meaning_mr:  cells[2]?.textContent || '',
+          meaning_en:  cells[3]?.textContent || '',
+          phonics:     cells[4]?.textContent || '',
+          difficulty:  cells[5]?.querySelector('span')?.textContent?.trim() || 'medium',
+          emoji:       editBtn.dataset.emoji      || '',
+          image_url:   editBtn.dataset.imageUrl   || '',
+          visual_type: editBtn.dataset.visualType || 'word',
         });
       }
       if (delBtn) {
@@ -3215,9 +3245,56 @@ const ADMIN = (() => {
     $('btn-we-cancel')?.addEventListener('click', () => $('word-edit-overlay')?.classList.add('hidden'));
     $('btn-we-autofill')?.addEventListener('click', _weAutoFill);
     $('word-edit-form')?.addEventListener('submit', _weSubmit);
+
+    // Visual type radio → show/hide emoji & image rows
+    $('we-visual-type-group')?.addEventListener('change', () => {
+      _weSetVisualType(_weGetVisualType());
+    });
+
+    // Emoji input → live preview
     $('we-emoji')?.addEventListener('input', e => {
       const preview = $('we-emoji-preview');
       if (preview) preview.textContent = e.target.value.trim();
+    });
+
+    // Emoji suggest button
+    $('btn-we-suggest-emoji')?.addEventListener('click', async () => {
+      const word = ($('we-word')?.value || '').trim();
+      if (!word) return APP.toast('Word field रिकामे आहे', 'error');
+      const btn = $('btn-we-suggest-emoji');
+      if (btn) btn.disabled = true;
+      try {
+        const res = await API.suggestEmoji(word);
+        const suggestions = res.suggestions || [];
+        const sugBox = $('we-emoji-suggestions');
+        if (!sugBox) return;
+        if (!suggestions.length) {
+          sugBox.innerHTML = '<span style="font-size:0.8rem;color:var(--text2)">कोणताही emoji सापडला नाही</span>';
+          sugBox.style.display = 'flex';
+          return;
+        }
+        sugBox.innerHTML = suggestions.map(s =>
+          `<button type="button" class="we-emoji-chip" data-emoji="${_esc(s.emoji)}" title="${_esc(s.annotation)}">
+            ${s.emoji}<span>${_esc(s.annotation)}</span>
+           </button>`
+        ).join('');
+        sugBox.style.display = 'flex';
+        sugBox.querySelectorAll('.we-emoji-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const emoji = chip.dataset.emoji;
+            const input = $('we-emoji');
+            if (input) { input.value = emoji; }
+            const preview = $('we-emoji-preview');
+            if (preview) preview.textContent = emoji;
+            // Auto-select emoji visual type
+            _weSetVisualType('emoji');
+          });
+        });
+      } catch (err) {
+        APP.toast('Emoji suggest failed: ' + err.message, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     });
 
     // we-batch → populate we-subject
