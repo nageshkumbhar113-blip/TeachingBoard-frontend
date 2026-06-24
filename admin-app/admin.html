@@ -177,6 +177,10 @@
               <span class="atab-icon" aria-hidden="true">📚</span>
               <span class="atab-label">Words</span>
             </button>
+            <button class="atab" role="tab" data-tab="word-tests" aria-controls="atab-word-tests" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">🎯</span>
+              <span class="atab-label">Word Tests</span>
+            </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
               <span class="atab-label">Settings</span>
@@ -783,6 +787,102 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </div>
 
+          <!-- ── Word Tests Panel ──────────────────────── -->
+          <div class="atab-content hidden" id="atab-word-tests" role="tabpanel" aria-labelledby="atab-btn-word-tests">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">🎯 Word Tests</h2>
+              <button id="wt-btn-create" class="admin-btn-primary">+ Create Test</button>
+            </div>
+
+            <!-- LIST VIEW -->
+            <div id="wt-list-view">
+              <div class="admin-toolbar" style="margin-bottom:12px">
+                <select id="wt-list-batch-sel" class="admin-select" aria-label="Filter by batch">
+                  <option value="">All Batches</option>
+                </select>
+                <select id="wt-list-subject-sel" class="admin-select" disabled aria-label="Filter by subject">
+                  <option value="">All Subjects</option>
+                </select>
+                <button id="wt-btn-refresh-list" class="admin-btn-secondary">&#8635; Refresh</button>
+              </div>
+              <div id="wt-test-list" class="wt-test-list"><p class="empty-hint">Select batch and subject to load tests.</p></div>
+            </div>
+
+            <!-- CREATE VIEW (wizard) -->
+            <div id="wt-create-view" class="hidden">
+              <div class="wt-wizard-header">
+                <button id="wt-btn-back-to-list" class="admin-btn-secondary admin-btn-sm">&larr; Back</button>
+                <h3 class="wt-wizard-title">Create Word Test</h3>
+              </div>
+
+              <!-- Title -->
+              <div class="admin-card wt-card-section">
+                <label class="wt-field-label">Test Title</label>
+                <input type="text" id="wt-title-input" class="admin-input" placeholder="e.g. LKG Animals - Week 1 Test" maxlength="80" />
+              </div>
+
+              <!-- Step 1: Batch + Subject -->
+              <div class="admin-card wt-card-section">
+                <h4 class="wt-step-label">Step 1 &mdash; Batch &amp; Subject</h4>
+                <div class="admin-toolbar">
+                  <select id="wt-batch-sel" class="admin-select" aria-label="Select batch">
+                    <option value="">Select Batch</option>
+                  </select>
+                  <select id="wt-subject-sel" class="admin-select" disabled aria-label="Select subject">
+                    <option value="">Select Subject</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Step 2: Stats (shown after subject selected) -->
+              <div id="wt-stats-section" class="admin-card wt-card-section hidden">
+                <h4 class="wt-step-label">Word Bank Stats</h4>
+                <div id="wt-stats-body"></div>
+              </div>
+
+              <!-- Step 3: Question type config -->
+              <div id="wt-type-config-section" class="admin-card wt-card-section hidden">
+                <h4 class="wt-step-label">Step 2 &mdash; Question Types &amp; Counts</h4>
+                <p class="wt-hint">Toggle ON the types you want. Count = number of questions.</p>
+                <div id="wt-type-config-list" class="wt-type-config-list"></div>
+              </div>
+
+              <!-- Generate button -->
+              <div id="wt-generate-btn-row" class="wt-btn-row hidden">
+                <button id="wt-btn-generate" class="admin-btn-primary wt-btn-wide">&#9889; Generate Preview</button>
+              </div>
+            </div>
+
+            <!-- PREVIEW VIEW -->
+            <div id="wt-preview-view" class="hidden">
+              <div class="wt-wizard-header">
+                <button id="wt-btn-back-to-create" class="admin-btn-secondary admin-btn-sm">&larr; Edit Config</button>
+                <div>
+                  <h3 class="wt-wizard-title" id="wt-preview-title">Preview</h3>
+                  <span id="wt-preview-count" class="wt-preview-count"></span>
+                </div>
+              </div>
+              <div id="wt-preview-warnings" class="wt-preview-warnings hidden"></div>
+              <div id="wt-preview-list" class="wt-preview-list"></div>
+              <div class="wt-btn-row wt-publish-row">
+                <button id="wt-btn-save-draft" class="admin-btn-secondary">&#128190; Save Draft</button>
+                <button id="wt-btn-publish" class="admin-btn-primary">&#128640; Publish Now</button>
+              </div>
+            </div>
+
+            <!-- RESULTS VIEW -->
+            <div id="wt-results-view" class="hidden">
+              <div class="wt-wizard-header">
+                <button id="wt-btn-results-back" class="admin-btn-secondary admin-btn-sm">&larr; Back</button>
+                <div>
+                  <h3 class="wt-wizard-title" id="wt-results-title">Results</h3>
+                  <span id="wt-results-summary" class="wt-preview-count"></span>
+                </div>
+              </div>
+              <div id="wt-results-body" class="wt-results-body"></div>
+            </div>
+          </div>
+
           <!-- ── Settings Panel ──────────────────────── -->
           <div class="atab-content hidden" id="atab-settings" role="tabpanel" aria-labelledby="atab-btn-settings">
             <div class="admin-page-header">
@@ -1174,6 +1274,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="../core/sync.js" defer></script>
   <script src="parser.js" defer></script>
   <script src="testBuilder.js" defer></script>
+  <script src="wordTestBuilder.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>

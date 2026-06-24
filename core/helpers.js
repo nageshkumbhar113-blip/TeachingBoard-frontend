@@ -1435,6 +1435,115 @@ const API = (() => {
   // ════════════════════════
   // PUBLIC API
   // ════════════════════════
+  // WORD TEST — ADMIN API
+  // ════════════════════════
+
+  async function fetchWordTestStats(batch, subject) {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams({ batch, subject });
+    return request(`/admin/word-tests/stats?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async function generateWordTestPreview(batch, subject, title, questionConfigs) {
+    const token = await ensureAdminSession();
+    return request('/admin/word-tests/generate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ batch, subject, title, question_configs: questionConfigs }),
+    });
+  }
+
+  async function saveWordTestDraft(batch, subject, title, questions, passPercent = 60) {
+    const token = await ensureAdminSession();
+    return request('/admin/word-tests', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ batch, subject, title, questions, pass_percent: passPercent }),
+    });
+  }
+
+  async function listAdminWordTests(batch = '', subject = '') {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams();
+    if (batch)   qs.set('batch', batch);
+    if (subject) qs.set('subject', subject);
+    return request(`/admin/word-tests?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async function getAdminWordTest(testId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/word-tests/${encodeURIComponent(testId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function updateWordTest(testId, data) {
+    const token = await ensureAdminSession();
+    return request(`/admin/word-tests/${encodeURIComponent(testId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async function publishWordTest(testId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/word-tests/${encodeURIComponent(testId)}/publish`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function unpublishWordTest(testId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/word-tests/${encodeURIComponent(testId)}/unpublish`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function deleteWordTest(testId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/word-tests/${encodeURIComponent(testId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function getWordTestResults(testId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/word-tests/${encodeURIComponent(testId)}/results`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // ════════════════════════
+  // WORD TEST — STUDENT API
+  // ════════════════════════
+
+  async function fetchStudentWordTests(batch, subject) {
+    const token = await ensureStudentSession();
+    const qs = new URLSearchParams({ batch, subject });
+    return request(`/word-tests?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async function fetchStudentWordTest(testId) {
+    const token = await ensureStudentSession();
+    return request(`/word-tests/${encodeURIComponent(testId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function submitWordTestAttempt(testId, answers) {
+    const token = await ensureStudentSession();
+    return request(`/word-tests/${encodeURIComponent(testId)}/attempt`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ answers }),
+    });
+  }
+
+  // ════════════════════════
 
   return {
     DEFAULT_API_URL, REMOTE_BATCH, REMOTE_SUBJECT, REMOTE_CHAPTER,
@@ -1459,6 +1568,11 @@ const API = (() => {
     sendTeacherNotification, fetchTeacherNotificationHistory,
     autoFillWord, suggestEmoji, uploadWordImage, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
     getVocabConfig, saveVocabConfig,
+    // ─── Word Tests (Admin) ───────────────────────────────────────
+    fetchWordTestStats, generateWordTestPreview, saveWordTestDraft, listAdminWordTests, getAdminWordTest,
+    updateWordTest, publishWordTest, unpublishWordTest, deleteWordTest, getWordTestResults,
+    // ─── Word Tests (Student) ─────────────────────────────────────
+    fetchStudentWordTests, fetchStudentWordTest, submitWordTestAttempt,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, fetchVocabDictionary, submitVocabAttempt, addStudentWord,
     fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,

@@ -1,4 +1,4 @@
-const SW_VERSION = 'v28';
+const SW_VERSION = 'v29';
 const CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;
@@ -43,6 +43,7 @@ const CORE_ASSETS = [
   './admin-app/admin-shell.js',
   './admin-app/admin-mobile.js',
   './admin-app/testBuilder.js',
+  './admin-app/wordTestBuilder.js',
   './admin-app/parser.js',
   './admin-app/admin-ui.css',
   './admin-app/manifest.json',
