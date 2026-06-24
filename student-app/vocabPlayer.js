@@ -675,13 +675,17 @@ const VOCAB = (() => {
     $id('vocab-add-submit')?.addEventListener('click', _submitAddWord);
 
     // Tab: Learn ↔ Tests
+    function _setVocabTab(activeId) {
+      ['vocab-tab-learn','vocab-tab-tests','vocab-tab-word-tests','vocab-tab-notes']
+        .forEach(id => $id(id)?.classList.toggle('vocab-tab-active', id === activeId));
+    }
+
     $id('vocab-tab-learn')?.addEventListener('click', () => {
-      $id('vocab-tab-learn')?.classList.add('vocab-tab-active');
-      $id('vocab-tab-tests')?.classList.remove('vocab-tab-active');
-      $id('vocab-tab-word-tests')?.classList.remove('vocab-tab-active');
+      _setVocabTab('vocab-tab-learn');
       $id('vocab-dict-view')?.classList.remove('hidden');
       $id('vocab-test-grid')?.classList.add('hidden');
       $id('vocab-list-empty')?.classList.add('hidden');
+      $id('vocab-notes-panel')?.classList.add('hidden');
       if (window.DICT && _subject) DICT.openDictScreen(_batch, _subject);
     });
 
@@ -691,10 +695,20 @@ const VOCAB = (() => {
     });
 
     $id('vocab-tab-word-tests')?.addEventListener('click', () => {
-      $id('vocab-tab-word-tests')?.classList.add('vocab-tab-active');
-      $id('vocab-tab-learn')?.classList.remove('vocab-tab-active');
-      $id('vocab-tab-tests')?.classList.remove('vocab-tab-active');
+      _setVocabTab('vocab-tab-word-tests');
+      $id('vocab-notes-panel')?.classList.add('hidden');
       window.WORD_TEST_PLAYER?.openWordTestScreen(_batch, _subject);
+    });
+
+    $id('vocab-tab-notes')?.addEventListener('click', () => {
+      _setVocabTab('vocab-tab-notes');
+      $id('vocab-dict-view')?.classList.add('hidden');
+      $id('vocab-test-grid')?.classList.add('hidden');
+      $id('vocab-notes-panel')?.classList.remove('hidden');
+      if (window.NOTES_PLAYER) {
+        window.NOTES_PLAYER.init();
+        window.NOTES_PLAYER.loadNotesList(_batch, _subject);
+      }
     });
 
     // Bottom nav Words button — always fetch fresh profile from server so

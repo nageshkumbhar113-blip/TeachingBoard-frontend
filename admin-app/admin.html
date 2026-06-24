@@ -181,6 +181,10 @@
               <span class="atab-icon" aria-hidden="true">🎯</span>
               <span class="atab-label">Word Tests</span>
             </button>
+            <button class="atab" role="tab" data-tab="notes" aria-controls="atab-notes" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📄</span>
+              <span class="atab-label">Notes</span>
+            </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
               <span class="atab-label">Settings</span>
@@ -886,6 +890,74 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </div>
 
+          <!-- ── Notes Panel ──────────────────────────── -->
+          <div class="atab-content hidden" id="atab-notes" role="tabpanel" aria-labelledby="atab-btn-notes">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">📄 Notes</h2>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="wt-toolbar" style="margin-bottom:12px">
+              <select id="nm-filter-batch" class="admin-select short">
+                <option value="">All Batches</option>
+              </select>
+              <select id="nm-filter-subject" class="admin-select short" disabled>
+                <option value="">All Subjects</option>
+              </select>
+              <button id="nm-filter-btn" class="admin-btn-secondary admin-btn-sm">🔍 Filter</button>
+              <button id="nm-upload-btn" class="admin-btn-primary" style="margin-left:auto">+ Upload PDF</button>
+            </div>
+
+            <!-- Upload form (hidden by default) -->
+            <div id="nm-upload-form" class="hidden" style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:10px;padding:16px;margin-bottom:16px">
+              <h3 style="margin:0 0 12px;font-size:1rem">📤 Upload PDF Note</h3>
+
+              <label class="wt-field-label">Title</label>
+              <input type="text" id="nm-upload-title" class="admin-input" placeholder="e.g. Chapter 3 Notes" maxlength="100" />
+
+              <div style="display:flex;gap:10px;margin-top:10px">
+                <div style="flex:1">
+                  <label class="wt-field-label">Batch</label>
+                  <select id="nm-upload-batch" class="admin-select" style="width:100%">
+                    <option value="">Select Batch</option>
+                  </select>
+                </div>
+                <div style="flex:1">
+                  <label class="wt-field-label">Subject</label>
+                  <select id="nm-upload-subject" class="admin-select" style="width:100%" disabled>
+                    <option value="">Select Subject</option>
+                  </select>
+                </div>
+              </div>
+
+              <label class="wt-field-label" style="margin-top:10px">PDF File <span style="color:var(--c-muted);font-weight:400">(max 10 MB)</span></label>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                <label class="admin-btn-secondary admin-btn-sm" style="cursor:pointer;margin:0">
+                  Choose File
+                  <input type="file" id="nm-upload-file" accept="application/pdf" style="display:none" />
+                </label>
+                <span id="nm-file-name" style="color:var(--c-muted);font-size:0.88rem">No file chosen</span>
+              </div>
+              <p id="nm-upload-warning" class="hidden" style="color:#b45309;font-size:0.82rem;margin:8px 0 0"></p>
+
+              <!-- Progress -->
+              <div id="nm-progress-wrap" class="hidden" style="margin-top:12px">
+                <progress id="nm-upload-progress" value="0" max="100" style="width:100%;height:8px"></progress>
+                <p id="nm-progress-label" style="font-size:0.82rem;color:var(--c-muted);margin:4px 0 0"></p>
+              </div>
+
+              <div style="display:flex;gap:10px;margin-top:14px">
+                <button id="nm-upload-cancel" class="admin-btn-secondary">Cancel</button>
+                <button id="nm-upload-do" class="admin-btn-primary">📤 Upload PDF</button>
+              </div>
+            </div>
+
+            <!-- Notes list -->
+            <div id="nm-notes-list">
+              <p class="nm-loading">Loading…</p>
+            </div>
+          </div>
+
           <!-- ── Settings Panel ──────────────────────── -->
           <div class="atab-content hidden" id="atab-settings" role="tabpanel" aria-labelledby="atab-btn-settings">
             <div class="admin-page-header">
@@ -1021,6 +1093,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       </button>
       <button class="abn-drawer-item" data-tab="word-tests">
         <span>🎯</span> Word Tests
+      </button>
+      <button class="abn-drawer-item" data-tab="notes">
+        <span>📄</span> Notes
       </button>
       <button class="abn-drawer-item" data-tab="settings">
         <span>⚙️</span> Settings
@@ -1281,6 +1356,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="parser.js" defer></script>
   <script src="testBuilder.js" defer></script>
   <script src="wordTestBuilder.js" defer></script>
+  <script src="notesManager.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>

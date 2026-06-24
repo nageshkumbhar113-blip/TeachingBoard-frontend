@@ -235,6 +235,7 @@ const ADMIN = (() => {
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
         if (tab.dataset.tab === 'words')       _loadWordBank();
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
+        if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
       });
     });
   }

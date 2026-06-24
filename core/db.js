@@ -8,7 +8,7 @@
 
 const DB = (() => {
   const DB_NAME    = 'TeachingBoardDB';
-  const DB_VERSION = 9;
+  const DB_VERSION = 10;
   const PENDING_WRITE_KEY = 'teachingboard_pending_writes';
 
   let _db = null;
@@ -97,6 +97,12 @@ const DB = (() => {
         if (!db.objectStoreNames.contains('sync_queue')) {
           const sq = db.createObjectStore('sync_queue', { keyPath: 'id' });
           sq.createIndex('at', 'at');
+        }
+
+        // notes_cache — encrypted PDF cache (AES-256-GCM, 7-day expiry)
+        if (!db.objectStoreNames.contains('notes_cache')) {
+          const nc = db.createObjectStore('notes_cache', { keyPath: 'note_id' });
+          nc.createIndex('expires_at', 'expires_at');
         }
       };
 
@@ -890,13 +896,62 @@ const DB = (() => {
   }
 
   // ════════════════════════
+  // NOTES CACHE (encrypted PDF, 7-day TTL)
+  // ════════════════════════
+
+  const NOTE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
+  async function getNoteCache(noteId) {
+    const db    = await open();
+    const tx    = db.transaction('notes_cache', 'readonly');
+    const entry = await _p(tx.objectStore('notes_cache').get(noteId));
+    if (!entry) return null;
+    if (Date.now() > entry.expires_at) {
+      // Expired — delete and return null
+      const dtx = db.transaction('notes_cache', 'readwrite');
+      dtx.objectStore('notes_cache').delete(noteId);
+      return null;
+    }
+    return entry;
+  }
+
+  async function putNoteCache(noteId, encryptedData, iv) {
+    const db  = await open();
+    const tx  = db.transaction('notes_cache', 'readwrite');
+    const now = Date.now();
+    await _p(tx.objectStore('notes_cache').put({
+      note_id:    noteId,
+      data:       encryptedData,
+      iv:         iv,
+      cached_at:  now,
+      expires_at: now + NOTE_CACHE_TTL,
+    }));
+  }
+
+  async function deleteNoteCache(noteId) {
+    const db = await open();
+    const tx = db.transaction('notes_cache', 'readwrite');
+    await _p(tx.objectStore('notes_cache').delete(noteId));
+  }
+
+  async function clearExpiredNoteCache() {
+    const db      = await open();
+    const tx      = db.transaction('notes_cache', 'readwrite');
+    const store   = tx.objectStore('notes_cache');
+    const index   = store.index('expires_at');
+    const range   = IDBKeyRange.upperBound(Date.now());
+    const expired = await _p(index.getAllKeys(range));
+    for (const key of expired) store.delete(key);
+  }
+
+  // ════════════════════════
   // RESET ALL
   // ════════════════════════
 
   async function resetAll() {
     const db = await open();
     const stores = ['questions','batches','batch_subjects','subject_chapters','sessions','settings',
-                    'images','lessons','quizzes','test_attempts','sync_queue'];
+                    'images','lessons','quizzes','test_attempts','sync_queue','notes_cache'];
     for (const name of stores) {
       if (db.objectStoreNames.contains(name)) {
         const tx = db.transaction(name, 'readwrite');
@@ -988,6 +1043,12 @@ const DB = (() => {
     removeSyncItem,
     updateSyncItem,
     clearSyncQueue,
+
+    // Notes cache (encrypted PDF, 7-day TTL)
+    getNoteCache,
+    putNoteCache,
+    deleteNoteCache,
+    clearExpiredNoteCache,
 
     // Reset
     resetAll,

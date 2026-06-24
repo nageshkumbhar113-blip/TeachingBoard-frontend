@@ -809,11 +809,12 @@
             </select>
           </div>
 
-          <!-- Tab bar: Learn / Tests / Word Tests -->
+          <!-- Tab bar: Learn / Tests / Word Tests / Notes -->
           <div class="vocab-tab-bar">
             <button class="vocab-tab-btn vocab-tab-active" id="vocab-tab-learn">📖 Learn</button>
             <button class="vocab-tab-btn" id="vocab-tab-tests">📝 Tests</button>
             <button class="vocab-tab-btn" id="vocab-tab-word-tests">🎯 Word Tests</button>
+            <button class="vocab-tab-btn" id="vocab-tab-notes">📄 Notes</button>
           </div>
 
           <!-- Dictionary / Learn view (default visible) -->
@@ -896,7 +897,48 @@
 
         <!-- Floating add-word button -->
         <button id="vocab-add-word-btn" class="vocab-fab-btn" title="Add unknown word">+</button>
+
+        <!-- Notes panel (shown when vocab-tab-notes active) -->
+        <div id="vocab-notes-panel" class="hidden" style="padding:8px 0">
+          <div id="np-notes-list">
+            <p class="np-list-msg">Loading notes…</p>
+          </div>
+        </div>
       </section>
+
+      <!-- ── NOTES VIEWER OVERLAY (full-screen) ───────── -->
+      <div id="np-overlay" class="np-overlay hidden" role="dialog" aria-modal="true" aria-label="Note viewer">
+        <!-- Top bar -->
+        <div class="np-topbar" id="np-topbar">
+          <button id="np-close" class="np-close-btn" aria-label="Close">✕</button>
+          <span id="np-title" class="np-viewer-title"></span>
+          <span id="np-page-info" class="np-page-info"></span>
+          <span id="np-cache-badge" class="np-cache-badge hidden"></span>
+        </div>
+
+        <!-- Loader -->
+        <div id="np-loader" class="np-loader">
+          <div class="np-spinner"></div>
+          <p id="np-loader-msg" class="np-loader-msg">Loading…</p>
+        </div>
+
+        <!-- Error state -->
+        <div id="np-error" class="np-error hidden">
+          <p id="np-error-msg" class="np-error-msg">Could not load note.</p>
+          <button onclick="document.getElementById('np-overlay').classList.add('hidden')" class="vocab-back-home-btn" style="margin-top:16px">Close</button>
+        </div>
+
+        <!-- Canvas area (scrollable) -->
+        <div id="np-viewer-body" class="np-viewer-body" style="user-select:none;-webkit-user-select:none">
+          <canvas id="np-canvas" class="np-canvas hidden"></canvas>
+        </div>
+
+        <!-- Bottom nav -->
+        <div class="np-bottombar">
+          <button id="np-prev" class="np-nav-btn" disabled>‹ Prev</button>
+          <button id="np-next" class="np-nav-btn">Next ›</button>
+        </div>
+      </div>
 
       <!-- ── WORD TEST PLAYER ───────────────────────── -->
       <section id="screen-word-test" class="screen hidden" aria-label="Word Tests">
@@ -1021,6 +1063,10 @@
   <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>
   <script src="wordTestPlayer.js" defer></script>
+  <!-- PDF.js for Notes viewer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if(typeof pdfjsLib!=='undefined') pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <script src="notesPlayer.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
   <script src="student-mobile.js" defer></script>

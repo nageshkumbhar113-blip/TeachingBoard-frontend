@@ -1604,6 +1604,64 @@ const API = (() => {
     });
   }
 
+  // ─── Notes (Admin) ────────────────────────────────────────────────────────
+
+  // Upload PDF note; data = "data:application/pdf;base64,..."
+  async function uploadNote({ title, batch, subject, data }) {
+    const token = await ensureAdminSession();
+    return request('/admin/notes/upload', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ title, batch, subject, data }),
+    });
+  }
+
+  // List notes (admin) — optional batch/subject filter
+  async function fetchAdminNotes({ batch, subject } = {}) {
+    const token  = await ensureAdminSession();
+    const params = new URLSearchParams();
+    if (batch)   params.set('batch',   batch);
+    if (subject) params.set('subject', subject);
+    const qs = params.toString() ? '?' + params : '';
+    return request(`/admin/notes${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // Delete note by note_id
+  async function deleteNote(noteId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/notes/${encodeURIComponent(noteId)}`, {
+      method:  'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // ─── Notes (Student) ──────────────────────────────────────────────────────
+
+  // List notes metadata (no URL) — optional batch/subject filter
+  async function fetchStudentNotes({ batch, subject } = {}) {
+    const token  = await ensureStudentSession();
+    const params = new URLSearchParams();
+    if (batch)   params.set('batch',   batch);
+    if (subject) params.set('subject', subject);
+    const qs = params.toString() ? '?' + params : '';
+    return request(`/notes${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // Fetch PDF binary as ArrayBuffer — for PDF.js (note URL never exposed to client)
+  async function fetchNoteView(noteId) {
+    const token = await ensureStudentSession();
+    const url   = getApiUrl() + `/notes/${encodeURIComponent(noteId)}/view`;
+    const resp  = await safeFetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) throw new Error(`PDF load failed (${resp.status})`);
+    return resp.arrayBuffer();
+  }
+
   // ════════════════════════
 
   return {
@@ -1651,6 +1709,10 @@ const API = (() => {
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,
     // ─── Fee Management (Teacher) ─────────────────────────────────
     createFeeConfig, listFeeConfigs, getFeeRecords, addFeePayment, updateFeeDueDate, closeFeeConfig,
+    // ─── Notes (Admin) ────────────────────────────────────────────
+    uploadNote, fetchAdminNotes, deleteNote,
+    // ─── Notes (Student) ─────────────────────────────────────────
+    fetchStudentNotes, fetchNoteView,
   };
 })();
 

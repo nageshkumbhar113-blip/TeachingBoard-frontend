@@ -1,4 +1,4 @@
-const SW_VERSION = 'v34';
+const SW_VERSION = 'v35';
 const CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;
@@ -38,6 +38,7 @@ const CORE_ASSETS = [
   './student-app/dictionary.js',
   './student-app/vocabPlayer.js',
   './student-app/wordTestPlayer.js',
+  './student-app/notesPlayer.js',
   './student-app/student-ui.css',
   './student-app/manifest.json',
   './admin-app/admin.html',
@@ -46,6 +47,7 @@ const CORE_ASSETS = [
   './admin-app/admin-mobile.js',
   './admin-app/testBuilder.js',
   './admin-app/wordTestBuilder.js',
+  './admin-app/notesManager.js',
   './admin-app/parser.js',
   './admin-app/admin-ui.css',
   './admin-app/manifest.json',
