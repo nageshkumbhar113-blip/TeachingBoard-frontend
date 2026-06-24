@@ -168,6 +168,49 @@ const WORD_TEST_BUILDER = (() => {
     }
   }
 
+  // ── Auto-Generate from Word Bank ─────────────────────────────
+
+  async function _autoGenerate() {
+    if (!_batch || !_subject) {
+      return window.APP?.toast?.('Please select Batch and Subject first', 'warn');
+    }
+
+    const btn = $('wt-btn-auto-generate');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+
+    try {
+      const res = await API.autoGenerateWordTests({ batch: _batch, subject: _subject });
+
+      if (res.conflict) {
+        const yes = confirm(
+          `${res.existing} test(s) already exist for ${_batch} › ${_subject}.\n\nReplace them with new auto-generated tests?`
+        );
+        if (!yes) {
+          if (btn) { btn.disabled = false; btn.textContent = '⚡ Auto Generate'; }
+          return;
+        }
+        const res2 = await API.autoGenerateWordTests({ batch: _batch, subject: _subject, overwrite: true });
+        _showAutoResult(res2, btn);
+      } else {
+        _showAutoResult(res, btn);
+      }
+    } catch(e) {
+      window.APP?.toast?.(e.message || 'Auto-generate failed', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Auto Generate'; }
+    }
+  }
+
+  function _showAutoResult(res, btn) {
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ Auto Generate'; }
+    if (res.success) {
+      const warns = res.warnings?.length ? `\n\nWarnings:\n${res.warnings.join('\n')}` : '';
+      alert(`✅ ${res.message}${warns}`);
+      _loadList();
+    } else {
+      window.APP?.toast?.(res.message || 'Failed', 'error');
+    }
+  }
+
   // ── Create View — Step 1: Batch + Subject ─────────────────────
 
   function _openCreate() {
@@ -219,7 +262,7 @@ const WORD_TEST_BUILDER = (() => {
 
     if (!_batch) return;
     try {
-      const subjects = await DB.getBatchSubjects(_batch);
+      const subjects = await DB.getSubjectsByBatch(_batch);
       subjects.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.name; opt.textContent = s.name;
@@ -450,6 +493,7 @@ const WORD_TEST_BUILDER = (() => {
   function init() {
     // List view buttons
     $('wt-btn-create')?.addEventListener('click', _openCreate);
+    $('wt-btn-auto-generate')?.addEventListener('click', _autoGenerate);
     $('wt-list-batch-sel')?.addEventListener('change', async e => {
       _batch = e.target.value;
       _subject = '';
@@ -457,7 +501,7 @@ const WORD_TEST_BUILDER = (() => {
       if (subSel) { subSel.innerHTML = '<option value="">All Subjects</option>'; subSel.disabled = true; }
       if (_batch) {
         try {
-          const subjects = await DB.getBatchSubjects(_batch);
+          const subjects = await DB.getSubjectsByBatch(_batch);
           subjects.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.name; opt.textContent = s.name;

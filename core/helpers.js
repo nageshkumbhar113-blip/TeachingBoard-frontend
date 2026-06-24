@@ -1462,6 +1462,15 @@ const API = (() => {
     });
   }
 
+  async function autoGenerateWordTests({ batch, subject, words_per_test, question_configs, overwrite } = {}) {
+    const token = await ensureAdminSession();
+    return request('/admin/word-tests/auto-generate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ batch, subject, words_per_test, question_configs, overwrite }),
+    });
+  }
+
   async function listAdminWordTests(batch = '', subject = '') {
     const token = await ensureAdminSession();
     const qs = new URLSearchParams();
@@ -1621,7 +1630,7 @@ const API = (() => {
     autoFillWord, suggestEmoji, uploadWordImage, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
     getVocabConfig, saveVocabConfig,
     // ─── Word Tests (Admin) ───────────────────────────────────────
-    fetchWordTestStats, generateWordTestPreview, saveWordTestDraft, listAdminWordTests, getAdminWordTest,
+    fetchWordTestStats, generateWordTestPreview, saveWordTestDraft, autoGenerateWordTests, listAdminWordTests, getAdminWordTest,
     updateWordTest, publishWordTest, unpublishWordTest, deleteWordTest, getWordTestResults,
     // ─── Word Tests (Student) ─────────────────────────────────────
     fetchStudentWordTests, fetchStudentWordTest, submitWordTestAttempt,
