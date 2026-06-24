@@ -965,6 +965,15 @@ const API = (() => {
     });
   }
 
+  async function fetchVocabDictionary(batch, subject, page = 1, q = '') {
+    const token = await ensureStudentSession();
+    const qs = new URLSearchParams({ batch, subject, page });
+    if (q) qs.set('q', q);
+    return request(`/vocab/dictionary?${qs.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function fetchVocabTest(testNum, batch, subject, meaningLang = 'marathi') {
     const token = await ensureStudentSession();
     const qs = new URLSearchParams({ batch, subject, meaning_lang: meaningLang });
@@ -1450,7 +1459,7 @@ const API = (() => {
     sendTeacherNotification, fetchTeacherNotificationHistory,
     autoFillWord, suggestEmoji, uploadWordImage, fetchAdminWords, fetchAdminTestWords, resequenceAdminWords, createAdminWord, updateAdminWord, deleteAdminWord, bulkCreateAdminWords,
     getVocabConfig, saveVocabConfig,
-    autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, submitVocabAttempt, addStudentWord,
+    autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, fetchVocabDictionary, submitVocabAttempt, addStudentWord,
     fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,

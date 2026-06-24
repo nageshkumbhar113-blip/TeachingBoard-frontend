@@ -788,7 +788,28 @@
             </select>
           </div>
 
-          <div id="vocab-test-grid" class="vocab-test-grid"></div>
+          <!-- Tab bar: Learn / Tests -->
+          <div class="vocab-tab-bar">
+            <button class="vocab-tab-btn vocab-tab-active" id="vocab-tab-learn">📖 Learn</button>
+            <button class="vocab-tab-btn" id="vocab-tab-tests">📝 Tests</button>
+          </div>
+
+          <!-- Dictionary / Learn view (default visible) -->
+          <div id="vocab-dict-view">
+            <div class="dict-search-bar">
+              <span class="dict-search-icon" aria-hidden="true">🔍</span>
+              <input type="search" id="dict-search-input" class="dict-search-input"
+                placeholder="Word शोधा... (e.g. apple)"
+                autocomplete="off" autocorrect="off" spellcheck="false" />
+              <button id="dict-search-clear" class="dict-clear-btn" aria-label="Clear search" style="display:none">✕</button>
+            </div>
+            <div id="dict-word-list" class="dict-word-list"></div>
+            <div id="dict-empty" class="dict-empty hidden"></div>
+            <div id="dict-pagination" class="dict-pagination hidden"></div>
+          </div>
+
+          <!-- Tests view (hidden by default) -->
+          <div id="vocab-test-grid" class="vocab-test-grid hidden"></div>
           <div id="vocab-list-empty" class="vocab-empty hidden">No words found for this subject.</div>
         </div>
 
@@ -916,6 +937,7 @@
   <script src="tts.js" defer></script>
   <script src="teacherDashboard.js" defer></script>
   <script src="parentDashboard.js" defer></script>
+  <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
