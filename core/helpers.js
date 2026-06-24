@@ -1544,6 +1544,58 @@ const API = (() => {
   }
 
   // ════════════════════════
+  // FEE MANAGEMENT (Teacher)
+  // ════════════════════════
+
+  async function createFeeConfig({ batch, fee_type, label, total_amount, due_date }) {
+    const token = await ensureTeacherSession();
+    return request('/fee', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ batch, fee_type, label, total_amount, due_date }),
+    });
+  }
+
+  async function listFeeConfigs({ status } = {}) {
+    const token = await ensureTeacherSession();
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request(`/fee${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async function getFeeRecords(feeConfigId) {
+    const token = await ensureTeacherSession();
+    return request(`/fee/${encodeURIComponent(feeConfigId)}/records`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function addFeePayment(feeRecordId, { amount, note = '' }) {
+    const token = await ensureTeacherSession();
+    return request(`/fee/records/${encodeURIComponent(feeRecordId)}/payment`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ amount, note }),
+    });
+  }
+
+  async function updateFeeDueDate(feeConfigId, due_date) {
+    const token = await ensureTeacherSession();
+    return request(`/fee/${encodeURIComponent(feeConfigId)}/due-date`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ due_date }),
+    });
+  }
+
+  async function closeFeeConfig(feeConfigId) {
+    const token = await ensureTeacherSession();
+    return request(`/fee/${encodeURIComponent(feeConfigId)}/close`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // ════════════════════════
 
   return {
     DEFAULT_API_URL, REMOTE_BATCH, REMOTE_SUBJECT, REMOTE_CHAPTER,
@@ -1588,6 +1640,8 @@ const API = (() => {
     addCatalogSubject, deleteCatalogSubject,
     addCatalogChapter, deleteCatalogChapter,
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,
+    // ─── Fee Management (Teacher) ─────────────────────────────────
+    createFeeConfig, listFeeConfigs, getFeeRecords, addFeePayment, updateFeeDueDate, closeFeeConfig,
   };
 })();
 

@@ -819,7 +819,8 @@ const APP = (() => {
       });
 
       Push.addListener('notificationActionPerformed', action => {
-        const studentCode = action.notification?.data?.student_code || '';
+        const data        = action.notification?.data || {};
+        const studentCode = data.student_code || '';
         if (role === 'teacher') {
           _showTeacherDashboard();
           if (studentCode) {
@@ -827,6 +828,9 @@ const APP = (() => {
           }
         } else if (role === 'parent') {
           _showParentDashboard();
+          if (data.type === 'fee_reminder' && data.upi_link) {
+            setTimeout(() => window.open(data.upi_link, '_system'), 400);
+          }
         }
       });
     } catch (e) {

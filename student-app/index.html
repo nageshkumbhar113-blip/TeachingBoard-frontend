@@ -657,6 +657,7 @@
           <button class="td-tab" data-tdtab="analytics" role="tab" aria-selected="false">📊 Analytics</button>
           <button class="td-tab" data-tdtab="notifications" role="tab" aria-selected="false">🔔 Notify</button>
           <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
+          <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
         </div>
 
         <!-- Students tab -->
@@ -698,6 +699,26 @@
           </div>
           <div id="td-vocab-scores-list">
             <p class="td-hint td-hint-sm">Batch आणि Subject निवडा.</p>
+          </div>
+        </div>
+
+        <!-- Fee tab -->
+        <div id="td-tab-fee" class="td-tab-pane hidden">
+          <div id="td-fee-list-view">
+            <div class="td-fee-toolbar">
+              <button id="td-fee-create-btn" class="td-send-notif-btn">+ नवीन Fee तयार करा</button>
+            </div>
+            <div id="td-fee-configs-list">
+              <p class="td-hint td-hint-sm">Fee configs येथे दिसतील.</p>
+            </div>
+          </div>
+          <div id="td-fee-records-view" class="hidden">
+            <div class="td-fee-toolbar">
+              <button id="td-fee-back-btn" class="td-back" style="position:static;margin:0">‹ Back</button>
+              <span id="td-fee-records-title" class="td-fee-records-title"></span>
+            </div>
+            <div id="td-fee-stats-bar"></div>
+            <div id="td-fee-students-list"></div>
           </div>
         </div>
 
