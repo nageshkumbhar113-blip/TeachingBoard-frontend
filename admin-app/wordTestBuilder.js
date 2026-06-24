@@ -384,8 +384,8 @@ const WORD_TEST_BUILDER = (() => {
             <span class="wt-opt-id">${_esc(o.id)}</span>
             ${o.image_url
               ? `<img src="${_esc(o.image_url)}" class="wt-opt-img" alt="${_esc(o.text)}" />`
-              : o.emoji_svg
-                ? `<img src="${_esc(o.emoji_svg)}" class="wt-opt-emoji" alt="${_esc(o.emoji)}" />`
+              : o.emoji
+                ? `<span class="wt-opt-emoji">${_esc(o.emoji)}</span>`
                 : o.colour
                   ? `<span class="wt-opt-colour" style="background:${_esc(o.colour)}"></span><span>${_esc(o.text)}</span>`
                   : `<span>${_esc(o.text)}</span>`
