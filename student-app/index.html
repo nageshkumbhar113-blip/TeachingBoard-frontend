@@ -788,10 +788,11 @@
             </select>
           </div>
 
-          <!-- Tab bar: Learn / Tests -->
+          <!-- Tab bar: Learn / Tests / Word Tests -->
           <div class="vocab-tab-bar">
             <button class="vocab-tab-btn vocab-tab-active" id="vocab-tab-learn">📖 Learn</button>
             <button class="vocab-tab-btn" id="vocab-tab-tests">📝 Tests</button>
+            <button class="vocab-tab-btn" id="vocab-tab-word-tests">🎯 Word Tests</button>
           </div>
 
           <!-- Dictionary / Learn view (default visible) -->
@@ -876,6 +877,65 @@
         <button id="vocab-add-word-btn" class="vocab-fab-btn" title="Add unknown word">+</button>
       </section>
 
+      <!-- ── WORD TEST PLAYER ───────────────────────── -->
+      <section id="screen-word-test" class="screen hidden" aria-label="Word Tests">
+
+        <!-- List view -->
+        <div id="wtp-list-view">
+          <header class="quiz-header">
+            <button id="wtp-back-btn" class="back-btn" aria-label="Back">‹</button>
+            <h2 class="quiz-title" id="wtp-list-title">Word Tests</h2>
+          </header>
+          <div id="wtp-test-grid" class="wtp-test-grid"></div>
+          <div id="wtp-list-empty" class="wtp-empty hidden"></div>
+        </div>
+
+        <!-- Player view -->
+        <div id="wtp-player-view" class="hidden">
+          <header class="quiz-header">
+            <button id="wtp-player-back" class="back-btn" aria-label="Back">‹</button>
+            <h2 class="quiz-title" id="wtp-player-title">Word Test</h2>
+            <span class="wtp-progress" id="wtp-progress">1 / 10</span>
+          </header>
+
+          <div class="wtp-type-label" id="wtp-type-label"></div>
+          <p class="wtp-question-text" id="wtp-question-text"></p>
+
+          <div id="wtp-audio-area" class="wtp-audio-area hidden">
+            <button id="wtp-tts-btn" class="wtp-tts-btn" aria-label="Listen to word">
+              <span aria-hidden="true">🔊</span> Listen
+            </button>
+          </div>
+
+          <div id="wtp-options-area" class="wtp-options"></div>
+
+          <div id="wtp-typing-area" class="wtp-typing-area hidden">
+            <input type="text" id="wtp-type-input" class="wtp-type-input"
+              placeholder="Type the word..."
+              autocomplete="off" autocorrect="off" spellcheck="false" />
+            <button id="wtp-type-submit" class="wtp-submit-btn">Submit</button>
+          </div>
+
+          <button id="wtp-next-btn" class="wtp-next-btn hidden">Next →</button>
+        </div>
+
+        <!-- Score view -->
+        <div id="wtp-score-view" class="hidden">
+          <header class="quiz-header">
+            <button id="wtp-score-back" class="back-btn" aria-label="Back to list">‹</button>
+            <h2 class="quiz-title">Test Complete!</h2>
+          </header>
+          <div class="wtp-score-card">
+            <div id="wtp-score-total" class="wtp-score-total"></div>
+            <div id="wtp-pass-badge" class="wtp-pass-badge hidden">🎉 Passed!</div>
+            <div id="wtp-fail-badge" class="wtp-fail-badge hidden">📚 Keep Practicing!</div>
+            <div id="wtp-review-list" class="wtp-review-list"></div>
+            <button id="wtp-score-home-btn" class="wtp-back-home-btn">Back to Tests</button>
+          </div>
+        </div>
+
+      </section>
+
     </main>
 
     <!-- ── BOTTOM NAVIGATION (mobile) ─────────────────── -->
@@ -939,6 +999,7 @@
   <script src="parentDashboard.js" defer></script>
   <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>
+  <script src="wordTestPlayer.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
   <script src="student-mobile.js" defer></script>

@@ -3528,3 +3528,309 @@ body.student-app.mode-board.theme-board-light::before {
 .theme-light .dict-search-input   { background: #fff; border-color: rgba(0,0,0,0.15); color: #142235; }
 .theme-light .dict-page-btn       { background: #fff; border-color: rgba(0,0,0,0.15); color: #142235; }
 .theme-light .dict-clear-btn      { background: rgba(0,0,0,0.08); }
+
+/* ═══════════════════════════════════════════
+   Word Test Player (wtp-*)
+═══════════════════════════════════════════ */
+
+.wtp-test-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+.wtp-test-card {
+  border-radius: 12px;
+  padding: 14px 12px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.wtp-test-card:hover { transform: translateY(-2px); }
+.wtp-card-new  { border-color: var(--accent); background: rgba(96,165,250,0.08); }
+.wtp-card-done { border-color: #fbbf24; background: rgba(251,191,36,0.08); }
+.wtp-card-pass { border-color: #34d399; background: rgba(52,211,153,0.08); }
+.wtp-card-title  { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+.wtp-card-meta   { font-size: 0.75rem; color: var(--text2); margin-bottom: 6px; }
+.wtp-card-status { font-size: 0.8rem; font-weight: 600; }
+
+.wtp-empty   { text-align: center; padding: 40px 16px; color: var(--text2); font-size: 0.9rem; }
+.wtp-loading { text-align: center; padding: 40px 16px; color: var(--text2); }
+.wtp-error   { color: #f87171; padding: 16px; text-align: center; font-size: 0.9rem; }
+
+/* Player header */
+.wtp-progress {
+  font-size: 0.85rem;
+  color: var(--text2);
+  white-space: nowrap;
+  padding-right: 4px;
+}
+
+.wtp-type-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent, #60a5fa);
+  padding: 12px 16px 2px;
+}
+
+.wtp-question-text {
+  font-size: 0.9rem;
+  padding: 0 16px 10px;
+  color: var(--text2);
+  margin: 0;
+}
+
+/* Audio button */
+.wtp-audio-area {
+  text-align: center;
+  padding: 14px 16px 8px;
+}
+.wtp-tts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 32px;
+  background: var(--accent, #60a5fa);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  animation: wtp-pulse 1s ease-in-out 3;
+}
+.wtp-tts-btn.wtp-tts-used { opacity: 0.65; animation: none; }
+.wtp-tts-btn:active { transform: scale(0.97); }
+
+@keyframes wtp-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.06); }
+}
+
+/* Options grid */
+.wtp-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 8px 16px 0;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.wtp-opt-btn {
+  padding: 12px 10px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 72px;
+  word-break: break-word;
+}
+.wtp-opt-btn:hover:not(:disabled) { border-color: var(--accent, #60a5fa); }
+.wtp-opt-btn:disabled { cursor: default; }
+.wtp-opt-selected {
+  border-color: var(--accent, #60a5fa) !important;
+  background: rgba(96,165,250,0.15) !important;
+}
+
+/* Image options */
+.wtp-options-image .wtp-opt-btn { min-height: 100px; padding: 8px; }
+
+.wtp-opt-visual {
+  font-size: 2.6rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wtp-opt-visual svg { width: 64px; height: 64px; }
+.wtp-opt-img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.wtp-opt-label { font-size: 0.8rem; color: var(--text2); }
+
+/* Colour options */
+.wtp-options-colour .wtp-opt-btn {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.wtp-colour-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+.wtp-colour-label { font-size: 0.9rem; font-weight: 600; }
+
+/* Typing input */
+.wtp-typing-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+  padding: 12px 16px 0;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.wtp-type-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 1.1rem;
+  text-align: center;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.wtp-type-input:focus { outline: none; border-color: var(--accent, #60a5fa); }
+
+@keyframes wtp-shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
+}
+.wtp-input-shake { animation: wtp-shake 0.4s ease; }
+
+/* Buttons */
+.wtp-submit-btn {
+  padding: 13px;
+  background: var(--accent, #60a5fa);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.wtp-submit-btn:disabled { opacity: 0.6; cursor: default; }
+
+.wtp-next-btn {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 14px 16px 0;
+  padding: 14px;
+  background: var(--accent, #60a5fa);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.wtp-next-btn:disabled { opacity: 0.6; cursor: default; }
+.wtp-next-btn:active:not(:disabled) { transform: scale(0.98); }
+
+.wtp-back-home-btn {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 10px 16px 0;
+  padding: 14px;
+  background: transparent;
+  border: 2px solid var(--border);
+  border-radius: 50px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.wtp-back-home-btn:hover { border-color: var(--accent, #60a5fa); }
+
+/* Score card */
+.wtp-score-card {
+  padding: 24px 16px;
+  text-align: center;
+}
+.wtp-score-total {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+.wtp-pass-badge {
+  display: inline-block;
+  background: rgba(52,211,153,0.15);
+  color: #34d399;
+  border: 1.5px solid #34d399;
+  border-radius: 50px;
+  padding: 8px 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+.wtp-fail-badge {
+  display: inline-block;
+  background: rgba(251,191,36,0.1);
+  color: #fbbf24;
+  border: 1.5px solid #fbbf24;
+  border-radius: 50px;
+  padding: 8px 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+/* Review list */
+.wtp-review-list {
+  text-align: left;
+  margin: 12px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wtp-review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+}
+.wtp-review-right { border-color: #34d399; background: rgba(52,211,153,0.06); }
+.wtp-review-wrong { border-color: #f87171; background: rgba(248,113,113,0.06); }
+.wtp-review-num {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  background: var(--border);
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wtp-review-icon { font-size: 1rem; line-height: 1.5; }
+.wtp-review-detail { flex: 1; min-width: 0; }
+.wtp-review-q    { font-size: 0.68rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+.wtp-review-word { font-size: 0.9rem; font-weight: 700; margin-top: 1px; }
+.wtp-review-correct { font-size: 0.8rem; color: #34d399; margin-top: 3px; }
+
+/* Light theme */
+.theme-light .wtp-opt-btn    { background: #fff; }
+.theme-light .wtp-type-input { background: #fff; border-color: rgba(0,0,0,0.15); color: #142235; }
+.theme-light .wtp-test-card  { background: #fff; }
+.theme-light .wtp-colour-swatch { border-color: rgba(0,0,0,0.15); }
