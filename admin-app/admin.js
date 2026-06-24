@@ -3427,8 +3427,8 @@ const ADMIN = (() => {
   // PUBLIC API
   // ════════════════════════
 
+  window.ADMIN_UTILS = { compressImage: _compressImage };
   return { init, open, close, loadQuestionBank, loadQuizList };
 })();
 
-window.ADMIN_UTILS = { compressImage: _compressImage };
 window.ADMIN = ADMIN;
