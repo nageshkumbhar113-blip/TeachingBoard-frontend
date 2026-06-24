@@ -98,7 +98,8 @@ const WORD_TEST_BUILDER = (() => {
       </div>
       <div class="wt-card-actions">
         ${t.status === 'draft'
-          ? `<button class="admin-btn-primary admin-btn-sm" data-action="publish" data-id="${_esc(t.test_id)}">Publish</button>`
+          ? `<button class="admin-btn-primary admin-btn-sm" data-action="publish" data-id="${_esc(t.test_id)}">Publish</button>
+             <button class="admin-btn-secondary admin-btn-sm" data-action="edit" data-id="${_esc(t.test_id)}">✏️ Edit</button>`
           : `<button class="admin-btn-secondary admin-btn-sm" data-action="unpublish" data-id="${_esc(t.test_id)}">Unpublish</button>`
         }
         <button class="admin-btn-secondary admin-btn-sm" data-action="results" data-id="${_esc(t.test_id)}">Results</button>
@@ -127,6 +128,8 @@ const WORD_TEST_BUILDER = (() => {
       if (!confirm('Delete this draft? This cannot be undone.')) return;
       try { await API.deleteWordTest(testId); await _loadList(); }
       catch(e) { alert('Error: ' + e.message); }
+    } else if (action === 'edit') {
+      await _openEdit(testId);
     } else if (action === 'results') {
       await _showResults(testId);
     }
@@ -225,12 +228,92 @@ const WORD_TEST_BUILDER = (() => {
     _hide('wt-type-config-section');
     _hide('wt-generate-btn-row');
 
+    _setText('wt-wizard-title', 'Create Word Test');
+
+    const titleInput = $('wt-title-input');
+    const passInput  = $('wt-pass-input');
+    if (titleInput) titleInput.value = '';
+    if (passInput)  passInput.value  = '60';
+
     const batchSel = $('wt-batch-sel');
     const subjSel  = $('wt-subject-sel');
     if (batchSel) batchSel.value = '';
     if (subjSel)  { subjSel.innerHTML = '<option value="">Select Subject</option>'; subjSel.disabled = true; }
 
     _populateBatchDropdown();
+  }
+
+  async function _openEdit(testId) {
+    let test;
+    try {
+      const res = await API.getAdminWordTest(testId);
+      test = res.test;
+      if (!test) throw new Error('Test not found');
+    } catch(e) {
+      alert('Could not load test: ' + e.message);
+      return;
+    }
+
+    _editingTestId = testId;
+    _previewData   = null;
+    _batch         = test.batch   || '';
+    _subject       = test.subject || '';
+    _stats         = null;
+
+    _setView('create');
+    _hide('wt-stats-section');
+    _hide('wt-type-config-section');
+    _hide('wt-generate-btn-row');
+
+    // Update wizard title to show Edit mode
+    _setText('wt-wizard-title', 'Edit Word Test');
+
+    // Fill title + pass_percent
+    const titleInput = $('wt-title-input');
+    const passInput  = $('wt-pass-input');
+    if (titleInput) titleInput.value = test.title || '';
+    if (passInput)  passInput.value  = test.pass_percent ?? 60;
+
+    // Populate batch dropdown and pre-select
+    await _populateBatchDropdown();
+    const batchSel = $('wt-batch-sel');
+    if (batchSel) batchSel.value = _batch;
+
+    // Populate subject dropdown and pre-select
+    if (_batch) {
+      const subjSel = $('wt-subject-sel');
+      if (subjSel) {
+        subjSel.innerHTML = '<option value="">Select Subject</option>';
+        subjSel.disabled  = true;
+        try {
+          const subjects = await DB.getSubjectsByBatch(_batch);
+          subjects.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.name; opt.textContent = s.name;
+            subjSel.appendChild(opt);
+          });
+          subjSel.disabled = false;
+          subjSel.value = _subject;
+        } catch {}
+      }
+    }
+
+    // Load stats + pre-check question types from existing test
+    if (_batch && _subject) {
+      await _loadStats();
+      // Pre-check types present in existing questions
+      const usedTypes = new Set((test.questions || []).map(q => q.type));
+      document.querySelectorAll('.wt-type-check').forEach(chk => {
+        const type = chk.dataset.type;
+        if (usedTypes.has(type) && !chk.disabled) {
+          chk.checked = true;
+          // Set count to number of questions of this type in existing test
+          const cnt = (test.questions || []).filter(q => q.type === type).length;
+          const countEl = document.querySelector(`.wt-type-count[data-type="${type}"]`);
+          if (countEl) countEl.value = cnt;
+        }
+      });
+    }
   }
 
   async function _populateBatchDropdown() {
@@ -377,12 +460,15 @@ const WORD_TEST_BUILDER = (() => {
     const configs = _getQuestionConfigs();
     if (!configs.length) { alert('किमान एक question type select करा.'); return; }
 
+    const passInput  = $('wt-pass-input');
+    const passPercent = Math.min(100, Math.max(1, parseInt(passInput?.value || '60') || 60));
+
     const genBtn = $('wt-btn-generate');
     if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Generating...'; }
 
     try {
       const res = await API.generateWordTestPreview(_batch, _subject, title, configs);
-      _previewData = { title, questions: res.questions, warnings: res.warnings || [] };
+      _previewData = { title, passPercent, questions: res.questions, warnings: res.warnings || [] };
       _showPreview();
     } catch(e) {
       alert('Generate failed: ' + e.message);
@@ -456,10 +542,21 @@ const WORD_TEST_BUILDER = (() => {
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
 
     try {
-      const res = await API.saveWordTestDraft(
-        _batch, _subject, _previewData.title, _previewData.questions
-      );
-      alert(`✅ Draft saved! Test ID: ${res.test_id}`);
+      if (_editingTestId) {
+        // Edit mode: PATCH existing test
+        await API.updateWordTest(_editingTestId, {
+          title:        _previewData.title,
+          questions:    _previewData.questions,
+          pass_percent: _previewData.passPercent ?? 60,
+        });
+        alert('✅ Test updated!');
+      } else {
+        // Create mode: POST new draft
+        const res = await API.saveWordTestDraft(
+          _batch, _subject, _previewData.title, _previewData.questions, _previewData.passPercent ?? 60
+        );
+        alert(`✅ Draft saved!`);
+      }
       await _loadList();
     } catch(e) {
       alert('Save failed: ' + e.message);
@@ -475,10 +572,22 @@ const WORD_TEST_BUILDER = (() => {
     if (pubBtn) { pubBtn.disabled = true; pubBtn.textContent = 'Publishing...'; }
 
     try {
-      const draftRes = await API.saveWordTestDraft(
-        _batch, _subject, _previewData.title, _previewData.questions
-      );
-      await API.publishWordTest(draftRes.test_id);
+      let testId = _editingTestId;
+      if (testId) {
+        // Edit mode: update then publish
+        await API.updateWordTest(testId, {
+          title:        _previewData.title,
+          questions:    _previewData.questions,
+          pass_percent: _previewData.passPercent ?? 60,
+        });
+      } else {
+        // Create mode: save draft first then publish
+        const draftRes = await API.saveWordTestDraft(
+          _batch, _subject, _previewData.title, _previewData.questions, _previewData.passPercent ?? 60
+        );
+        testId = draftRes.test_id;
+      }
+      await API.publishWordTest(testId);
       alert('✅ Test published!');
       await _loadList();
     } catch(e) {

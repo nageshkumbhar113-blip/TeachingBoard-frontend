@@ -809,17 +809,19 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <div id="wt-test-list" class="wt-test-list"><p class="empty-hint">Select batch and subject to load tests.</p></div>
             </div>
 
-            <!-- CREATE VIEW (wizard) -->
+            <!-- CREATE / EDIT VIEW (wizard) -->
             <div id="wt-create-view" class="hidden">
               <div class="wt-wizard-header">
                 <button id="wt-btn-back-to-list" class="admin-btn-secondary admin-btn-sm">&larr; Back</button>
-                <h3 class="wt-wizard-title">Create Word Test</h3>
+                <h3 id="wt-wizard-title" class="wt-wizard-title">Create Word Test</h3>
               </div>
 
-              <!-- Title -->
+              <!-- Title + Pass % -->
               <div class="admin-card wt-card-section">
                 <label class="wt-field-label">Test Title</label>
-                <input type="text" id="wt-title-input" class="admin-input" placeholder="e.g. LKG Animals - Week 1 Test" maxlength="80" />
+                <input type="text" id="wt-title-input" class="admin-input" placeholder="e.g. Std 6 English — Set 1" maxlength="80" />
+                <label class="wt-field-label" style="margin-top:10px">Pass % <span style="color:var(--c-muted);font-weight:400">(default 60)</span></label>
+                <input type="number" id="wt-pass-input" class="admin-input short" value="60" min="1" max="100" />
               </div>
 
               <!-- Step 1: Batch + Subject -->

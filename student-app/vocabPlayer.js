@@ -685,13 +685,9 @@ const VOCAB = (() => {
       if (window.DICT && _subject) DICT.openDictScreen(_batch, _subject);
     });
 
-    $id('vocab-tab-tests')?.addEventListener('click', async () => {
-      $id('vocab-tab-tests')?.classList.add('vocab-tab-active');
-      $id('vocab-tab-learn')?.classList.remove('vocab-tab-active');
-      $id('vocab-tab-word-tests')?.classList.remove('vocab-tab-active');
-      $id('vocab-dict-view')?.classList.add('hidden');
-      $id('vocab-test-grid')?.classList.remove('hidden');
-      await _loadTestList();
+    $id('vocab-tab-tests')?.addEventListener('click', () => {
+      // Old vocab test system retired — redirect to new Word Tests
+      window.WORD_TEST_PLAYER?.openWordTestScreen(_batch, _subject);
     });
 
     $id('vocab-tab-word-tests')?.addEventListener('click', () => {

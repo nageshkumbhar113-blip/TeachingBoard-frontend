@@ -1634,7 +1634,7 @@ const API = (() => {
     updateWordTest, publishWordTest, unpublishWordTest, deleteWordTest, getWordTestResults,
     // ─── Word Tests (Student) ─────────────────────────────────────
     fetchStudentWordTests, fetchStudentWordTest, submitWordTestAttempt,
-    autoFillWordForStudent, fetchVocabSubjects, fetchVocabTestList, fetchVocabTest, fetchVocabDictionary, submitVocabAttempt, addStudentWord,
+    autoFillWordForStudent, fetchVocabSubjects, fetchVocabDictionary, addStudentWord,
     fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,
