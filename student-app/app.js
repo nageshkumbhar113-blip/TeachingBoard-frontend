@@ -186,6 +186,10 @@ const APP = (() => {
   }
 
   function _startBackground() {
+    // Wake up Render server immediately — free tier sleeps after 15 min idle.
+    // Fire-and-forget: by the time user fills login form, server is usually ready.
+    fetch(API.getApiUrl() + '/health').catch(() => {});
+
     _runWhenIdle(() => {
       _primeQuizCache().catch(err => console.warn('initial quiz cache warm failed', err));
     });
