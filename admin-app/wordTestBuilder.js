@@ -157,7 +157,7 @@ const WORD_TEST_BUILDER = (() => {
           <tbody>${res.attempts.map(a => `
             <tr>
               <td>${_esc(a.student_code)}</td>
-              <td>${a.score} / ${a.total} (${Math.round(a.score/a.total*100)}%)</td>
+              <td>${a.score} / ${a.total} (${a.total > 0 ? Math.round(a.score/a.total*100) : 0}%)</td>
               <td class="${a.passed ? 'wt-pass' : 'wt-fail'}">${a.passed ? '✅ Passed' : '❌ Failed'}</td>
               <td>${new Date(a.submitted_at).toLocaleDateString('en-IN')}</td>
             </tr>`).join('')}

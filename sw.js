@@ -1,4 +1,4 @@
-const SW_VERSION = 'v30';
+const SW_VERSION = 'v31';
 const CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;
@@ -35,6 +35,7 @@ const CORE_ASSETS = [
   './student-app/teacherDashboard.js',
   './student-app/parentDashboard.js',
   './student-app/student-mobile.js',
+  './student-app/dictionary.js',
   './student-app/vocabPlayer.js',
   './student-app/wordTestPlayer.js',
   './student-app/student-ui.css',

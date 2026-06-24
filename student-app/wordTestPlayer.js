@@ -144,7 +144,7 @@ const WORD_TEST_PLAYER = (() => {
 
   function _renderQuestion() {
     const q = _test.questions[_qIdx];
-    if (!q) { _submitTest(); return; }
+    if (!q) { _doSubmitTest(); return; }
 
     // Progress indicator
     const prog = $id('wtp-progress');
