@@ -2202,6 +2202,27 @@ select {
   gap: 5px;
 }
 
+.tb-img-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tb-img-upload-row .admin-input { flex: 1; min-width: 0; }
+.tb-img-upload-btn {
+  flex-shrink: 0;
+  padding: 6px 9px !important;
+  font-size: 1rem;
+  line-height: 1;
+  min-width: unset !important;
+}
+.tb-img-status {
+  font-size: 0.72rem;
+  color: var(--text2);
+  min-height: 1rem;
+  display: block;
+  margin-top: 2px;
+}
+
 .tb-manual-answer-row {
   display: flex; align-items: center; gap: 8px;
 }

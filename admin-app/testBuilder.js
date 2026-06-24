@@ -379,7 +379,12 @@ const TEST_BUILDER = (() => {
             <p class="tb-sub-label">✏️ Quick Add Question</p>
             <textarea id="tb-manual-q" class="admin-textarea" rows="2"
               placeholder="Type question text…"></textarea>
-            <input id="tb-manual-q-image" class="admin-input" placeholder="Question image URL (optional)" style="margin-top:8px">
+            <div class="tb-img-upload-row" style="margin-top:8px">
+              <input id="tb-manual-q-image" class="admin-input" placeholder="Question image URL (optional)">
+              <button type="button" class="admin-btn-secondary tb-img-upload-btn" id="btn-tb-q-img" title="Upload image">📷</button>
+              <input type="file" id="tb-q-img-file" accept="image/*" style="display:none">
+            </div>
+            <span id="tb-q-img-status" class="tb-img-status"></span>
 
             <div class="tb-manual-meta">
               <select id="tb-manual-type" class="admin-select">
@@ -401,10 +406,26 @@ const TEST_BUILDER = (() => {
                 <input id="tb-manual-b" class="admin-input" placeholder="Option B">
                 <input id="tb-manual-c" class="admin-input" placeholder="Option C (optional)">
                 <input id="tb-manual-d" class="admin-input" placeholder="Option D (optional)">
-                <input id="tb-manual-a-image" class="admin-input" placeholder="Option A image URL (optional)">
-                <input id="tb-manual-b-image" class="admin-input" placeholder="Option B image URL (optional)">
-                <input id="tb-manual-c-image" class="admin-input" placeholder="Option C image URL (optional)">
-                <input id="tb-manual-d-image" class="admin-input" placeholder="Option D image URL (optional)">
+                <div class="tb-img-upload-row">
+                  <input id="tb-manual-a-image" class="admin-input" placeholder="Option A image URL (optional)">
+                  <button type="button" class="admin-btn-secondary tb-img-upload-btn" id="btn-tb-a-img" title="Upload A">📷</button>
+                  <input type="file" id="tb-a-img-file" accept="image/*" style="display:none">
+                </div>
+                <div class="tb-img-upload-row">
+                  <input id="tb-manual-b-image" class="admin-input" placeholder="Option B image URL (optional)">
+                  <button type="button" class="admin-btn-secondary tb-img-upload-btn" id="btn-tb-b-img" title="Upload B">📷</button>
+                  <input type="file" id="tb-b-img-file" accept="image/*" style="display:none">
+                </div>
+                <div class="tb-img-upload-row">
+                  <input id="tb-manual-c-image" class="admin-input" placeholder="Option C image URL (optional)">
+                  <button type="button" class="admin-btn-secondary tb-img-upload-btn" id="btn-tb-c-img" title="Upload C">📷</button>
+                  <input type="file" id="tb-c-img-file" accept="image/*" style="display:none">
+                </div>
+                <div class="tb-img-upload-row">
+                  <input id="tb-manual-d-image" class="admin-input" placeholder="Option D image URL (optional)">
+                  <button type="button" class="admin-btn-secondary tb-img-upload-btn" id="btn-tb-d-img" title="Upload D">📷</button>
+                  <input type="file" id="tb-d-img-file" accept="image/*" style="display:none">
+                </div>
               </div>
               <div class="tb-manual-answer-row">
                 <label for="tb-manual-answer">Correct:</label>
@@ -480,6 +501,13 @@ const TEST_BUILDER = (() => {
 
     // Manual add — submit
     $('tb-manual-submit').addEventListener('click', _doManualAdd);
+
+    // Image upload buttons
+    _setupImgUpload('tb-q-img-file', 'btn-tb-q-img', 'tb-manual-q-image', 'tb-q-img-status');
+    _setupImgUpload('tb-a-img-file', 'btn-tb-a-img', 'tb-manual-a-image', null);
+    _setupImgUpload('tb-b-img-file', 'btn-tb-b-img', 'tb-manual-b-image', null);
+    _setupImgUpload('tb-c-img-file', 'btn-tb-c-img', 'tb-manual-c-image', null);
+    _setupImgUpload('tb-d-img-file', 'btn-tb-d-img', 'tb-manual-d-image', null);
 
     await _loadBankQuestions();
     _buildFilterOptions();
@@ -974,6 +1002,48 @@ const TEST_BUILDER = (() => {
     if (typeof APP !== 'undefined' && typeof APP.refreshHome === 'function') {
       APP.refreshHome();
     }
+  }
+
+  // ════════════════════════
+  // IMAGE UPLOAD
+  // ════════════════════════
+
+  function _setupImgUpload(fileId, btnId, urlId, statusId) {
+    const btn    = $(btnId);
+    const fileEl = $(fileId);
+    if (!btn || !fileEl) return;
+
+    btn.addEventListener('click', () => fileEl.click());
+
+    fileEl.addEventListener('change', async e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = '';
+
+      const status = statusId ? $(statusId) : null;
+      if (status) status.textContent = 'Compressing…';
+      btn.disabled = true;
+
+      try {
+        const compress = window.ADMIN_UTILS?.compressImage;
+        if (!compress) throw new Error('Compress not ready — reload page');
+        const b64 = await compress(file, 1200, 900, 0.80);
+        if (status) status.textContent = 'Uploading…';
+        const res = await API.uploadWordImage(b64);
+        const urlEl = $(urlId);
+        if (urlEl) urlEl.value = res.url;
+        if (status) {
+          status.textContent = '✓ Done';
+          setTimeout(() => { if (status) status.textContent = ''; }, 2000);
+        }
+        window.APP?.toast?.('Image uploaded', 'success');
+      } catch (err) {
+        if (status) status.textContent = '✗ Failed';
+        window.APP?.toast?.('Upload failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
   }
 
   // ════════════════════════

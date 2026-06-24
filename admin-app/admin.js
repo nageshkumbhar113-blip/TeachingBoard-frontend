@@ -3430,4 +3430,5 @@ const ADMIN = (() => {
   return { init, open, close, loadQuestionBank, loadQuizList };
 })();
 
+window.ADMIN_UTILS = { compressImage: _compressImage };
 window.ADMIN = ADMIN;
