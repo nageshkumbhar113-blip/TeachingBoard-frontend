@@ -965,8 +965,6 @@ const TEACHER_DASHBOARD = (() => {
       if (res.status === 'paid') {
         APP?.toast?.('✅ पूर्ण फी जमा झाली! 🎉', 'success');
       } else {
-        const upiLink = res.upi_link
-          ? `upi://pay?...` : null;
         APP?.toast?.(res.message || '✅ Payment added', 'success');
       }
       _openFeeRecords(feeConfigId);
