@@ -179,6 +179,9 @@
         panel.classList.toggle('active', isActive);
         panel.classList.toggle('hidden', !isActive);
       });
+      // Tab-specific callbacks (mirror _initTabs in admin.js)
+      if (tab === 'notes')      window.NOTES_MANAGER?.init();
+      if (tab === 'word-tests') window.WORD_TEST_BUILDER?.onTabActivated();
     }
 
     // Handle bottom nav tab clicks
