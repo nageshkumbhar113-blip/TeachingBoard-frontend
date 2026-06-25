@@ -1019,7 +1019,7 @@ const TEACHER_DASHBOARD = (() => {
     }
   }
 
-  function _openUpdateDueDateModal(feeConfigId) {
+  async function _openUpdateDueDateModal(feeConfigId) {
     const newDate = await APP.promptAsync('नवीन Due Date टाका:', 'date');
     if (!newDate) return;
     API.updateFeeDueDate(feeConfigId, newDate)
