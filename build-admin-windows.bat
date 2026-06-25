@@ -31,9 +31,10 @@ copy /Y uninstall-tb-admin.bat dist-electron\uninstall-tb-admin.bat >nul
 echo [4/4] Done!
 echo.
 echo ========================================
-echo  Windows app ready!
+echo  ✅ Admin Windows app ready!
 echo ========================================
 echo  Output folder : dist-electron\
+echo  Version       : 4.4.3
 echo.
 echo  Dusrya PC var install karayla:
 echo  1. dist-electron\ folder copy kara
