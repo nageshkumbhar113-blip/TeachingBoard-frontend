@@ -109,7 +109,7 @@ const VOCAB = (() => {
         });
       }
     } catch (err) {
-      if (grid) grid.innerHTML = `<div class="vocab-error">${err.message}</div>`;
+      if (grid) grid.innerHTML = `<div class="vocab-error">${String(err.message||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
     }
   }
 

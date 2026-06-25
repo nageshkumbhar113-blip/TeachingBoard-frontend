@@ -674,6 +674,51 @@ const UI = (() => {
   }
 
   // ════════════════════════
+  // CONFIRM / PROMPT (no native dialogs — safe on Android WebView)
+  // ════════════════════════
+
+  function confirmAsync(message) {
+    return new Promise(resolve => {
+      const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const overlay = document.createElement('div');
+      overlay.className = 'td-dialog-overlay';
+      overlay.innerHTML = `<div class="td-dialog-box">
+        <p class="td-dialog-msg">${esc(message)}</p>
+        <div class="td-dialog-btns">
+          <button class="td-dialog-no">रद्द करा</button>
+          <button class="td-dialog-yes">होय</button>
+        </div></div>`;
+      document.body.appendChild(overlay);
+      const done = r => { overlay.remove(); resolve(r); };
+      overlay.querySelector('.td-dialog-yes').addEventListener('click', () => done(true));
+      overlay.querySelector('.td-dialog-no').addEventListener('click',  () => done(false));
+      overlay.addEventListener('click', e => { if (e.target === overlay) done(false); });
+    });
+  }
+
+  function promptAsync(message, inputType = 'text', defaultValue = '') {
+    return new Promise(resolve => {
+      const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const overlay = document.createElement('div');
+      overlay.className = 'td-dialog-overlay';
+      overlay.innerHTML = `<div class="td-dialog-box">
+        <p class="td-dialog-msg">${esc(message)}</p>
+        <input class="td-dialog-input" type="${esc(inputType)}" value="${esc(defaultValue)}">
+        <div class="td-dialog-btns">
+          <button class="td-dialog-no">रद्द करा</button>
+          <button class="td-dialog-yes">Save</button>
+        </div></div>`;
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector('.td-dialog-input');
+      setTimeout(() => input.focus(), 50);
+      const done = r => { overlay.remove(); resolve(r); };
+      overlay.querySelector('.td-dialog-yes').addEventListener('click', () => done(input.value.trim() || null));
+      overlay.querySelector('.td-dialog-no').addEventListener('click',  () => done(null));
+      overlay.addEventListener('click', e => { if (e.target === overlay) done(null); });
+    });
+  }
+
+  // ════════════════════════
   // PUBLIC API
   // ════════════════════════
 
@@ -703,5 +748,8 @@ const UI = (() => {
     updateNavScore,
     resetNavScore,
     setBreadcrumb,
+    // Dialogs (Android-safe replacements for confirm/prompt)
+    confirmAsync,
+    promptAsync,
   };
 })();

@@ -238,6 +238,8 @@ const API = (() => {
     const payload = { message: message || 'Account expired', expiryDate, at: Date.now() };
     clearAdminToken();
     clearStudentToken();
+    clearTeacherToken();
+    clearParentToken();
     localStorage.setItem(EXPIRED_STATE_KEY, JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent('teachingboard:expired', { detail: payload }));
     DB.setSetting('student_profile', null).catch(() => {});

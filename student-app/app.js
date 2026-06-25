@@ -471,6 +471,7 @@ const APP = (() => {
         API.clearStudentToken?.();
         API.clearTeacherToken?.();
         API.clearParentToken?.();
+        API.clearAdminToken?.();
         resolve(false);
         setTimeout(() => _showOnboarding(async () => {
           await _refreshProfileAfterLogin();

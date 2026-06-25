@@ -1009,7 +1009,7 @@ const TEACHER_DASHBOARD = (() => {
   }
 
   async function _closeFeeConfig(feeConfigId) {
-    if (!confirm('हे fee config बंद करायचे? Reminders थांबतील.')) return;
+    if (!await APP.confirmAsync('हे fee config बंद करायचे? Reminders थांबतील.')) return;
     try {
       await API.closeFeeConfig(feeConfigId);
       APP?.toast?.('Fee config बंद झाली.', 'success');
@@ -1020,7 +1020,7 @@ const TEACHER_DASHBOARD = (() => {
   }
 
   function _openUpdateDueDateModal(feeConfigId) {
-    const newDate = prompt('नवीन Due Date टाका (YYYY-MM-DD):');
+    const newDate = await APP.promptAsync('नवीन Due Date टाका:', 'date');
     if (!newDate) return;
     API.updateFeeDueDate(feeConfigId, newDate)
       .then(() => { APP?.toast?.('Due date updated! Reminders restart होतील.', 'success'); _openFeeRecords(feeConfigId); })

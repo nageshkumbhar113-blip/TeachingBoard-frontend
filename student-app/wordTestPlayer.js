@@ -377,9 +377,9 @@ const WORD_TEST_PLAYER = (() => {
   function _init() {
     $id('wtp-back-btn')?.addEventListener('click', _backToVocab);
 
-    $id('wtp-player-back')?.addEventListener('click', () => {
+    $id('wtp-player-back')?.addEventListener('click', async () => {
       if (_answers.filter(Boolean).length > 0) {
-        if (!confirm('Your progress will be lost. Go back?')) return;
+        if (!await APP.confirmAsync('Progress जाईल. मागे जायचे?')) return;
       }
       _showView('wtp-list-view');
     });
