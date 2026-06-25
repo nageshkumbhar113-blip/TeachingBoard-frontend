@@ -34,7 +34,7 @@ echo ========================================
 echo  ✅ Admin Windows app ready!
 echo ========================================
 echo  Output folder : dist-electron\
-echo  Version       : 4.4.3
+echo  Version       : 4.4.4
 echo.
 echo  Dusrya PC var install karayla:
 echo  1. dist-electron\ folder copy kara
