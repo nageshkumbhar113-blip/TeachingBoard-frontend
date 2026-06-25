@@ -2447,6 +2447,7 @@ const ADMIN = (() => {
     });
 
     _initWordsTab();
+    _initClassAnalytics();
 
     // Question editor
     $('btn-add-question')?.addEventListener('click', () => _openQEditor());
@@ -3181,6 +3182,147 @@ const ADMIN = (() => {
     } catch (e) {
       if (status) status.textContent = 'Could not load sections config.';
     }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // CLASS ANALYTICS (Word Tests)
+  // ════════════════════════════════════════════════════════════
+
+  function _initClassAnalytics() {
+    $('btn-wt-analytics')?.addEventListener('click', _loadClassAnalytics);
+  }
+
+  async function _loadClassAnalytics() {
+    const batch   = $('wt-list-batch-sel')?.value   || '';
+    const subject = $('wt-list-subject-sel')?.value || '';
+    const body    = $('wt-analytics-body');
+    const btn     = $('btn-wt-analytics');
+    if (!body) return;
+
+    if (!batch || !subject) {
+      APP.toast('Batch आणि Subject निवडा, मग analytics load करा.', 'error');
+      return;
+    }
+
+    body.style.display = 'block';
+    body.innerHTML = '<p style="color:var(--text2);padding:12px">Loading…</p>';
+    if (btn) btn.disabled = true;
+
+    let data;
+    try {
+      data = await API.fetchClassWordTestAnalytics({ batch, subject });
+    } catch (err) {
+      body.innerHTML = `<p style="color:#ef4444;padding:12px">Error: ${_escHtml(err.message || 'unknown')}</p>`;
+      if (btn) btn.disabled = false;
+      return;
+    }
+    if (btn) btn.disabled = false;
+
+    const cs = data.class_summary || {};
+    if (!cs.students_attempted) {
+      body.innerHTML = '<p style="color:var(--text2);padding:12px">या batch+subject साठी अजून कोणत्याही student ने Word Test दिला नाही.</p>';
+      return;
+    }
+
+    const SKILL_LABEL = { listening: '🎧 Listening', vocabulary: '📖 Vocabulary', spelling: '✏️ Spelling' };
+    const secAvgs = cs.sections || {};
+
+    const secHtml = ['listening', 'vocabulary', 'spelling'].map(skill => {
+      const avg = secAvgs[skill]?.avg;
+      if (avg === null || avg === undefined) return '';
+      const color = avg >= 80 ? '#22c55e' : avg >= 60 ? '#eab308' : avg >= 40 ? '#f97316' : '#ef4444';
+      return `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span style="width:120px;font-size:0.85rem">${SKILL_LABEL[skill]}</span>
+          <div style="flex:1;background:var(--c-border);border-radius:4px;height:10px;overflow:hidden">
+            <div style="width:${avg}%;height:100%;background:${color};border-radius:4px;transition:width 0.5s"></div>
+          </div>
+          <span style="width:36px;text-align:right;font-size:0.85rem;color:${color};font-weight:600">${avg}%</span>
+        </div>`;
+    }).join('');
+
+    const attentionStudents = (data.students || []).filter(s => s.attention);
+    const attHtml = attentionStudents.length ? `
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:10px 14px;margin-bottom:12px">
+        <div style="font-weight:600;margin-bottom:6px;font-size:0.88rem;color:#ef4444">⚠️ Needs Attention (${attentionStudents.length} students)</div>
+        ${attentionStudents.map(s => {
+          const ws = s.weakest_section ? SKILL_LABEL[s.weakest_section] : '';
+          const wv = s.weakest_section ? (s.sections[s.weakest_section] ?? '—') : '—';
+          return `<div style="font-size:0.82rem;padding:3px 0;border-top:1px solid rgba(239,68,68,0.15)">
+            <span style="font-weight:500">${_escHtml(s.name)}</span>
+            <span style="color:var(--text2);margin-left:8px">${s.avg_percent}% avg</span>
+            ${ws ? `<span style="color:#ef4444;margin-left:8px">Weak: ${ws} ${wv}%</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>` : '';
+
+    const studentRows = (data.students || []).map(s => {
+      const color = s.avg_percent >= 60 ? '#22c55e' : s.avg_percent >= 40 ? '#f97316' : '#ef4444';
+      const _p = v => (v !== null && v !== undefined) ? v + '%' : '—';
+      return `
+        <tr style="border-top:1px solid var(--c-border)">
+          <td style="padding:5px 8px">${_escHtml(s.name)}</td>
+          <td style="padding:5px 8px;text-align:center">${s.attempts}</td>
+          <td style="padding:5px 8px;text-align:center;font-weight:600;color:${color}">${s.avg_percent}%</td>
+          <td style="padding:5px 8px;text-align:center;color:#64748b">${_p(s.sections.listening)}</td>
+          <td style="padding:5px 8px;text-align:center;color:#64748b">${_p(s.sections.vocabulary)}</td>
+          <td style="padding:5px 8px;text-align:center;color:#64748b">${_p(s.sections.spelling)}</td>
+          <td style="padding:5px 8px;text-align:center">${s.attention ? '🔴' : '🟢'}</td>
+        </tr>`;
+    }).join('');
+
+    const weakWordsHtml = (data.common_weak_words || []).length ? `
+      <div style="margin-top:12px">
+        <p style="font-size:0.85rem;font-weight:600;margin-bottom:6px">🔤 Most missed words (class-wide):</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${data.common_weak_words.map(w =>
+            `<span style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:2px 10px;font-size:0.82rem">
+              ${_escHtml(w.word)} <span style="opacity:0.7">(${w.miss_count}×)</span>
+            </span>`
+          ).join('')}
+        </div>
+      </div>` : '';
+
+    body.innerHTML = `
+      <div class="admin-card" style="padding:14px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+          <div class="an-kpi-card" style="flex:1;min-width:100px;text-align:center">
+            <div style="font-size:1.4rem;font-weight:700">${cs.students_attempted}</div>
+            <div style="font-size:0.78rem;color:var(--text2)">Students</div>
+          </div>
+          <div class="an-kpi-card" style="flex:1;min-width:100px;text-align:center">
+            <div style="font-size:1.4rem;font-weight:700">${cs.avg_percent}%</div>
+            <div style="font-size:0.78rem;color:var(--text2)">Class Avg</div>
+          </div>
+          <div class="an-kpi-card" style="flex:1;min-width:100px;text-align:center">
+            <div style="font-size:1.4rem;font-weight:700">${cs.pass_rate}%</div>
+            <div style="font-size:0.78rem;color:var(--text2)">Pass Rate</div>
+          </div>
+        </div>
+
+        <p style="font-size:0.85rem;font-weight:600;margin-bottom:8px">Section Averages:</p>
+        ${secHtml}
+
+        ${attHtml}
+
+        <div style="overflow-x:auto;margin-top:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+            <thead>
+              <tr style="color:var(--text2);text-align:left">
+                <th style="padding:4px 8px">Student</th>
+                <th style="padding:4px 8px;text-align:center">Tests</th>
+                <th style="padding:4px 8px;text-align:center">Avg</th>
+                <th style="padding:4px 8px;text-align:center">🎧</th>
+                <th style="padding:4px 8px;text-align:center">📖</th>
+                <th style="padding:4px 8px;text-align:center">✏️</th>
+                <th style="padding:4px 8px;text-align:center"></th>
+              </tr>
+            </thead>
+            <tbody>${studentRows}</tbody>
+          </table>
+        </div>
+        ${weakWordsHtml}
+      </div>`;
   }
 
   function _updateWordsBulkBar() {

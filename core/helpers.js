@@ -1552,6 +1552,28 @@ const API = (() => {
     });
   }
 
+  async function fetchWordTestAnalytics({ batch, subject } = {}) {
+    const token  = await ensureStudentSession();
+    const params = new URLSearchParams();
+    if (batch)   params.set('batch',   batch);
+    if (subject) params.set('subject', subject);
+    const qs = params.toString() ? '?' + params : '';
+    return request(`/word-tests/analytics${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function fetchClassWordTestAnalytics({ batch, subject } = {}) {
+    const token  = await ensureAdminSession();
+    const params = new URLSearchParams();
+    if (batch)   params.set('batch',   batch);
+    if (subject) params.set('subject', subject);
+    const qs = params.toString() ? '?' + params : '';
+    return request(`/admin/word-tests/analytics${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   // ════════════════════════
   // FEE MANAGEMENT (Teacher)
   // ════════════════════════
@@ -1703,6 +1725,7 @@ const API = (() => {
     updateWordTest, publishWordTest, unpublishWordTest, deleteWordTest, getWordTestResults,
     // ─── Word Tests (Student) ─────────────────────────────────────
     fetchStudentWordTests, fetchStudentWordTest, submitWordTestAttempt,
+    fetchWordTestAnalytics, fetchClassWordTestAnalytics,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabDictionary, addStudentWord,
     fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,

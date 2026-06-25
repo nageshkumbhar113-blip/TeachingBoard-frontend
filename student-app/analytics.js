@@ -36,8 +36,9 @@ const ANALYTICS = (() => {
   // STATE
   // ════════════════════════
 
-  let _activeTab = 'overview';
-  let _data      = { attempts: [], stats: {}, weakQs: [], allQs: [] };
+  let _activeTab  = 'overview';
+  let _data       = { attempts: [], stats: {}, weakQs: [], allQs: [] };
+  let _wtAnalytics = null;   // cached word-test analytics response
 
   const TABS = [
     { id: 'overview',    label: '📈 Overview'    },
@@ -45,6 +46,7 @@ const ANALYTICS = (() => {
     { id: 'history',     label: '📋 History'     },
     { id: 'subjects',    label: '📚 Subjects'    },
     { id: 'weak',        label: '⚠️ Weak Qs'    },
+    { id: 'wordtests',   label: '📝 Word Tests'  },
   ];
 
   // ════════════════════════
@@ -119,6 +121,7 @@ const ANALYTICS = (() => {
       case 'history':     return _renderHistory();
       case 'subjects':    return _renderSubjects();
       case 'weak':        return _renderWeakQs();
+      case 'wordtests':   return _renderWordTestsTab();
     }
   }
 
@@ -634,6 +637,118 @@ const ANALYTICS = (() => {
         APP.toast('Could not update question', 'error');
       }
     });
+  }
+
+  // ════════════════════════
+  // TAB: WORD TESTS
+  // ════════════════════════
+
+  async function _renderWordTestsTab() {
+    const body = $('an-tab-body');
+    if (!body) return;
+
+    body.innerHTML = `<div class="an-empty"><div class="an-empty-icon">📝</div><p>Loading word test analytics…</p></div>`;
+
+    // Fetch with 15-min IDB cache
+    const CACHE_KEY = 'wt_analytics_cache_v1';
+    const CACHE_TTL = 15 * 60 * 1000;
+    let data = _wtAnalytics;
+
+    if (!data) {
+      try {
+        const cached = await DB.getSetting(CACHE_KEY, null).catch(() => null);
+        if (cached && (Date.now() - cached.cached_at < CACHE_TTL)) {
+          data = cached.data;
+        } else {
+          data = await API.fetchWordTestAnalytics();
+          await DB.setSetting(CACHE_KEY, { data, cached_at: Date.now() }).catch(() => {});
+        }
+        _wtAnalytics = data;
+      } catch (_) {
+        body.innerHTML = _emptyState('📝', 'Word Test analytics load करता आले नाही.',
+          'Internet connection तपासा आणि पुन्हा try करा.');
+        return;
+      }
+    }
+
+    const summary = data.summary || {};
+    if (!summary.attempts) {
+      body.innerHTML = _emptyState('📝', 'Word Tests अजून दिले नाहीत.',
+        'Word Test द्या — मग इथे तुमची progress दिसेल.');
+      return;
+    }
+
+    // Compute insights
+    const insights = window.WORD_TEST_INSIGHTS?.compute(data) || [];
+
+    // Summary KPIs
+    const kpiHtml = `
+      <div class="an-kpi-grid" style="margin-bottom:14px">
+        <div class="an-kpi-card">
+          <div class="an-kpi-icon">🎯</div>
+          <div class="an-kpi-value">${summary.attempts}</div>
+          <div class="an-kpi-label">Tests घेतले</div>
+        </div>
+        <div class="an-kpi-card">
+          <div class="an-kpi-icon">📊</div>
+          <div class="an-kpi-value">${summary.avg_percent ?? 0}%</div>
+          <div class="an-kpi-label">Average Score</div>
+        </div>
+        <div class="an-kpi-card">
+          <div class="an-kpi-icon">✅</div>
+          <div class="an-kpi-value">${summary.pass_rate ?? 0}%</div>
+          <div class="an-kpi-label">Pass Rate</div>
+        </div>
+      </div>`;
+
+    // Recent tests table
+    const recent = data.recent_tests || [];
+    const recentHtml = recent.length ? `
+      <div class="an-section-card" style="margin-top:14px">
+        <p class="an-section-title" style="margin-bottom:10px">📋 Recent Tests</p>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+            <thead>
+              <tr style="color:var(--text2);text-align:left">
+                <th style="padding:4px 6px">Test</th>
+                <th style="padding:4px 6px">🎧</th>
+                <th style="padding:4px 6px">📖</th>
+                <th style="padding:4px 6px">✏️</th>
+                <th style="padding:4px 6px">Score</th>
+                <th style="padding:4px 6px">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recent.map(t => {
+                const pct   = t.percent ?? 0;
+                const color = pct >= 60 ? '#22c55e' : pct >= 40 ? '#f97316' : '#ef4444';
+                const ss    = t.sections || {};
+                const _pct  = v => v !== null && v !== undefined ? v + '%' : '—';
+                return `
+                  <tr style="border-top:1px solid var(--c-border)">
+                    <td style="padding:5px 6px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(t.title)}</td>
+                    <td style="padding:5px 6px;color:#64748b">${_pct(ss.listening)}</td>
+                    <td style="padding:5px 6px;color:#64748b">${_pct(ss.vocabulary)}</td>
+                    <td style="padding:5px 6px;color:#64748b">${_pct(ss.spelling)}</td>
+                    <td style="padding:5px 6px;font-weight:600;color:${color}">${pct}% ${t.passed ? '✅' : '❌'}</td>
+                    <td style="padding:5px 6px;color:var(--text2)">${_fmtDate(t.submitted_at)}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : '';
+
+    body.innerHTML = `
+      ${kpiHtml}
+      <div id="wti-insights-wrap"></div>
+      ${recentHtml}`;
+
+    // Render insights card into its container
+    const insightsWrap = body.querySelector('#wti-insights-wrap');
+    if (insightsWrap && window.WORD_TEST_INSIGHTS) {
+      WORD_TEST_INSIGHTS.renderInsightsCard(insights, insightsWrap);
+    }
   }
 
   // ════════════════════════
