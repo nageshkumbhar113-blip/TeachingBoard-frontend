@@ -37,7 +37,7 @@ echo ========================================
 echo  App ID   : com.teachingboard.student
 echo  App Name : TB Student
 echo  Icon     : Blue (#1565C0)
-echo  Version  : 4.4.4
+echo  Version  : 5.0.0
 echo.
 echo  Android Studio opening...
 echo  → Build ^> Generate Signed Bundle/APK ^> APK ^> Release

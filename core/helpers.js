@@ -1032,6 +1032,15 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  async function fetchChildFee(studentCode) {
+    const token = await ensureParentSession();
+    const code  = encodeURIComponent(String(studentCode || '').trim().toUpperCase());
+    const payload = await request(`/parent/children/${code}/fee`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
   async function updateParentDeviceToken(deviceToken) {
     const token = await ensureParentSession();
     return request('/parent/device-token', {
@@ -1714,7 +1723,15 @@ const API = (() => {
     const resp  = await safeFetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!resp.ok) throw new Error(`PDF load failed (${resp.status})`);
+    if (!resp.ok) {
+      if (resp.status === 403) {
+        let body = null;
+        try { body = await resp.json(); } catch {}
+        if (body?.code === 'ACCOUNT_EXPIRED') markExpired(body.message, body.expiryDate);
+        else if (['ACCOUNT_BLOCKED', 'ACCOUNT_PENDING'].includes(body?.code)) clearStudentToken();
+      }
+      throw new Error(`PDF load failed (${resp.status})`);
+    }
     return resp.arrayBuffer();
   }
 
@@ -1751,7 +1768,7 @@ const API = (() => {
     fetchWordTestAnalytics, fetchClassWordTestAnalytics,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabDictionary, addStudentWord,
     fetchTeacherVocabScores,
-    fetchParentChildren, fetchChildAttempts, updateParentDeviceToken,
+    fetchParentChildren, fetchChildAttempts, fetchChildFee, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,
     request,

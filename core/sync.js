@@ -886,6 +886,7 @@ const SYNC = (() => {
 
   function _runStudentCycle() {
     if (_studentSyncing || !_isOnline()) return;
+    if (!API.getStudentToken()) return; // no student logged in — skip silently
     _studentSyncing = true;
     _setStatus('syncing');
 

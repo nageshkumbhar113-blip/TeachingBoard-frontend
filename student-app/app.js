@@ -393,7 +393,8 @@ const APP = (() => {
           const refreshed = await API.fetchStudentMe();
           _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
         } catch {
-          // Session expired — force full re-login
+          // Session expired — stop sync, force full re-login
+          window.SYNC?.stopStudentAutoSync?.();
           await API.clearStudentProfile?.().catch(() => {});
           return new Promise(resolve => _showOnboarding(async () => {
             await _refreshProfileAfterLogin();
@@ -461,6 +462,8 @@ const APP = (() => {
         ac.abort();
         screen.classList.add('hidden');
         _isTeacherOrParentMode = false;
+        // Stop sync before clearing session so cycle doesn't fire with empty credentials
+        window.SYNC?.stopStudentAutoSync?.();
         // Clear current session regardless of role
         await API.clearStudentProfile?.().catch(() => {});
         await API.clearTeacherProfile?.().catch(() => {});
@@ -713,6 +716,14 @@ const APP = (() => {
           msg = '⏳ तुमचा account अजून approve झाला नाही. Admin ची वाट पाहा.';
         } else if (err?.code === 'ACCOUNT_BLOCKED') {
           msg = '🚫 तुमचा account block केला आहे. Admin ला संपर्क करा.';
+        } else if (/invalid credentials/i.test(msg) || /unauthorized/i.test(msg)) {
+          if (_selectedRole === 'parent') {
+            msg = 'चुकीचा Parent Code किंवा PIN. Admin ने दिलेला code आणि PIN वापरा.';
+          } else if (_selectedRole === 'teacher') {
+            msg = 'चुकीचा Teacher Code किंवा PIN. पुन्हा check करा.';
+          } else {
+            msg = 'चुकीचा Student Code किंवा PIN. पुन्हा try करा.';
+          }
         }
         if (errorEl) {
           errorEl.textContent = msg;
@@ -873,6 +884,8 @@ const APP = (() => {
 
     overlay.querySelector('#ps-switch-btn')?.addEventListener('click', async () => {
       _close();
+      // Stop sync before clearing session so cycle doesn't fire with empty credentials
+      window.SYNC?.stopStudentAutoSync?.();
       // Clear current session; show login for new student
       await API.clearStudentProfile?.().catch(() => {});
       API.clearStudentToken?.();
