@@ -367,6 +367,12 @@ const NOTES_MANAGER = (() => {
       });
     }
 
+    // Populate subjects for the batch already selected by admin.js on tab open
+    const initFilterBatch = $('nm-filter-batch')?.value || '';
+    if (initFilterBatch) {
+      await _populateSubjects('nm-filter-subject', initFilterBatch, 'nm-filter-chapter');
+    }
+
     _loadNotes();
   }
 
