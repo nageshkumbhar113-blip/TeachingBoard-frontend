@@ -3368,16 +3368,16 @@ const ADMIN = (() => {
       const batch   = $('words-filter-batch')?.value  || '';
       const subject = $('words-filter-subject')?.value || '';
       if (!batch || !subject) {
-        alert('Please select a Batch and Subject first.');
+        APP.toast('Please select a Batch and Subject first.', 'error');
         return;
       }
       if (!await APP.confirmAsync(`Re-sequence all words in "${batch} / ${subject}"?\nThis renumbers seq_num 1,2,3… in current order and fixes test boundaries.`)) return;
       try {
         const res = await API.resequenceAdminWords({ batch, subject });
-        alert(`✅ Re-sequenced ${res.count} words.`);
+        APP.toast(`Re-sequenced ${res.count} words.`, 'success');
         _loadWordBank();
       } catch (err) {
-        alert('Re-sequence failed: ' + (err?.message || 'unknown error'));
+        APP.toast('Re-sequence failed: ' + (err?.message || 'unknown error'), 'error');
       }
     });
 
@@ -3393,7 +3393,7 @@ const ADMIN = (() => {
       const subject = $('words-filter-subject')?.value || '';
       if (!batch || !subject) return;
       const active_sections = [...document.querySelectorAll('input[name="vsec"]:checked')].map(cb => cb.value);
-      if (!active_sections.length) { alert('At least one section must be selected.'); return; }
+      if (!active_sections.length) { APP.toast('At least one section must be selected.', 'error'); return; }
       const status = $('vocab-sections-status');
       if (status) status.textContent = 'Saving…';
       try {

@@ -119,15 +119,15 @@ const WORD_TEST_BUILDER = (() => {
     if (action === 'publish') {
       if (!await APP.confirmAsync('Publish this test? Students will see it immediately.')) return;
       try { await API.publishWordTest(testId); await _loadList(); }
-      catch(e) { alert('Error: ' + e.message); }
+      catch(e) { APP.toast('Error: ' + e.message, 'error'); }
     } else if (action === 'unpublish') {
       if (!await APP.confirmAsync('Unpublish this test?')) return;
       try { await API.unpublishWordTest(testId); await _loadList(); }
-      catch(e) { alert('Error: ' + e.message); }
+      catch(e) { APP.toast('Error: ' + e.message, 'error'); }
     } else if (action === 'delete') {
       if (!await APP.confirmAsync('Delete this draft? This cannot be undone.')) return;
       try { await API.deleteWordTest(testId); await _loadList(); }
-      catch(e) { alert('Error: ' + e.message); }
+      catch(e) { APP.toast('Error: ' + e.message, 'error'); }
     } else if (action === 'edit') {
       await _openEdit(testId);
     } else if (action === 'results') {
@@ -207,7 +207,7 @@ const WORD_TEST_BUILDER = (() => {
     if (btn) { btn.disabled = false; btn.textContent = '⚡ Auto Generate'; }
     if (res.success) {
       const warns = res.warnings?.length ? `\n\nWarnings:\n${res.warnings.join('\n')}` : '';
-      alert(`✅ ${res.message}${warns}`);
+      APP.toast(`${res.message}${warns}`, 'success');
       _loadList();
     } else {
       window.APP?.toast?.(res.message || 'Failed', 'error');
@@ -250,7 +250,7 @@ const WORD_TEST_BUILDER = (() => {
       test = res.test;
       if (!test) throw new Error('Test not found');
     } catch(e) {
-      alert('Could not load test: ' + e.message);
+      APP.toast('Could not load test: ' + e.message, 'error');
       return;
     }
 
@@ -455,10 +455,10 @@ const WORD_TEST_BUILDER = (() => {
   async function _generate() {
     const titleInput = $('wt-title-input');
     const title = String(titleInput?.value || '').trim();
-    if (!title) { alert('Test title द्या.'); titleInput?.focus(); return; }
+    if (!title) { APP.toast('Test title द्या.', 'error'); titleInput?.focus(); return; }
 
     const configs = _getQuestionConfigs();
-    if (!configs.length) { alert('किमान एक question type select करा.'); return; }
+    if (!configs.length) { APP.toast('किमान एक question type select करा.', 'error'); return; }
 
     const passInput  = $('wt-pass-input');
     const passPercent = Math.min(100, Math.max(1, parseInt(passInput?.value || '60') || 60));
@@ -471,7 +471,7 @@ const WORD_TEST_BUILDER = (() => {
       _previewData = { title, passPercent, questions: res.questions, warnings: res.warnings || [] };
       _showPreview();
     } catch(e) {
-      alert('Generate failed: ' + e.message);
+      APP.toast('Generate failed: ' + e.message, 'error');
     } finally {
       if (genBtn) { genBtn.disabled = false; genBtn.textContent = '⚡ Generate Preview'; }
     }
@@ -549,17 +549,17 @@ const WORD_TEST_BUILDER = (() => {
           questions:    _previewData.questions,
           pass_percent: _previewData.passPercent ?? 60,
         });
-        alert('✅ Test updated!');
+        APP.toast('Test updated!', 'success');
       } else {
         // Create mode: POST new draft
         const res = await API.saveWordTestDraft(
           _batch, _subject, _previewData.title, _previewData.questions, _previewData.passPercent ?? 60
         );
-        alert(`✅ Draft saved!`);
+        APP.toast(`Draft saved!`, 'success');
       }
       await _loadList();
     } catch(e) {
-      alert('Save failed: ' + e.message);
+      APP.toast('Save failed: ' + e.message, 'error');
     } finally {
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save Draft'; }
     }
@@ -588,10 +588,10 @@ const WORD_TEST_BUILDER = (() => {
         testId = draftRes.test_id;
       }
       await API.publishWordTest(testId);
-      alert('✅ Test published!');
+      APP.toast('Test published!', 'success');
       await _loadList();
     } catch(e) {
-      alert('Publish failed: ' + e.message);
+      APP.toast('Publish failed: ' + e.message, 'error');
     } finally {
       if (pubBtn) { pubBtn.disabled = false; pubBtn.textContent = '🚀 Publish Now'; }
     }
