@@ -3866,6 +3866,29 @@ body.student-app.mode-board.theme-board-light::before {
 .fee-payment-history summary { cursor:pointer; }
 .fee-pay-hist-row { padding:2px 0; }
 
+/* ── Fee record card redesign ─────────────────────────── */
+.fee-progress-wrap  { height:6px; background:var(--border,rgba(255,255,255,0.1)); border-radius:6px; overflow:hidden; margin:4px 0 2px; }
+.fee-progress-bar   { height:100%; background:var(--accent,#6c63ff); border-radius:6px; transition:width 0.4s ease; }
+.fee-amounts-grid   { display:flex; flex-direction:column; gap:4px; margin:8px 0 4px; }
+.fee-amount-row     { display:flex; justify-content:space-between; font-size:0.82rem; }
+.fee-amt-label      { color:var(--text2); }
+.fee-amt-val        { font-weight:600; }
+.fee-record-paid    { border-left:3px solid #22c55e; }
+.fee-record-paid-banner { background:rgba(34,197,94,0.12); color:#22c55e; font-weight:700; font-size:0.9rem; text-align:center; padding:8px; border-radius:8px; margin-bottom:8px; }
+.fee-installment-section { background:var(--surface2,rgba(255,255,255,0.05)); border-radius:10px; padding:10px 12px; margin:8px 0; }
+.fee-installment-title   { font-size:0.82rem; font-weight:600; color:var(--accent,#6c63ff); margin-bottom:8px; }
+.fee-installment-row     { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.fee-installment-field   { display:flex; flex-direction:column; gap:2px; flex:1; min-width:120px; }
+.fee-inst-label          { font-size:0.73rem; color:var(--text2); font-weight:500; text-transform:uppercase; }
+.fee-installment-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:4px; }
+.fee-upi-btn    { background:rgba(99,102,241,0.15); color:var(--accent,#6c63ff); border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:6px 12px; font-size:0.8rem; cursor:pointer; font-weight:600; }
+.fee-upi-btn:active { opacity:0.75; }
+.fee-upi-missing    { font-size:0.75rem; color:var(--error,#ef4444); }
+.fee-upi-warn       { background:rgba(251,146,60,0.1); border:1px solid rgba(251,146,60,0.3); border-radius:8px; padding:8px 12px; font-size:0.82rem; color:#f97316; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.fee-upi-warn-btn   { background:transparent; border:1px solid #f97316; color:#f97316; border-radius:6px; padding:2px 10px; font-size:0.78rem; cursor:pointer; }
+.fee-save-installment-btn { background:var(--surface2,#eee); color:var(--text1); border:1px solid var(--border); border-radius:8px; padding:6px 10px; cursor:pointer; }
+.td-fee-toolbar     { display:flex; gap:8px; flex-wrap:wrap; padding:6px 0 10px; }
+
 /* ════════════════════════════════════════
    NOTES PLAYER — list + full-screen viewer
 ════════════════════════════════════════ */

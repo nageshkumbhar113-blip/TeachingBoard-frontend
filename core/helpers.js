@@ -1578,12 +1578,12 @@ const API = (() => {
   // FEE MANAGEMENT (Teacher)
   // ════════════════════════
 
-  async function createFeeConfig({ batch, fee_type, label, total_amount, due_date }) {
+  async function createFeeConfig({ batch, fee_type, label, total_amount, due_date, student_code }) {
     const token = await ensureTeacherSession();
     return request('/fee', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ batch, fee_type, label, total_amount, due_date }),
+      body: JSON.stringify({ batch, fee_type, label, total_amount, due_date, student_code }),
     });
   }
 
@@ -1623,6 +1623,29 @@ const API = (() => {
     return request(`/fee/${encodeURIComponent(feeConfigId)}/close`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function updateFeeNextInstallment(feeRecordId, { amount, date }) {
+    const token = await ensureTeacherSession();
+    return request(`/fee/records/${encodeURIComponent(feeRecordId)}/next-installment`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ amount, date }),
+    });
+  }
+
+  async function fetchFeeUpiConfig() {
+    const token = await ensureTeacherSession();
+    return request('/fee/upi-config', { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async function updateFeeUpiSettings({ upi_id, upi_name }) {
+    const token = await ensureTeacherSession();
+    return request('/fee/settings/upi', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ upi_id, upi_name }),
     });
   }
 
@@ -1743,6 +1766,7 @@ const API = (() => {
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,
     // ─── Fee Management (Teacher) ─────────────────────────────────
     createFeeConfig, listFeeConfigs, getFeeRecords, addFeePayment, updateFeeDueDate, closeFeeConfig,
+    updateFeeNextInstallment, fetchFeeUpiConfig, updateFeeUpiSettings,
     // ─── Notes (Admin) ────────────────────────────────────────────
     uploadNote, fetchAdminNotes, updateNote, deleteNote,
     // ─── Notes (Student) ─────────────────────────────────────────

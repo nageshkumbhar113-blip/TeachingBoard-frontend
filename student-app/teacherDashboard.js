@@ -628,11 +628,78 @@ const TEACHER_DASHBOARD = (() => {
 
   let _feeConfigs      = [];
   let _activeFeeConfig = null;
+  let _feeUpiConfig    = null;   // { upi_id, upi_name }
+  let _feeTabInited    = false;
 
   function _initFeeTab() {
-    $('td-fee-create-btn')?.addEventListener('click', _openFeeCreateModal);
-    $('td-fee-back-btn')?.addEventListener('click', _showFeeList);
+    if (!_feeTabInited) {
+      _feeTabInited = true;
+      $('td-fee-create-btn')?.addEventListener('click', _openFeeCreateModal);
+      $('td-fee-back-btn')?.addEventListener('click', _showFeeList);
+      $('td-fee-settings-btn')?.addEventListener('click', _openUpiSettingsModal);
+    }
+    _loadFeeUpiConfig();
     _loadFeeConfigs();
+  }
+
+  async function _loadFeeUpiConfig() {
+    try {
+      const res = await API.fetchFeeUpiConfig();
+      _feeUpiConfig = { upi_id: res.upi_id || '', upi_name: res.upi_name || '' };
+    } catch (_) { /* non-fatal */ }
+  }
+
+  function _buildUpiLink(amount, label) {
+    if (!_feeUpiConfig?.upi_id) return null;
+    const pa = encodeURIComponent(_feeUpiConfig.upi_id);
+    const pn = encodeURIComponent(_feeUpiConfig.upi_name || 'Teaching Board');
+    const tn = encodeURIComponent(label);
+    return `upi://pay?pa=${pa}&pn=${pn}&am=${amount}&cu=INR&tn=${tn}`;
+  }
+
+  function _openUpiSettingsModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'td-modal-backdrop';
+    overlay.innerHTML = `
+      <div class="td-modal">
+        <h3 class="td-modal-title">⚙️ UPI Settings</h3>
+        <p style="font-size:0.82rem;color:var(--text2);margin-bottom:12px">
+          हे UPI ID fee payment links साठी वापरले जाईल.<br>
+          उदा: yourname@okicici, 9876543210@ybl
+        </p>
+        <div class="td-modal-field">
+          <label class="td-modal-label">UPI ID</label>
+          <input id="upi-id-input" class="td-modal-input" placeholder="yourname@bank" value="${_esc(_feeUpiConfig?.upi_id || '')}">
+        </div>
+        <div class="td-modal-field">
+          <label class="td-modal-label">Display Name (UPI वर दिसणारे नाव)</label>
+          <input id="upi-name-input" class="td-modal-input" placeholder="Teaching Board" value="${_esc(_feeUpiConfig?.upi_name || '')}">
+        </div>
+        <div class="td-modal-actions">
+          <button id="upi-cancel" class="admin-btn-secondary">Cancel</button>
+          <button id="upi-save" class="admin-btn-primary">💾 Save</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector('#upi-cancel').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('#upi-save').addEventListener('click', async () => {
+      const upi_id   = overlay.querySelector('#upi-id-input').value.trim();
+      const upi_name = overlay.querySelector('#upi-name-input').value.trim();
+      overlay.querySelector('#upi-save').disabled = true;
+      overlay.querySelector('#upi-save').textContent = 'Saving...';
+      try {
+        await API.updateFeeUpiSettings({ upi_id, upi_name });
+        _feeUpiConfig = { upi_id, upi_name };
+        APP?.toast?.('✅ UPI Settings saved!', 'success');
+        overlay.remove();
+      } catch (err) {
+        APP?.toast?.(err.message || 'Save failed', 'error');
+        overlay.querySelector('#upi-save').disabled = false;
+        overlay.querySelector('#upi-save').textContent = '💾 Save';
+      }
+    });
   }
 
   async function _loadFeeConfigs() {
@@ -651,11 +718,17 @@ const TEACHER_DASHBOARD = (() => {
   function _renderFeeConfigs() {
     const listEl = $('td-fee-configs-list');
     if (!listEl) return;
+
+    // UPI warning if not set
+    const upiWarn = (!_feeUpiConfig?.upi_id)
+      ? `<div class="fee-upi-warn">⚠️ UPI ID set केलेला नाही. <button class="fee-upi-warn-btn" id="fee-upi-warn-btn">Set करा</button></div>` : '';
+
     if (!_feeConfigs.length) {
-      listEl.innerHTML = '<p class="td-hint td-hint-sm">कोणतीही Fee Config नाही. "नवीन Fee तयार करा" वर क्लिक करा.</p>';
+      listEl.innerHTML = upiWarn + '<p class="td-hint td-hint-sm">कोणतीही Fee Config नाही. "नवीन Fee तयार करा" वर क्लिक करा.</p>';
+      listEl.querySelector('#fee-upi-warn-btn')?.addEventListener('click', _openUpiSettingsModal);
       return;
     }
-    listEl.innerHTML = _feeConfigs.map(c => {
+    listEl.innerHTML = upiWarn + _feeConfigs.map(c => {
       const s          = c.stats || {};
       const pct        = s.total_expected > 0 ? Math.round(s.total_collected / s.total_expected * 100) : 0;
       const statusCls  = c.status === 'closed' ? 'fee-status-closed' : 'fee-status-active';
@@ -679,13 +752,17 @@ const TEACHER_DASHBOARD = (() => {
           <div class="fee-stat"><span class="fee-stat-val" style="color:var(--error)">₹${s.total_remaining || 0}</span><span class="fee-stat-lbl">Remaining</span></div>
           <div class="fee-stat"><span class="fee-stat-val">${pct}%</span><span class="fee-stat-lbl">Done</span></div>
         </div>
+        <div class="fee-progress-wrap">
+          <div class="fee-progress-bar" style="width:${pct}%"></div>
+        </div>
         <div class="fee-card-footer">
           ${dueBadge}
-          <span class="fee-student-count">👨‍🎓 ${s.total_students || 0} students · 🟢${s.paid_count || 0} 🟡${s.partial_count || 0} 🔴${s.pending_count || 0}</span>
+          <span class="fee-student-count">👨‍🎓 ${s.total_students || 0} · 🟢${s.paid_count || 0} 🟡${s.partial_count || 0} 🔴${s.pending_count || 0}</span>
         </div>
       </div>`;
     }).join('');
 
+    listEl.querySelector('#fee-upi-warn-btn')?.addEventListener('click', _openUpiSettingsModal);
     listEl.querySelectorAll('.fee-config-card').forEach(card => {
       card.addEventListener('click', () => _openFeeRecords(card.dataset.id));
     });
@@ -708,7 +785,7 @@ const TEACHER_DASHBOARD = (() => {
     try {
       const res = await API.getFeeRecords(feeConfigId);
       _activeFeeConfig = res.config;
-      const records = res.records || [];
+      const records    = res.records || [];
 
       if (titleEl) titleEl.textContent = res.config?.label || '';
 
@@ -721,9 +798,12 @@ const TEACHER_DASHBOARD = (() => {
         statsEl.innerHTML = `
           <div class="fee-stats-bar">
             <div class="fee-stat-chip">💰 Total<br><strong>₹${totalExpected}</strong></div>
-            <div class="fee-stat-chip" style="color:var(--success,#27ae60)">✅ Collected<br><strong>₹${totalCollected}</strong></div>
+            <div class="fee-stat-chip" style="color:var(--success,#22c55e)">✅ Collected<br><strong>₹${totalCollected}</strong></div>
             <div class="fee-stat-chip" style="color:var(--error)">⏳ Remaining<br><strong>₹${totalRemaining}</strong></div>
             <div class="fee-stat-chip">📊 Done<br><strong>${pct}%</strong></div>
+          </div>
+          <div class="fee-progress-wrap" style="margin:6px 0 8px">
+            <div class="fee-progress-bar" style="width:${pct}%"></div>
           </div>
           <div class="fee-action-row">
             ${res.config?.status === 'active' ? `<button class="td-send-notif-btn" id="td-fee-update-date-btn" style="font-size:0.8rem">📅 Due Date बदला</button>` : ''}
@@ -739,32 +819,28 @@ const TEACHER_DASHBOARD = (() => {
           studEl.innerHTML = '<p class="td-hint td-hint-sm">कोणतेही records नाहीत.</p>';
           return;
         }
-        studEl.innerHTML = records.map(r => {
-          const statusIcon = r.status === 'paid' ? '🟢' : r.status === 'partial' ? '🟡' : '🔴';
-          const canPay     = res.config?.status === 'active' && r.status !== 'paid';
-          return `<div class="td-student-card fee-record-card">
-            <div class="fee-record-header">
-              <span>${statusIcon} <strong>${_esc(r.student_name)}</strong></span>
-              <span class="td-student-code">${_esc(r.student_code)}</span>
-            </div>
-            <div class="fee-record-amounts">
-              <span>Total: <strong>₹${r.total_amount}</strong></span>
-              <span style="color:var(--success,#27ae60)">Paid: <strong>₹${r.paid_amount}</strong></span>
-              <span style="color:var(--error)">Due: <strong>₹${r.remaining_amount}</strong></span>
-            </div>
-            ${canPay ? `<div class="fee-pay-row">
-              <input class="admin-input fee-pay-input" type="number" placeholder="₹ Amount" min="1" id="fee-pay-${_esc(r.fee_record_id)}">
-              <input class="admin-input" type="text" placeholder="Note (optional)" id="fee-note-${_esc(r.fee_record_id)}" style="flex:1">
-              <button class="admin-btn-primary fee-pay-btn" data-rid="${_esc(r.fee_record_id)}" style="flex-shrink:0">✔ Add</button>
-            </div>` : ''}
-            ${r.payments?.length ? `<details class="fee-payment-history"><summary>Payment History (${r.payments.length})</summary>
-              ${r.payments.map(p => `<div class="fee-pay-hist-row">₹${p.amount} — ${_fmtFeeDate(p.paid_at)}${p.note ? ' · ' + _esc(p.note) : ''}</div>`).join('')}
-            </details>` : ''}
-          </div>`;
-        }).join('');
 
-        studEl.querySelectorAll('.fee-pay-btn').forEach(btn => {
+        studEl.innerHTML = records.map(r => _renderFeeRecordCard(r, res.config)).join('');
+
+        // Wire pay buttons
+        studEl.querySelectorAll('.fee-mark-paid-btn').forEach(btn => {
           btn.addEventListener('click', () => _addFeePayment(btn.dataset.rid, feeConfigId));
+        });
+
+        // Wire UPI link buttons
+        studEl.querySelectorAll('.fee-upi-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const link = btn.dataset.link;
+            if (link) {
+              navigator.clipboard?.writeText(link).catch(() => {});
+              window.open(link, '_blank');
+            }
+          });
+        });
+
+        // Wire installment save buttons
+        studEl.querySelectorAll('.fee-save-installment-btn').forEach(btn => {
+          btn.addEventListener('click', () => _saveNextInstallment(btn.dataset.rid, feeConfigId));
         });
       }
     } catch (err) {
@@ -772,15 +848,127 @@ const TEACHER_DASHBOARD = (() => {
     }
   }
 
+  function _renderFeeRecordCard(r, config) {
+    const canPay     = config?.status === 'active' && r.status !== 'paid';
+    const remaining  = r.remaining_amount ?? Math.max(0, r.total_amount - r.paid_amount);
+    const paidPct    = r.total_amount > 0 ? Math.round(r.paid_amount / r.total_amount * 100) : 0;
+    const rid        = _esc(r.fee_record_id);
+
+    // Completed state
+    if (r.status === 'paid') {
+      const lastPay = r.payments?.length ? r.payments[r.payments.length - 1] : null;
+      return `<div class="td-student-card fee-record-card fee-record-paid">
+        <div class="fee-record-paid-banner">
+          ✅ पूर्ण फी जमा झाली!
+        </div>
+        <div class="fee-record-header">
+          <span>🟢 <strong>${_esc(r.student_name)}</strong></span>
+          <span class="td-student-code">${_esc(r.student_code)}</span>
+        </div>
+        <div class="fee-record-amounts">
+          <span>Total: <strong>₹${r.total_amount}</strong></span>
+          ${lastPay ? `<span style="color:var(--text2);font-size:0.8rem">Completed: ${_fmtFeeDate(lastPay.paid_at)}</span>` : ''}
+        </div>
+        ${r.payments?.length ? `<details class="fee-payment-history"><summary>Payment History (${r.payments.length})</summary>
+          ${r.payments.map(p => `<div class="fee-pay-hist-row">₹${p.amount} — ${_fmtFeeDate(p.paid_at)}${p.note ? ' · ' + _esc(p.note) : ''}</div>`).join('')}
+        </details>` : ''}
+      </div>`;
+    }
+
+    const statusIcon     = r.status === 'partial' ? '🟡' : '🔴';
+    const defaultInstAmt = r.next_installment_amount > 0 ? r.next_installment_amount : remaining;
+    const defaultInstDt  = r.next_installment_date
+      ? new Date(r.next_installment_date).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    const upiLink        = _buildUpiLink(defaultInstAmt, config?.label || 'Fee');
+    const upiBtn         = upiLink
+      ? `<button class="fee-upi-btn" data-link="${_esc(upiLink)}" title="UPI link copy + open">💳 UPI Link</button>`
+      : `<span class="fee-upi-missing" title="UPI ID set करा">⚠️ UPI ID नाही</span>`;
+
+    return `<div class="td-student-card fee-record-card">
+      <div class="fee-record-header">
+        <span>${statusIcon} <strong>${_esc(r.student_name)}</strong></span>
+        <span class="td-student-code">${_esc(r.student_code)}</span>
+      </div>
+
+      <div class="fee-amounts-grid">
+        <div class="fee-amount-row">
+          <span class="fee-amt-label">एकूण फी</span>
+          <span class="fee-amt-val">₹${r.total_amount}</span>
+        </div>
+        <div class="fee-amount-row">
+          <span class="fee-amt-label">भरलेली फी</span>
+          <span class="fee-amt-val" style="color:var(--success,#22c55e)">₹${r.paid_amount}</span>
+        </div>
+        <div class="fee-amount-row">
+          <span class="fee-amt-label">बाकी फी</span>
+          <span class="fee-amt-val" style="color:var(--error)">₹${remaining}</span>
+        </div>
+      </div>
+      <div class="fee-progress-wrap">
+        <div class="fee-progress-bar" style="width:${paidPct}%"></div>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text2);text-align:right;margin-bottom:8px">${paidPct}% भरली</div>
+
+      ${canPay ? `
+      <div class="fee-installment-section">
+        <div class="fee-installment-title">📅 पुढची Installment</div>
+        <div class="fee-installment-row">
+          <div class="fee-installment-field">
+            <label class="fee-inst-label">Amount (₹)</label>
+            <input class="td-modal-input fee-inst-amount" type="number" min="1" max="${remaining}"
+              id="fee-inst-amt-${rid}" value="${defaultInstAmt}" placeholder="₹ रक्कम">
+          </div>
+          <div class="fee-installment-field">
+            <label class="fee-inst-label">Date</label>
+            <input class="td-modal-input fee-inst-date" type="date"
+              id="fee-inst-dt-${rid}" value="${defaultInstDt}">
+          </div>
+        </div>
+        <div class="fee-installment-actions">
+          ${upiBtn}
+          <button class="fee-save-installment-btn" data-rid="${rid}" style="font-size:0.8rem">💾 Save</button>
+          <button class="fee-mark-paid-btn admin-btn-primary" data-rid="${rid}" style="font-size:0.85rem">✔ Mark as Paid</button>
+        </div>
+        <div class="fee-inst-note-wrap">
+          <input class="td-modal-input" type="text" placeholder="Note (optional)" id="fee-note-${rid}" style="margin-top:6px">
+        </div>
+      </div>` : ''}
+
+      ${r.payments?.length ? `<details class="fee-payment-history"><summary>Payment History (${r.payments.length})</summary>
+        ${r.payments.map(p => `<div class="fee-pay-hist-row">₹${p.amount} — ${_fmtFeeDate(p.paid_at)}${p.note ? ' · ' + _esc(p.note) : ''}</div>`).join('')}
+      </details>` : ''}
+    </div>`;
+  }
+
+  async function _saveNextInstallment(feeRecordId, feeConfigId) {
+    const amount = Number($(`fee-inst-amt-${feeRecordId}`)?.value || 0);
+    const date   = $(`fee-inst-dt-${feeRecordId}`)?.value || '';
+    if (!amount || amount <= 0) { APP?.toast?.('Amount टाका', 'error'); return; }
+    try {
+      await API.updateFeeNextInstallment(feeRecordId, { amount, date });
+      APP?.toast?.('💾 Installment saved', 'success');
+    } catch (err) {
+      APP?.toast?.(err.message || 'Save failed', 'error');
+    }
+  }
+
   async function _addFeePayment(feeRecordId, feeConfigId) {
-    const amtEl  = $(`fee-pay-${feeRecordId}`);
+    const amtEl  = $(`fee-inst-amt-${feeRecordId}`);
     const noteEl = $(`fee-note-${feeRecordId}`);
     const amount = Number(amtEl?.value || 0);
     if (!amount || amount <= 0) { APP?.toast?.('Amount टाका', 'error'); return; }
 
     try {
       const res = await API.addFeePayment(feeRecordId, { amount, note: noteEl?.value || '' });
-      APP?.toast?.(res.message || '✅ Payment added', 'success');
+
+      if (res.status === 'paid') {
+        APP?.toast?.('✅ पूर्ण फी जमा झाली! 🎉', 'success');
+      } else {
+        const upiLink = res.upi_link
+          ? `upi://pay?...` : null;
+        APP?.toast?.(res.message || '✅ Payment added', 'success');
+      }
       _openFeeRecords(feeConfigId);
     } catch (err) {
       APP?.toast?.('Payment failed: ' + err.message, 'error');
@@ -814,7 +1002,9 @@ const TEACHER_DASHBOARD = (() => {
   }
 
   function _openFeeCreateModal() {
-    const batches = [...new Set(_students.map(s => s.batch || s.assigned_batches?.[0]).filter(Boolean))];
+    const batches = [...new Set(
+      _students.flatMap(s => Array.isArray(s.assigned_batches) ? s.assigned_batches : (s.batch ? [s.batch] : []))
+    )].filter(Boolean).sort();
     const batchOpts = batches.map(b => `<option value="${_esc(b)}">${_esc(b)}</option>`).join('');
     const typeOpts  = ['tuition','exam','activity','other'].map(t =>
       `<option value="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('');
@@ -826,23 +1016,29 @@ const TEACHER_DASHBOARD = (() => {
       <div class="td-modal">
         <h3 class="td-modal-title">💰 नवीन Fee Config</h3>
         <div class="td-modal-field">
-          <label class="td-modal-label">Batch</label>
+          <label class="td-modal-label">BATCH</label>
           <select id="fc-batch" class="td-modal-select">${batchOpts}</select>
         </div>
         <div class="td-modal-field">
-          <label class="td-modal-label">Fee Type</label>
+          <label class="td-modal-label">STUDENT</label>
+          <select id="fc-student" class="td-modal-select">
+            <option value="">— सर्व batch students —</option>
+          </select>
+        </div>
+        <div class="td-modal-field">
+          <label class="td-modal-label">FEE TYPE</label>
           <select id="fc-type" class="td-modal-select">${typeOpts}</select>
         </div>
         <div class="td-modal-field">
-          <label class="td-modal-label">Label (e.g. June Tuition 2026)</label>
+          <label class="td-modal-label">LABEL (E.G. JUNE TUITION 2026)</label>
           <input id="fc-label" class="td-modal-input" placeholder="Fee चे नाव">
         </div>
         <div class="td-modal-field">
-          <label class="td-modal-label">Amount per Student (₹)</label>
+          <label class="td-modal-label">AMOUNT PER STUDENT (₹)</label>
           <input id="fc-amount" class="td-modal-input" type="number" min="1" placeholder="5000">
         </div>
         <div class="td-modal-field">
-          <label class="td-modal-label">Due Date</label>
+          <label class="td-modal-label">DUE DATE</label>
           <input id="fc-due-date" class="td-modal-input" type="date" value="${today}">
         </div>
         <div class="td-modal-actions">
@@ -852,30 +1048,58 @@ const TEACHER_DASHBOARD = (() => {
       </div>`;
 
     document.body.appendChild(overlay);
+
+    // Populate student dropdown on batch change
+    function _refreshStudentDropdown(batch) {
+      const sel = overlay.querySelector('#fc-student');
+      const batchStudents = _students.filter(s => {
+        const batches = Array.isArray(s.assigned_batches) ? s.assigned_batches : (s.batch ? [s.batch] : []);
+        return batches.includes(batch);
+      });
+      sel.innerHTML = `<option value="">— सर्व batch students (${batchStudents.length}) —</option>`;
+      batchStudents.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.student_code;
+        opt.textContent = `${s.name} (${s.student_code})`;
+        sel.appendChild(opt);
+      });
+    }
+
+    const initBatch = overlay.querySelector('#fc-batch').value;
+    if (initBatch) _refreshStudentDropdown(initBatch);
+    overlay.querySelector('#fc-batch').addEventListener('change', e => _refreshStudentDropdown(e.target.value));
+
     overlay.querySelector('#fc-cancel').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
     overlay.querySelector('#fc-submit').addEventListener('click', async () => {
       const batch        = overlay.querySelector('#fc-batch').value;
+      const student_code = overlay.querySelector('#fc-student').value;
       const fee_type     = overlay.querySelector('#fc-type').value;
       const label        = overlay.querySelector('#fc-label').value.trim();
       const total_amount = Number(overlay.querySelector('#fc-amount').value);
       const due_date     = overlay.querySelector('#fc-due-date').value;
 
-      if (!label)              { APP?.toast?.('Label टाका', 'error'); return; }
+      if (!batch)                          { APP?.toast?.('Batch निवडा', 'error'); return; }
+      if (!label)                          { APP?.toast?.('Label टाका', 'error'); return; }
       if (!total_amount || total_amount < 1) { APP?.toast?.('Amount टाका', 'error'); return; }
-      if (!due_date)           { APP?.toast?.('Due Date टाका', 'error'); return; }
+      if (!due_date)                       { APP?.toast?.('Due Date टाका', 'error'); return; }
 
-      overlay.querySelector('#fc-submit').disabled = true;
-      overlay.querySelector('#fc-submit').textContent = 'Creating...';
+      const submitBtn = overlay.querySelector('#fc-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating...';
       try {
-        const res = await API.createFeeConfig({ batch, fee_type, label, total_amount, due_date });
-        APP?.toast?.(`✅ ${res.student_count} students साठी Fee तयार झाली!`, 'success');
+        const res = await API.createFeeConfig({ batch, fee_type, label, total_amount, due_date,
+          student_code: student_code || undefined });
+        const who = student_code
+          ? `${overlay.querySelector('#fc-student option:checked')?.textContent || student_code}`
+          : `${res.student_count} students`;
+        APP?.toast?.(`✅ ${who} साठी Fee तयार झाली!`, 'success');
         overlay.remove();
         _loadFeeConfigs();
       } catch (err) {
         APP?.toast?.(err.message, 'error');
-        overlay.querySelector('#fc-submit').disabled = false;
-        overlay.querySelector('#fc-submit').textContent = '✅ Create';
+        submitBtn.disabled = false;
+        submitBtn.textContent = '✅ Create';
       }
     });
   }
