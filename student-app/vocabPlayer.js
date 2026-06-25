@@ -619,6 +619,14 @@ const VOCAB = (() => {
       const el = $id(id);
       if (el) el.classList.toggle('hidden', !id.includes(name));
     });
+    // Notes panel is managed by its own tab — always hide when switching views
+    $id('vocab-notes-panel')?.classList.add('hidden');
+    // When returning to test-list, restore the Learn tab as default
+    if (name === 'test-list') {
+      $id('vocab-dict-view')?.classList.remove('hidden');
+      ['vocab-tab-learn','vocab-tab-tests','vocab-tab-word-tests','vocab-tab-notes']
+        .forEach(id => $id(id)?.classList.toggle('vocab-tab-active', id === 'vocab-tab-learn'));
+    }
     // FAB only on test-list view
     const fab = $id('vocab-add-word-btn');
     if (fab) fab.classList.toggle('vocab-fab-visible', name === 'test-list');

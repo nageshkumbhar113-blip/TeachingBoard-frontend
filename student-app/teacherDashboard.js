@@ -867,10 +867,10 @@ const TEACHER_DASHBOARD = (() => {
         </div>
         <div class="fee-record-amounts">
           <span>Total: <strong>₹${r.total_amount}</strong></span>
-          ${lastPay ? `<span style="color:var(--text2);font-size:0.8rem">Completed: ${_fmtFeeDate(lastPay.paid_at)}</span>` : ''}
+          ${lastPay ? `<span style="color:var(--text2);font-size:0.8rem">Completed: ${_fmtFeeDate(lastPay.paid_at)} · ${_modeLabel(lastPay.payment_mode)}</span>` : ''}
         </div>
         ${r.payments?.length ? `<details class="fee-payment-history"><summary>Payment History (${r.payments.length})</summary>
-          ${r.payments.map(p => `<div class="fee-pay-hist-row">₹${p.amount} — ${_fmtFeeDate(p.paid_at)}${p.note ? ' · ' + _esc(p.note) : ''}</div>`).join('')}
+          ${r.payments.map(p => `<div class="fee-pay-hist-row">₹${p.amount} · ${_modeLabel(p.payment_mode)} — ${_fmtFeeDate(p.paid_at)}${p.note ? ' · ' + _esc(p.note) : ''}</div>`).join('')}
         </details>` : ''}
       </div>`;
     }
@@ -920,23 +920,44 @@ const TEACHER_DASHBOARD = (() => {
               id="fee-inst-amt-${rid}" value="${defaultInstAmt}" placeholder="₹ रक्कम">
           </div>
           <div class="fee-installment-field">
-            <label class="fee-inst-label">Date</label>
+            <label class="fee-inst-label">Planned Date</label>
             <input class="td-modal-input fee-inst-date" type="date"
               id="fee-inst-dt-${rid}" value="${defaultInstDt}">
           </div>
         </div>
         <div class="fee-installment-actions">
           ${upiBtn}
-          <button class="fee-save-installment-btn" data-rid="${rid}" style="font-size:0.8rem">💾 Save</button>
-          <button class="fee-mark-paid-btn admin-btn-primary" data-rid="${rid}" style="font-size:0.85rem">✔ Mark as Paid</button>
+          <button class="fee-save-installment-btn" data-rid="${rid}" style="font-size:0.8rem">💾 Save Plan</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border,#333);margin:10px 0">
+        <div class="fee-installment-title">✅ Payment Record करा</div>
+        <div class="fee-installment-row">
+          <div class="fee-installment-field">
+            <label class="fee-inst-label">Paid Date</label>
+            <input class="td-modal-input fee-paid-date" type="date"
+              id="fee-paid-dt-${rid}" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="fee-installment-field">
+            <label class="fee-inst-label">Payment Mode</label>
+            <select class="td-modal-select fee-pay-mode" id="fee-pay-mode-${rid}">
+              <option value="cash">💵 Cash</option>
+              <option value="online">🌐 Online</option>
+              <option value="upi">📱 UPI</option>
+              <option value="cheque">🏦 Cheque</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
         </div>
         <div class="fee-inst-note-wrap">
-          <input class="td-modal-input" type="text" placeholder="Note (optional)" id="fee-note-${rid}" style="margin-top:6px">
+          <input class="td-modal-input" type="text" placeholder="Note (optional)" id="fee-note-${rid}" style="margin-top:4px">
+        </div>
+        <div style="margin-top:8px">
+          <button class="fee-mark-paid-btn admin-btn-primary" data-rid="${rid}" style="width:100%;font-size:0.9rem">✔ Mark as Paid</button>
         </div>
       </div>` : ''}
 
       ${r.payments?.length ? `<details class="fee-payment-history"><summary>Payment History (${r.payments.length})</summary>
-        ${r.payments.map(p => `<div class="fee-pay-hist-row">₹${p.amount} — ${_fmtFeeDate(p.paid_at)}${p.note ? ' · ' + _esc(p.note) : ''}</div>`).join('')}
+        ${r.payments.map(p => `<div class="fee-pay-hist-row">₹${p.amount} · ${_modeLabel(p.payment_mode)} — ${_fmtFeeDate(p.paid_at)}${p.note ? ' · ' + _esc(p.note) : ''}</div>`).join('')}
       </details>` : ''}
     </div>`;
   }
@@ -954,13 +975,20 @@ const TEACHER_DASHBOARD = (() => {
   }
 
   async function _addFeePayment(feeRecordId, feeConfigId) {
-    const amtEl  = $(`fee-inst-amt-${feeRecordId}`);
-    const noteEl = $(`fee-note-${feeRecordId}`);
-    const amount = Number(amtEl?.value || 0);
+    const amtEl    = $(`fee-inst-amt-${feeRecordId}`);
+    const noteEl   = $(`fee-note-${feeRecordId}`);
+    const paidDtEl = $(`fee-paid-dt-${feeRecordId}`);
+    const modeEl   = $(`fee-pay-mode-${feeRecordId}`);
+    const amount   = Number(amtEl?.value || 0);
     if (!amount || amount <= 0) { APP?.toast?.('Amount टाका', 'error'); return; }
 
     try {
-      const res = await API.addFeePayment(feeRecordId, { amount, note: noteEl?.value || '' });
+      const res = await API.addFeePayment(feeRecordId, {
+        amount,
+        note:         noteEl?.value || '',
+        paid_date:    paidDtEl?.value || '',
+        payment_mode: modeEl?.value  || 'cash',
+      });
 
       if (res.status === 'paid') {
         APP?.toast?.('✅ पूर्ण फी जमा झाली! 🎉', 'success');
@@ -1106,6 +1134,11 @@ const TEACHER_DASHBOARD = (() => {
     if (!d) return '';
     const dt = new Date(d);
     return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+  }
+
+  function _modeLabel(mode) {
+    const map = { cash: '💵 Cash', online: '🌐 Online', upi: '📱 UPI', cheque: '🏦 Cheque', other: 'Other' };
+    return map[mode] || (mode ? mode : '');
   }
 
   function _feeDaysLeft(dueDate) {

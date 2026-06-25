@@ -12,6 +12,8 @@ const NOTES_PLAYER = (() => {
   let _rendering   = false;
   let _currentNoteId = null;
 
+  let _cachedProfile   = null;
+
   // Pinch zoom state
   let _pinchStartDist = 0;
   let _pinchStartScale = 1;
@@ -66,8 +68,8 @@ const NOTES_PLAYER = (() => {
   // ── Watermark ─────────────────────────────────────────────────────────────
   function _addWatermark(canvas) {
     const ctx   = canvas.getContext('2d');
-    const name  = APP.getStudentName?.()  || localStorage.getItem('student_name') || 'Student';
-    const batch = APP.getStudentBatch?.() || localStorage.getItem('student_batch') || '';
+    const name  = _cachedProfile?.name || _cachedProfile?.student_code || 'Student';
+    const batch = (_cachedProfile?.assigned_batches || [])[0] || '';
     const date  = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     const size  = Math.max(14, Math.floor(canvas.width / 22));
 
@@ -256,16 +258,32 @@ const NOTES_PLAYER = (() => {
     // Ensure PDF.js is ready
     if (typeof pdfjsLib === 'undefined') {
       _setText('np-loader-msg', 'Loading PDF engine…');
-      await _waitForPdfJs();
+      try {
+        await _waitForPdfJs();
+      } catch (e) {
+        _hide('np-loader');
+        _show('np-error');
+        _setText('np-error-msg', e.message || 'PDF engine could not load. Check your internet connection.');
+        return;
+      }
     }
+
+    // Ensure profile cached for watermark
+    if (!_cachedProfile) _cachedProfile = await API.getStudentProfile().catch(() => null);
 
     await _loadPdf(noteId, studentCode);
   }
 
-  function _waitForPdfJs() {
-    return new Promise(resolve => {
-      const check = () => (typeof pdfjsLib !== 'undefined') ? resolve() : setTimeout(check, 100);
-      check();
+  function _waitForPdfJs(timeoutMs = 12000) {
+    return new Promise((resolve, reject) => {
+      if (typeof pdfjsLib !== 'undefined') return resolve();
+      const deadline = Date.now() + timeoutMs;
+      const check = () => {
+        if (typeof pdfjsLib !== 'undefined') return resolve();
+        if (Date.now() >= deadline) return reject(new Error('PDF engine failed to load. Please check your internet connection and try again.'));
+        setTimeout(check, 150);
+      };
+      setTimeout(check, 150);
     });
   }
 
@@ -293,6 +311,9 @@ const NOTES_PLAYER = (() => {
 
     const notes = result.notes || [];
 
+    // Cache student profile for encryption key + watermark
+    if (!_cachedProfile) _cachedProfile = await API.getStudentProfile().catch(() => null);
+
     // Check which notes are cached
     const cacheStatus = {};
     for (const n of notes) {
@@ -318,7 +339,7 @@ const NOTES_PLAYER = (() => {
       </div>
     `).join('');
 
-    const studentCode = APP.getStudentCode?.() || localStorage.getItem('student_code') || '';
+    const studentCode = _cachedProfile?.student_code || '';
 
     listEl.querySelectorAll('.np-note-card').forEach(card => {
       const open = () => openNote(card.dataset.id, card.dataset.title, studentCode);

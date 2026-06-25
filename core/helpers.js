@@ -1600,12 +1600,12 @@ const API = (() => {
     });
   }
 
-  async function addFeePayment(feeRecordId, { amount, note = '' }) {
+  async function addFeePayment(feeRecordId, { amount, note = '', payment_mode = 'cash', paid_date = '' }) {
     const token = await ensureTeacherSession();
     return request(`/fee/records/${encodeURIComponent(feeRecordId)}/payment`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ amount, note }),
+      body: JSON.stringify({ amount, note, payment_mode, paid_date }),
     });
   }
 
