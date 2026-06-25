@@ -18,15 +18,16 @@ const PARENT_DASHBOARD = (() => {
   // ── Load ─────────────────────────────────────────────────────────────────────
 
   async function loadDashboard() {
-    const wrapEl = $('pd-content');
-    if (!wrapEl) return;
-    wrapEl.innerHTML = '<p class="td-hint">Loading...</p>';
+    if (!$('pd-content')) return;
     _showChildList();
+
+    const listEl = $('pd-child-list');
+    if (listEl) listEl.innerHTML = '<p class="td-hint">Loading...</p>';
 
     try {
       _children = await API.fetchParentChildren();
     } catch (err) {
-      wrapEl.innerHTML = `<p class="td-hint">${_esc(err.message || 'Failed to load children')}</p>`;
+      if (listEl) listEl.innerHTML = `<p class="td-hint">${_esc(err.message || 'Failed to load children')}</p>`;
       return;
     }
 
