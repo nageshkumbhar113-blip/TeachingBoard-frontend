@@ -49,7 +49,7 @@ echo  App ID      : com.teachingboard.student
 echo  App Name    : TB Student
 echo  Icon        : Blue (#1565C0)
 echo  Version     : %VERSION%  (code %VERSION_CODE%)
-echo  SW Version  : v41
+echo  SW Version  : v42
 echo.
 echo  Android Studio opening...
 echo  → Build ^> Generate Signed Bundle/APK ^> APK ^> Release
