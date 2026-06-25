@@ -8,10 +8,18 @@ set VERSION=5.0.0
 set VERSION_CODE=50
 :: ─────────────────────────────────────────────────────────────────────────────
 
+:: [PRE] Clean any leftover .bak from a previous failed build
+if exist capacitor.config.ts.bak (
+  echo [PRE] Cleaning leftover capacitor.config.ts.bak...
+  del capacitor.config.ts.bak >nul 2>&1
+)
+
 echo [0/6] Patching version %VERSION% (code %VERSION_CODE%)...
-powershell -Command "(Get-Content 'env.js') -replace 'APP_VERSION = ''[^'']+''','APP_VERSION = ''%VERSION%''' | Set-Content 'env.js'"
-powershell -Command "(Get-Content 'android\app\build.gradle') -replace 'versionCode \d+','versionCode %VERSION_CODE%' | Set-Content 'android\app\build.gradle'"
-powershell -Command "(Get-Content 'android\app\build.gradle') -replace 'versionName \""[^\""]+\""','versionName \"%VERSION%\"' | Set-Content 'android\app\build.gradle'"
+node -e "const fs=require('fs');let t=fs.readFileSync('env.js','utf8');t=t.replace(/APP_VERSION\s*=\s*'[^']+'/,\"APP_VERSION = '%VERSION%'\");fs.writeFileSync('env.js',t,'utf8');console.log('  env.js patched');"
+if errorlevel 1 ( echo ERROR: env.js patch failed & pause & exit /b 1 )
+
+node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/versionCode \d+/,'versionCode %VERSION_CODE%').replace(/versionName \"[^\"]+\"/,'versionName \"%VERSION%\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  build.gradle patched');"
+if errorlevel 1 ( echo ERROR: build.gradle patch failed & pause & exit /b 1 )
 
 echo [1/6] Preparing web assets...
 node tools/prepare-student.mjs
@@ -22,7 +30,8 @@ copy /Y capacitor.config.ts capacitor.config.ts.bak >nul 2>&1
 copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
 
 echo [3/6] Patching applicationId → com.teachingboard.student ...
-powershell -Command "(Get-Content android\app\build.gradle) -replace 'applicationId \""com\.teachingboard\.[^\""]+\""','applicationId \"com.teachingboard.student\"' | Set-Content android\app\build.gradle"
+node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/applicationId \"com\.teachingboard\.[^\"]+\"/,'applicationId \"com.teachingboard.student\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  applicationId patched');"
+if errorlevel 1 ( echo ERROR: applicationId patch failed & pause & exit /b 1 )
 
 echo [4/6] Setting Student icon (blue) and app name...
 copy /Y icons-student\ic_launcher_background.xml android\app\src\main\res\values\ic_launcher_background.xml >nul 2>&1
@@ -31,7 +40,7 @@ copy /Y icons-student\strings.xml android\app\src\main\res\values\strings.xml >n
 echo [5/6] Capacitor sync...
 npx cap sync android
 if errorlevel 1 (
-  echo ERROR: cap sync failed
+  echo ERROR: cap sync failed — restoring config
   copy /Y capacitor.config.ts.bak capacitor.config.ts >nul 2>&1
   del capacitor.config.ts.bak >nul 2>&1
   pause & exit /b 1
