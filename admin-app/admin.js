@@ -260,6 +260,8 @@ const ADMIN = (() => {
       { id: 'words-filter-batch', placeholder: 'All Batches' },
       { id: 'word-bulk-batch',    placeholder: 'Select Batch' },
       { id: 'we-batch',           placeholder: 'Select Batch' },
+      { id: 'nm-filter-batch',    placeholder: 'All Batches' },
+      { id: 'nm-upload-batch',    placeholder: 'Select Batch' },
     ];
 
     selectConfigs.forEach(({ id, placeholder }) => {
@@ -2693,12 +2695,16 @@ const ADMIN = (() => {
       const words = res.data || [];
 
       tbody.innerHTML = '';
+      const selectAll = $('words-select-all');
+      if (selectAll) selectAll.checked = false;
+      _updateWordsBulkBar();
       if (!words.length) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text2)">No words found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text2)">No words found</td></tr>`;
       } else {
         words.forEach(w => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
+            <td style="padding:4px 8px"><input type="checkbox" class="words-row-cb" data-wid="${_esc(w.word_id)}" style="cursor:pointer;width:16px;height:16px"></td>
             <td class="words-seq">${w.seq_num}</td>
             <td class="words-word-cell">${_esc(w.word)}</td>
             <td class="words-meaning-cell">${_esc(w.meaning_mr)}</td>
@@ -2733,7 +2739,7 @@ const ADMIN = (() => {
       _updateTestInfoBar(batch, subject, _wordsTotal);
 
     } catch (err) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:#f87171;padding:12px">${_esc(err.message)}</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="color:#f87171;padding:12px">${_esc(err.message)}</td></tr>`;
     }
   }
 
@@ -3177,6 +3183,21 @@ const ADMIN = (() => {
     }
   }
 
+  function _updateWordsBulkBar() {
+    const bar     = $('words-bulk-bar');
+    const countEl = $('words-selected-count');
+    const checked = document.querySelectorAll('.words-row-cb:checked');
+    if (!bar) return;
+    if (checked.length > 0) {
+      bar.classList.remove('hidden');
+      bar.style.display = 'flex';
+      if (countEl) countEl.textContent = `${checked.length} selected`;
+    } else {
+      bar.classList.add('hidden');
+      bar.style.display = '';
+    }
+  }
+
   function _initWordsTab() {
     // Filter events
     $('btn-words-search')?.addEventListener('click', () => { _wordsSkip = 0; _loadWordBank(); });
@@ -3242,6 +3263,40 @@ const ADMIN = (() => {
       }
     });
 
+    // Select-all checkbox
+    $('words-select-all')?.addEventListener('change', e => {
+      document.querySelectorAll('.words-row-cb').forEach(cb => { cb.checked = e.target.checked; });
+      _updateWordsBulkBar();
+    });
+
+    // Individual row checkbox — update bulk bar + sync select-all state
+    $('words-table-body')?.addEventListener('change', e => {
+      if (!e.target.classList.contains('words-row-cb')) return;
+      const all  = document.querySelectorAll('.words-row-cb');
+      const checked = document.querySelectorAll('.words-row-cb:checked');
+      const selAll = $('words-select-all');
+      if (selAll) selAll.checked = all.length > 0 && checked.length === all.length;
+      _updateWordsBulkBar();
+    });
+
+    // Bulk delete selected
+    $('btn-delete-selected-words')?.addEventListener('click', async () => {
+      const checked = [...document.querySelectorAll('.words-row-cb:checked')];
+      if (!checked.length) return;
+      if (!confirm(`Delete ${checked.length} selected word${checked.length > 1 ? 's' : ''}?`)) return;
+      const btn = $('btn-delete-selected-words');
+      if (btn) btn.disabled = true;
+      let failed = 0;
+      for (const cb of checked) {
+        try { await API.deleteAdminWord(cb.dataset.wid); }
+        catch { failed++; }
+      }
+      if (btn) btn.disabled = false;
+      if (failed) APP.toast(`${checked.length - failed} deleted, ${failed} failed`, 'error');
+      else        APP.toast(`${checked.length} word${checked.length > 1 ? 's' : ''} deleted`, 'success');
+      _loadWordBank();
+    });
+
     // Word list delegation (edit/delete)
     $('words-table-body')?.addEventListener('click', async e => {
       const editBtn = e.target.closest('.words-btn-edit');
@@ -3256,11 +3311,11 @@ const ADMIN = (() => {
           word_id:     wid,
           batch:       $('words-filter-batch')?.value   || '',
           subject:     $('words-filter-subject')?.value || '',
-          word:        cells[1]?.textContent || '',
-          meaning_mr:  cells[2]?.textContent || '',
-          meaning_en:  cells[3]?.textContent || '',
-          phonics:     cells[4]?.textContent || '',
-          difficulty:  cells[5]?.querySelector('span')?.textContent?.trim() || 'medium',
+          word:        cells[2]?.textContent || '',
+          meaning_mr:  cells[3]?.textContent || '',
+          meaning_en:  cells[4]?.textContent || '',
+          phonics:     cells[5]?.textContent || '',
+          difficulty:  cells[6]?.querySelector('span')?.textContent?.trim() || 'medium',
           emoji:       editBtn.dataset.emoji      || '',
           image_url:   editBtn.dataset.imageUrl   || '',
           visual_type: editBtn.dataset.visualType || 'word',

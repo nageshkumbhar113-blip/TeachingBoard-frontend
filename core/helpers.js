@@ -1607,24 +1607,35 @@ const API = (() => {
   // ─── Notes (Admin) ────────────────────────────────────────────────────────
 
   // Upload PDF note; data = "data:application/pdf;base64,..."
-  async function uploadNote({ title, batch, subject, data }) {
+  async function uploadNote({ title, batch, subject, chapter, data }) {
     const token = await ensureAdminSession();
     return request('/admin/notes/upload', {
       method:  'POST',
       headers: { Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ title, batch, subject, data }),
+      body:    JSON.stringify({ title, batch, subject, chapter: chapter || '', data }),
     });
   }
 
-  // List notes (admin) — optional batch/subject filter
-  async function fetchAdminNotes({ batch, subject } = {}) {
+  // List notes (admin) — optional batch/subject/chapter filter
+  async function fetchAdminNotes({ batch, subject, chapter } = {}) {
     const token  = await ensureAdminSession();
     const params = new URLSearchParams();
     if (batch)   params.set('batch',   batch);
     if (subject) params.set('subject', subject);
+    if (chapter) params.set('chapter', chapter);
     const qs = params.toString() ? '?' + params : '';
     return request(`/admin/notes${qs}`, {
       headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // Update note metadata (title, batch, subject, chapter)
+  async function updateNote(noteId, { title, batch, subject, chapter }) {
+    const token = await ensureAdminSession();
+    return request(`/admin/notes/${encodeURIComponent(noteId)}`, {
+      method:  'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ title, batch, subject, chapter: chapter || '' }),
     });
   }
 
@@ -1710,7 +1721,7 @@ const API = (() => {
     // ─── Fee Management (Teacher) ─────────────────────────────────
     createFeeConfig, listFeeConfigs, getFeeRecords, addFeePayment, updateFeeDueDate, closeFeeConfig,
     // ─── Notes (Admin) ────────────────────────────────────────────
-    uploadNote, fetchAdminNotes, deleteNote,
+    uploadNote, fetchAdminNotes, updateNote, deleteNote,
     // ─── Notes (Student) ─────────────────────────────────────────
     fetchStudentNotes, fetchNoteView,
   };

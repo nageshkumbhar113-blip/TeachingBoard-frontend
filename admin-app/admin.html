@@ -735,10 +735,15 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
 
             <!-- Word list -->
+            <div id="words-bulk-bar" class="hidden" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.35);border-radius:8px;margin-bottom:8px">
+              <span id="words-selected-count" style="font-size:0.88rem;color:var(--text2);flex:1">0 selected</span>
+              <button id="btn-delete-selected-words" class="admin-btn-secondary" style="color:#ef4444;border-color:#ef4444;padding:4px 14px">Delete Selected</button>
+            </div>
             <div id="words-list-wrap" class="words-list-wrap">
               <table class="words-table">
                 <thead>
                   <tr>
+                    <th style="width:36px;padding:4px 8px"><input type="checkbox" id="words-select-all" title="Select All" style="cursor:pointer;width:16px;height:16px"></th>
                     <th>#</th>
                     <th>Word</th>
                     <th>Meaning (MR)</th>
@@ -897,12 +902,15 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
 
             <!-- Filter bar -->
-            <div class="wt-toolbar" style="margin-bottom:12px">
+            <div class="wt-toolbar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
               <select id="nm-filter-batch" class="admin-select short">
                 <option value="">All Batches</option>
               </select>
               <select id="nm-filter-subject" class="admin-select short" disabled>
                 <option value="">All Subjects</option>
+              </select>
+              <select id="nm-filter-chapter" class="admin-select short" disabled>
+                <option value="">All Chapters</option>
               </select>
               <button id="nm-filter-btn" class="admin-btn-secondary admin-btn-sm">🔍 Filter</button>
               <button id="nm-upload-btn" class="admin-btn-primary" style="margin-left:auto">+ Upload PDF</button>
@@ -915,17 +923,23 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <label class="wt-field-label">Title</label>
               <input type="text" id="nm-upload-title" class="admin-input" placeholder="e.g. Chapter 3 Notes" maxlength="100" />
 
-              <div style="display:flex;gap:10px;margin-top:10px">
-                <div style="flex:1">
+              <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+                <div style="flex:1;min-width:120px">
                   <label class="wt-field-label">Batch</label>
                   <select id="nm-upload-batch" class="admin-select" style="width:100%">
                     <option value="">Select Batch</option>
                   </select>
                 </div>
-                <div style="flex:1">
+                <div style="flex:1;min-width:120px">
                   <label class="wt-field-label">Subject</label>
                   <select id="nm-upload-subject" class="admin-select" style="width:100%" disabled>
                     <option value="">Select Subject</option>
+                  </select>
+                </div>
+                <div style="flex:1;min-width:120px">
+                  <label class="wt-field-label">Chapter <span style="color:var(--c-muted);font-weight:400">(optional)</span></label>
+                  <select id="nm-upload-chapter" class="admin-select" style="width:100%" disabled>
+                    <option value="">Select Chapter</option>
                   </select>
                 </div>
               </div>
@@ -955,6 +969,40 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             <!-- Notes list -->
             <div id="nm-notes-list">
               <p class="nm-loading">Loading…</p>
+            </div>
+          </div>
+
+          <!-- ── Note Edit Modal ───────────────────────── -->
+          <div id="nm-edit-overlay" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px">
+            <div style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:20px;width:100%;max-width:440px">
+              <h3 style="margin:0 0 14px;font-size:1rem">✏️ Edit Note</h3>
+              <label class="wt-field-label">Title</label>
+              <input type="text" id="nm-edit-title" class="admin-input" maxlength="100" style="margin-bottom:10px" />
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <div style="flex:1;min-width:110px">
+                  <label class="wt-field-label">Batch</label>
+                  <select id="nm-edit-batch" class="admin-select" style="width:100%">
+                    <option value="">Select Batch</option>
+                  </select>
+                </div>
+                <div style="flex:1;min-width:110px">
+                  <label class="wt-field-label">Subject</label>
+                  <select id="nm-edit-subject" class="admin-select" style="width:100%" disabled>
+                    <option value="">Select Subject</option>
+                  </select>
+                </div>
+                <div style="flex:1;min-width:110px">
+                  <label class="wt-field-label">Chapter</label>
+                  <select id="nm-edit-chapter" class="admin-select" style="width:100%" disabled>
+                    <option value="">Select Chapter</option>
+                  </select>
+                </div>
+              </div>
+              <p id="nm-edit-error" class="hidden" style="color:#ef4444;font-size:0.85rem;margin-top:8px"></p>
+              <div style="display:flex;gap:10px;margin-top:16px">
+                <button id="nm-edit-cancel" class="admin-btn-secondary">Cancel</button>
+                <button id="nm-edit-save" class="admin-btn-primary">Save</button>
+              </div>
             </div>
           </div>
 
