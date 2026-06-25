@@ -302,7 +302,7 @@ const NOTES_MANAGER = (() => {
   }
 
   async function _deleteNote(noteId, title) {
-    if (!confirm(`Delete note "${title}"?\n\nThis cannot be undone.`)) return;
+    if (!await APP.confirmAsync(`Delete note "${title}"?\n\nThis cannot be undone.`)) return;
     try {
       await API.deleteNote(noteId);
       APP.toast('Note deleted', 'success');

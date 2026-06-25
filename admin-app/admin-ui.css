@@ -2179,3 +2179,28 @@ body.admin-app {
 .theme-light .nm-card-meta  { color: #64748b; }
 
 
+
+/* ── Android-safe confirm/prompt dialogs ── */
+.admin-dialog-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+}
+.admin-dialog-box {
+  background:var(--card-bg,#1e2433); border:1px solid var(--border,rgba(255,255,255,0.12));
+  border-radius:14px; padding:20px 16px 16px; width:100%; max-width:360px;
+}
+.admin-dialog-msg { font-size:0.95rem; color:var(--text,#e6edf3); margin:0 0 14px; line-height:1.5; white-space:pre-line; }
+.admin-dialog-input {
+  width:100%; box-sizing:border-box; background:var(--input-bg,rgba(255,255,255,0.07));
+  border:1px solid var(--border,rgba(255,255,255,0.15)); border-radius:8px;
+  color:var(--text,#e6edf3); font-size:1rem; padding:10px 12px; margin-bottom:14px;
+}
+.admin-dialog-btns { display:flex; gap:10px; justify-content:flex-end; }
+.admin-dialog-no  {
+  padding:9px 18px; border-radius:8px; border:1px solid var(--border,rgba(255,255,255,0.15));
+  background:transparent; color:var(--text2,#8b949e); font-size:0.9rem; cursor:pointer; min-height:44px;
+}
+.admin-dialog-yes {
+  padding:9px 18px; border-radius:8px; border:none;
+  background:var(--accent,#f97316); color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; min-height:44px;
+}

@@ -117,15 +117,15 @@ const WORD_TEST_BUILDER = (() => {
 
   async function _onCardAction(action, testId) {
     if (action === 'publish') {
-      if (!confirm('Publish this test? Students will see it immediately.')) return;
+      if (!await APP.confirmAsync('Publish this test? Students will see it immediately.')) return;
       try { await API.publishWordTest(testId); await _loadList(); }
       catch(e) { alert('Error: ' + e.message); }
     } else if (action === 'unpublish') {
-      if (!confirm('Unpublish this test?')) return;
+      if (!await APP.confirmAsync('Unpublish this test?')) return;
       try { await API.unpublishWordTest(testId); await _loadList(); }
       catch(e) { alert('Error: ' + e.message); }
     } else if (action === 'delete') {
-      if (!confirm('Delete this draft? This cannot be undone.')) return;
+      if (!await APP.confirmAsync('Delete this draft? This cannot be undone.')) return;
       try { await API.deleteWordTest(testId); await _loadList(); }
       catch(e) { alert('Error: ' + e.message); }
     } else if (action === 'edit') {
@@ -185,7 +185,7 @@ const WORD_TEST_BUILDER = (() => {
       const res = await API.autoGenerateWordTests({ batch: _batch, subject: _subject });
 
       if (res.conflict) {
-        const yes = confirm(
+        const yes = await APP.confirmAsync(
           `${res.existing} test(s) already exist for ${_batch} › ${_subject}.\n\nReplace them with new auto-generated tests?`
         );
         if (!yes) {
@@ -567,7 +567,7 @@ const WORD_TEST_BUILDER = (() => {
 
   async function _saveAndPublish() {
     if (!_previewData) return;
-    if (!confirm(`Publish "${_previewData.title}"? Students will see it immediately.`)) return;
+    if (!await APP.confirmAsync(`Publish "${_previewData.title}"? Students will see it immediately.`)) return;
     const pubBtn = $('wt-btn-publish');
     if (pubBtn) { pubBtn.disabled = true; pubBtn.textContent = 'Publishing...'; }
 

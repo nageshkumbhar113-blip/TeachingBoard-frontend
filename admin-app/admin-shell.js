@@ -202,6 +202,48 @@ const APP = (() => {
     });
   }
 
+  // Android-safe confirm/prompt (native dialogs blocked on WebView)
+  function confirmAsync(message) {
+    return new Promise(resolve => {
+      const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const overlay = document.createElement('div');
+      overlay.className = 'admin-dialog-overlay';
+      overlay.innerHTML = `<div class="admin-dialog-box">
+        <p class="admin-dialog-msg">${esc(message)}</p>
+        <div class="admin-dialog-btns">
+          <button class="admin-dialog-no">रद्द करा</button>
+          <button class="admin-dialog-yes">होय, पुढे जा</button>
+        </div></div>`;
+      document.body.appendChild(overlay);
+      const done = r => { overlay.remove(); resolve(r); };
+      overlay.querySelector('.admin-dialog-yes').addEventListener('click', () => done(true));
+      overlay.querySelector('.admin-dialog-no').addEventListener('click',  () => done(false));
+      overlay.addEventListener('click', e => { if (e.target === overlay) done(false); });
+    });
+  }
+
+  function promptAsync(message, inputType = 'text', defaultValue = '') {
+    return new Promise(resolve => {
+      const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const overlay = document.createElement('div');
+      overlay.className = 'admin-dialog-overlay';
+      overlay.innerHTML = `<div class="admin-dialog-box">
+        <p class="admin-dialog-msg">${esc(message)}</p>
+        <input class="admin-dialog-input" type="${esc(inputType)}" value="${esc(defaultValue)}">
+        <div class="admin-dialog-btns">
+          <button class="admin-dialog-no">रद्द करा</button>
+          <button class="admin-dialog-yes">OK</button>
+        </div></div>`;
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector('.admin-dialog-input');
+      setTimeout(() => input.focus(), 50);
+      const done = r => { overlay.remove(); resolve(r); };
+      overlay.querySelector('.admin-dialog-yes').addEventListener('click', () => done(input.value.trim() || null));
+      overlay.querySelector('.admin-dialog-no').addEventListener('click',  () => done(null));
+      overlay.addEventListener('click', e => { if (e.target === overlay) done(null); });
+    });
+  }
+
   return {
     init,
     toast,
@@ -210,6 +252,8 @@ const APP = (() => {
     setTheme,
     exitAdmin,
     openStudentQuiz,
+    confirmAsync,
+    promptAsync,
   };
 })();
 

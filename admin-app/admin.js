@@ -402,7 +402,7 @@ const ADMIN = (() => {
         await _loadChapterAdmin();
       });
       item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-        if (!confirm(`Delete subject "${subject.name}" from "${batch}"?`)) return;
+        if (!await APP.confirmAsync(`Delete subject "${subject.name}" from "${batch}"?`)) return;
         await DB.deleteBatchSubject(subject.id);
         await Promise.all([
           _loadSubjectAdmin(),
@@ -453,7 +453,7 @@ const ADMIN = (() => {
         </div>
       `;
       item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-        if (!confirm(`Delete chapter "${chapter.name}" from "${subject}"?`)) return;
+        if (!await APP.confirmAsync(`Delete chapter "${chapter.name}" from "${subject}"?`)) return;
         await DB.deleteSubjectChapter(chapter.id);
         await Promise.all([
           _loadChapterAdmin(),
@@ -610,7 +610,7 @@ const ADMIN = (() => {
       });
       item.querySelector('.qb-del-btn').addEventListener('click', async e => {
         e.stopPropagation();
-        if (!confirm(`Delete: "${_questionSummary(q, 60)}"?`)) return;
+        if (!await APP.confirmAsync(`Delete: "${_questionSummary(q, 60)}"?`)) return;
         if (q.backend_id) {
           try { await API.deleteQuestion(q.backend_id); } catch {}
         }
@@ -817,7 +817,7 @@ const ADMIN = (() => {
 
   async function _deleteCurrentQ() {
     if (!_editingQId) return;
-    if (!confirm(I18N.t('delete.confirm'))) return;
+    if (!await APP.confirmAsync(I18N.t('delete.confirm'))) return;
 
     const all      = await DB.getAllQuestions();
     const existing = all.find(q => q.q_id === _editingQId);
@@ -923,7 +923,7 @@ const ADMIN = (() => {
   }
 
   async function _deleteLessonItem(lesson) {
-    if (!confirm(`Delete lesson "${lesson.title}"?`)) return;
+    if (!await APP.confirmAsync(`Delete lesson "${lesson.title}"?`)) return;
     try {
       await API.deleteLesson(lesson.id);
       await DB.deleteLesson(lesson.id);
@@ -1228,7 +1228,7 @@ const ADMIN = (() => {
       `;
       item.querySelector('.admin-btn-danger').addEventListener('click', async e => {
         const { id, name } = e.target.dataset;
-        if (!confirm(`Delete batch "${name}"?`)) return;
+        if (!await APP.confirmAsync(`Delete batch "${name}"?`)) return;
         await DB.deleteBatch(parseInt(id));
         await Promise.all([
           _loadBatchAdmin(),
@@ -1258,7 +1258,7 @@ const ADMIN = (() => {
   }
 
   async function _addBatch() {
-    const name = prompt('Class/Batch name (e.g. Std 8):');
+    const name = await APP.promptAsync('Class/Batch name (e.g. Std 8):');
     if (!name) return;
     const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
     const icon  = icons[Math.floor(Math.random() * icons.length)];
@@ -1414,7 +1414,7 @@ const ADMIN = (() => {
         APP.openStudentQuiz?.(quiz.quiz_id, 'practice');
       });
       item.querySelector('.quiz-del-btn').addEventListener('click', async () => {
-        if (!confirm(`Delete quiz "${quiz.title}"?`)) return;
+        if (!await APP.confirmAsync(`Delete quiz "${quiz.title}"?`)) return;
         const remoteId = String(quiz.backend_id || quiz.quiz_id || '').trim();
         const needsRemoteDelete = quiz.status === 'published' || quiz.source === 'api' || !!quiz.backend_id;
 
@@ -1635,7 +1635,7 @@ const ADMIN = (() => {
     sharedBtn.addEventListener('click', async () => {
       _closeStudentDrawer();
       const nextShared = !isShared;
-      if (!confirm(nextShared
+      if (!await APP.confirmAsync(nextShared
         ? `"${student.name}" ला Shared Device चालू करायचं?`
         : `"${student.name}" ला Single Device वर lock करायचं?`)) return;
       try {
@@ -1651,7 +1651,7 @@ const ADMIN = (() => {
       const resetBtn = _mkBtn('🔓', 'Reset Device Binding');
       resetBtn.addEventListener('click', async () => {
         _closeStudentDrawer();
-        if (!confirm(`"${student.name}" चं device binding reset करायचं?`)) return;
+        if (!await APP.confirmAsync(`"${student.name}" चं device binding reset करायचं?`)) return;
         try {
           await API.resetStudentDevice(student.id);
           APP.toast('Device binding reset झालं', 'success');
@@ -1665,7 +1665,7 @@ const ADMIN = (() => {
     const deleteBtn = _mkBtn('🗑️', 'Delete Student', true);
     deleteBtn.addEventListener('click', async () => {
       _closeStudentDrawer();
-      if (!confirm(`"${student.name}" (${student.student_code}) ला permanently delete करायचं?\n\nहे action undo होणार नाही!`)) return;
+      if (!await APP.confirmAsync(`"${student.name}" (${student.student_code}) ला permanently delete करायचं?\n\nहे action undo होणार नाही!`)) return;
       try {
         await API.deleteStudent(student.id);
         APP.toast(`${student.name} deleted ✅`, 'success');
@@ -1829,7 +1829,7 @@ const ADMIN = (() => {
       });
 
       item.querySelector('.pending-reject-btn')?.addEventListener('click', async () => {
-        if (!confirm(`"${student.name}" चा request reject करायचा?`)) return;
+        if (!await APP.confirmAsync(`"${student.name}" चा request reject करायचा?`)) return;
         try {
           await API.updateStudent(student.id, { status: 'blocked' });
           APP.toast(`${student.name} rejected`, 'info');
@@ -1973,7 +1973,7 @@ const ADMIN = (() => {
       btn.addEventListener('click', async () => {
         const t = _teachersCache.find(x => x.id === btn.dataset.teacherDelete);
         if (!t) return;
-        if (!confirm(`Delete teacher "${t.name}"?`)) return;
+        if (!await APP.confirmAsync(`Delete teacher "${t.name}"?`)) return;
         try {
           await API.deleteTeacher(t.id);
           APP.toast('Teacher deleted', 'success');
@@ -2113,7 +2113,7 @@ const ADMIN = (() => {
       btn.addEventListener('click', async () => {
         const p = _parentsCache.find(x => x.id === btn.dataset.parentDelete);
         if (!p) return;
-        if (!confirm(`Delete parent "${p.name}"?`)) return;
+        if (!await APP.confirmAsync(`Delete parent "${p.name}"?`)) return;
         try {
           await API.deleteParent(p.id);
           APP.toast('Parent deleted', 'success');
@@ -2310,7 +2310,7 @@ const ADMIN = (() => {
 
   async function _deleteVersion(versionId) {
     if (!versionId) return;
-    if (!confirm('हे version delete करायचे आहे का?')) return;
+    if (!await APP.confirmAsync('हे version delete करायचे आहे का?')) return;
     try {
       await API.deleteAppVersion(versionId);
       APP.toast('Version deleted', 'success');
@@ -2664,7 +2664,7 @@ const ADMIN = (() => {
     });
     $('setting-shuffle')?.addEventListener('change', e => DB.setSetting('shuffle', e.target.checked));
     $('btn-reset-data')?.addEventListener('click', async () => {
-      if (confirm(I18N.t('reset.confirm'))) {
+      if (await APP.confirmAsync(I18N.t('reset.confirm'))) {
         await DB.resetAll();
         APP.toast('✅ Data reset complete', 'info');
         APP.refreshHome();
@@ -3371,7 +3371,7 @@ const ADMIN = (() => {
         alert('Please select a Batch and Subject first.');
         return;
       }
-      if (!confirm(`Re-sequence all words in "${batch} / ${subject}"?\nThis renumbers seq_num 1,2,3… in current order and fixes test boundaries.`)) return;
+      if (!await APP.confirmAsync(`Re-sequence all words in "${batch} / ${subject}"?\nThis renumbers seq_num 1,2,3… in current order and fixes test boundaries.`)) return;
       try {
         const res = await API.resequenceAdminWords({ batch, subject });
         alert(`✅ Re-sequenced ${res.count} words.`);
@@ -3425,7 +3425,7 @@ const ADMIN = (() => {
     $('btn-delete-selected-words')?.addEventListener('click', async () => {
       const checked = [...document.querySelectorAll('.words-row-cb:checked')];
       if (!checked.length) return;
-      if (!confirm(`Delete ${checked.length} selected word${checked.length > 1 ? 's' : ''}?`)) return;
+      if (!await APP.confirmAsync(`Delete ${checked.length} selected word${checked.length > 1 ? 's' : ''}?`)) return;
       const btn = $('btn-delete-selected-words');
       if (btn) btn.disabled = true;
       let failed = 0;
@@ -3466,7 +3466,7 @@ const ADMIN = (() => {
       if (delBtn) {
         const wid  = delBtn.dataset.wid;
         const name = delBtn.dataset.wname;
-        if (!confirm(`Delete word "${name}"?`)) return;
+        if (!await APP.confirmAsync(`Delete word "${name}"?`)) return;
         try {
           await API.deleteAdminWord(wid);
           APP.toast('Word deleted', 'success');
