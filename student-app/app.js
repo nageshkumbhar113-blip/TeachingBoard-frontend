@@ -66,6 +66,10 @@ const APP = (() => {
   // ════════════════════════
 
   async function init() {
+    // Server wake-up ping — सर्वात पहिले fire करा (fire-and-forget)
+    // Render free tier 15 min idle नंतर झोपतो; login form दिसण्यापूर्वी server जागा व्हायला वेळ मिळतो
+    fetch(API.getApiUrl() + '/health').catch(() => {});
+
     _installGlobalGuards();
     _applyDeviceFlags();
     console.log('🚀 TeachingBoard starting…');
@@ -186,10 +190,6 @@ const APP = (() => {
   }
 
   function _startBackground() {
-    // Wake up Render server immediately — free tier sleeps after 15 min idle.
-    // Fire-and-forget: by the time user fills login form, server is usually ready.
-    fetch(API.getApiUrl() + '/health').catch(() => {});
-
     _runWhenIdle(() => {
       _primeQuizCache().catch(err => console.warn('initial quiz cache warm failed', err));
     });
@@ -392,14 +392,21 @@ const APP = (() => {
         try {
           const refreshed = await API.fetchStudentMe();
           _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
-        } catch {
-          // Session expired — stop sync, force full re-login
-          window.SYNC?.stopStudentAutoSync?.();
-          await API.clearStudentProfile?.().catch(() => {});
-          return new Promise(resolve => _showOnboarding(async () => {
-            await _refreshProfileAfterLogin();
-            resolve();
-          }, { force: true }));
+        } catch (err) {
+          const msg = String(err?.message || '').toLowerCase();
+          const isAuthError = msg.includes('unauthorized') || msg.includes('expired') ||
+                              msg.includes('blocked') || msg.includes('pending');
+          if (isAuthError) {
+            // खरोखर auth fail (401/403) — forced re-login mandatory
+            window.SYNC?.stopStudentAutoSync?.();
+            await API.clearStudentProfile?.().catch(() => {});
+            return new Promise(resolve => _showOnboarding(async () => {
+              await _refreshProfileAfterLogin();
+              resolve();
+            }, { force: true }));
+          }
+          // Network error / server sleeping / timeout — cached profile वापरत राहा
+          console.warn('fetchStudentMe failed (network/server), continuing with cached profile', err?.message);
         }
       }
       return;
@@ -448,9 +455,20 @@ const APP = (() => {
       function _attempt() {
         const entered = String(input?.value || '').trim();
         if (!entered) { input?.focus(); return; }
-        if (!storedPin || entered === storedPin) { _unlock(); return; }
+        if (!storedPin) {
+          // DB मध्ये PIN नाही — re-login आवश्यक
+          if (errorEl) {
+            errorEl.textContent = 'PIN सापडला नाही. "Switch Account" करून पुन्हा login करा.';
+            errorEl.classList.remove('hidden');
+          }
+          return;
+        }
+        if (entered === storedPin) { _unlock(); return; }
         // Wrong PIN — shake, no bypass
-        if (errorEl) errorEl.classList.remove('hidden');
+        if (errorEl) {
+          errorEl.textContent = '';
+          errorEl.classList.remove('hidden');
+        }
         if (input) {
           input.classList.add('shake');
           input.value = '';

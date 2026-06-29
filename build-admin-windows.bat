@@ -9,6 +9,10 @@ if %errorlevel% neq 0 (
 
 cd /d "%~dp0"
 
+:: ── Version — build-student.bat / build-admin.bat शी sync ठेवा ──────────────
+set VERSION=5.0.1
+:: ─────────────────────────────────────────────────────────────────────────────
+
 echo ========================================
 echo  TeachingBoard — ADMIN Windows Build
 echo ========================================
@@ -34,7 +38,7 @@ echo ========================================
 echo  ✅ Admin Windows app ready!
 echo ========================================
 echo  Output folder : dist-electron\
-echo  Version       : 4.4.4
+echo  Version       : %VERSION%
 echo.
 echo  Dusrya PC var install karayla:
 echo  1. dist-electron\ folder copy kara
