@@ -842,7 +842,15 @@ const APP = (() => {
         if (err?.code === 'DEVICE_MISMATCH') {
           msg = 'हे account दुसऱ्या device वर registered आहे. Admin ला reset करायला सांगा.';
         } else if (err?.code === 'ACCOUNT_PENDING') {
-          msg = '⏳ तुमचा account अजून approve झाला नाही. Admin ची वाट पाहा.';
+          // No admin approval anymore — pending means "not subscribed yet".
+          // Offer the plan-select / payment flow directly.
+          msg = '⏳ Subscription active नाही — Plan निवडून सुरू करा.';
+          if (window.PAYMENT?.openPlanSelect && code) {
+            setTimeout(() => PAYMENT.openPlanSelect(
+              { student_code: code, pin, name: '', contact: '' },
+              () => _save()
+            ), 400);
+          }
         } else if (err?.code === 'ACCOUNT_BLOCKED') {
           msg = '🚫 तुमचा account block केला आहे. Admin ला संपर्क करा.';
         } else if (/invalid credentials/i.test(msg) || /unauthorized/i.test(msg)) {
