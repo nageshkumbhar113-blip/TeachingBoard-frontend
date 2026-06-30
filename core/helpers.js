@@ -1205,6 +1205,38 @@ const API = (() => {
     });
   }
 
+  // ── Payments / Subscriptions (public, student_code + PIN auth) ───────────────
+
+  async function getPaymentConfig() {
+    return request('/payment/config').catch(() => ({ configured: false, key_id: '' }));
+  }
+
+  async function getBatchPlans() {
+    const payload = await request('/batches/pricing/all');
+    return payload?.data || [];
+  }
+
+  async function createPaymentOrder({ student_code, pin, batch, period }) {
+    return request('/payment/order', {
+      method: 'POST',
+      body: JSON.stringify({ student_code, pin, batch, period }),
+    });
+  }
+
+  async function startTrial({ student_code, pin, batch }) {
+    return request('/payment/trial', {
+      method: 'POST',
+      body: JSON.stringify({ student_code, pin, batch }),
+    });
+  }
+
+  async function getSubscriptionStatus({ student_code, pin }) {
+    return request('/payment/status', {
+      method: 'POST',
+      body: JSON.stringify({ student_code, pin }),
+    });
+  }
+
   async function resetStudentDevice(studentId, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/students/${encodeURIComponent(studentId)}/reset-device`, {
@@ -1765,6 +1797,7 @@ const API = (() => {
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
+    getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher,
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,

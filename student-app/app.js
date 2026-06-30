@@ -641,12 +641,26 @@ const APP = (() => {
           detailEl.innerHTML =
             '<button type="button" id="reg-copy-code" class="onboarding-skip" style="margin:6px 0">📋 Code Copy करा</button>' +
             '<br>💾 <strong>हा code जपून ठेवा</strong> — login साठी लागेल.' +
-            '<br>⏳ Admin approve केल्यानंतर (साधारण 24-48 तास) login होईल.' +
-            '<br>❓ अडचण असल्यास शाळेच्या admin शी संपर्क करा.';
+            '<br><button type="button" id="reg-choose-plan" class="onboarding-btn" style="margin-top:10px">🎟️ Plan निवडा & सुरू करा →</button>';
           detailEl.querySelector('#reg-copy-code')?.addEventListener('click', () => {
             navigator.clipboard?.writeText(code)
               .then(() => toast('Code copy झाला ✓', 'success'))
               .catch(() => toast('Copy करता आले नाही', 'error'));
+          });
+          const _goLogin = () => {
+            regCard?.classList.add('hidden');
+            if (loginCard) loginCard.classList.remove('hidden');
+            const codeIn = document.getElementById('ob-student-code');
+            if (codeIn) codeIn.value = code;
+            document.getElementById('ob-pin')?.focus();
+            toast('आता तुमचा PIN टाकून login करा', 'info');
+          };
+          detailEl.querySelector('#reg-choose-plan')?.addEventListener('click', () => {
+            if (window.PAYMENT?.openPlanSelect) {
+              PAYMENT.openPlanSelect({ student_code: code, pin, name, contact: mobile }, _goLogin);
+            } else {
+              toast('Payment system उपलब्ध नाही', 'error');
+            }
           });
         }
         if (successEl) successEl.classList.remove('hidden');

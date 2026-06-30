@@ -1178,43 +1178,21 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                     <input id="bp-batch-name" type="text" placeholder="e.g., Physics Class 12" aria-label="Batch name" required />
                   </div>
 
-                  <fieldset class="bp-form-group" style="border:none;padding:0;margin:0 0 1.5rem 0;">
-                    <legend style="font-weight:600;color:#001f5c;margin-bottom:0.6rem;font-size:0.95rem;">💰 Pricing Type</legend>
-                    <div class="bp-radio-group" role="radiogroup">
-                      <label class="bp-radio-label">
-                        <input type="radio" name="bp-pricing-type" value="free" />
-                        <span>🆓 Free Course</span>
-                      </label>
-                      <label class="bp-radio-label">
-                        <input type="radio" name="bp-pricing-type" value="paid" checked />
-                        <span>💳 Paid Course</span>
-                      </label>
-                    </div>
-                  </fieldset>
-
                   <div id="bp-pricing-fields" class="bp-pricing-fields">
+                    <p style="margin:0 0 1rem;font-size:0.85rem;color:#666;">
+                      💡 Subscription pricing (Jio/Hotstar style). Set monthly and/or yearly price. Students get a free trial first.
+                    </p>
                     <div class="bp-form-group">
-                      <label for="bp-base-price">Base Price (₹)</label>
-                      <input id="bp-base-price" type="number" min="0" step="1" placeholder="e.g., 999" aria-label="Base price in rupees" />
+                      <label for="bp-monthly-price">📅 Monthly Price (₹)</label>
+                      <input id="bp-monthly-price" type="number" min="0" step="1" placeholder="e.g., 199" aria-label="Monthly price in rupees" />
                     </div>
-
-                    <div class="bp-form-section">
-                      <h4>🎁 Discount (Optional)</h4>
-                      <div class="bp-form-group">
-                        <label for="bp-discount-type">Discount Type</label>
-                        <select id="bp-discount-type" aria-label="Discount type">
-                          <option value="fixed">Fixed Amount (₹)</option>
-                          <option value="percentage">Percentage (%)</option>
-                        </select>
-                      </div>
-                      <div class="bp-form-group">
-                        <label for="bp-discount-value">Discount Value</label>
-                        <input id="bp-discount-value" type="number" min="0" step="1" placeholder="e.g., 100 or 10" aria-label="Discount value" />
-                      </div>
-                      <div class="bp-form-group">
-                        <label>💵 Final Price After Discount</label>
-                        <div class="bp-price-display"><span id="bp-discounted-price">₹0</span></div>
-                      </div>
+                    <div class="bp-form-group">
+                      <label for="bp-yearly-price">🗓️ Yearly Price (₹)</label>
+                      <input id="bp-yearly-price" type="number" min="0" step="1" placeholder="e.g., 1999" aria-label="Yearly price in rupees" />
+                    </div>
+                    <div class="bp-form-group">
+                      <label for="bp-trial-days">🎁 Free Trial (days)</label>
+                      <input id="bp-trial-days" type="number" min="0" step="1" value="1" placeholder="1" aria-label="Free trial days" />
                     </div>
                   </div>
 
