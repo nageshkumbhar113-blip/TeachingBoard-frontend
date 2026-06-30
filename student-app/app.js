@@ -72,7 +72,7 @@ const APP = (() => {
 
     _installGlobalGuards();
     _applyDeviceFlags();
-    console.log('🚀 TeachingBoard starting…');
+    console.log('🚀 Nks EduOrbit starting…');
 
     try {
       // 1. Storage — must be first

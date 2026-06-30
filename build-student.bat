@@ -1,11 +1,11 @@
 @echo off
 echo ========================================
-echo  TeachingBoard — STUDENT APK Build
+echo  Nks EduOrbit — STUDENT APK Build
 echo ========================================
 
 :: ── Version — update BOTH values for every release ──────────────────────────
-set VERSION=6.0.0
-set VERSION_CODE=60
+set VERSION=7.0.0
+set VERSION_CODE=70
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: [PRE] Stale .bak cleanup
@@ -30,14 +30,14 @@ node tools/prepare-student.mjs
 if errorlevel 1 ( echo ERROR: prepare failed & pause & exit /b 1 )
 
 echo [3/7] Verifying config = STUDENT...
-node -e "const fs=require('fs');const t=fs.readFileSync('capacitor.config.ts','utf8');if(!t.includes('com.teachingboard.student')){process.stderr.write('ERROR: capacitor.config.ts student config नाही!\n');process.exit(1);}console.log('  OK — com.teachingboard.student');"
+node -e "const fs=require('fs');const t=fs.readFileSync('capacitor.config.ts','utf8');if(!t.includes('com.nkseduorbit.student')){process.stderr.write('ERROR: capacitor.config.ts student config नाही!\n');process.exit(1);}console.log('  OK — com.nkseduorbit.student');"
 if errorlevel 1 ( echo ERROR: config verify failed & pause & exit /b 1 )
 
-echo [4/7] Patching applicationId → com.teachingboard.student ...
-node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/applicationId \"com\.teachingboard\.[^\"]+\"/,'applicationId \"com.teachingboard.student\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  applicationId patched — com.teachingboard.student');"
+echo [4/7] Patching applicationId → com.nkseduorbit.student ...
+node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/applicationId \"[^\"]+\"/,'applicationId \"com.nkseduorbit.student\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  applicationId patched — com.nkseduorbit.student');"
 if errorlevel 1 ( echo ERROR: applicationId patch failed & pause & exit /b 1 )
 
-echo [5/7] Setting Student icon (blue) + app name...
+echo [5/7] Setting Nks EduOrbit icon + app name...
 copy /Y icons-student\ic_launcher_background.xml android\app\src\main\res\values\ic_launcher_background.xml >nul 2>&1
 copy /Y icons-student\strings.xml android\app\src\main\res\values\strings.xml >nul 2>&1
 
@@ -77,9 +77,9 @@ echo.
 echo ========================================
 echo  Student APK ready!
 echo ========================================
-echo  App ID   : com.teachingboard.student
-echo  App Name : TB Student
-echo  Icon     : Blue (#1565C0)
+echo  App ID   : com.nkseduorbit.student
+echo  App Name : Nks EduOrbit
+echo  Icon     : Navy (#001F5C)
 echo  Version  : %VERSION% (code %VERSION_CODE%)
 echo  APK      : android\app\release\Student%VERSION%.apk
 echo.

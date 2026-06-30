@@ -10,7 +10,7 @@ if %errorlevel% neq 0 (
 cd /d "%~dp0"
 
 :: ── Version — build-student.bat / build-admin.bat शी sync ठेवा ──────────────
-set VERSION=5.0.1
+set VERSION=7.0.0
 :: ─────────────────────────────────────────────────────────────────────────────
 
 echo ========================================

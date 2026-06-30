@@ -125,7 +125,7 @@ const PAYMENT = (() => {
       key: order.key_id,
       amount: order.amount,
       currency: order.currency || 'INR',
-      name: 'TeachingBoard',
+      name: 'Nks EduOrbit',
       description: `${batch.name} — ${plan === 'yearly' ? 'Yearly' : 'Monthly'}`,
       order_id: order.order_id,
       prefill: { name: student.name || '', contact: student.contact || '' },
