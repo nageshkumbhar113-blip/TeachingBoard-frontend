@@ -1,7 +1,7 @@
 {
-  "name": "TeachingBoard Student App",
-  "short_name": "TB Student",
-  "description": "Published quizzes, practice sessions, revision mode, and offline quiz taking.",
+  "name": "Nks EduOrbit",
+  "short_name": "EduOrbit",
+  "description": "Nks EduOrbit - Learn Smart. Achieve More. Published quizzes, practice sessions, revision mode, and offline quiz taking.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

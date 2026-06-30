@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">TB Student</string>
-    <string name="title_activity_main">TB Student</string>
+    <string name="app_name">Nks EduOrbit</string>
+    <string name="title_activity_main">Nks EduOrbit</string>
     <string name="package_name">com.teachingboard.app</string>
     <string name="custom_url_scheme">com.teachingboard.app</string>
 </resources>
