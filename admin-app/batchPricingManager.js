@@ -94,7 +94,23 @@ const BATCH_PRICING = (() => {
       }
 
       const result = await response.json();
-      _batches = result.data || [];
+
+      // Process batches - ensure all have pricing fields (with defaults)
+      _batches = (result.data || []).map(batch => ({
+        name: batch.name,
+        icon: batch.icon || '📚',
+        subjects: batch.subjects || [],
+        chapters: batch.chapters || [],
+
+        // Pricing fields (with smart defaults)
+        pricing_type: batch.pricing_type || 'paid',
+        base_price: batch.base_price !== undefined ? batch.base_price : 0,
+        discount: batch.discount || null,
+        discounted_price: batch.discounted_price !== undefined ? batch.discounted_price : 0,
+        description: batch.description || '',
+        is_active: batch.is_active !== false
+      }));
+
       _renderBatchesList();
     } catch (err) {
       console.error('❌ Failed to load batches:', err);
@@ -121,41 +137,47 @@ const BATCH_PRICING = (() => {
 
     container.innerHTML = _batches.map(batch => {
       const isFree = batch.pricing_type === 'free';
-      const price = isFree ? 'Free' : `₹${batch.base_price}`;
-      const discountText = batch.discount
-        ? `${batch.discount.type === 'percentage' ? batch.discount.value + '%' : '₹' + batch.discount.value} off → ₹${batch.discounted_price}`
-        : 'No discount';
+      const isPriced = batch.pricing_type !== null && batch.pricing_type !== undefined;
+
+      // Determine status badge
+      let statusBadge = '';
+      let statusClass = '';
+      let priceDisplay = '';
+      let editButtonText = '';
+
+      if (!isPriced) {
+        statusBadge = '⚠️ Unpriced';
+        statusClass = 'bp-warning';
+        priceDisplay = 'Not configured yet';
+        editButtonText = '⚙️ Setup Pricing';
+      } else if (isFree) {
+        statusBadge = '🆓 Free';
+        statusClass = 'bp-free';
+        priceDisplay = 'No charge for students';
+        editButtonText = '✏️ Edit';
+      } else {
+        statusBadge = '💳 Paid';
+        statusClass = 'bp-paid';
+        const discountText = batch.discount
+          ? `${batch.discount.type === 'percentage' ? batch.discount.value + '%' : '₹' + batch.discount.value} off`
+          : 'No discount';
+        priceDisplay = `₹${batch.base_price} → ${discountText} → ₹${batch.discounted_price}`;
+        editButtonText = '✏️ Edit';
+      }
 
       return `
         <div class="bp-batch-card" data-batch="${batch.name}">
           <div class="bp-batch-header">
-            <span class="bp-batch-icon">${batch.icon || '📚'}</span>
+            <span class="bp-batch-icon">${batch.icon}</span>
             <span class="bp-batch-name">${batch.name}</span>
-            ${batch.is_active ? '<span class="bp-badge bp-active">Active</span>' : '<span class="bp-badge bp-inactive">Inactive</span>'}
+            <span class="bp-badge ${statusClass}">${statusBadge}</span>
           </div>
 
           <div class="bp-batch-details">
             <div class="bp-detail-row">
-              <span class="bp-label">Type:</span>
-              <span class="bp-value">${isFree ? '🆓 Free' : '💰 Paid'}</span>
+              <span class="bp-label">Status:</span>
+              <span class="bp-value">${priceDisplay}</span>
             </div>
-
-            ${!isFree ? `
-              <div class="bp-detail-row">
-                <span class="bp-label">Price:</span>
-                <span class="bp-value">₹${batch.base_price}</span>
-              </div>
-
-              <div class="bp-detail-row">
-                <span class="bp-label">Discount:</span>
-                <span class="bp-value">${discountText}</span>
-              </div>
-
-              <div class="bp-detail-row">
-                <span class="bp-label">Final Price:</span>
-                <span class="bp-value bp-final-price">₹${batch.discounted_price}</span>
-              </div>
-            ` : ''}
 
             ${batch.description ? `
               <div class="bp-detail-row">
@@ -167,7 +189,7 @@ const BATCH_PRICING = (() => {
 
           <div class="bp-batch-actions">
             <button class="bp-btn bp-btn-edit" onclick="BATCH_PRICING.editBatch('${batch.name}')">
-              ✏️ Edit
+              ${editButtonText}
             </button>
             <button class="bp-btn bp-btn-delete" onclick="BATCH_PRICING.deleteBatch('${batch.name}')">
               🗑️ Delete
