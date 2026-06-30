@@ -1,0 +1,511 @@
+<!-- ════════════════════════════════════════
+     Batch Pricing Admin Tab
+     Free/Paid course pricing management
+════════════════════════════════════════ -->
+
+<div id="bp-container" class="bp-container">
+  <!-- Header -->
+  <div class="bp-header">
+    <h2>🎓 Batch Pricing Management</h2>
+    <button id="bp-new-batch-btn" class="bp-btn bp-btn-primary">
+      ➕ Create New Batch
+    </button>
+  </div>
+
+  <!-- Batches List -->
+  <div id="bp-batches-list" class="bp-batches-list">
+    <div style="text-align: center; padding: 2rem; color: #999;">
+      <p>Loading batches...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Batch Form Modal -->
+<div id="bp-batch-modal" class="bp-modal hidden">
+  <div class="bp-modal-content">
+    <div class="bp-modal-header">
+      <h3 id="bp-modal-title">Create New Batch</h3>
+      <button id="bp-close-btn" class="bp-modal-close" onclick="document.getElementById('bp-batch-modal').classList.add('hidden')">
+        ✕
+      </button>
+    </div>
+
+    <form id="bp-batch-form" class="bp-form">
+      <!-- Batch Name -->
+      <div class="bp-form-group">
+        <label for="bp-batch-name">📚 Batch Name</label>
+        <input
+          id="bp-batch-name"
+          type="text"
+          placeholder="e.g., Physics Class 12"
+          required
+        />
+      </div>
+
+      <!-- Pricing Type -->
+      <div class="bp-form-group">
+        <label>💰 Pricing Type</label>
+        <div class="bp-radio-group">
+          <label class="bp-radio-label">
+            <input type="radio" name="bp-pricing-type" value="free" />
+            <span>🆓 Free Course</span>
+          </label>
+          <label class="bp-radio-label">
+            <input type="radio" name="bp-pricing-type" value="paid" checked />
+            <span>💳 Paid Course</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Pricing Fields (shown only for paid) -->
+      <div id="bp-pricing-fields" class="bp-pricing-fields">
+        <!-- Base Price -->
+        <div class="bp-form-group">
+          <label for="bp-base-price">Base Price (₹)</label>
+          <input
+            id="bp-base-price"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="e.g., 999"
+          />
+        </div>
+
+        <!-- Discount Section -->
+        <div class="bp-form-section">
+          <h4>🎁 Discount (Optional)</h4>
+
+          <div class="bp-form-group">
+            <label for="bp-discount-type">Discount Type</label>
+            <select id="bp-discount-type">
+              <option value="fixed">Fixed Amount (₹)</option>
+              <option value="percentage">Percentage (%)</option>
+            </select>
+          </div>
+
+          <div class="bp-form-group">
+            <label for="bp-discount-value">Discount Value</label>
+            <input
+              id="bp-discount-value"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="e.g., 100 or 10"
+            />
+          </div>
+
+          <!-- Discounted Price Display -->
+          <div class="bp-form-group">
+            <label>💵 Final Price After Discount</label>
+            <div class="bp-price-display">
+              <span id="bp-discounted-price">₹0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="bp-form-group">
+        <label for="bp-description">📝 Description (Optional)</label>
+        <textarea
+          id="bp-description"
+          placeholder="e.g., Complete physics course for JEE preparation"
+          rows="3"
+        ></textarea>
+      </div>
+
+      <!-- Buttons -->
+      <div class="bp-form-actions">
+        <button type="submit" class="bp-btn bp-btn-primary">
+          💾 Save Batch
+        </button>
+        <button type="button" id="bp-cancel-btn" class="bp-btn bp-btn-secondary">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     CSS Styles
+════════════════════════════════════════ -->
+<style>
+/* Container */
+.bp-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Header */
+.bp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bp-header h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #001f5c;
+}
+
+/* Batches List */
+.bp-batches-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Batch Card */
+.bp-batch-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.bp-batch-card:hover {
+  border-color: #001f5c;
+  box-shadow: 0 4px 16px rgba(0, 31, 92, 0.15);
+  transform: translateY(-2px);
+}
+
+.bp-batch-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.bp-batch-icon {
+  font-size: 2rem;
+}
+
+.bp-batch-name {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #001f5c;
+  flex: 1;
+}
+
+.bp-badge {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.bp-badge.bp-active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.bp-badge.bp-inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Batch Details */
+.bp-batch-details {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.bp-detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  font-size: 0.95rem;
+}
+
+.bp-detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.bp-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.bp-value {
+  color: #001f5c;
+  font-weight: 600;
+}
+
+.bp-final-price {
+  font-size: 1.2rem;
+  color: #28a745;
+}
+
+/* Batch Actions */
+.bp-batch-actions {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.bp-btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+}
+
+.bp-btn-primary {
+  background-color: #001f5c;
+  color: white;
+}
+
+.bp-btn-primary:hover {
+  background-color: #003180;
+}
+
+.bp-btn-secondary {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.bp-btn-secondary:hover {
+  background-color: #d0d0d0;
+}
+
+.bp-btn-edit {
+  background-color: #0066cc;
+  color: white;
+  flex: 1;
+}
+
+.bp-btn-edit:hover {
+  background-color: #0052a3;
+}
+
+.bp-btn-delete {
+  background-color: #dc3545;
+  color: white;
+  flex: 1;
+}
+
+.bp-btn-delete:hover {
+  background-color: #c82333;
+}
+
+/* Modal */
+.bp-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bp-modal.visible {
+  display: flex;
+  opacity: 1;
+}
+
+.bp-modal.hidden {
+  display: none;
+}
+
+.bp-modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.bp-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem;
+  border-bottom: 1px solid #eee;
+  background: linear-gradient(135deg, #001f5c 0%, #003180 100%);
+  color: white;
+}
+
+.bp-modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.bp-modal-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.bp-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Form */
+.bp-form {
+  padding: 2rem;
+}
+
+.bp-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.bp-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.bp-form-group label {
+  display: block;
+  font-weight: 600;
+  color: #001f5c;
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+}
+
+.bp-form-group input,
+.bp-form-group select,
+.bp-form-group textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.bp-form-group input:focus,
+.bp-form-group select:focus,
+.bp-form-group textarea:focus {
+  outline: none;
+  border-color: #001f5c;
+}
+
+.bp-form-group input:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+}
+
+.bp-radio-group {
+  display: flex;
+  gap: 2rem;
+}
+
+.bp-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 400;
+  color: #333;
+}
+
+.bp-radio-label input[type="radio"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Pricing Fields */
+.bp-pricing-fields {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.bp-form-section {
+  margin-top: 1rem;
+}
+
+.bp-form-section h4 {
+  margin: 0 0 1rem 0;
+  color: #001f5c;
+  font-size: 1rem;
+}
+
+.bp-price-display {
+  background: white;
+  border: 2px solid #28a745;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #28a745;
+}
+
+/* Form Actions */
+.bp-form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.bp-form-actions .bp-btn {
+  flex: 1;
+  padding: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .bp-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bp-header h2 {
+    width: 100%;
+  }
+
+  .bp-header .bp-btn {
+    width: 100%;
+  }
+
+  .bp-batches-list {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-modal-content {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .bp-radio-group {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+</style>
