@@ -1405,6 +1405,16 @@ const API = (() => {
     }).catch(() => {});
   }
 
+  async function renameBatchCatalog(oldName, newName, icon) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(oldName)}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: newName, ...(icon !== undefined ? { icon } : {}) }),
+    });
+  }
+
   async function addCatalogSubject(batch, subject) {
     const token = await ensureAdminSession().catch(() => '');
     if (!token) return;
@@ -1769,6 +1779,7 @@ const API = (() => {
     fetchStudentWordTests, fetchStudentWordTest, submitWordTestAttempt,
     fetchWordTestAnalytics, fetchClassWordTestAnalytics,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabDictionary, addStudentWord,
+    fetchVocabTestList, fetchVocabTest, submitVocabAttempt,
     fetchTeacherVocabScores,
     fetchParentChildren, fetchChildAttempts, fetchChildFee, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,
@@ -1779,7 +1790,7 @@ const API = (() => {
     cacheQuizQuestions, cacheLessons,
     syncServerQuestions, syncStudentQuestions, syncServerLessons, syncServerBatches,
     fetchMyAttempts, syncMyAttempts,
-    createBatchCatalog, deleteBatchCatalog,
+    createBatchCatalog, deleteBatchCatalog, renameBatchCatalog,
     addCatalogSubject, deleteCatalogSubject,
     addCatalogChapter, deleteCatalogChapter,
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,

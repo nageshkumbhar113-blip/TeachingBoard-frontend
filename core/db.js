@@ -469,16 +469,25 @@ const DB = (() => {
     await _del('batches', id);
     if (!batch?.name) return;
 
-    const [subjects, chapters] = await Promise.all([
+    const [subjects, chapters, questions] = await Promise.all([
       getSubjectsByBatch(batch.name),
       getAllSubjectChapters(),
+      getAllQuestions(),
     ]);
+
+    // Delete subjects and chapters
     await Promise.all(subjects.map(item => _del('batch_subjects', item.id)));
     await Promise.all(
       chapters
         .filter(item => _cleanText(item.batch).toLowerCase() === _cleanText(batch.name).toLowerCase())
         .map(item => _del('subject_chapters', item.id))
     );
+
+    // Unlink questions (set batch to empty string, matching backend behavior)
+    const questionsToUnlink = questions.filter(
+      q => _cleanText(q.batch || '').toLowerCase() === _cleanText(batch.name).toLowerCase()
+    );
+    await Promise.all(questionsToUnlink.map(q => _put('questions', { ...q, batch: '' })));
   }
 
   async function initDefaultBatches() {
@@ -844,6 +853,20 @@ const DB = (() => {
     } catch {}
   }
 
+  // Clear all IDB stores that hold per-student data (call on account switch)
+  async function clearStudentLocalData() {
+    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache'];
+    const db = await open();
+    for (const name of stores) {
+      try {
+        if (db.objectStoreNames.contains(name)) {
+          const tx = db.transaction(name, 'readwrite');
+          await _p(tx.objectStore(name).clear());
+        }
+      } catch {}
+    }
+  }
+
   async function flushPendingWrites() {
     const queue = _loadPendingWrites();
     if (!queue.length) return { flushed: 0, remaining: 0 };
@@ -1043,6 +1066,7 @@ const DB = (() => {
     removeSyncItem,
     updateSyncItem,
     clearSyncQueue,
+    clearStudentLocalData,
 
     // Notes cache (encrypted PDF, 7-day TTL)
     getNoteCache,

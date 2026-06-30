@@ -323,6 +323,11 @@ const QUIZ = (() => {
   // FILL IN BLANK
   // ════════════════════════
 
+  // Normalize FIB answers: collapse whitespace, strip punctuation, lowercase
+  function _normFIB(s) {
+    return String(s || '').trim().replace(/\s+/g, ' ').replace(/[.,;:?!।॥"'()[\]]+/g, '').toLowerCase();
+  }
+
   function _renderFIB(q) {
     $('fib-wrap')?.classList.remove('hidden');
     const input = $('fib-input');
@@ -343,8 +348,8 @@ const QUIZ = (() => {
     state.answered = true;
     _stopTimer();
 
-    const correct   = (q.answer || '').toString().trim().toLowerCase();
-    const isCorrect = val.toLowerCase() === correct;
+    const correct   = _normFIB(q.answer);
+    const isCorrect = _normFIB(val) === correct;
 
     input.disabled = true;
     input.style.borderColor = isCorrect ? 'var(--correct)' : 'var(--wrong)';
@@ -597,42 +602,8 @@ const QUIZ = (() => {
       console.error('DB write failed:', err);
       APP.toast('Offline save failed', 'error');
     }
-    await _submitSessionToBackend(s);
-
     RESULTS.show(s, state.questions);
     APP.showScreen('results');
-  }
-
-  async function _submitSessionToBackend(session) {
-    const backendAnswers = session.answers.map(a => {
-      const q = state.questions.find(item => item.q_id === a.q_id);
-      if (!q?.backend_id) return null;
-      const norm = _normalizeAnswerForApi(a.given);
-      if (!norm) return null;
-      return { questionId: q.backend_id, answer: norm };
-    }).filter(Boolean);
-
-    if (!backendAnswers.length) return;
-
-    try {
-      const studentName = await _getStudentName();
-      await API.submitQuiz(studentName, backendAnswers);
-    } catch (err) {
-      APP.toast(`Result sync failed: ${err.message}`, 'error');
-    }
-  }
-
-  function _normalizeAnswerForApi(answer) {
-    const map = {
-      A: 'option1', B: 'option2', C: 'option3', D: 'option4',
-      option1: 'option1', option2: 'option2', option3: 'option3', option4: 'option4',
-    };
-    return map[String(answer || '').trim()] || '';
-  }
-
-  async function _getStudentName() {
-    const profile = await DB.getSetting('student_profile', null).catch(() => null);
-    return String(profile?.name || await DB.getSetting('student_name', '') || 'Student').trim() || 'Student';
   }
 
   // ════════════════════════

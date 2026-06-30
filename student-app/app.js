@@ -442,7 +442,16 @@ const APP = (() => {
       setTimeout(() => input?.focus(), 100);
 
       const pinKey = role === 'teacher' ? 'teacher_pin' : role === 'parent' ? 'parent_pin' : 'student_pin';
-      const storedPin = String(await DB.getSetting(pinKey, '').catch(() => '') || '').trim();
+      const wrongCountKey = role === 'teacher' ? 'teacher_pin_wrong_count' : role === 'parent' ? 'parent_pin_wrong_count' : 'student_pin_wrong_count';
+      const lockoutKey = role === 'teacher' ? 'teacher_pin_lockout_until' : role === 'parent' ? 'parent_pin_lockout_until' : 'student_pin_lockout_until';
+      const [storedPin, rawWrong, rawLockout] = await Promise.all([
+        DB.getSetting(pinKey, '').catch(() => ''),
+        DB.getSetting(wrongCountKey, 0).catch(() => 0),
+        DB.getSetting(lockoutKey, 0).catch(() => 0),
+      ]);
+      const _storedPin = String(storedPin || '').trim();
+      let _wrongCount   = Number(rawWrong)   || 0;
+      let _lockoutUntil = Number(rawLockout) || 0;
 
       const ac = new AbortController();
 
@@ -452,10 +461,32 @@ const APP = (() => {
         resolve(true);
       }
 
-      function _attempt() {
+      async function _attempt() {
+        const now = Date.now();
+        // Check lockout
+        if (_lockoutUntil > now) {
+          const secsLeft = Math.ceil((_lockoutUntil - now) / 1000);
+          const mins = Math.floor(secsLeft / 60), secs = secsLeft % 60;
+          if (errorEl) {
+            errorEl.textContent = `बरेच चुकीचे प्रयत्न. ${mins}m ${secs}s नंतर पुन्हा प्रयत्न करा.`;
+            errorEl.classList.remove('hidden');
+          }
+          if (input) { input.value = ''; input.blur(); }
+          return;
+        }
+        // Lockout expired — reset counter
+        if (_lockoutUntil > 0 && _lockoutUntil <= now) {
+          _wrongCount   = 0;
+          _lockoutUntil = 0;
+          await Promise.all([
+            DB.setSetting(wrongCountKey, 0).catch(() => {}),
+            DB.setSetting(lockoutKey, 0).catch(() => {}),
+          ]);
+        }
+
         const entered = String(input?.value || '').trim();
         if (!entered) { input?.focus(); return; }
-        if (!storedPin) {
+        if (!_storedPin) {
           // DB मध्ये PIN नाही — re-login आवश्यक
           if (errorEl) {
             errorEl.textContent = 'PIN सापडला नाही. "Switch Account" करून पुन्हा login करा.';
@@ -463,10 +494,36 @@ const APP = (() => {
           }
           return;
         }
-        if (entered === storedPin) { _unlock(); return; }
-        // Wrong PIN — shake, no bypass
+        if (entered === _storedPin) {
+          // Correct — reset rate-limit state
+          _wrongCount   = 0;
+          _lockoutUntil = 0;
+          await Promise.all([
+            DB.setSetting(wrongCountKey, 0).catch(() => {}),
+            DB.setSetting(lockoutKey, 0).catch(() => {}),
+          ]);
+          _unlock();
+          return;
+        }
+        // Wrong PIN
+        _wrongCount++;
+        if (_wrongCount >= 5) {
+          _lockoutUntil = Date.now() + 30 * 60 * 1000;
+          await Promise.all([
+            DB.setSetting(wrongCountKey, _wrongCount).catch(() => {}),
+            DB.setSetting(lockoutKey, _lockoutUntil).catch(() => {}),
+          ]);
+          if (errorEl) {
+            errorEl.textContent = '5 चुकीचे प्रयत्न — 30 मिनिटांसाठी locked.';
+            errorEl.classList.remove('hidden');
+          }
+          if (input) { input.value = ''; input.blur(); }
+          return;
+        }
+        await DB.setSetting(wrongCountKey, _wrongCount).catch(() => {});
+        const remaining = 5 - _wrongCount;
         if (errorEl) {
-          errorEl.textContent = '';
+          errorEl.textContent = `चुकीचा PIN (${remaining} प्रयत्न शिल्लक)`;
           errorEl.classList.remove('hidden');
         }
         if (input) {
@@ -482,6 +539,8 @@ const APP = (() => {
         _isTeacherOrParentMode = false;
         // Stop sync before clearing session so cycle doesn't fire with empty credentials
         window.SYNC?.stopStudentAutoSync?.();
+        // Clear all per-student IDB data (sessions, attempts, sync queue, notes cache)
+        await DB.clearStudentLocalData?.().catch(() => {});
         // Clear current session regardless of role
         await API.clearStudentProfile?.().catch(() => {});
         await API.clearTeacherProfile?.().catch(() => {});
@@ -497,8 +556,8 @@ const APP = (() => {
         }, { force: true }), 50);
       }
 
-      submitBtn?.addEventListener('click', _attempt, { signal: ac.signal });
-      input?.addEventListener('keydown', e => { if (e.key === 'Enter') _attempt(); }, { signal: ac.signal });
+      submitBtn?.addEventListener('click', () => _attempt().catch(console.error), { signal: ac.signal });
+      input?.addEventListener('keydown', e => { if (e.key === 'Enter') _attempt().catch(console.error); }, { signal: ac.signal });
       switchBtn?.addEventListener('click', _switchAccount, { signal: ac.signal });
       // Block Android back button on PIN screen
       history.pushState(null, '');

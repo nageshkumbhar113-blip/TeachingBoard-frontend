@@ -504,6 +504,10 @@ const TEST_PLAYER = (() => {
   // FILL IN BLANK
   // ════════════════════════
 
+  function _normFIB(s) {
+    return String(s || '').trim().replace(/\s+/g, ' ').replace(/[.,;:?!।॥"'()[\]]+/g, '').toLowerCase();
+  }
+
   function _renderFIB(q) {
     $('tp-fib-wrap')?.classList.remove('hidden');
     const inp  = $('tp-fib-input');
@@ -531,7 +535,7 @@ const TEST_PLAYER = (() => {
     state.answered = true;
     _stopPerQTimer();
 
-    const isCorrect = val.toLowerCase() === String(q.answer || '').toLowerCase().trim();
+    const isCorrect = _normFIB(val) === _normFIB(q.answer);
     const inp = $('tp-fib-input');
     inp.disabled          = true;
     inp.style.borderColor = isCorrect ? 'var(--correct)' : 'var(--wrong)';

@@ -366,7 +366,7 @@ select {
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text);
-  width: 36px; height: 36px;
+  min-width: 44px; min-height: 44px;
   border-radius: var(--radius-xs);
   font-size: 1rem;
   display: flex; align-items: center; justify-content: center;
@@ -1059,6 +1059,7 @@ select {
   border: none;
   border-radius: var(--radius-sm);
   padding: 12px 20px;
+  min-height: 44px;
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
@@ -1083,6 +1084,7 @@ select {
   border: 2px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
+  min-height: 44px;
   font-size: 0.9rem;
   cursor: pointer;
   transition: border-color var(--transition), background var(--transition);
@@ -1139,6 +1141,7 @@ select {
   border: 2px solid var(--border);
   color: var(--text);
   padding: 10px 22px;
+  min-height: 44px;
   border-radius: var(--radius-sm);
   font-size: 0.95rem;
   font-weight: 700;
@@ -2593,7 +2596,7 @@ select {
   .results-title  { font-size: 1.3rem; }
 
   .quiz-nav       { gap: 6px; }
-  .nav-arrow      { padding: 8px 14px; font-size: 0.88rem; }
+  .nav-arrow      { padding: 8px 14px; font-size: 0.88rem; min-height: 44px; }
 
   .admin-tabs .atab { padding: 10px 10px; font-size: 0.78rem; }
   .pin-digit        { width: 46px; height: 50px; }

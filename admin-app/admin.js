@@ -1219,16 +1219,35 @@ const ADMIN = (() => {
       item.className = 'batch-admin-item';
       item.innerHTML = `
         <div>
-          <div class="batch-admin-name">${b.icon || '📚'} ${b.name}</div>
+          <div class="batch-admin-name">${b.icon || '📚'} ${_esc(b.name)}</div>
           <div class="batch-admin-meta">${qs.length} questions</div>
         </div>
         <div class="batch-admin-actions">
-          <button class="admin-btn-danger" data-id="${b.id}" data-name="${b.name}">🗑️ Delete</button>
+          <button class="admin-btn-secondary btn-rename-batch" data-id="${b.id}" data-name="${_esc(b.name)}" data-icon="${_esc(b.icon || '📚')}">✏️ Rename</button>
+          <button class="admin-btn-danger btn-delete-batch" data-id="${b.id}" data-name="${_esc(b.name)}">🗑️ Delete</button>
         </div>
       `;
-      item.querySelector('.admin-btn-danger').addEventListener('click', async e => {
+      item.querySelector('.btn-rename-batch').addEventListener('click', async e => {
+        const { id, name, icon } = e.target.dataset;
+        const newName = await APP.promptAsync(`"${name}" चे नवीन नाव:`, 'text', name);
+        if (!newName || newName.trim() === name) return;
+        const trimmed = newName.trim();
+        await DB.saveBatch({ id: parseInt(id), name: trimmed, icon });
+        await Promise.all([_loadBatchAdmin(), _loadSubjectAdmin(), _loadChapterAdmin(), _loadBatchOptions()]);
+        if (navigator.onLine) {
+          API.renameBatchCatalog(name, trimmed, icon).catch(err =>
+            APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error')
+          );
+        }
+        APP.refreshHome();
+        APP.toast(`✅ "${name}" → "${trimmed}" rename झाला`, 'success');
+      });
+      item.querySelector('.btn-delete-batch').addEventListener('click', async e => {
         const { id, name } = e.target.dataset;
-        if (!await APP.confirmAsync(`Delete batch "${name}"?`)) return;
+        const ok = await APP.confirmAsync(
+          `"${name}" batch DELETE करायचे?\n\nयामुळे:\n• सर्व Words, Word Tests, Vocab configs\n• सर्व Notes आणि Lessons\n• सर्व Fee configs\n• Students चे batch assignment\n…पूर्णपणे DELETE होतील. Questions unlinked होतील (delete नाही).\n\nहे पूर्ववत करता येणार नाही.`
+        );
+        if (!ok) return;
         await DB.deleteBatch(parseInt(id));
         await Promise.all([
           _loadBatchAdmin(),
@@ -1236,8 +1255,13 @@ const ADMIN = (() => {
           _loadChapterAdmin(),
           _loadBatchOptions(),
         ]);
-        if (navigator.onLine) API.deleteBatchCatalog(name).catch(() => {});
+        if (navigator.onLine) {
+          API.deleteBatchCatalog(name).catch(err =>
+            APP.toast(`Server delete अयशस्वी: ${err.message}`, 'error')
+          );
+        }
         APP.refreshHome();
+        APP.toast(`🗑️ "${name}" batch delete झाला`, 'success');
       });
       item.addEventListener('click', async e => {
         if (e.target.closest('button')) return;

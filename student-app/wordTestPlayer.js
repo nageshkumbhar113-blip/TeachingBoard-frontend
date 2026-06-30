@@ -379,7 +379,7 @@ const WORD_TEST_PLAYER = (() => {
 
     $id('wtp-player-back')?.addEventListener('click', async () => {
       if (_answers.filter(Boolean).length > 0) {
-        if (!await APP.confirmAsync('Progress जाईल. मागे जायचे?')) return;
+        if (!await UI.confirmAsync('Progress जाईल. मागे जायचे?')) return;
       }
       _showView('wtp-list-view');
     });

@@ -805,6 +805,9 @@
           </div>
 
           <div class="vocab-subject-bar">
+            <select id="vocab-batch-select" class="vocab-select hidden">
+              <option value="">Select Course</option>
+            </select>
             <select id="vocab-subject-select" class="vocab-select">
               <option value="">Select Subject</option>
             </select>
@@ -885,6 +888,11 @@
           <div class="vocab-modal">
             <h3 class="vocab-modal-title">Add Difficult Word</h3>
             <p id="vocab-add-context" class="vocab-add-context"></p>
+            <div id="vocab-add-subject-row" class="vocab-add-subject-row hidden">
+              <select id="vocab-add-subject-sel" class="vocab-select" style="margin-bottom:10px">
+                <option value="">— Subject निवडा —</option>
+              </select>
+            </div>
             <input type="text" id="vocab-add-word-input" class="admin-input" placeholder="Type word..." />
             <button id="vocab-add-word-autofill" class="vocab-submit-btn" style="width:100%;margin-top:8px">Auto-fill</button>
             <div id="vocab-add-word-preview" class="vocab-add-preview hidden"></div>

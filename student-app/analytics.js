@@ -423,7 +423,7 @@ const ANALYTICS = (() => {
       const attempt = _data.attempts[idx];
       if (!attempt) return;
 
-      const confirmed = await APP.confirmAsync(`"${attempt.quiz_title || 'Quiz'}" attempt delete करायचे?`);
+      const confirmed = await UI.confirmAsync(`"${attempt.quiz_title || 'Quiz'}" attempt delete करायचे?`);
       if (!confirmed) return;
 
       try {

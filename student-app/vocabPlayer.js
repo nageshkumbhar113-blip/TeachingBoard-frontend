@@ -127,6 +127,24 @@ const VOCAB = (() => {
 
     if (!_batch && batches.length) _batch = batches[0];
 
+    // Batch selector — show only when student has multiple courses
+    const batchSel = $id('vocab-batch-select');
+    if (batchSel) {
+      if (batches.length > 1) {
+        batchSel.innerHTML = '';
+        batches.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b;
+          opt.textContent = b;
+          if (b === _batch) opt.selected = true;
+          batchSel.appendChild(opt);
+        });
+        batchSel.classList.remove('hidden');
+      } else {
+        batchSel.classList.add('hidden');
+      }
+    }
+
     const sel = $id('vocab-subject-select');
     if (!sel || !_batch) return;
 
@@ -143,6 +161,16 @@ const VOCAB = (() => {
     }
 
     sel.innerHTML = '<option value="">Select Subject</option>';
+
+    if (!subjects.length && _batch) {
+      // Batch exists in student profile but has no subjects — likely deleted/not yet set up
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = `"${_batch}" — subjects नाहीत`;
+      opt.disabled = true;
+      sel.appendChild(opt);
+    }
+
     subjects.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s;
@@ -491,13 +519,7 @@ const VOCAB = (() => {
 
   // ─── Add unknown word ────────────────────────────────────────────────────────
 
-  function _openAddWord() {
-    if (!_subject) {
-      APP.toast('Please select a subject first', 'error');
-      return;
-    }
-    const ctx = $id('vocab-add-context');
-    if (ctx) ctx.textContent = `Adding to: ${_batch} / ${_subject}`;
+  async function _openAddWord() {
     $id('vocab-add-word-backdrop')?.classList.remove('hidden');
     const addInput = $id('vocab-add-word-input');
     if (addInput) addInput.value = '';
@@ -506,18 +528,55 @@ const VOCAB = (() => {
     const addSubmit = $id('vocab-add-submit');
     if (addSubmit) addSubmit.disabled = true;
     _addWordFillData = null;
-    setTimeout(() => $id('vocab-add-word-input')?.focus(), 100);
+
+    // Populate subject dropdown inside modal — show it only when subject not yet selected
+    const subjectRow = $id('vocab-add-subject-row');
+    const subjectSel = $id('vocab-add-subject-sel');
+    if (subjectRow && subjectSel) {
+      if (!_subject && _batch) {
+        let subjects = [];
+        try {
+          const res = await API.fetchVocabSubjects(_batch);
+          subjects = res.subjects || [];
+        } catch {
+          if (window.DB?.getSubjectsByBatch) {
+            const rows = await DB.getSubjectsByBatch(_batch).catch(() => []);
+            subjects = rows.map(s => s.name).filter(Boolean);
+          }
+        }
+        subjectSel.innerHTML = '<option value="">— Subject निवडा —</option>';
+        subjects.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s;
+          opt.textContent = s;
+          subjectSel.appendChild(opt);
+        });
+        subjectRow.classList.remove('hidden');
+      } else {
+        subjectRow.classList.add('hidden');
+      }
+    }
+
+    setTimeout(() => addInput?.focus(), 100);
   }
 
   async function _autoFillAddWord() {
     const word = ($id('vocab-add-word-input')?.value || '').trim();
     if (!word) return;
+    // Use modal's subject selector if main screen subject not selected
+    const effectiveSubject = _subject || $id('vocab-add-subject-sel')?.value || '';
+    if (!effectiveSubject) {
+      const errEl = $id('vocab-add-word-err');
+      if (errEl) { errEl.textContent = 'Subject निवडा'; errEl.classList.remove('hidden'); }
+      return;
+    }
     try {
       const res = await API.autoFillWordForStudent(word);
-      _addWordFillData = { ...res.data, batch: _batch, subject: _subject };
+      _addWordFillData = { ...res.data, batch: _batch, subject: effectiveSubject };
       const prev = $id('vocab-add-word-preview');
       if (prev) {
         prev.innerHTML = `
+          <div><b>Subject:</b> ${_escHtml(effectiveSubject)}</div>
           <div><b>Meaning (MR):</b> ${_escHtml(_addWordFillData.meaning_mr || '—')}</div>
           <div><b>Meaning (EN):</b> ${_escHtml(_addWordFillData.meaning_en || '—')}</div>
           <div><b>Phonics:</b> ${_escHtml(_addWordFillData.phonics || '—')}</div>`;
@@ -640,6 +699,14 @@ const VOCAB = (() => {
       if (window.APP?.loadHome) APP.loadHome();
     });
 
+    // Batch select → reload subjects + test list (only shown when student has multiple courses)
+    $id('vocab-batch-select')?.addEventListener('change', async e => {
+      _batch = e.target.value;
+      _subject = '';
+      await _populateSubjectSelect();
+      await _loadTestList();
+    });
+
     // Subject select → reload test list
     $id('vocab-subject-select')?.addEventListener('change', async e => {
       _subject = e.target.value;
@@ -675,7 +742,7 @@ const VOCAB = (() => {
     });
 
     // FAB add-word
-    $id('vocab-add-word-btn')?.addEventListener('click', _openAddWord);
+    $id('vocab-add-word-btn')?.addEventListener('click', () => _openAddWord().catch(console.error));
     $id('vocab-add-cancel')?.addEventListener('click', () => {
       $id('vocab-add-word-backdrop')?.classList.add('hidden');
     });
