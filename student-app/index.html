@@ -154,11 +154,18 @@
           autocomplete="new-password" />
       </div>
 
+      <div class="onboarding-field" style="margin-top:4px">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;line-height:1.5;cursor:pointer;color:var(--text2,#8b949e)">
+          <input id="reg-consent" type="checkbox" style="margin-top:3px;flex-shrink:0" />
+          <span>मी 18+ वर्षांचा आहे किंवा माझ्या पालकांची/guardian ची संमती आहे, आणि app वापरण्याच्या अटी मान्य आहेत.</span>
+        </label>
+      </div>
+
       <p id="reg-error-msg" class="pin-error hidden" role="alert"></p>
       <div id="reg-success" class="hidden" style="background:rgba(52,211,153,0.12);border:1px solid #34d399;border-radius:10px;padding:14px;text-align:center;font-size:0.9rem;line-height:1.6">
         <div style="font-size:1.8rem">✅</div>
-        <strong id="reg-success-code"></strong><br/>
-        <span style="color:var(--text2,#8b949e)">हा code लक्षात ठेवा.<br>Admin approve केल्यावर login करा.</span>
+        <strong id="reg-success-code"></strong>
+        <div id="reg-success-detail" style="color:var(--text2,#8b949e);margin-top:8px"></div>
       </div>
       <button id="reg-submit" class="onboarding-btn">Registration पाठवा →</button>
       <button id="reg-back" class="onboarding-skip">← Login कडे परत जा</button>

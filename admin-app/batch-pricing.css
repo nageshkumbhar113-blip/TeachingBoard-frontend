@@ -1,0 +1,131 @@
+/* ════════════════════════════════════════
+   batch-pricing.css — Batch Pricing Tab styles
+   (extracted from batch-pricing-ui.html)
+════════════════════════════════════════ */
+
+.bp-container { padding: 1rem 0; max-width: 1200px; margin: 0 auto; }
+
+.bp-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+}
+.bp-header h2 { margin: 0; font-size: 1.6rem; color: #001f5c; }
+
+.bp-batches-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.bp-batch-card {
+  background: #fff; border: 2px solid #e0e0e0; border-radius: 12px;
+  padding: 1.5rem; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.bp-batch-card:hover {
+  border-color: #001f5c; box-shadow: 0 4px 16px rgba(0,31,92,0.15); transform: translateY(-2px);
+}
+.bp-batch-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.bp-batch-icon { font-size: 2rem; }
+.bp-batch-name { font-size: 1.2rem; font-weight: 600; color: #001f5c; flex: 1; word-break: break-word; }
+
+.bp-badge { font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+.bp-badge.bp-active   { background: #d4edda; color: #155724; }
+.bp-badge.bp-inactive { background: #f8d7da; color: #721c24; }
+.bp-badge.bp-warning  { background: #fff3cd; color: #856404; }
+.bp-badge.bp-free     { background: #d1f0d7; color: #0a5f3f; }
+.bp-badge.bp-paid     { background: #d6e7f5; color: #003d7a; }
+
+.bp-batch-details { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee; }
+.bp-detail-row { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.8rem; font-size: 0.95rem; }
+.bp-detail-row:last-child { margin-bottom: 0; }
+.bp-label { color: #666; font-weight: 500; }
+.bp-value { color: #001f5c; font-weight: 600; text-align: right; word-break: break-word; }
+.bp-final-price { font-size: 1.2rem; color: #28a745; }
+
+.bp-batch-actions { display: flex; gap: 0.8rem; }
+
+.bp-btn {
+  padding: 0.6rem 1.2rem; border: none; border-radius: 6px; font-size: 0.9rem;
+  font-weight: 500; cursor: pointer; transition: all 0.2s ease; flex: 1;
+}
+.bp-btn-primary   { background: #001f5c; color: #fff; }
+.bp-btn-primary:hover   { background: #003180; }
+.bp-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.bp-btn-secondary { background: #e0e0e0; color: #333; }
+.bp-btn-secondary:hover { background: #d0d0d0; }
+.bp-btn-edit   { background: #0066cc; color: #fff; flex: 1; }
+.bp-btn-edit:hover   { background: #0052a3; }
+.bp-btn-delete { background: #dc3545; color: #fff; flex: 1; }
+.bp-btn-delete:hover { background: #c82333; }
+
+/* Modal */
+.bp-modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 1000; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.25s ease;
+}
+.bp-modal.visible { display: flex; opacity: 1; }
+.bp-modal.hidden  { display: none; }
+
+.bp-modal-content {
+  background: #fff; border-radius: 12px; max-width: 500px; width: 90%;
+  max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.bp-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.5rem 2rem; border-bottom: 1px solid #eee;
+  background: linear-gradient(135deg, #001f5c 0%, #003180 100%); color: #fff;
+  border-radius: 12px 12px 0 0;
+}
+.bp-modal-header h3 { margin: 0; font-size: 1.4rem; }
+.bp-modal-close {
+  background: none; border: none; color: #fff; font-size: 1.4rem; cursor: pointer;
+  padding: 0; width: 40px; height: 40px; display: flex; align-items: center;
+  justify-content: center; border-radius: 50%; transition: background 0.2s ease;
+}
+.bp-modal-close:hover { background: rgba(255,255,255,0.2); }
+
+/* Form */
+.bp-form { padding: 2rem; }
+.bp-form-group { margin-bottom: 1.5rem; }
+.bp-form-group:last-child { margin-bottom: 0; }
+.bp-form-group label {
+  display: block; font-weight: 600; color: #001f5c; margin-bottom: 0.6rem; font-size: 0.95rem;
+}
+.bp-form-group input,
+.bp-form-group select,
+.bp-form-group textarea {
+  width: 100%; padding: 0.8rem; border: 2px solid #e0e0e0; border-radius: 6px;
+  font-size: 1rem; font-family: inherit; transition: border-color 0.2s ease; box-sizing: border-box;
+}
+.bp-form-group input:focus,
+.bp-form-group select:focus,
+.bp-form-group textarea:focus { outline: none; border-color: #001f5c; }
+.bp-form-group input:disabled { background: #f5f5f5; color: #999; }
+
+.bp-radio-group { display: flex; gap: 2rem; }
+.bp-radio-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 400; color: #333; }
+.bp-radio-label input[type="radio"] { width: auto; margin: 0; cursor: pointer; }
+
+.bp-pricing-fields { background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+.bp-form-section { margin-top: 1rem; }
+.bp-form-section h4 { margin: 0 0 1rem 0; color: #001f5c; font-size: 1rem; }
+
+.bp-price-display {
+  background: #fff; border: 2px solid #28a745; border-radius: 8px; padding: 1rem;
+  text-align: center; font-size: 1.5rem; font-weight: 700; color: #28a745;
+}
+
+.bp-form-actions {
+  display: flex; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #eee;
+}
+.bp-form-actions .bp-btn { flex: 1; padding: 0.8rem; }
+
+@media (max-width: 768px) {
+  .bp-header { flex-direction: column; align-items: flex-start; }
+  .bp-header h2 { width: 100%; }
+  .bp-header .bp-btn { width: 100%; }
+  .bp-batches-list { grid-template-columns: 1fr; }
+  .bp-modal-content { width: 95%; max-height: 95vh; }
+  .bp-radio-group { flex-direction: column; gap: 1rem; }
+}

@@ -20,6 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin-ui.css" />
   <link rel="stylesheet" href="concept-manager.css" />
+  <link rel="stylesheet" href="batch-pricing.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
@@ -189,6 +190,10 @@
             <button class="atab" role="tab" data-tab="concepts" aria-controls="atab-concepts" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📚</span>
               <span class="atab-label">Concepts (SLS)</span>
+            </button>
+            <button class="atab" role="tab" data-tab="pricing" aria-controls="atab-pricing" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">💰</span>
+              <span class="atab-label">Pricing</span>
             </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
@@ -1145,6 +1150,90 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </div>
 
+          <!-- ── Pricing Panel (Batch Pricing) ───────── -->
+          <div class="atab-content hidden" id="atab-pricing" role="tabpanel" aria-labelledby="atab-btn-pricing">
+            <div id="bp-container" class="bp-container">
+              <div class="bp-header">
+                <h2>🎓 Batch Pricing Management</h2>
+                <button id="bp-new-batch-btn" class="bp-btn bp-btn-primary">➕ Create New Batch</button>
+              </div>
+              <div id="bp-batches-list" class="bp-batches-list">
+                <div style="text-align: center; padding: 2rem; color: #999;">
+                  <p>Loading batches...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Batch Form Modal -->
+            <div id="bp-batch-modal" class="bp-modal hidden" role="dialog" aria-labelledby="bp-modal-title" aria-modal="true">
+              <div class="bp-modal-content">
+                <div class="bp-modal-header">
+                  <h3 id="bp-modal-title">Create New Batch</h3>
+                  <button id="bp-close-btn" class="bp-modal-close" aria-label="Close batch form">✕</button>
+                </div>
+
+                <form id="bp-batch-form" class="bp-form">
+                  <div class="bp-form-group">
+                    <label for="bp-batch-name">📚 Batch Name</label>
+                    <input id="bp-batch-name" type="text" placeholder="e.g., Physics Class 12" aria-label="Batch name" required />
+                  </div>
+
+                  <fieldset class="bp-form-group" style="border:none;padding:0;margin:0 0 1.5rem 0;">
+                    <legend style="font-weight:600;color:#001f5c;margin-bottom:0.6rem;font-size:0.95rem;">💰 Pricing Type</legend>
+                    <div class="bp-radio-group" role="radiogroup">
+                      <label class="bp-radio-label">
+                        <input type="radio" name="bp-pricing-type" value="free" />
+                        <span>🆓 Free Course</span>
+                      </label>
+                      <label class="bp-radio-label">
+                        <input type="radio" name="bp-pricing-type" value="paid" checked />
+                        <span>💳 Paid Course</span>
+                      </label>
+                    </div>
+                  </fieldset>
+
+                  <div id="bp-pricing-fields" class="bp-pricing-fields">
+                    <div class="bp-form-group">
+                      <label for="bp-base-price">Base Price (₹)</label>
+                      <input id="bp-base-price" type="number" min="0" step="1" placeholder="e.g., 999" aria-label="Base price in rupees" />
+                    </div>
+
+                    <div class="bp-form-section">
+                      <h4>🎁 Discount (Optional)</h4>
+                      <div class="bp-form-group">
+                        <label for="bp-discount-type">Discount Type</label>
+                        <select id="bp-discount-type" aria-label="Discount type">
+                          <option value="fixed">Fixed Amount (₹)</option>
+                          <option value="percentage">Percentage (%)</option>
+                        </select>
+                      </div>
+                      <div class="bp-form-group">
+                        <label for="bp-discount-value">Discount Value</label>
+                        <input id="bp-discount-value" type="number" min="0" step="1" placeholder="e.g., 100 or 10" aria-label="Discount value" />
+                      </div>
+                      <div class="bp-form-group">
+                        <label>💵 Final Price After Discount</label>
+                        <div class="bp-price-display"><span id="bp-discounted-price">₹0</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="bp-form-group">
+                    <label for="bp-description">📝 Description (Optional)</label>
+                    <textarea id="bp-description" placeholder="e.g., Complete physics course for JEE preparation" rows="3" aria-label="Batch description"></textarea>
+                  </div>
+
+                  <div id="bp-error-msg" class="hidden" style="color:#c82333;font-size:0.9rem;margin-bottom:1rem;" role="alert"></div>
+
+                  <div class="bp-form-actions">
+                    <button type="submit" id="bp-submit-btn" class="bp-btn bp-btn-primary">💾 Save Batch</button>
+                    <button type="button" id="bp-cancel-btn" class="bp-btn bp-btn-secondary">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
         </main><!-- /.admin-main -->
       </div><!-- /.admin-layout -->
     </div><!-- /#admin-content -->
@@ -1464,6 +1553,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="wordTestBuilder.js" defer></script>
   <script src="notesManager.js" defer></script>
   <script src="conceptManager.js" defer></script>
+  <script src="batchPricingManager.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>

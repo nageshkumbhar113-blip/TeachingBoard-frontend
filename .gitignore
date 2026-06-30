@@ -40,3 +40,6 @@ dist-student/
 
 # Misc
 New Text Document.txt
+
+# Electron build output
+dist-electron/

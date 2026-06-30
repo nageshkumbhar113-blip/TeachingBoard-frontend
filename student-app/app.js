@@ -595,6 +595,8 @@ const APP = (() => {
       if (loginCard) loginCard.classList.remove('hidden');
       document.getElementById('reg-success')?.classList.add('hidden');
       ['reg-name','reg-mobile','reg-school','reg-pin'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+      const consentEl = document.getElementById('reg-consent');
+      if (consentEl) consentEl.checked = false;
       const err = document.getElementById('reg-error-msg');
       if (err) { err.textContent = ''; err.classList.add('hidden'); }
       const sb = document.getElementById('reg-submit');
@@ -608,6 +610,7 @@ const APP = (() => {
       const mobile      = (document.getElementById('reg-mobile')?.value || '').trim();
       const school_name = (document.getElementById('reg-school')?.value || '').trim();
       const pin         = (document.getElementById('reg-pin')?.value    || '').trim();
+      const consent     = !!document.getElementById('reg-consent')?.checked;
       const errEl       = document.getElementById('reg-error-msg');
       const successEl   = document.getElementById('reg-success');
       const submitBtn   = document.getElementById('reg-submit');
@@ -619,8 +622,10 @@ const APP = (() => {
 
       if (!name)        return _showErr('पूर्ण नाव टाका');
       if (!school_name) return _showErr('शाळेचे नाव टाका');
-      if (mobile && !/^\d{10}$/.test(mobile)) return _showErr('Mobile number 10 अंकी असणे आवश्यक आहे');
+      if (mobile && !_isValidMobile(mobile)) return _showErr('वैध 10 अंकी mobile number टाका (6-9 ने सुरू)');
       if (!/^\d{4}$/.test(pin)) return _showErr('PIN 4 अंकी असणे आवश्यक आहे');
+      if (_isWeakPin(pin)) return _showErr('हा PIN खूप सोपा आहे (उदा. 0000, 1234). वेगळा PIN निवडा');
+      if (!consent) return _showErr('पुढे जाण्यासाठी संमती checkbox निवडा');
 
       submitBtn.disabled = true;
       try {
@@ -631,6 +636,19 @@ const APP = (() => {
         const code = res?.student_code || '';
         const codeEl = document.getElementById('reg-success-code');
         if (codeEl) codeEl.textContent = `तुमचा Student Code: ${code}`;
+        const detailEl = document.getElementById('reg-success-detail');
+        if (detailEl) {
+          detailEl.innerHTML =
+            '<button type="button" id="reg-copy-code" class="onboarding-skip" style="margin:6px 0">📋 Code Copy करा</button>' +
+            '<br>💾 <strong>हा code जपून ठेवा</strong> — login साठी लागेल.' +
+            '<br>⏳ Admin approve केल्यानंतर (साधारण 24-48 तास) login होईल.' +
+            '<br>❓ अडचण असल्यास शाळेच्या admin शी संपर्क करा.';
+          detailEl.querySelector('#reg-copy-code')?.addEventListener('click', () => {
+            navigator.clipboard?.writeText(code)
+              .then(() => toast('Code copy झाला ✓', 'success'))
+              .catch(() => toast('Copy करता आले नाही', 'error'));
+          });
+        }
         if (successEl) successEl.classList.remove('hidden');
         submitBtn.style.display = 'none';
         document.getElementById('reg-back').textContent = '← Login कडे जा';
@@ -640,6 +658,25 @@ const APP = (() => {
         submitBtn.disabled = false;
       }
     });
+  }
+
+  // Reject trivially-guessable 4-digit PINs (all-same, sequential, repeating pairs)
+  function _isWeakPin(pin) {
+    if (!/^\d{4}$/.test(pin)) return true;
+    if (/^(\d)\1{3}$/.test(pin)) return true;            // 0000, 1111…
+    const [a, b, c, d] = pin.split('').map(Number);
+    if (b === a + 1 && c === b + 1 && d === c + 1) return true;  // 1234, 2345…
+    if (b === a - 1 && c === b - 1 && d === c - 1) return true;  // 4321, 9876…
+    if (a === c && b === d) return true;                  // 1212, 5656…
+    return false;
+  }
+
+  // Basic Indian mobile sanity: 10 digits, starts 6-9, not all-same / sequential
+  function _isValidMobile(mobile) {
+    if (!/^\d{10}$/.test(mobile)) return false;
+    if (/^(\d)\1{9}$/.test(mobile)) return false;
+    if (parseInt(mobile[0], 10) < 6) return false;
+    return true;
   }
 
   function _revealAppShell() {
