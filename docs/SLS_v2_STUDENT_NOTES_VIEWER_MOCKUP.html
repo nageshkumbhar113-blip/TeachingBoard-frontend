@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeachingBoard - Student Notes Viewer - SLS v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        /* STUDY MODES */
+        .mode-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .mode-btn:hover {
+            border-color: #667eea;
+        }
+
+        /* CONTENT CARD */
+        .content-card {
+            background: white;
+            border-radius: 8px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+            line-height: 1.8;
+            position: relative;
+        }
+
+        /* WATERMARK */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 72px;
+            color: rgba(102, 126, 234, 0.08);
+            pointer-events: none;
+            z-index: 0;
+            font-weight: bold;
+            width: 100%;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .content-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* HEADING */
+        .concept-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #667eea;
+        }
+
+        .concept-meta {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* SECTION */
+        .content-section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+            padding-top: 16px;
+        }
+
+        .section-number {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .paragraph {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #444;
+            margin-bottom: 16px;
+            text-align: justify;
+        }
+
+        .highlight {
+            background: #fffacd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        /* DIAGRAM */
+        .diagram-container {
+            background: #f9fbfc;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .diagram-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+            pointer-events: none;
+            -webkit-user-drag: none;
+        }
+
+        .diagram-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 12px;
+            font-style: italic;
+            text-align: center;
+        }
+
+        /* KEY POINTS */
+        .key-points {
+            background: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 24px 0;
+        }
+
+        .key-points h4 {
+            color: #0369a1;
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .key-points ul {
+            margin-left: 20px;
+            color: #0369a1;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .key-points li {
+            margin-bottom: 8px;
+        }
+
+        /* FORMULA BOX */
+        .formula-box {
+            background: #f3f4f6;
+            border: 2px solid #d1d5db;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 24px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* WARNING BOX */
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 24px 0;
+        }
+
+        .warning-box h4 {
+            color: #92400e;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .warning-box p {
+            color: #92400e;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* FOOTER */
+        .content-footer {
+            border-top: 1px solid #f0f0f0;
+            margin-top: 32px;
+            padding-top: 16px;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+        }
+
+        .language-toggle {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .lang-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: transparent;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* ANTI-COPY PROTECTION */
+        .protected-content {
+            position: relative;
+        }
+
+        .protection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 2px,
+                rgba(102, 126, 234, 0.01) 2px,
+                rgba(102, 126, 234, 0.01) 4px
+            );
+        }
+
+        @media print {
+            .header, .mode-selector {
+                display: none;
+            }
+
+            .watermark {
+                opacity: 0.3;
+                position: static;
+                transform: rotate(-45deg);
+                color: rgba(102, 126, 234, 0.15);
+            }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .mode-selector {
+                flex-wrap: wrap;
+            }
+
+            .content-card {
+                padding: 20px;
+            }
+
+            .section-title {
+                font-size: 16px;
+            }
+
+            .concept-title {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- WATERMARK (Anti-Copy) -->
+    <div class="watermark">TeachingBoard © Not for Copy</div>
+
+    <!-- HEADER -->
+    <div class="header">
+        <h1>← Concept: DNA Replication</h1>
+        <div class="header-buttons">
+            <div class="language-toggle">
+                <button class="lang-btn active">English</button>
+                <button class="lang-btn">मराठी</button>
+            </div>
+            <button class="btn btn-secondary">📥 Download PDF</button>
+            <button class="btn btn-secondary">🔖 Bookmark</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- STUDY MODE SELECTOR -->
+        <div class="mode-selector">
+            <button class="mode-btn active">📖 Read Mode</button>
+            <button class="mode-btn">⚡ Exam Mode (Key Points)</button>
+            <button class="mode-btn">🔄 Revision Mode (Summary)</button>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content-card protected-content">
+            <h1 class="concept-title">DNA Replication</h1>
+            <div class="concept-meta">
+                Chapter: Biology - Heredity | Marks: 5 marks | Last updated: June 30, 2026
+            </div>
+
+            <!-- SECTION 1 -->
+            <div class="content-section">
+                <h2 class="section-title"><span class="section-number">1.</span> Introduction to DNA Replication</h2>
+
+                <p class="paragraph">
+                    DNA replication is the process by which a double-stranded DNA molecule is copied to produce two identical DNA molecules. This is a <span class="highlight">semi-conservative process</span> where each new DNA molecule contains one original strand and one newly synthesized strand. This process is essential for cell division and the transmission of genetic information from one generation to the next.
+                </p>
+
+                <div class="key-points">
+                    <h4>🔑 Key Points</h4>
+                    <ul>
+                        <li>Occurs during S phase of cell cycle</li>
+                        <li>Semi-conservative: each new molecule has one old + one new strand</li>
+                        <li>Produces exact copies of genetic material</li>
+                        <li>Initiated at specific sites called origins of replication</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SECTION 2 -->
+            <div class="content-section">
+                <h2 class="section-title"><span class="section-number">2.</span> Base Pairing Rules</h2>
+
+                <p class="paragraph">
+                    Each base pair is connected by hydrogen bonds: <span class="highlight">A-T forms 2 hydrogen bonds</span>, while <span class="highlight">G-C forms 3 hydrogen bonds</span>. This is why GC-rich DNA regions are more thermally stable. The specific pairing (A-T, G-C only) ensures that when DNA is copied, each new strand is an exact match of the original.
+                </p>
+
+                <!-- DIAGRAM -->
+                <div class="diagram-container">
+                    <div style="width: 100%; height: 250px; background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-style: italic;">
+                        [DNA Double Helix with Base Pairing Diagram]
+                        <br/>
+                        A-T (2 H-bonds) | G-C (3 H-bonds)
+                    </div>
+                    <div class="diagram-label">📐 Figure 1: Base Pairing with Hydrogen Bond Interactions</div>
+                </div>
+
+                <div class="warning-box">
+                    <h4>⚠️ Important Note</h4>
+                    <p>The strength of hydrogen bonds in G-C pairs makes them harder to denature. This is crucial for understanding DNA stability in different organisms and conditions.</p>
+                </div>
+            </div>
+
+            <!-- SECTION 3 -->
+            <div class="content-section">
+                <h2 class="section-title"><span class="section-number">3.</span> DNA Replication Process</h2>
+
+                <p class="paragraph">
+                    Before a cell divides, the <span class="highlight">double helix unwinds</span> and an enzyme called <span class="highlight">DNA polymerase</span> synthesizes new strands. The process can be broken down into several key stages:
+                </p>
+
+                <div class="key-points">
+                    <h4>🔑 Stages of Replication</h4>
+                    <ul>
+                        <li><strong>Initiation:</strong> DNA helicase unwinds the double helix at origins of replication</li>
+                        <li><strong>Elongation:</strong> DNA polymerase adds complementary nucleotides to the template strand</li>
+                        <li><strong>Leading Strand:</strong> Synthesized continuously in 5' to 3' direction</li>
+                        <li><strong>Lagging Strand:</strong> Synthesized in short fragments called Okazaki fragments</li>
+                        <li><strong>Termination:</strong> DNA ligase seals nicks between fragments</li>
+                    </ul>
+                </div>
+
+                <!-- MAIN DIAGRAM -->
+                <div class="diagram-container">
+                    <div style="width: 100%; height: 300px; background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 100%); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-style: italic;">
+                        [DNA Replication Fork Diagram]
+                        <br/>
+                        Showing: Helicase, Leading Strand, Lagging Strand (Okazaki Fragments), DNA Polymerase, Ligase
+                    </div>
+                    <div class="diagram-label">📐 Figure 2: DNA Replication Fork Mechanism - Detailed View</div>
+                </div>
+
+                <p class="paragraph">
+                    The <span class="highlight">replication fork</span> is the Y-shaped structure where DNA unwinds and new strands are synthesized. This fork moves along the DNA molecule at a rate of approximately 1000 nucleotides per second in bacteria and 50 nucleotides per second in eukaryotes.
+                </p>
+            </div>
+
+            <!-- SECTION 4 -->
+            <div class="content-section">
+                <h2 class="section-title"><span class="section-number">4.</span> Key Enzymes Involved</h2>
+
+                <div class="formula-box">
+                    <strong>Main Enzymes:</strong><br/>
+                    DNA Helicase | DNA Primase | DNA Polymerase III | DNA Polymerase I | DNA Ligase
+                </div>
+
+                <p class="paragraph">
+                    Each enzyme has a specific role. <span class="highlight">DNA Helicase</span> breaks the hydrogen bonds and unwinds the helix. <span class="highlight">DNA Polymerase</span> adds nucleotides, while <span class="highlight">DNA Ligase</span> seals the sugar-phosphate backbone.
+                </p>
+            </div>
+
+            <!-- SUMMARY -->
+            <div class="content-section" style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                <h3 style="color: #0369a1; margin-bottom: 12px;">📝 Summary</h3>
+                <p style="color: #0369a1; font-size: 14px; line-height: 1.8;">
+                    DNA replication is a semi-conservative process that creates two identical copies of DNA through the action of multiple enzymes. The double helix unwinds, base pairing rules ensure accuracy, and complementary strands are synthesized. This process is fundamental to all life as it allows genetic information to be passed on accurately to daughter cells.
+                </p>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="content-footer">
+                ✅ Concept: DNA Replication (Complete) • Bilingual: English/Marathi • Last Review: June 30, 2026
+                <br/>
+                📌 This content is protected by TeachingBoard's anti-plagiarism system
+            </div>
+        </div>
+
+        <!-- BOTTOM ACTIONS -->
+        <div style="background: white; padding: 20px; border-radius: 8px; display: flex; gap: 12px; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <button class="btn btn-secondary" style="background: #667eea; color: white; cursor: pointer;" onclick="alert('Taking practice paper on this concept...')">
+                📝 Take Practice Paper
+            </button>
+            <button class="btn btn-secondary" style="cursor: pointer;" onclick="alert('Saving progress...')">
+                💾 Mark as Complete
+            </button>
+            <button class="btn btn-secondary" style="cursor: pointer;" onclick="alert('Opening next concept...')">
+                ➡️ Next Concept
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Disable right-click on content
+        document.addEventListener('contextmenu', function(e) {
+            const card = document.querySelector('.content-card');
+            if (card && card.contains(e.target)) {
+                e.preventDefault();
+                alert('Content is protected. Please use the download PDF option instead.');
+            }
+        });
+
+        // Disable text selection with Ctrl+A in protected area
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                const card = document.querySelector('.content-card');
+                if (card && card.contains(document.activeElement)) {
+                    e.preventDefault();
+                    alert('Full selection is restricted. Please use Download PDF option for offline access.');
+                }
+            }
+        });
+
+        // Disable drag and drop
+        document.querySelector('.content-card').addEventListener('dragstart', function(e) {
+            e.preventDefault();
+        });
+
+        // Mode switching
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const mode = this.textContent;
+                alert('Switched to: ' + mode);
+            });
+        });
+
+        // Language toggle
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeachingBoard - Student Dashboard - SLS v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* HEADER */
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .stat-detail {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .stat-trend {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        /* MAIN CONTENT */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        /* PERFORMANCE CHART */
+        .chart {
+            margin: 20px 0;
+        }
+
+        .chart-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .chart-label {
+            flex: 0 0 150px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .chart-bar-bg {
+            flex: 1;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .chart-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 10px;
+        }
+
+        .chart-value {
+            flex: 0 0 40px;
+            text-align: right;
+            font-size: 12px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        /* PAPERS LIST */
+        .papers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .paper-item {
+            background: linear-gradient(135deg, #f5f7fa 0%, #f9fbfc 100%);
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .paper-item:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .paper-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .paper-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .paper-score {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .paper-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .paper-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .btn-link:hover {
+            color: #5568d3;
+            text-decoration: underline;
+        }
+
+        /* SIDEBAR */
+        .sidebar-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .weakness-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .weakness-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .weakness-item:last-child {
+            border-bottom: none;
+        }
+
+        .weakness-icon {
+            color: #f59e0b;
+            margin-right: 6px;
+        }
+
+        /* RECOMMENDATION */
+        .recommendation-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fcd34d 100%);
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .recommendation-box h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #92400e;
+        }
+
+        .recommendation-box ul {
+            margin-left: 20px;
+            font-size: 13px;
+            color: #92400e;
+            line-height: 1.6;
+        }
+
+        .recommendation-box li {
+            margin-bottom: 4px;
+        }
+
+        /* BOTTOM SECTION */
+        .bottom-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <h1>📊 Your Practice Dashboard</h1>
+            <p>Track your progress, identify weak areas, and prepare for exams</p>
+        </header>
+
+        <!-- STATS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Papers Completed</h3>
+                <div class="stat-value">5</div>
+                <div class="stat-detail">This month: 2 papers</div>
+            </div>
+            <div class="stat-card">
+                <h3>Average Score</h3>
+                <div class="stat-value">72%</div>
+                <div class="stat-detail stat-trend">↑ +8% improvement</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Marks</h3>
+                <div class="stat-value">324/500</div>
+                <div class="stat-detail">Cumulative from all papers</div>
+            </div>
+            <div class="stat-card">
+                <h3>School Target</h3>
+                <div class="stat-value">75%</div>
+                <div class="stat-detail">Current: 3% behind target</div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-grid">
+            <!-- LEFT: PERFORMANCE & PAPERS -->
+            <div>
+                <!-- PERFORMANCE CHART -->
+                <div class="card">
+                    <h2>📈 Performance Trend (Last 5 Papers)</h2>
+                    <div class="chart">
+                        <div class="chart-bar">
+                            <div class="chart-label">Paper 01</div>
+                            <div class="chart-bar-bg">
+                                <div class="chart-bar-fill" style="width: 60%"></div>
+                            </div>
+                            <div class="chart-value">60%</div>
+                        </div>
+                        <div class="chart-bar">
+                            <div class="chart-label">Paper 02</div>
+                            <div class="chart-bar-bg">
+                                <div class="chart-bar-fill" style="width: 65%"></div>
+                            </div>
+                            <div class="chart-value">65%</div>
+                        </div>
+                        <div class="chart-bar">
+                            <div class="chart-label">Paper 03</div>
+                            <div class="chart-bar-bg">
+                                <div class="chart-bar-fill" style="width: 75%"></div>
+                            </div>
+                            <div class="chart-value">75%</div>
+                        </div>
+                        <div class="chart-bar">
+                            <div class="chart-label">Paper 04</div>
+                            <div class="chart-bar-bg">
+                                <div class="chart-bar-fill" style="width: 72%"></div>
+                            </div>
+                            <div class="chart-value">72%</div>
+                        </div>
+                        <div class="chart-bar">
+                            <div class="chart-label">Paper 05</div>
+                            <div class="chart-bar-bg">
+                                <div class="chart-bar-fill" style="width: 75%"></div>
+                            </div>
+                            <div class="chart-value">75%</div>
+                        </div>
+                    </div>
+                    <p style="color: #666; font-size: 13px; text-align: center; margin-top: 16px;">
+                        📊 <strong>Trend: Improving ↗</strong> - Great progress! Keep practicing.
+                    </p>
+                </div>
+
+                <!-- RECENT PAPERS -->
+                <div class="card" style="margin-top: 24px;">
+                    <h2>📋 Recent Practice Papers</h2>
+                    <div class="papers-list">
+                        <div class="paper-item">
+                            <div class="paper-header">
+                                <div class="paper-title">Practice Paper 05 - Force & Motion</div>
+                                <div class="paper-score">15/20 (75%)</div>
+                            </div>
+                            <div class="paper-meta">
+                                <span>📅 June 30, 2026</span>
+                                <span>⏱️ 45 minutes</span>
+                                <span>Grade: A</span>
+                            </div>
+                            <div class="paper-actions">
+                                <button class="btn-link" onclick="alert('Viewing Paper 05 Results')">View Results</button>
+                                <button class="btn-link" onclick="alert('Viewing Model Answers')">Model Answers</button>
+                            </div>
+                        </div>
+
+                        <div class="paper-item">
+                            <div class="paper-header">
+                                <div class="paper-title">Practice Paper 04 - Waves & Sound</div>
+                                <div class="paper-score" style="background: #f59e0b;">13/20 (65%)</div>
+                            </div>
+                            <div class="paper-meta">
+                                <span>📅 June 25, 2026</span>
+                                <span>⏱️ 50 minutes</span>
+                                <span>Grade: B</span>
+                            </div>
+                            <div class="paper-actions">
+                                <button class="btn-link" onclick="alert('Viewing Paper 04 Results')">View Results</button>
+                                <button class="btn-link" onclick="alert('Viewing Model Answers')">Model Answers</button>
+                            </div>
+                        </div>
+
+                        <div class="paper-item">
+                            <div class="paper-header">
+                                <div class="paper-title">Practice Paper 03 - Magnetism</div>
+                                <div class="paper-score" style="background: #10b981;">17/20 (85%)</div>
+                            </div>
+                            <div class="paper-meta">
+                                <span>📅 June 20, 2026</span>
+                                <span>⏱️ 40 minutes</span>
+                                <span>Grade: A+</span>
+                            </div>
+                            <div class="paper-actions">
+                                <button class="btn-link" onclick="alert('Viewing Paper 03 Results')">View Results</button>
+                                <button class="btn-link" onclick="alert('Viewing Model Answers')">Model Answers</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: SIDEBAR -->
+            <div>
+                <!-- WEAK TOPICS -->
+                <div class="sidebar-card">
+                    <h2>⚠️ Weak Topics (Need Practice)</h2>
+                    <div class="weakness-list">
+                        <div class="weakness-item">
+                            <span class="weakness-icon">🔢</span> Numerical problems (avg 60%)
+                        </div>
+                        <div class="weakness-item">
+                            <span class="weakness-icon">📐</span> Diagram-based questions (avg 65%)
+                        </div>
+                        <div class="weakness-item">
+                            <span class="weakness-icon">📝</span> Long answer questions (avg 68%)
+                        </div>
+                        <div class="weakness-item">
+                            <span class="weakness-icon">⏱️</span> Time management issues
+                        </div>
+                    </div>
+
+                    <div class="recommendation-box">
+                        <h4>💡 Suggested Next Steps</h4>
+                        <ul>
+                            <li>Attempt Paper 06 (focuses on numericals)</li>
+                            <li>Review model answers from Paper 03</li>
+                            <li>Practice with extended time limits</li>
+                            <li>Study with a friend on weak topics</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- STRENGTHS -->
+                <div class="sidebar-card" style="margin-top: 24px;">
+                    <h2>✅ Strengths (Score > 80%)</h2>
+                    <div class="weakness-list">
+                        <div class="weakness-item">
+                            <span style="color: #10b981;">✓</span> Conceptual questions (85%)
+                        </div>
+                        <div class="weakness-item">
+                            <span style="color: #10b981;">✓</span> Theory-based answers (82%)
+                        </div>
+                        <div class="weakness-item">
+                            <span style="color: #10b981;">✓</span> Drawing diagrams (80%)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM ACTIONS -->
+        <div class="bottom-section" style="margin-top: 24px;">
+            <h2>🚀 Ready to Practice?</h2>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="alert('Browsing available practice papers...')">
+                    📄 Take Practice Paper
+                </button>
+                <button class="btn btn-secondary" onclick="alert('Viewing chapter notes...')">
+                    📚 Review Chapter Notes
+                </button>
+                <button class="btn btn-secondary" onclick="alert('Sending to parent...')">
+                    📤 Share with Parent
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

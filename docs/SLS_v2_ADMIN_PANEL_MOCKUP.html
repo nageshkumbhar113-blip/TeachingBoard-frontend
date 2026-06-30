@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeachingBoard - Admin Panel - SLS v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            gap: 2px;
+            background: #f9f9f9;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 0 40px;
+        }
+
+        .tab-btn {
+            padding: 16px 24px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            color: #333;
+            background: #f0f0f0;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+
+        /* CONTENT */
+        .tab-content {
+            display: none;
+            flex: 1;
+            padding: 40px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* SIDEBAR + MAIN */
+        .layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 30px;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            height: fit-content;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #999;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            background: white;
+        }
+
+        .sidebar select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-new {
+            width: 100%;
+            padding: 12px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        .btn-new:hover {
+            background: #5568d3;
+        }
+
+        /* LISTS */
+        .list {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .list-item {
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .list-item:hover {
+            background: #f9f9f9;
+        }
+
+        .list-item-text h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .list-item-text p {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .list-item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        /* FORM */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* UPLOAD AREA */
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            background: #fafafa;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .btn-upload {
+            padding: 12px 24px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .btn-upload:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .image-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .preview-thumbnail {
+            position: relative;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+            background: white;
+        }
+
+        .preview-thumbnail img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .preview-thumbnail .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .preview-thumbnail .remove-btn:hover {
+            background: rgba(0,0,0,0.8);
+        }
+
+        /* MARKS SELECTION */
+        .marks-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .mark-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mark-checkbox:hover {
+            background: #f9f9f9;
+        }
+
+        .mark-checkbox input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .mark-checkbox label {
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* QUESTIONS LIST */
+        .questions-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .question-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: all 0.2s;
+        }
+
+        .question-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .question-text {
+            flex: 1;
+        }
+
+        .question-text p {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            line-height: 1.5;
+        }
+
+        .question-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .badge.marks {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge.difficulty {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .badge.type {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        /* BUTTONS */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        /* PAPER GENERATOR */
+        .generator-form {
+            background: #f9f9f9;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .generator-form .form-row {
+            margin-bottom: 16px;
+        }
+
+        .paper-preview {
+            background: white;
+            border: 2px dashed #ddd;
+            padding: 24px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .paper-preview.show {
+            display: block;
+        }
+
+        .paper-preview h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #667eea;
+        }
+
+        .paper-questions {
+            display: grid;
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .preview-question {
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .preview-question strong {
+            color: #667eea;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .marks-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tabs {
+                overflow-x: auto;
+            }
+
+            .tab-btn {
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <h1>📚 TeachingBoard Admin Panel - SLS v2</h1>
+        </header>
+
+        <!-- TABS -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('concepts')">📝 Concepts</button>
+            <button class="tab-btn" onclick="showTab('questions')">❓ Questions</button>
+            <button class="tab-btn" onclick="showTab('papers')">📄 Practice Papers</button>
+        </div>
+
+        <!-- CONCEPTS TAB -->
+        <div id="concepts" class="tab-content active">
+            <div class="layout">
+                <!-- SIDEBAR -->
+                <div class="sidebar">
+                    <div class="sidebar-section">
+                        <h3>Batch</h3>
+                        <select>
+                            <option>Select Batch</option>
+                            <option>10th Science</option>
+                            <option>10th Math</option>
+                        </select>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3>Subject</h3>
+                        <select>
+                            <option>Select Subject</option>
+                            <option>Physics</option>
+                            <option>Chemistry</option>
+                        </select>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3>Chapter</h3>
+                        <select>
+                            <option>Select Chapter</option>
+                            <option>Force & Motion</option>
+                            <option>Waves & Sound</option>
+                        </select>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3>Concepts</h3>
+                        <button class="btn-new">+ New Concept</button>
+                        <div class="list">
+                            <div class="list-item">
+                                <div class="list-item-text">
+                                    <h4>What is Force?</h4>
+                                    <p>Order: 1 • Draft</p>
+                                </div>
+                                <div class="list-item-actions">
+                                    <button class="btn-icon">✏️</button>
+                                    <button class="btn-icon">🗑️</button>
+                                </div>
+                            </div>
+                            <div class="list-item">
+                                <div class="list-item-text">
+                                    <h4>Balanced Force</h4>
+                                    <p>Order: 2 • Published</p>
+                                </div>
+                                <div class="list-item-actions">
+                                    <button class="btn-icon">✏️</button>
+                                    <button class="btn-icon">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAIN -->
+                <div class="main-content">
+                    <div class="card">
+                        <h2>Edit Concept: "Balanced Force"</h2>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Title (English)</label>
+                                <input type="text" value="Balanced Force" />
+                            </div>
+                            <div class="form-group">
+                                <label>Title (Marathi)</label>
+                                <input type="text" value="संतुलित शक्ति" />
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label>Exam Marks ⭐NEW</label>
+                            <div class="marks-grid">
+                                <div class="mark-checkbox">
+                                    <input type="checkbox" id="m1" checked />
+                                    <label for="m1">2 Marks</label>
+                                </div>
+                                <div class="mark-checkbox">
+                                    <input type="checkbox" id="m2" checked />
+                                    <label for="m2">3 Marks</label>
+                                </div>
+                                <div class="mark-checkbox">
+                                    <input type="checkbox" id="m3" />
+                                    <label for="m3">5 Marks</label>
+                                </div>
+                                <div class="mark-checkbox">
+                                    <input type="checkbox" id="m4" />
+                                    <label for="m4">Viva</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label>Description (EditorJS Content)</label>
+                            <textarea placeholder="EditorJS JSON blocks will be displayed here..."></textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-secondary">Save Draft</button>
+                            <button class="btn btn-primary">Publish</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUESTIONS TAB -->
+        <div id="questions" class="tab-content">
+            <div class="layout">
+                <!-- SIDEBAR -->
+                <div class="sidebar">
+                    <div class="sidebar-section">
+                        <h3>Batch</h3>
+                        <select>
+                            <option>10th Science</option>
+                        </select>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3>Subject</h3>
+                        <select>
+                            <option>Physics</option>
+                        </select>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3>Chapter</h3>
+                        <select>
+                            <option>Force & Motion</option>
+                        </select>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h3>Concept</h3>
+                        <select>
+                            <option>Balanced Force</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-new">+ New Question</button>
+                    <div class="list">
+                        <div class="list-item">
+                            <div class="list-item-text">
+                                <h4>Define Force</h4>
+                                <p>1 mark • Easy</p>
+                            </div>
+                            <div class="list-item-actions">
+                                <button class="btn-icon">✏️</button>
+                                <button class="btn-icon">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="list-item">
+                            <div class="list-item-text">
+                                <h4>Explain Balanced Force</h4>
+                                <p>3 marks • Medium</p>
+                            </div>
+                            <div class="list-item-actions">
+                                <button class="btn-icon">✏️</button>
+                                <button class="btn-icon">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAIN -->
+                <div class="main-content">
+                    <div class="card">
+                        <h2>Create New Question</h2>
+
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label>Question</label>
+                            <textarea placeholder="Enter question text..."></textarea>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label>Question Diagram/Image</label>
+                            <div class="upload-area">
+                                <input type="file" id="questionImage" accept="image/*" style="display: none;">
+                                <button class="btn-upload" onclick="document.getElementById('questionImage').click();">
+                                    📸 Upload Image / Diagram
+                                </button>
+                                <p style="font-size: 12px; color: #999; margin-top: 8px;">Supported: JPG, PNG, GIF (Max 5MB)</p>
+                                <div id="questionImagePreview" style="margin-top: 12px;"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label>Answer</label>
+                            <textarea placeholder="Enter model answer..."></textarea>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label>Answer Diagram/Image</label>
+                            <div class="upload-area">
+                                <input type="file" id="answerImage" accept="image/*" style="display: none;">
+                                <button class="btn-upload" onclick="document.getElementById('answerImage').click();">
+                                    📸 Upload Image / Diagram
+                                </button>
+                                <p style="font-size: 12px; color: #999; margin-top: 8px;">Supported: JPG, PNG, GIF (Max 5MB)</p>
+                                <div id="answerImagePreview" style="margin-top: 12px;"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Marks</label>
+                                <select>
+                                    <option>1 Mark</option>
+                                    <option>2 Marks</option>
+                                    <option>3 Marks</option>
+                                    <option>4 Marks</option>
+                                    <option>5 Marks</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Difficulty</label>
+                                <select>
+                                    <option>Easy</option>
+                                    <option>Medium</option>
+                                    <option>Hard</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Question Type</label>
+                                <select>
+                                    <option>Definition</option>
+                                    <option>Short Answer</option>
+                                    <option>Long Answer</option>
+                                    <option>Numerical</option>
+                                    <option>Diagram</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Board Frequency</label>
+                                <select>
+                                    <option>Important</option>
+                                    <option>Frequently Asked</option>
+                                    <option>Rarely Asked</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-secondary">Cancel</button>
+                            <button class="btn btn-primary">Save Question</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAPERS TAB -->
+        <div id="papers" class="tab-content">
+            <div class="main-content">
+                <div class="card">
+                    <h2>Generate Practice Paper (SMART AI-LESS ⭐NEW)</h2>
+
+                    <div class="generator-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Chapter</label>
+                                <select>
+                                    <option>Force & Motion</option>
+                                    <option>Waves & Sound</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Total Marks</label>
+                                <input type="number" value="20" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Difficulty</label>
+                                <select>
+                                    <option>Mixed</option>
+                                    <option>Easy</option>
+                                    <option>Medium</option>
+                                    <option>Hard</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Filters</label>
+                                <select>
+                                    <option>No Filters</option>
+                                    <option>Only Numericals</option>
+                                    <option>Only Diagrams</option>
+                                    <option>Only Theory</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="generatePaper()">🎲 Generate Paper</button>
+                    </div>
+
+                    <div id="paperPreview" class="paper-preview">
+                        <h3>✅ Practice Paper 05 Generated!</h3>
+                        <p><strong>20 Marks | 6 Questions | Mixed Difficulty</strong></p>
+
+                        <div class="paper-questions">
+                            <div class="preview-question">
+                                <strong>Q1 (2 marks):</strong> Define Force
+                            </div>
+                            <div class="preview-question">
+                                <strong>Q2 (1 mark):</strong> State SI Unit of Force
+                            </div>
+                            <div class="preview-question">
+                                <strong>Q3 (3 marks):</strong> Explain Balanced Force
+                            </div>
+                            <div class="preview-question">
+                                <strong>Q4 (5 marks):</strong> Differentiate Balanced vs Unbalanced
+                            </div>
+                            <div class="preview-question">
+                                <strong>Q5 (4 marks):</strong> Numerical Problem on Force
+                            </div>
+                            <div class="preview-question">
+                                <strong>Q6 (5 marks):</strong> Explain Friction with Diagram
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn btn-secondary" onclick="generatePaper()">🔄 Generate Again</button>
+                            <button class="btn btn-primary">📥 Download PDF (Teacher Copy)</button>
+                            <button class="btn btn-secondary">📥 Download PDF (Student Copy)</button>
+                        </div>
+                    </div>
+
+                    <h2 style="margin-top: 32px;">Previous Papers</h2>
+                    <div class="questions-grid">
+                        <div class="question-card">
+                            <div class="question-text">
+                                <p><strong>Practice Paper 04</strong> - Force & Motion</p>
+                                <div class="question-meta">
+                                    <span class="badge marks">20 Marks</span>
+                                    <span class="badge difficulty">Mixed</span>
+                                    <span class="badge">6 Questions</span>
+                                    <span class="badge">✔ Published</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-secondary" style="padding: 8px 12px;">View</button>
+                                <button class="btn btn-secondary" style="padding: 8px 12px;">Download</button>
+                            </div>
+                        </div>
+
+                        <div class="question-card">
+                            <div class="question-text">
+                                <p><strong>Practice Paper 03</strong> - Waves & Sound</p>
+                                <div class="question-meta">
+                                    <span class="badge marks">25 Marks</span>
+                                    <span class="badge difficulty">Hard</span>
+                                    <span class="badge">7 Questions</span>
+                                    <span class="badge">✔ Published</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-secondary" style="padding: 8px 12px;">View</button>
+                                <button class="btn btn-secondary" style="padding: 8px 12px;">Download</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store uploaded images
+        const uploadedImages = {
+            question: [],
+            answer: []
+        };
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function generatePaper() {
+            const preview = document.getElementById('paperPreview');
+            preview.classList.toggle('show');
+        }
+
+        // Image upload handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Question image upload
+            const questionImageInput = document.getElementById('questionImage');
+            if (questionImageInput) {
+                questionImageInput.addEventListener('change', function(e) {
+                    handleImageUpload(e, 'question');
+                });
+            }
+
+            // Answer image upload
+            const answerImageInput = document.getElementById('answerImage');
+            if (answerImageInput) {
+                answerImageInput.addEventListener('change', function(e) {
+                    handleImageUpload(e, 'answer');
+                });
+            }
+        });
+
+        function handleImageUpload(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+
+            // Read and display preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageData = {
+                    name: file.name,
+                    src: e.target.result
+                };
+
+                uploadedImages[type].push(imageData);
+                updatePreview(type);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updatePreview(type) {
+            const previewId = type === 'question' ? 'questionImagePreview' : 'answerImagePreview';
+            const previewContainer = document.getElementById(previewId);
+
+            if (uploadedImages[type].length === 0) {
+                previewContainer.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="image-preview">';
+            uploadedImages[type].forEach((img, index) => {
+                html += `
+                    <div class="preview-thumbnail">
+                        <img src="${img.src}" alt="Preview" />
+                        <button class="remove-btn" onclick="removeImage('${type}', ${index})" title="Remove">✕</button>
+                        <small style="position: absolute; bottom: 4px; left: 4px; right: 4px; font-size: 10px; background: rgba(0,0,0,0.5); color: white; padding: 2px; border-radius: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${img.name}</small>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            previewContainer.innerHTML = html;
+        }
+
+        function removeImage(type, index) {
+            uploadedImages[type].splice(index, 1);
+            updatePreview(type);
+        }
+    </script>
+</body>
+</html>
