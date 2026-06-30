@@ -145,13 +145,8 @@ const APP = (() => {
     });
 
     window.addEventListener('teachingboard:expired', event => {
-      const payload = event?.detail || {};
-      _showOnboarding(() => {}, {
-        force: true,
-        message: payload.expiryDate
-          ? `${payload.message || 'Account expired'} (${payload.expiryDate})`
-          : (payload.message || 'Account expired'),
-      });
+      // Subscription expired → offer renewal (pay) instead of a dead-end.
+      _offerRenewal(event?.detail || {}).catch(err => console.warn('renewal offer failed', err));
     });
 
     let _reloginPending = false;
@@ -394,8 +389,13 @@ const APP = (() => {
           _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
         } catch (err) {
           const msg = String(err?.message || '').toLowerCase();
-          const isAuthError = msg.includes('unauthorized') || msg.includes('expired') ||
-                              msg.includes('blocked') || msg.includes('pending');
+          // Expired → markExpired() already fired teachingboard:expired, which
+          // drives the renewal flow. Don't also force a re-login here.
+          if (msg.includes('expired')) {
+            window.SYNC?.stopStudentAutoSync?.();
+            return;
+          }
+          const isAuthError = msg.includes('unauthorized') || msg.includes('blocked') || msg.includes('pending');
           if (isAuthError) {
             // खरोखर auth fail (401/403) — forced re-login mandatory
             window.SYNC?.stopStudentAutoSync?.();
@@ -577,6 +577,47 @@ const APP = (() => {
       const p = await API.getStudentProfile().catch(() => null);
       if (p) _updateProfileButton(p.name || p.student_code || '');
     }
+  }
+
+  // Expired subscription → offer renewal via the plan-select/checkout flow.
+  // code + PIN are still in DB (markExpired only clears the profile), so the
+  // student can pay without re-typing anything.
+  let _renewalOffering = false;
+  async function _offerRenewal(payload = {}) {
+    const code = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
+    const pin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+
+    // Fallback to the login screen if we can't auto-fill or payments aren't loaded
+    if (!code || !pin || !window.PAYMENT?.openPlanSelect) {
+      _showOnboarding(async () => { await _refreshProfileAfterLogin(); loadHome(); }, {
+        force: true,
+        message: payload.expiryDate
+          ? `${payload.message || 'Subscription expired'} (${payload.expiryDate})`
+          : (payload.message || 'Subscription expired'),
+      });
+      return;
+    }
+
+    if (_renewalOffering) return;
+    _renewalOffering = true;
+    window.SYNC?.stopStudentAutoSync?.();
+    toast('⏳ Subscription संपलं — renew करा', 'info');
+
+    PAYMENT.openPlanSelect({ student_code: code, pin, name: '', contact: '' }, async () => {
+      _renewalOffering = false;
+      try {
+        await API.loginStudent({ student_code: code, pin, device_id: _getDeviceId() });
+        API.clearExpiredState?.();
+        // Dismiss any login / PIN-lock screen left underneath the plan sheet
+        $('onboarding-screen')?.classList.add('hidden');
+        $('pin-lock-screen')?.classList.add('hidden');
+        await _refreshProfileAfterLogin();
+        showScreen('home');
+        loadHome();
+      } catch {
+        _showOnboarding(async () => { await _refreshProfileAfterLogin(); loadHome(); }, { force: true });
+      }
+    });
   }
 
   function _initRegistration() {
