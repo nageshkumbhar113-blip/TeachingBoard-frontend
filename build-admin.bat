@@ -29,7 +29,7 @@ echo [3/7] Switching config → ADMIN...
 copy /Y capacitor-admin.config.ts capacitor.config.ts >nul 2>&1
 
 echo [4/7] Patching applicationId → com.teachingboard.admin ...
-node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/applicationId \"com\.teachingboard\.[^\"]+\"/,'applicationId \"com.teachingboard.admin\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  applicationId patched — com.teachingboard.admin');"
+node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/applicationId \"[^\"]+\"/,'applicationId \"com.teachingboard.admin\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  applicationId patched — com.teachingboard.admin');"
 if errorlevel 1 (
   echo ERROR: applicationId patch failed — restoring config
   copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
