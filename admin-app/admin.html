@@ -19,6 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin-ui.css" />
+  <link rel="stylesheet" href="concept-manager.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
@@ -184,6 +185,10 @@
             <button class="atab" role="tab" data-tab="notes" aria-controls="atab-notes" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📄</span>
               <span class="atab-label">Notes</span>
+            </button>
+            <button class="atab" role="tab" data-tab="concepts" aria-controls="atab-concepts" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📚</span>
+              <span class="atab-label">Concepts (SLS)</span>
             </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
@@ -1015,6 +1020,50 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </div>
 
+          <!-- ── Concepts Panel (SLS) ──────────────────── -->
+          <div class="atab-content hidden" id="atab-concepts" role="tabpanel" aria-labelledby="atab-btn-concepts">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">📚 Concepts (Smart Learning System)</h2>
+            </div>
+
+            <div class="cm-container">
+              <!-- Sidebar: Selection & List -->
+              <div class="cm-sidebar">
+                <div class="cm-sidebar-section">
+                  <h3>Select Content</h3>
+                  <select id="cm-batch-sel" class="form-select">
+                    <option value="">Select Batch</option>
+                  </select>
+                </div>
+
+                <div class="cm-sidebar-section">
+                  <select id="cm-subject-sel" class="form-select" disabled>
+                    <option value="">Select Subject</option>
+                  </select>
+                </div>
+
+                <div class="cm-sidebar-section">
+                  <select id="cm-chapter-sel" class="form-select" disabled>
+                    <option value="">Select Chapter</option>
+                  </select>
+                </div>
+
+                <div class="cm-sidebar-section">
+                  <h3>Concepts</h3>
+                  <button id="cm-new-btn" class="admin-btn-primary" style="width:100%;margin-bottom:12px">+ New Concept</button>
+                  <div id="cm-concepts-list" class="cm-concepts-list"></div>
+                </div>
+              </div>
+
+              <!-- Main: Editor -->
+              <div class="cm-main">
+                <div id="cm-editor-container" class="hidden">
+                  <form id="cm-editor-form"></form>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Settings Panel ──────────────────────── -->
           <div class="atab-content hidden" id="atab-settings" role="tabpanel" aria-labelledby="atab-btn-settings">
             <div class="admin-page-header">
@@ -1414,6 +1463,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="testBuilder.js" defer></script>
   <script src="wordTestBuilder.js" defer></script>
   <script src="notesManager.js" defer></script>
+  <script src="conceptManager.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>

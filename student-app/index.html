@@ -19,6 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="student-ui.css" />
+  <link rel="stylesheet" href="notesViewer.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
@@ -1008,6 +1009,11 @@
 
       </section>
 
+      <!-- ── NOTES VIEWER (SLS) ──────────────────────── -->
+      <section id="screen-notes" class="screen hidden" aria-label="Study Notes">
+        <div id="nv-container"></div>
+      </section>
+
     </main>
 
     <!-- ── BOTTOM NAVIGATION (mobile) ─────────────────── -->
@@ -1077,6 +1083,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if(typeof pdfjsLib!=='undefined') pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script src="notesPlayer.js" defer></script>
+  <script src="notesViewer.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="app.js" defer></script>
   <script src="student-mobile.js" defer></script>
