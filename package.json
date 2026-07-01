@@ -3,7 +3,6 @@
   "version": "7.0.0",
   "private": true,
   "type": "module",
-  "main": "electron-main.mjs",
   "scripts": {
     "start": "node server.js",
     "postinstall": "npm install --prefix TeachingBoard-backend",
@@ -22,24 +21,7 @@
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@playwright/test": "^1.55.0",
-    "electron": "^33.4.11",
-    "electron-builder": "^25.1.8",
     "typescript": "^6.0.3"
-  },
-  "build": {
-    "appId": "com.teachingboard.admin",
-    "productName": "TB Admin",
-    "files": [
-      "electron-main.mjs",
-      "dist-admin/**/*"
-    ],
-    "win": {
-      "target": "portable",
-      "icon": "icons/icon-512.png"
-    },
-    "directories": {
-      "output": "dist-electron"
-    }
   },
   "dependencies": {
     "@capacitor-community/text-to-speech": "^8.0.2",

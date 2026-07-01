@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Nks EduOrbit</string>
     <string name="title_activity_main">Nks EduOrbit</string>
-    <string name="package_name">com.teachingboard.app</string>
-    <string name="custom_url_scheme">com.teachingboard.app</string>
+    <string name="package_name">com.nkseduorbit.student</string>
+    <string name="custom_url_scheme">com.nkseduorbit.student</string>
 </resources>

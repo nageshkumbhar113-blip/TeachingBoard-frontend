@@ -15,11 +15,8 @@ if exist capacitor.config.ts.bak (
 )
 
 echo [1/7] Patching version %VERSION% (code %VERSION_CODE%)...
-node -e "const fs=require('fs');let t=fs.readFileSync('env.js','utf8');t=t.replace(/APP_VERSION\s*=\s*'[^']+'/,\"APP_VERSION = '%VERSION%'\");fs.writeFileSync('env.js',t,'utf8');console.log('  env.js patched');"
-if errorlevel 1 ( echo ERROR: env.js patch failed & pause & exit /b 1 )
-
-node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/versionCode \d+/,'versionCode %VERSION_CODE%').replace(/versionName \"[^\"]+\"/,'versionName \"%VERSION%\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  build.gradle patched');"
-if errorlevel 1 ( echo ERROR: build.gradle patch failed & pause & exit /b 1 )
+node tools/patch-version.mjs %VERSION% %VERSION_CODE%
+if errorlevel 1 ( echo ERROR: version patch failed & pause & exit /b 1 )
 
 echo [2/7] Preparing web assets...
 node tools/prepare-admin.mjs
@@ -29,7 +26,7 @@ echo [3/7] Switching config → ADMIN...
 copy /Y capacitor-admin.config.ts capacitor.config.ts >nul 2>&1
 
 echo [4/7] Patching applicationId → com.teachingboard.admin ...
-node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/applicationId \"[^\"]+\"/,'applicationId \"com.teachingboard.admin\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  applicationId patched — com.teachingboard.admin');"
+node tools/patch-appid.mjs com.teachingboard.admin
 if errorlevel 1 (
   echo ERROR: applicationId patch failed — restoring config
   copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
@@ -63,7 +60,17 @@ if %BUILD_ERR% neq 0 (
 
 :: APK rename + move to release folder
 if not exist android\app\release\ mkdir android\app\release\
-copy /Y "android\app\build\outputs\apk\release\app-release.apk" "android\app\release\admin%VERSION%.apk" >nul 2>&1
+if not exist "android\app\build\outputs\apk\release\app-release.apk" (
+  echo ERROR: built APK not found ^(android\app\build\outputs\apk\release\app-release.apk^) — Gradle output missing
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
+copy /Y "android\app\build\outputs\apk\release\app-release.apk" "android\app\release\admin%VERSION%.apk" >nul
+if not exist "android\app\release\admin%VERSION%.apk" (
+  echo ERROR: APK copy/rename failed
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
 
 :: ALWAYS restore student config
 copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1

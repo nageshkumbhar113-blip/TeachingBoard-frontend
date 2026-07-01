@@ -85,7 +85,7 @@ const NOTES_PLAYER = (() => {
       ctx.translate(canvas.width / 2, (canvas.height / rows) * r + canvas.height / (rows * 2));
       ctx.rotate(-Math.PI / 6);
       ctx.fillText(name,             0, 0);
-      ctx.fillText('Teaching Board', 0, size * 1.8);
+      ctx.fillText('Nks EduOrbit', 0, size * 1.8);
       ctx.fillText(batch,            0, size * 3.6);
       ctx.fillText(date,             0, size * 5.4);
       ctx.restore();

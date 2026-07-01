@@ -1,5 +1,6 @@
 const SW_VERSION = 'v44';
-const CACHE_PREFIX = 'teachingboard';
+const CACHE_PREFIX = 'nkseduorbit';
+const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${SW_VERSION}`;
 const OFFLINE_STUDENT_URL = './student-app/index.html';
@@ -71,7 +72,7 @@ self.addEventListener('activate', event => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter(key => key.startsWith(`${CACHE_PREFIX}-`) && ![STATIC_CACHE, RUNTIME_CACHE].includes(key))
+          .filter(key => (key.startsWith(`${CACHE_PREFIX}-`) || key.startsWith(`${LEGACY_CACHE_PREFIX}-`)) && ![STATIC_CACHE, RUNTIME_CACHE].includes(key))
           .map(key => caches.delete(key))
       );
       await self.clients.claim();

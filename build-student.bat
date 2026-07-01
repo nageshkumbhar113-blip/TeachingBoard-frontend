@@ -19,11 +19,8 @@ echo [PRE] Student config restore (capacitor-student.config.ts → capacitor.con
 copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
 
 echo [1/7] Patching version %VERSION% (code %VERSION_CODE%)...
-node -e "const fs=require('fs');let t=fs.readFileSync('env.js','utf8');t=t.replace(/APP_VERSION\s*=\s*'[^']+'/,\"APP_VERSION = '%VERSION%'\");fs.writeFileSync('env.js',t,'utf8');console.log('  env.js patched');"
-if errorlevel 1 ( echo ERROR: env.js patch failed & pause & exit /b 1 )
-
-node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/versionCode \d+/,'versionCode %VERSION_CODE%').replace(/versionName \"[^\"]+\"/,'versionName \"%VERSION%\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  build.gradle patched');"
-if errorlevel 1 ( echo ERROR: build.gradle patch failed & pause & exit /b 1 )
+node tools/patch-version.mjs %VERSION% %VERSION_CODE%
+if errorlevel 1 ( echo ERROR: version patch failed & pause & exit /b 1 )
 
 echo [2/7] Preparing web assets...
 node tools/prepare-student.mjs
@@ -34,7 +31,7 @@ node -e "const fs=require('fs');const t=fs.readFileSync('capacitor.config.ts','u
 if errorlevel 1 ( echo ERROR: config verify failed & pause & exit /b 1 )
 
 echo [4/7] Patching applicationId → com.nkseduorbit.student ...
-node -e "const fs=require('fs');let t=fs.readFileSync('android/app/build.gradle','utf8');t=t.replace(/applicationId \"[^\"]+\"/,'applicationId \"com.nkseduorbit.student\"');fs.writeFileSync('android/app/build.gradle',t,'utf8');console.log('  applicationId patched — com.nkseduorbit.student');"
+node tools/patch-appid.mjs com.nkseduorbit.student
 if errorlevel 1 ( echo ERROR: applicationId patch failed & pause & exit /b 1 )
 
 echo [5/7] Setting Nks EduOrbit icon + app name...
@@ -63,7 +60,17 @@ if %BUILD_ERR% neq 0 (
 
 :: APK rename + move to release folder
 if not exist android\app\release\ mkdir android\app\release\
-copy /Y "android\app\build\outputs\apk\release\app-release.apk" "android\app\release\Student%VERSION%.apk" >nul 2>&1
+if not exist "android\app\build\outputs\apk\release\app-release.apk" (
+  echo ERROR: built APK not found ^(android\app\build\outputs\apk\release\app-release.apk^) — Gradle output missing
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
+copy /Y "android\app\build\outputs\apk\release\app-release.apk" "android\app\release\Student%VERSION%.apk" >nul
+if not exist "android\app\release\Student%VERSION%.apk" (
+  echo ERROR: APK copy/rename failed
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
 
 :: Restore student config (safe default)
 copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1

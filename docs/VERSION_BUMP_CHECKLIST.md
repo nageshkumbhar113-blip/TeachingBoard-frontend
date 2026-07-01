@@ -6,7 +6,7 @@
 
 ---
 
-## ✋ MANUAL — हे ६ ठिकाणं स्वतः बदलायचे
+## ✋ MANUAL — हे ५ ठिकाणं स्वतः बदलायचे
 
 | # | File | Line | काय बदलायचं | उदाहरण |
 |---|------|------|-------------|--------|
@@ -14,10 +14,9 @@
 | 2 | `package.json` | 3 | `"version": "X.X.X"` | `"7.0.0"` |
 | 3 | `build-student.bat` | 7–8 | `set VERSION=X.X.X` **+** `set VERSION_CODE=XX` | `7.0.0` / `70` |
 | 4 | `build-admin.bat` | 7–8 | `set VERSION=X.X.X` **+** `set VERSION_CODE=XX` | `7.0.0` / `70` |
-| 5 | `build-admin-windows.bat` | 13 | `set VERSION=X.X.X` | `7.0.0` |
-| 6 | `sw.js` | 1 | `const SW_VERSION = 'vXX'` (**+1**) | `v44` → `v45` |
+| 5 | `sw.js` | 1 | `const SW_VERSION = 'vXX'` (**+1**) | `v44` → `v45` |
 
-> ⚠️ तिन्ही `.bat` files मध्ये VERSION **same** ठेवा.
+> ⚠️ दोन्ही `.bat` files मध्ये VERSION **same** ठेवा.
 
 ---
 
