@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-06-30):** `7.0.0` · versionCode `70` · SW `v44`
+**सध्याची version (last updated 2026-07-01):** `7.0.1` · versionCode `71` · SW `v45`
 
 ---
 
