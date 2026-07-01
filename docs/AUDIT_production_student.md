@@ -13,12 +13,12 @@
 |---|-------|--------|
 | 1 | Build / APK / release integrity | ✅ done (2 findings) |
 | 2 | Frontend wiring & routing | ✅ done (1 fixed, cleanup pending) |
-| 3 | API endpoint wiring (FE ↔ BE) | 🟡 mount-level ✅, deep pending |
-| 4 | Backend auth / security | ⏳ pending |
-| 5 | Database (queries, indexes, N+1) | ⏳ pending |
-| 6 | Student flows (page/tab-by-tab) | ⏳ pending |
-| 7 | Performance / speed | ⏳ pending |
-| 8 | Final green-tick + fixes summary | ⏳ pending |
+| 3 | API endpoint wiring (FE ↔ BE) | ✅ done — all wired |
+| 4 | Backend auth / security | ✅ done — solid (config notes) |
+| 5 | Database (queries, indexes, N+1) | ✅ done (1 fixed) |
+| 6 | Student flows (page/tab-by-tab) | ✅ done — solid |
+| 7 | Performance / speed | ✅ done (offline note) |
+| 8 | Final green-tick + fixes summary | ✅ see summary below |
 
 ---
 
@@ -52,7 +52,30 @@
 |----|-----|------|--------|
 | — | ✅ | API base resolution robust (Capacitor-native → render, localhost, same-origin fallbacks) | OK |
 | — | ✅ | All FE endpoint prefixes map to BE mounts (auth, quizzes, attempts, lessons, questions, students, batches, teacher(s), parent(s), app-version, vocab, student, word-tests, fee, payment, notes, sls) | OK mount-level |
-| P3-? | ⏳ | Deep per-endpoint check (each sub-path + HTTP method + auth middleware) — 53+ BE endpoints vs FE calls | pending |
+| — | ✅ | All 53+ endpoints verified: correct method + auth guard. Student endpoints (attempts/my, vocab/*, word-tests/*, notes, sls/student/*, quizzes/lessons/questions read) all `requireStudent`/`attachUserIfPresent` | OK |
+
+### Phase 4 — Backend auth / security ✅ (solid)
+| ID | Sev | Item | Status |
+|----|-----|------|--------|
+| — | ✅ | Auth middleware: JWT-verified, role guards (admin/student/teacher/parent), student blocked/expired denial at API layer (codes ACCOUNT_BLOCKED/ACCOUNT_EXPIRED) | OK |
+| — | ✅ | Public payment endpoints (order/trial/status) PIN-authenticated via `authStudentByPin(code,pin)` | OK |
+| — | ✅ | Cron `fee/process-reminders` guarded by `x-cron-secret` header | OK |
+| — | ✅ | Rate limiters present: authLimiter, payLimiter, vocabLimiter, registerLimiter | OK |
+| P4-1 | 🟡 | **`CRON_SECRET` env MUST be set in production** — else process-reminders always 401 → fee reminders never send | config |
+| P4-2 | 🟡 | `RAZORPAY_*` env vars required for payments/subscriptions | config |
+| P4-3 | 🟢 | 60s in-memory user cache → block/expiry takes up to 60s to propagate | acceptable |
+| P4-4 | 🟢 | Deleted student with still-valid token passes `requireStudent` until token expiry (userDoc null ⇒ no denial) | minor edge |
+| P4-5 | 🟢 | `GET /api/sls/papers/published` public (no auth) — verify intended (published list) | verify |
+
+### Phase 5 — Database ✅
+| ID | Sev | Item | Status |
+|----|-----|------|--------|
+| — | ✅ | All 26 models have indexes (no missing-index collection) | OK |
+| — | ✅ | Hottest student query `getMyAttempts` bounded (limit ≤1000, default 200) + paginated + student-filtered | OK |
+| — | ✅ | Batch catalog building loops = in-memory over pre-fetched data (no N+1) | OK |
+| P5-2 | 🟢→✅ | **N+1 FIXED**: `wordController.getTeacherVocabScores` did `User.findOne` per no-attempt student → batched to ONE `User.find({$in})` | **fixed** |
+| P5-1 | 🟢→✅ | **N+1 FIXED**: `studentController.updateStudent` per-teacher peers-find + updateOne → batched (1 peers-find + 1 bulkWrite); MAX-expiry/null semantics preserved exactly | **fixed** |
+| P5-3 | 🟡 | Analytics endpoints (wordController/wordTestController) fetch attempts and aggregate in JS — fine for class sizes; consider Mongo aggregation pipeline if data grows large | scale note |
 
 ---
 
@@ -64,3 +87,47 @@
 ## Frontend inventory
 - student-app: 22 files (~15k lines) · admin-app: 15 (~11k) · core: 6 (~5.7k) · js: 20 (mostly dead)
 - Offline-first: core/db.js (IndexedDB) + core/sync.js (server sync) + core/helpers.js (API wrapper)
+
+### Phase 6 — Student app functional flows ✅ (solid)
+| ID | Sev | Item | Status |
+|----|-----|------|--------|
+| — | ✅ | No raw `alert()/confirm()/prompt()` in student-app/core (Android WebView safe) | OK |
+| — | ✅ | No TODO/FIXME/HACK markers | OK |
+| — | ✅ | Central API wrapper `request()`: safe JSON parse, `response.ok` check, ACCOUNT_EXPIRED/BLOCKED/PENDING handling, 401 auth-retry, structured throw | OK |
+| — | ✅ | Subscription expired → renewal (plan-select/checkout) flow, not a dead-end; no forced re-login | OK |
+| — | ✅ | Back button (popstate) handled; error handling at flow level + inline `.catch` on DB ops | OK |
+
+### Phase 7 — Performance / speed ✅
+| ID | Sev | Item | Status |
+|----|-----|------|--------|
+| — | ✅ | 25/29 scripts deferred (non-blocking render) | OK |
+| — | ✅ | CDN deps guarded — katex (core/math.js:29), pdf.js (notesPlayer.js:259) → no crash offline, graceful degrade | OK |
+| P7-1 | 🟡 | True-offline limit: katex/pdf.js/razorpay load from CDN (cross-origin, not SW-precached). Offline → math shows raw LaTeX, PDF notes need online. Enhancement: self-host katex+pdf.js + precache for full offline (app advertises "offline quiz taking") | enhancement |
+| P7-2 | 🟢 | ~548 KB unminified student bundle — acceptable (SW-cached after first load); minify for faster first load if desired | optional |
+
+---
+
+## Phase 8 — Final green-tick summary
+
+### ✅ Production-ready verdict: GREEN (with 2 config env vars to confirm)
+Student app is structurally sound across build, wiring, endpoints, auth, DB, flows, and perf.
+
+### 🔧 Fixes applied this audit
+| ID | Fix | File |
+|----|-----|------|
+| P2-1 | SW precache: +6 offline assets (notes viewer etc.) | sw.js |
+| P2-2 | Removed 14 dead `js/` duplicates (~5.8k lines) | js/ |
+| P5-2 | N+1 → batched: teacher vocab-scores | wordController.js |
+| P5-1 | N+1 → batched + bulkWrite: expiry propagation | studentController.js |
+
+### ⚠️ Must confirm before/at production (config, not code)
+- **P4-1** `CRON_SECRET` env set on Render (else fee reminders never send)
+- **P4-2** `RAZORPAY_*` env vars set (payments/subscriptions)
+- **P1-1** `POST_NOTIFICATIONS` merges into APK manifest (Android 13+ push) — confirm on first push test
+
+### 📋 Optional / deferred (not blockers)
+- P7-1 self-host katex/pdf.js for full offline (enhancement)
+- P7-2 minify bundle (optional)
+- P5-3 analytics → Mongo aggregation (defer to scale)
+- P1-2 aapt.exe hardcoded path (verify-only step)
+- P4-3/P4-4 60s cache propagation / deleted-token edge (acceptable)
