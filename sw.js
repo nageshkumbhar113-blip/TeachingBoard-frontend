@@ -42,7 +42,9 @@ const CORE_ASSETS = [
   './student-app/wordTestPlayer.js',
   './student-app/wordTestInsights.js',
   './student-app/notesPlayer.js',
+  './student-app/notesViewer.js',
   './student-app/student-ui.css',
+  './student-app/notesViewer.css',
   './student-app/manifest.json',
   './admin-app/admin.html',
   './admin-app/admin.js',
@@ -51,8 +53,12 @@ const CORE_ASSETS = [
   './admin-app/testBuilder.js',
   './admin-app/wordTestBuilder.js',
   './admin-app/notesManager.js',
+  './admin-app/conceptManager.js',
+  './admin-app/batchPricingManager.js',
   './admin-app/parser.js',
   './admin-app/admin-ui.css',
+  './admin-app/concept-manager.css',
+  './admin-app/batch-pricing.css',
   './admin-app/manifest.json',
 ];
 
