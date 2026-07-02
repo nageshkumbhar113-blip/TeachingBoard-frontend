@@ -136,8 +136,11 @@ const CONCEPT_MANAGER = (() => {
     _concepts = [];
     _currentConcept = null;
 
-    $('cm-subject-sel').innerHTML = '<option value="">Select Subject</option>';
+    const subjectSel = $('cm-subject-sel');
+    subjectSel.innerHTML = '<option value="">Select Subject</option>';
+    subjectSel.disabled = true;
     $('cm-chapter-sel').innerHTML = '<option value="">Select Chapter</option>';
+    $('cm-chapter-sel').disabled = true;
     _renderConceptsList([]);
     _hideEditor();
 
@@ -145,13 +148,17 @@ const CONCEPT_MANAGER = (() => {
 
     try {
       const subs = await DB.getSubjectsByBatch(batch);
-      const sel = $('cm-subject-sel');
       subs.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.name;
         opt.textContent = s.name;
-        sel.appendChild(opt);
+        subjectSel.appendChild(opt);
       });
+      // Re-enable now that real options exist — the HTML starts these
+      // selects `disabled` (nothing to pick before a batch is chosen), but
+      // nothing was ever re-enabling them, so subject/chapter pickers never
+      // opened on Android even though the options were populated correctly.
+      subjectSel.disabled = false;
     } catch (err) {
       console.error('Failed to load subjects:', err);
     }
@@ -164,7 +171,9 @@ const CONCEPT_MANAGER = (() => {
     _concepts = [];
     _currentConcept = null;
 
-    $('cm-chapter-sel').innerHTML = '<option value="">Select Chapter</option>';
+    const chapterSel = $('cm-chapter-sel');
+    chapterSel.innerHTML = '<option value="">Select Chapter</option>';
+    chapterSel.disabled = true;
     _renderConceptsList([]);
     _hideEditor();
 
@@ -172,7 +181,6 @@ const CONCEPT_MANAGER = (() => {
 
     try {
       const chapters = await DB.getChaptersByBatchSubject(_batch, subject);
-      const sel = $('cm-chapter-sel');
       chapters.forEach(ch => {
         const opt = document.createElement('option');
         // Stable, deterministic chapterId (not the local auto-increment id —
@@ -181,8 +189,9 @@ const CONCEPT_MANAGER = (() => {
         opt.value = _makeChapterId(_batch, subject, ch.name);
         opt.textContent = ch.name;
         opt.dataset.name = ch.name;
-        sel.appendChild(opt);
+        chapterSel.appendChild(opt);
       });
+      chapterSel.disabled = false;
     } catch (err) {
       console.error('Failed to load chapters:', err);
     }
