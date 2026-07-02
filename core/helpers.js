@@ -1494,6 +1494,75 @@ const API = (() => {
   }
 
   // ════════════════════════
+  // SLS CONCEPT — ADMIN API
+  // ════════════════════════
+
+  // status='' (default) means "no filter" — sends `?status=` explicitly so
+  // the backend's `status = 'published'` destructuring default doesn't kick
+  // in; admin needs to see draft/archived concepts too, not just published.
+  async function fetchAdminChapterConcepts(chapterId, status = '') {
+    const token = await ensureAdminSession();
+    const payload = await request(`/admin/sls/chapters/${encodeURIComponent(chapterId)}/concepts?status=${encodeURIComponent(status)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data?.concepts || [];
+  }
+
+  async function fetchAdminConcept(conceptId) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/admin/sls/${encodeURIComponent(conceptId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
+  async function createAdminConcept(concept) {
+    const token = await ensureAdminSession();
+    const payload = await request('/admin/sls', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(concept),
+    });
+    return payload?.data || null;
+  }
+
+  async function updateAdminConcept(conceptId, concept) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/admin/sls/${encodeURIComponent(conceptId)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(concept),
+    });
+    return payload?.data || null;
+  }
+
+  async function deleteAdminConcept(conceptId) {
+    const token = await ensureAdminSession();
+    return request(`/admin/sls/${encodeURIComponent(conceptId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function publishAdminConcept(conceptId) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/admin/sls/${encodeURIComponent(conceptId)}/publish`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
+  async function translateAdminConcept(conceptId) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/admin/sls/${encodeURIComponent(conceptId)}/translate`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
+  // ════════════════════════
   // PUBLIC API
   // ════════════════════════
   // WORD TEST — ADMIN API
@@ -1876,6 +1945,8 @@ const API = (() => {
     // ─── Notes (Student) ─────────────────────────────────────────
     fetchStudentNotes, fetchNoteView,
     fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, fetchSlsConcept,
+    fetchAdminChapterConcepts, fetchAdminConcept, createAdminConcept, updateAdminConcept,
+    deleteAdminConcept, publishAdminConcept, translateAdminConcept,
   };
 })();
 

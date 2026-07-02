@@ -3730,7 +3730,7 @@ const ADMIN = (() => {
   // ════════════════════════
 
   window.ADMIN_UTILS = { compressImage: _compressImage };
-  return { init, open, close, loadQuestionBank, loadQuizList };
+  return { init, open, close, loadQuestionBank, loadQuizList, loadWordBank: _loadWordBank };
 })();
 
 window.ADMIN = ADMIN;

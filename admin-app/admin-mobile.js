@@ -179,9 +179,13 @@
         panel.classList.toggle('active', isActive);
         panel.classList.toggle('hidden', !isActive);
       });
-      // Tab-specific callbacks (mirror _initTabs in admin.js)
-      if (tab === 'notes')      window.NOTES_MANAGER?.init();
+      // Tab-specific callbacks (mirror _initTabs in admin.js — without this,
+      // opening these tabs via the mobile bottom-nav/More-drawer shows an
+      // empty/unloaded panel since only the desktop sidebar triggered init())
+      if (tab === 'words')      window.ADMIN?.loadWordBank?.();
       if (tab === 'word-tests') window.WORD_TEST_BUILDER?.onTabActivated();
+      if (tab === 'concepts')   window.CONCEPT_MANAGER?.init();
+      if (tab === 'pricing')    window.BATCH_PRICING?.init();
     }
 
     // Handle bottom nav tab clicks

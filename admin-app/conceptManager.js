@@ -92,6 +92,19 @@ const CONCEPT_MANAGER = (() => {
     _setupExamTagsCheckboxes();
   }
 
+  // Deterministic chapterId — same logical chapter always maps to the same
+  // id, regardless of which admin device/session created it locally.
+  function _makeChapterId(batch, subject, chapter) {
+    const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '-');
+    return `${norm(batch)}::${norm(subject)}::${norm(chapter)}`;
+  }
+
+  // "Std 8" -> 8, "8th" -> 8, "BASIC"/"Live Server" (no digits) -> null
+  function _parseStandard(batch) {
+    const m = String(batch || '').match(/\d+/);
+    return m ? parseInt(m[0], 10) : null;
+  }
+
   // ════════════════════════════════════════════════════════════════════════════
   // DROPDOWNS
   // ════════════════════════════════════════════════════════════════════════════
@@ -101,12 +114,12 @@ const CONCEPT_MANAGER = (() => {
     if (!sel) return;
 
     try {
-      const batches = await DB.getBatchList();
+      const batches = await DB.getAllBatches();
       sel.innerHTML = '<option value="">Select Batch</option>';
       batches.forEach(b => {
         const opt = document.createElement('option');
-        opt.value = b.batch_code;
-        opt.textContent = b.batch_code;
+        opt.value = b.name;
+        opt.textContent = b.name;
         sel.appendChild(opt);
       });
     } catch (err) {
@@ -158,11 +171,14 @@ const CONCEPT_MANAGER = (() => {
     if (!_batch || !subject) return;
 
     try {
-      const chapters = await DB.getChaptersByBatchAndSubject(_batch, subject);
+      const chapters = await DB.getChaptersByBatchSubject(_batch, subject);
       const sel = $('cm-chapter-sel');
       chapters.forEach(ch => {
         const opt = document.createElement('option');
-        opt.value = ch.chapter_id;
+        // Stable, deterministic chapterId (not the local auto-increment id —
+        // that's per-device/session and would orphan concepts on reinstall
+        // or when a different admin device creates the "same" chapter).
+        opt.value = _makeChapterId(_batch, subject, ch.name);
         opt.textContent = ch.name;
         opt.dataset.name = ch.name;
         sel.appendChild(opt);
@@ -187,11 +203,8 @@ const CONCEPT_MANAGER = (() => {
     }
 
     try {
-      const response = await fetch(`/api/sls/chapters/${chapterId}/concepts?status=all`);
-      if (!response.ok) throw new Error('Failed to load concepts');
-
-      const data = await response.json();
-      _concepts = data.data.concepts || [];
+      // Empty status = no filter (admin sees draft + published + archived).
+      _concepts = await API.fetchAdminChapterConcepts(chapterId, '');
       _renderConceptsList(_concepts);
     } catch (err) {
       console.error('Failed to load concepts:', err);
@@ -254,7 +267,17 @@ const CONCEPT_MANAGER = (() => {
       attachments: [],
       examTags: [],
       difficulty: 'easy',
-      status: 'draft'
+      status: 'draft',
+      // Ties this concept to the SAME batch/subject/chapter taxonomy as
+      // quizzes/words/tests, so the student "Notes" chapter list (grouped
+      // by aiContext) actually reflects what was picked here.
+      aiContext: {
+        board: 'CBSE',
+        standard: _parseStandard(_batch),
+        medium: 'english',
+        subject: _subject,
+        chapter: _chapter
+      }
     };
 
     _showEditor();
@@ -263,11 +286,7 @@ const CONCEPT_MANAGER = (() => {
 
   async function editConcept(conceptId) {
     try {
-      const response = await fetch(`/api/admin/sls/${conceptId}`);
-      if (!response.ok) throw new Error('Failed to load concept');
-
-      const data = await response.json();
-      _currentConcept = data.data;
+      _currentConcept = await API.fetchAdminConcept(conceptId);
       _showEditor();
       _renderEditor();
     } catch (err) {
@@ -663,30 +682,10 @@ const CONCEPT_MANAGER = (() => {
     }
 
     try {
-      const method = _currentConcept._id ? 'PATCH' : 'POST';
-      const endpoint = _currentConcept._id
-        ? `/api/admin/sls/${_currentConcept._id}`
-        : '/api/admin/sls';
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await DB.getAuthToken()}`
-        },
-        body: JSON.stringify({
-          ..._currentConcept,
-          changesSummary: publish ? 'Published' : 'Draft saved'
-        })
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || `Failed: ${response.status}`);
-      }
-
-      const result = await response.json();
-      _currentConcept = result.data;
+      const body = { ..._currentConcept, changesSummary: publish ? 'Published' : 'Draft saved' };
+      _currentConcept = _currentConcept._id
+        ? await API.updateAdminConcept(_currentConcept._id, body)
+        : await API.createAdminConcept(body);
 
       if (publish) {
         await _publishConceptActual();
@@ -712,16 +711,7 @@ const CONCEPT_MANAGER = (() => {
     if (!_currentConcept || !_currentConcept._id) return;
 
     try {
-      const response = await fetch(`/api/admin/sls/${_currentConcept._id}/publish`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${await DB.getAuthToken()}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Publish failed');
-      const data = await response.json();
-      _currentConcept = data.data;
+      _currentConcept = await API.publishAdminConcept(_currentConcept._id);
     } catch (err) {
       console.error('Publish failed:', err);
     }
@@ -731,20 +721,13 @@ const CONCEPT_MANAGER = (() => {
     const id = conceptId || _currentConcept?._id;
     if (!id) return;
 
-    if (!confirm('Are you sure you want to delete this concept? This cannot be undone.')) {
+    // Android WebView: native confirm()/prompt() are broken — must use APP.confirmAsync.
+    if (!(await APP.confirmAsync('Are you sure you want to delete this concept? This cannot be undone.'))) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/admin/sls/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${await DB.getAuthToken()}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Delete failed');
-
+      await API.deleteAdminConcept(id);
       APP.toast('Concept deleted', 'success');
       _cancelEdit();
       _onChapterChange(_chapterId);
@@ -761,16 +744,7 @@ const CONCEPT_MANAGER = (() => {
     }
 
     try {
-      const response = await fetch(`/api/admin/sls/${_currentConcept._id}/translate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${await DB.getAuthToken()}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Translation failed');
-      const data = await response.json();
-      _currentConcept = data.data;
+      _currentConcept = await API.translateAdminConcept(_currentConcept._id);
       _renderEditor();
       APP.toast('Content marked for Marathi translation', 'success');
     } catch (err) {
@@ -805,7 +779,7 @@ const CONCEPT_MANAGER = (() => {
   return {
     init,
     editConcept,
-    deleteConcept,
+    deleteConcept: _deleteConcept,
     _updateLearningOutcome,
     _removeLearningOutcome,
     _updateShortNote,
@@ -816,3 +790,7 @@ const CONCEPT_MANAGER = (() => {
     _toggleExamTag
   };
 })();
+
+// Expose globally so inline onclick handlers (CONCEPT_MANAGER.editConcept /
+// .deleteConcept) work — a top-level const is not visible to inline handlers.
+window.CONCEPT_MANAGER = CONCEPT_MANAGER;
