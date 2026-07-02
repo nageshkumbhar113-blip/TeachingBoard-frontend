@@ -67,6 +67,9 @@ const BATCH_PRICING = (() => {
 
   async function loadBatches() {
     try {
+      // Same endpoint Classes uses (/batches) — Pricing must show exactly
+      // the batches created there, not a separate list. It now includes
+      // monthly_price/yearly_price/trial_days in its response.
       const response = await fetch(`${_apiBase()}/batches`, {
         headers: await _authHeaders(),
       });

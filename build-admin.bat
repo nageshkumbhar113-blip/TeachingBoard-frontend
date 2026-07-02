@@ -4,8 +4,8 @@ echo  TeachingBoard — ADMIN APK Build
 echo ========================================
 
 :: ── Version — update BOTH values for every release ──────────────────────────
-set VERSION=7.0.1
-set VERSION_CODE=71
+set VERSION=7.0.3
+set VERSION_CODE=73
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: [PRE] Stale .bak cleanup
