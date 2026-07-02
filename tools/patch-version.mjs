@@ -32,4 +32,12 @@ patchFile('android/app/build.gradle', [
   { re: /versionName "[^"]+"/,    to: `versionName "${version}"`,   label: 'versionName' },
 ]);
 
-console.log(`  patched: env.js APP_VERSION + build.gradle versionName=${version}, versionCode=${versionCode}`);
+// SW_VERSION is tied to versionCode so it ALWAYS changes on every release build —
+// versionCode bumping is already mandatory, so this makes forgetting to bust the
+// service worker cache (and users being stuck on old JS/CSS after an update)
+// structurally impossible instead of relying on a manual reminder.
+patchFile('sw.js', [
+  { re: /const SW_VERSION = '[^']+'/, to: `const SW_VERSION = 'v${versionCode}'`, label: 'SW_VERSION' },
+]);
+
+console.log(`  patched: env.js APP_VERSION + build.gradle versionName=${version}, versionCode=${versionCode} + sw.js SW_VERSION=v${versionCode}`);

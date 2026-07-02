@@ -696,7 +696,8 @@ const VOCAB = (() => {
   function init() {
     // Back button on test list → go home
     $id('vocab-back-btn')?.addEventListener('click', () => {
-      if (window.APP?.loadHome) APP.loadHome();
+      // APP is a top-level `const` in app.js, not `window.APP` (see notes elsewhere in this file).
+      if (typeof APP !== 'undefined' && APP?.loadHome) APP.loadHome();
     });
 
     // Batch select → reload subjects + test list (only shown when student has multiple courses)
@@ -777,8 +778,11 @@ const VOCAB = (() => {
 
     $id('vocab-tab-notes')?.addEventListener('click', () => {
       // Notes now open the SLS concept viewer (full-screen). PDF notes removed.
+      // NOTE: APP is a top-level `const` in app.js, not `window.APP` — top-level
+      // const/let in classic scripts don't become window properties, but ARE
+      // visible as a bare identifier to other classic scripts on the same page.
       window.NOTES_VIEWER?.init();
-      window.APP?.navigate?.('notes');
+      APP?.navigate?.('notes');
     });
 
     // Bottom nav Words button — always fetch fresh profile from server so

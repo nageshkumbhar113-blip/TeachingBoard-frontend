@@ -9,8 +9,10 @@ const PAYMENT = (() => {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function _toast(msg, type = 'info') {
-    if (window.APP?.toast) APP.toast(msg, type);
-    else if (window.UI?.toast) UI.toast(msg, type);
+    // APP/UI are top-level `const` in app.js/ui.js — never attach to `window`,
+    // but ARE visible as bare identifiers to other classic scripts on this page.
+    if (typeof APP !== 'undefined' && APP?.toast) APP.toast(msg, type);
+    else if (typeof UI !== 'undefined' && UI?.toast) UI.toast(msg, type);
   }
 
   let _overlay = null;

@@ -490,9 +490,20 @@ const DB = (() => {
     await Promise.all(questionsToUnlink.map(q => _put('questions', { ...q, batch: '' })));
   }
 
+  const DEFAULT_BATCHES_SEEDED_KEY = 'teachingboard_default_batches_seeded';
+
   async function initDefaultBatches() {
+    // Seed the demo classes (Std 5-10) at most ONCE per install — otherwise
+    // deleting all of them (e.g. to replace with real batches) makes them
+    // silently reappear on every app restart, since an empty `batches` store
+    // used to be treated as "never seeded" instead of "user deleted them all".
+    const alreadySeeded = await getSetting(DEFAULT_BATCHES_SEEDED_KEY, false);
+    if (alreadySeeded) return;
     const existing = await getAllBatches();
-    if (existing.length) return;
+    if (existing.length) {
+      await setSetting(DEFAULT_BATCHES_SEEDED_KEY, true);
+      return;
+    }
     const defaults = [
       { id: 1, name: 'Std 5',  icon: '📚' },
       { id: 2, name: 'Std 6',  icon: '🌱' },
@@ -502,6 +513,7 @@ const DB = (() => {
       { id: 6, name: 'Std 10', icon: '🎯' },
     ];
     await Promise.all(defaults.map(b => _put('batches', b)));
+    await setSetting(DEFAULT_BATCHES_SEEDED_KEY, true);
   }
 
   async function getAllBatchSubjects() {

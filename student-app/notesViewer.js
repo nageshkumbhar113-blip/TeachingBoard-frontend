@@ -59,22 +59,16 @@ const NOTES_VIEWER = (() => {
 
   async function _loadChapters() {
     try {
-      const batches = await DB.getBatchList();
-      const allChapters = [];
-
-      for (const batch of batches) {
-        const subjects = await DB.getSubjectsByBatch(batch.batch_code);
-        for (const subject of subjects) {
-          const chapters = await DB.getChaptersByBatchAndSubject(batch.batch_code, subject.name);
-          allChapters.push(...chapters.map(ch => ({
-            ...ch,
-            batch: batch.batch_code,
-            subject: subject.name
-          })));
-        }
-      }
-
-      state.chapters = allChapters;
+      // Chapters come from the server (SLS concept library), not the local
+      // quiz question-bank cache — the two are unrelated data sets.
+      const chapters = await API.fetchSlsChapters();
+      state.chapters = chapters.map(ch => ({
+        chapter_id: ch.chapterId,
+        name: ch.chapter || '',
+        batch: [ch.standard ? `Std ${ch.standard}` : '', ch.subject].filter(Boolean).join(' · '),
+        subject: ch.subject || '',
+        conceptCount: ch.conceptCount || 0,
+      }));
     } catch (err) {
       console.error('Failed to load chapters:', err);
     }

@@ -129,13 +129,13 @@ const WORD_TEST_PLAYER = (() => {
       const res = await API.fetchStudentWordTest(testId);
       _test = res?.test || null;
       if (!_test?.questions?.length) {
-        window.APP?.toast?.('Test has no questions', 'error');
+        APP?.toast?.('Test has no questions', 'error');
         _showView('wtp-list-view');
         return;
       }
       _renderQuestion();
     } catch (err) {
-      window.APP?.toast?.(err.message, 'error');
+      APP?.toast?.(err.message, 'error');
       _showView('wtp-list-view');
     }
   }
@@ -296,7 +296,7 @@ const WORD_TEST_PLAYER = (() => {
       _result = await API.submitWordTestAttempt(_testId, answers);
       _showScoreView();
     } catch (err) {
-      window.APP?.toast?.(err.message || 'Submit failed', 'error');
+      APP?.toast?.(err.message || 'Submit failed', 'error');
       if (btn) { btn.disabled = false; btn.textContent = 'Submit Test'; }
     }
   }

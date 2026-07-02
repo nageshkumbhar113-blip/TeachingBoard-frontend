@@ -2036,6 +2036,77 @@ const ADMIN = (() => {
     $('btn-close-teacher-creds').onclick = () => modal.classList.add('hidden');
   }
 
+  // ── Assign unassigned students (checklist picker) ─────────────────────────
+
+  let _unassignedStudentsCache = [];
+  let _unassignedSearchTimer = null;
+
+  function _renderUnassignedList(filter = '') {
+    const box = $('pick-unassigned-list');
+    if (!box) return;
+    const q = filter.trim().toLowerCase();
+    const items = _unassignedStudentsCache.filter(s =>
+      !q || s.name.toLowerCase().includes(q) || s.student_code.toLowerCase().includes(q)
+    );
+    if (!items.length) {
+      box.innerHTML = `<p class="empty-hint">${_unassignedStudentsCache.length ? 'No match' : 'सर्व students आधीच कोणत्या ना कोणत्या teacher ला assign झाले आहेत 🎉'}</p>`;
+      return;
+    }
+    box.innerHTML = items.map(s => `
+      <label class="admin-list-item" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" class="pick-unassigned-cb" value="${_escHtml(s.student_code)}" style="width:18px;height:18px" />
+        <span><strong>${_escHtml(s.name)}</strong> — ${_escHtml(s.student_code)}</span>
+      </label>
+    `).join('');
+  }
+
+  async function _openPickUnassignedModal() {
+    const modal = $('pick-unassigned-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const box = $('pick-unassigned-list');
+    if (box) box.innerHTML = '<p class="empty-hint">Loading...</p>';
+    try {
+      _unassignedStudentsCache = await API.fetchUnassignedStudents();
+      _renderUnassignedList($('pick-unassigned-search')?.value || '');
+    } catch (err) {
+      if (box) box.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load students')}</p>`;
+    }
+  }
+
+  function _closePickUnassignedModal() {
+    $('pick-unassigned-modal')?.classList.add('hidden');
+  }
+
+  async function _assignSelectedUnassigned() {
+    const selected = Array.from(document.querySelectorAll('.pick-unassigned-cb:checked')).map(cb => cb.value);
+    if (!selected.length) { APP.toast('कोणीही निवडलेलं नाही', 'error'); return; }
+
+    const teacherId = String($('teacher-edit-id')?.value || '').trim();
+    const textarea = $('teacher-assigned-students');
+    const existingCodes = String(textarea?.value || '').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+    const merged = [...new Set([...existingCodes, ...selected])];
+
+    if (teacherId) {
+      // Editing an existing teacher — assign immediately.
+      try {
+        await API.updateTeacher(teacherId, { assigned_students: merged });
+        APP.toast(`${selected.length} student(s) assigned`, 'success');
+        _closePickUnassignedModal();
+        await _loadTeachersAdmin();
+        if (textarea) textarea.value = merged.join(', ');
+      } catch (err) {
+        APP.toast(err.message || 'Assign failed', 'error');
+      }
+    } else {
+      // New teacher not saved yet — just populate the textarea; actual
+      // assignment happens when "Save Teacher" is clicked.
+      if (textarea) textarea.value = merged.join(', ');
+      APP.toast(`${selected.length} student(s) added — click "Save Teacher" to confirm`, 'info');
+      _closePickUnassignedModal();
+    }
+  }
+
   async function _saveTeacherAccount() {
     try {
       const teacherId = String($('teacher-edit-id')?.value || '').trim();
@@ -2647,6 +2718,13 @@ const ADMIN = (() => {
     $('teacher-search')?.addEventListener('input', e => {
       clearTimeout(_teacherSearchTimer);
       _teacherSearchTimer = setTimeout(() => _renderTeacherList(e.target.value), 120);
+    });
+    $('btn-pick-unassigned-students')?.addEventListener('click', _openPickUnassignedModal);
+    $('btn-close-pick-unassigned')?.addEventListener('click', _closePickUnassignedModal);
+    $('btn-assign-unassigned')?.addEventListener('click', _assignSelectedUnassigned);
+    $('pick-unassigned-search')?.addEventListener('input', e => {
+      clearTimeout(_unassignedSearchTimer);
+      _unassignedSearchTimer = setTimeout(() => _renderUnassignedList(e.target.value), 120);
     });
 
     // Parents

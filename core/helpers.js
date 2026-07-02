@@ -1062,6 +1062,14 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  async function fetchUnassignedStudents(pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/teachers/unassigned-students', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
   async function createTeacher(teacher, pin = '') {
     const token = await ensureAdminSession(pin);
     const payload = await request('/teachers', {
@@ -1780,6 +1788,14 @@ const API = (() => {
   }
 
   // ─── SLS concept notes (student) — via API wrapper so it works on Android ──
+  async function fetchSlsChapters() {
+    const token = await ensureStudentSession();
+    const payload = await request('/sls/chapters', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
   async function fetchSlsConcepts(chapterId) {
     const token = await ensureStudentSession();
     const payload = await request(`/sls/chapters/${encodeURIComponent(chapterId)}/concepts`, {
@@ -1823,7 +1839,7 @@ const API = (() => {
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus,
-    fetchTeachers, createTeacher, updateTeacher, deleteTeacher,
+    fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,
@@ -1859,7 +1875,7 @@ const API = (() => {
     uploadNote, fetchAdminNotes, updateNote, deleteNote,
     // ─── Notes (Student) ─────────────────────────────────────────
     fetchStudentNotes, fetchNoteView,
-    fetchSlsConcepts, searchSlsConcepts, fetchSlsConcept,
+    fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, fetchSlsConcept,
   };
 })();
 

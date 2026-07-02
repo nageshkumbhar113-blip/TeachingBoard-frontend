@@ -183,10 +183,6 @@
               <span class="atab-icon" aria-hidden="true">🎯</span>
               <span class="atab-label">Word Tests</span>
             </button>
-            <button class="atab" role="tab" data-tab="notes" aria-controls="atab-notes" aria-selected="false">
-              <span class="atab-icon" aria-hidden="true">📄</span>
-              <span class="atab-label">Notes</span>
-            </button>
             <button class="atab" role="tab" data-tab="concepts" aria-controls="atab-concepts" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📚</span>
               <span class="atab-label">Concepts (SLS)</span>
@@ -504,6 +500,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                 <p class="import-hint">Assigned Students (student codes, comma-separated)</p>
                 <textarea id="teacher-assigned-students" class="admin-textarea" rows="3"
                   placeholder="STU001, STU002, STU003…" aria-label="Assigned student codes"></textarea>
+                <button id="btn-pick-unassigned-students" class="admin-btn-secondary" type="button" style="margin-top:8px">☑️ Pick Unassigned Students</button>
               </div>
               <div class="admin-toolbar">
                 <button id="btn-save-teacher" class="admin-btn-primary">Save Teacher</button>
@@ -533,6 +530,20 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                   <button id="btn-copy-teacher-creds" class="admin-btn-secondary" type="button">📋 Copy</button>
                   <button id="btn-wa-teacher-creds"   class="admin-btn-primary" type="button">📱 WhatsApp</button>
                   <button id="btn-close-teacher-creds" class="admin-btn-secondary" type="button">Close</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pick unassigned students modal -->
+            <div id="pick-unassigned-modal" class="creds-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Pick unassigned students">
+              <div class="creds-modal-card">
+                <h3 class="creds-modal-title">☑️ Unassigned Students</h3>
+                <p class="import-hint">कोणत्याही teacher ला अजून assign न झालेले students. निवडून Assign करा.</p>
+                <input id="pick-unassigned-search" class="admin-input" type="search" placeholder="Search name / code" aria-label="Search unassigned students" style="margin:8px 0" />
+                <div id="pick-unassigned-list" class="batch-admin-list" role="list" aria-label="Unassigned students" style="max-height:320px;overflow-y:auto"></div>
+                <div class="admin-toolbar" style="margin-top:12px">
+                  <button id="btn-assign-unassigned" class="admin-btn-primary" type="button">✅ Assign Selected</button>
+                  <button id="btn-close-pick-unassigned" class="admin-btn-secondary" type="button">Close</button>
                 </div>
               </div>
             </div>
@@ -1266,9 +1277,6 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       </button>
       <button class="abn-drawer-item" data-tab="word-tests">
         <span>🎯</span> Word Tests
-      </button>
-      <button class="abn-drawer-item" data-tab="notes">
-        <span>📄</span> Notes
       </button>
       <button class="abn-drawer-item" data-tab="settings">
         <span>⚙️</span> Settings
