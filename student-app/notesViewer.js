@@ -86,11 +86,7 @@ const NOTES_VIEWER = (() => {
 
   async function _loadConcepts(chapterId) {
     try {
-      const response = await fetch(`/api/sls/chapters/${chapterId}/concepts`);
-      if (!response.ok) throw new Error('Failed to load concepts');
-
-      const data = await response.json();
-      state.concepts = data.data.concepts || [];
+      state.concepts = await API.fetchSlsConcepts(chapterId);
       state.currentChapter = state.chapters.find(ch => ch.chapter_id === chapterId);
     } catch (err) {
       console.error('Failed to load concepts:', err);
@@ -109,11 +105,7 @@ const NOTES_VIEWER = (() => {
     }
 
     try {
-      const response = await fetch(`/api/sls/search?q=${encodeURIComponent(query)}&limit=20`);
-      if (!response.ok) throw new Error('Search failed');
-
-      const data = await response.json();
-      _renderConceptsList(data.data || []);
+      _renderConceptsList(await API.searchSlsConcepts(query));
     } catch (err) {
       console.error('Search failed:', err);
     }
@@ -125,11 +117,7 @@ const NOTES_VIEWER = (() => {
 
   async function viewConcept(conceptId) {
     try {
-      const response = await fetch(`/api/sls/${conceptId}/view`);
-      if (!response.ok) throw new Error('Failed to load concept');
-
-      const data = await response.json();
-      state.currentConcept = data.data;
+      state.currentConcept = await API.fetchSlsConcept(conceptId);
 
       _updateProgress('reading');
       _renderConcept();
@@ -550,3 +538,7 @@ const NOTES_VIEWER = (() => {
     selectChapter
   };
 })();
+
+// Expose globally so inline onclick handlers (NOTES_VIEWER.selectChapter / .viewConcept)
+// and the Notes tab wiring can reach it — top-level const is NOT visible to inline handlers.
+window.NOTES_VIEWER = NOTES_VIEWER;

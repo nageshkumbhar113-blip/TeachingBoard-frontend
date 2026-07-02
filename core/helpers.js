@@ -1779,6 +1779,31 @@ const API = (() => {
     return resp.arrayBuffer();
   }
 
+  // ─── SLS concept notes (student) — via API wrapper so it works on Android ──
+  async function fetchSlsConcepts(chapterId) {
+    const token = await ensureStudentSession();
+    const payload = await request(`/sls/chapters/${encodeURIComponent(chapterId)}/concepts`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data?.concepts || [];
+  }
+
+  async function searchSlsConcepts(query, limit = 20) {
+    const token = await ensureStudentSession();
+    const payload = await request(`/sls/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function fetchSlsConcept(conceptId) {
+    const token = await ensureStudentSession();
+    const payload = await request(`/sls/${encodeURIComponent(conceptId)}/view`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
   // ════════════════════════
 
   return {
@@ -1834,6 +1859,7 @@ const API = (() => {
     uploadNote, fetchAdminNotes, updateNote, deleteNote,
     // ─── Notes (Student) ─────────────────────────────────────────
     fetchStudentNotes, fetchNoteView,
+    fetchSlsConcepts, searchSlsConcepts, fetchSlsConcept,
   };
 })();
 

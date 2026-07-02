@@ -41,7 +41,6 @@ const CORE_ASSETS = [
   './student-app/vocabPlayer.js',
   './student-app/wordTestPlayer.js',
   './student-app/wordTestInsights.js',
-  './student-app/notesPlayer.js',
   './student-app/notesViewer.js',
   './student-app/student-ui.css',
   './student-app/notesViewer.css',

@@ -776,14 +776,9 @@ const VOCAB = (() => {
     });
 
     $id('vocab-tab-notes')?.addEventListener('click', () => {
-      _setVocabTab('vocab-tab-notes');
-      $id('vocab-dict-view')?.classList.add('hidden');
-      $id('vocab-test-grid')?.classList.add('hidden');
-      $id('vocab-notes-panel')?.classList.remove('hidden');
-      if (window.NOTES_PLAYER) {
-        window.NOTES_PLAYER.init();
-        window.NOTES_PLAYER.loadNotesList(_batch, _subject);
-      }
+      // Notes now open the SLS concept viewer (full-screen). PDF notes removed.
+      window.NOTES_VIEWER?.init();
+      window.APP?.navigate?.('notes');
     });
 
     // Bottom nav Words button — always fetch fresh profile from server so
