@@ -57,9 +57,12 @@
       <div class="pin-lock-avatar" id="pin-lock-avatar">👤</div>
       <div class="pin-lock-name" id="pin-lock-name">Student</div>
       <div class="pin-lock-sub">तुमचा PIN टाका</div>
-      <input type="password" id="pin-lock-input" class="pin-lock-input"
-        inputmode="numeric" maxlength="6" placeholder="● ● ● ●"
-        autocomplete="current-password" aria-label="PIN" />
+      <div class="pin-toggle-wrap">
+        <input type="password" id="pin-lock-input" class="pin-lock-input"
+          inputmode="numeric" maxlength="6" placeholder="● ● ● ●"
+          autocomplete="current-password" aria-label="PIN" />
+        <button type="button" class="pin-toggle-btn" data-target="pin-lock-input" aria-label="Show PIN">👁</button>
+      </div>
       <div id="pin-lock-error" class="pin-lock-error hidden">चुकीचा PIN. पुन्हा प्रयत्न करा.</div>
       <button id="pin-lock-submit" class="pin-lock-btn">Unlock →</button>
       <p class="pin-lock-admin-note">PIN विसरलात? Admin ला सांगा.</p>
@@ -90,11 +93,14 @@
 
       <div class="onboarding-field">
         <label for="ob-pin" class="onboarding-label">PIN <span class="ob-required">*</span></label>
-        <input id="ob-pin" type="password" class="onboarding-input"
-          placeholder="4 digit PIN"
-          maxlength="4"
-          inputmode="numeric"
-          autocomplete="current-password" />
+        <div class="pin-toggle-wrap">
+          <input id="ob-pin" type="password" class="onboarding-input"
+            placeholder="4 digit PIN"
+            maxlength="4"
+            inputmode="numeric"
+            autocomplete="current-password" />
+          <button type="button" class="pin-toggle-btn" data-target="ob-pin" aria-label="Show PIN">👁</button>
+        </div>
       </div>
 
       <div class="onboarding-field" id="ob-server-field">
@@ -148,10 +154,13 @@
 
       <div class="onboarding-field">
         <label for="reg-pin" class="onboarding-label">4 digit PIN सेट करा <span class="ob-required">*</span></label>
-        <input id="reg-pin" type="password" class="onboarding-input"
-          placeholder="4 अंकी PIN"
-          maxlength="4" inputmode="numeric"
-          autocomplete="new-password" />
+        <div class="pin-toggle-wrap">
+          <input id="reg-pin" type="password" class="onboarding-input"
+            placeholder="4 अंकी PIN"
+            maxlength="4" inputmode="numeric"
+            autocomplete="new-password" />
+          <button type="button" class="pin-toggle-btn" data-target="reg-pin" aria-label="Show PIN">👁</button>
+        </div>
       </div>
 
       <div class="onboarding-field" style="margin-top:4px">

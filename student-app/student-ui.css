@@ -978,6 +978,35 @@ body.student-app.mode-board.theme-board-light::before {
   border-color: var(--accent, #f0883e);
 }
 
+/* Show/hide toggle for PIN fields (login, registration, lock-screen) */
+.pin-toggle-wrap {
+  position: relative;
+}
+.pin-toggle-wrap .onboarding-input {
+  padding-right: 44px;
+}
+/* pin-lock-input keeps its centered dot-spacing; the toggle just sits near
+   the edge rather than shifting the (already short) centered text. */
+.pin-toggle-wrap .pin-lock-input {
+  padding-right: 36px;
+}
+.pin-toggle-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 8px;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.pin-toggle-btn:active {
+  opacity: 1;
+}
+
 .onboarding-hint {
   font-size: 0.76rem;
   color: var(--text2, #8b949e);

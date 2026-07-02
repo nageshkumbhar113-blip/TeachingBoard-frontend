@@ -130,6 +130,19 @@ const APP = (() => {
     if (_globalGuardsInstalled) return;
     _globalGuardsInstalled = true;
 
+    // Show/hide toggle for PIN fields (login, registration, lock-screen) —
+    // one delegated listener covers all of them, present or added later.
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('.pin-toggle-btn');
+      if (!btn) return;
+      const input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? '👁' : '🙈';
+      btn.setAttribute('aria-label', showing ? 'Show PIN' : 'Hide PIN');
+    });
+
     window.addEventListener('error', e => {
       console.error('GLOBAL ERROR:', e.error || e.message || e);
       try { toast('System error occurred. Recovering...', 'error'); } catch {}
