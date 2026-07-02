@@ -29,8 +29,8 @@ const NOTES_VIEWER = (() => {
     state.initialized = true;
 
     try {
-      const user = await DB.getCurrentUser();
-      state.studentCode = user?.student_code;
+      const profile = await API.getStudentProfile();
+      state.studentCode = profile?.student_code;
 
       _setupEventListeners();
       await _loadChapters();
