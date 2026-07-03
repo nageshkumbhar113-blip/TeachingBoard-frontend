@@ -42,7 +42,7 @@
 .bp-value { color: #001f5c; font-weight: 600; text-align: right; word-break: break-word; }
 .bp-final-price { font-size: 1.2rem; color: #28a745; }
 
-.bp-batch-actions { display: flex; gap: 0.8rem; }
+.bp-batch-actions { display: flex; flex-wrap: wrap; gap: 0.8rem; }
 
 .bp-btn {
   padding: 0.6rem 1.2rem; border: none; border-radius: 6px; font-size: 0.9rem;

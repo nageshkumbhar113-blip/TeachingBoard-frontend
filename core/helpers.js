@@ -522,9 +522,13 @@ const API = (() => {
     const base = {
       q_id      : meta.q_id || question.q_id || `api_${question.id}`,
       backend_id: question.id || question._id || question.q_id || null,
-      batch     : meta.batch      || question.batch      || REMOTE_BATCH,
-      subject   : meta.subject    || question.subject    || REMOTE_SUBJECT,
-      chapter   : meta.chapter    || question.chapter    || REMOTE_CHAPTER,
+      // '' means "explicitly unlinked from a deleted batch" (server's
+      // intentional unlink-don't-delete design) — that must stay empty, not
+      // fall back to REMOTE_BATCH. Only missing (undefined/null) fields —
+      // truly legacy questions that never had one — get the fallback.
+      batch     : meta.batch      ?? question.batch      ?? REMOTE_BATCH,
+      subject   : meta.subject    ?? question.subject    ?? REMOTE_SUBJECT,
+      chapter   : meta.chapter    ?? question.chapter    ?? REMOTE_CHAPTER,
       question  : question.question,
       difficulty: meta.difficulty || question.difficulty || 'medium',
       type,

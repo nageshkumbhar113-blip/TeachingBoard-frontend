@@ -974,6 +974,7 @@ body.admin-app {
 .batch-admin-item {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--sp-4);
   padding: var(--sp-3) var(--sp-5);
   background: var(--surface);
@@ -982,8 +983,13 @@ body.admin-app {
   transition: border-color var(--ease-std);
 }
 .batch-admin-item:hover { border-color: var(--accent); }
-.batch-admin-name { flex: 1; font-weight: 600; color: var(--text); }
-.batch-admin-actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.batch-admin-name { flex: 1; min-width: 120px; font-weight: 600; color: var(--text); }
+.batch-admin-actions {
+  display: flex; flex-wrap: wrap; gap: var(--sp-1);
+  width: 100%; /* own row below name/cover once wrapped, so buttons never clip off-screen */
+  justify-content: flex-start;
+}
+.batch-admin-actions .admin-btn-danger { margin-left: auto; } /* Delete visually separated, but still wraps normally instead of pinning to the edge */
 
 .batch-admin-cover-wrap { flex: 0 0 auto; }
 .batch-admin-cover {
