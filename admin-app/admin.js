@@ -1189,21 +1189,61 @@ const ADMIN = (() => {
     }
 
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-    _downloadBlob(blob, `teachingboard_${Date.now()}.zip`);
+    await _downloadBlob(blob, `teachingboard_${Date.now()}.zip`);
     APP.toast('✅ ZIP exported', 'success');
   }
 
-  function _downloadBlob(blob, name) {
-    const url = URL.createObjectURL(blob);
-    const a   = document.createElement('a');
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  async function _downloadBlob(blob, name) {
+    // Plain <a download> on a blob: URL is a no-op inside the Capacitor
+    // Android WebView (no DownloadListener for blob: URLs) — route through
+    // FILE_EXPORT so it actually reaches the device (native: write + Share
+    // sheet; web/PWA: falls back to the classic anchor download).
+    try {
+      await FILE_EXPORT.saveAndShare(blob, name);
+    } catch (err) {
+      APP.toast(err?.message || 'Export failed', 'error');
+    }
   }
 
   // ════════════════════════
   // BATCH ADMIN
   // ════════════════════════
+
+  function _fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Center-crop + resize to an exact target size (fixed format for batch
+  // covers — 1200x675 / 16:9 — so every batch card looks consistent in the
+  // student showcase regardless of what image admin picked).
+  function _resizeImageDataUrl(dataUrl, targetW, targetH) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const targetRatio = targetW / targetH;
+        const srcRatio = img.width / img.height;
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+        if (srcRatio > targetRatio) {
+          sw = img.height * targetRatio;
+          sx = (img.width - sw) / 2;
+        } else {
+          sh = img.width / targetRatio;
+          sy = (img.height - sh) / 2;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW; canvas.height = targetH;
+        canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
 
   async function _loadBatchAdmin() {
     const batches = await DB.getAllBatches();
@@ -1220,15 +1260,54 @@ const ADMIN = (() => {
       const item = document.createElement('div');
       item.className = 'batch-admin-item';
       item.innerHTML = `
+        <div class="batch-admin-cover-wrap">
+          ${b.cover_image
+            ? `<img src="${_esc(b.cover_image)}" class="batch-admin-cover" alt="">`
+            : `<div class="batch-admin-cover batch-admin-cover-empty">${b.icon || '📚'}</div>`}
+        </div>
         <div>
           <div class="batch-admin-name">${b.icon || '📚'} ${_esc(b.name)}</div>
           <div class="batch-admin-meta">${qs.length} questions</div>
         </div>
         <div class="batch-admin-actions">
+          <button class="admin-btn-secondary btn-cover-batch" data-name="${_esc(b.name)}">🖼️ Cover</button>
+          <input type="file" class="batch-cover-upload" accept="image/*" style="display:none">
+          <button class="admin-btn-secondary btn-share-batch" data-name="${_esc(b.name)}">🔗 Share</button>
           <button class="admin-btn-secondary btn-rename-batch" data-id="${b.id}" data-name="${_esc(b.name)}" data-icon="${_esc(b.icon || '📚')}">✏️ Rename</button>
           <button class="admin-btn-danger btn-delete-batch" data-id="${b.id}" data-name="${_esc(b.name)}">🗑️ Delete</button>
         </div>
       `;
+      item.querySelector('.btn-cover-batch').addEventListener('click', () => {
+        item.querySelector('.batch-cover-upload').click();
+      });
+      item.querySelector('.batch-cover-upload').addEventListener('change', async e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          APP.toast('Cover image अपलोड होत आहे…', 'info');
+          const dataUrl = await _fileToDataUrl(file);
+          const resized = await _resizeImageDataUrl(dataUrl, 1200, 675); // fixed 16:9
+          const uploaded = await API.uploadWordImage(resized);
+          const url = uploaded?.url || uploaded?.data?.url || '';
+          if (!url) throw new Error('Upload response had no URL');
+          await API.setBatchCoverImage(b.name, url);
+          await DB.saveBatch({ ...b, cover_image: url }); // keep local cache in sync immediately
+          APP.toast('✅ Cover image सेट झाली', 'success');
+          _loadBatchAdmin();
+          APP.refreshHome?.();
+        } catch (err) {
+          APP.toast(`Cover upload अयशस्वी: ${err.message}`, 'error');
+        } finally {
+          e.target.value = '';
+        }
+      });
+      item.querySelector('.btn-share-batch').addEventListener('click', () => {
+        const url = `https://teachingboard-frontend.vercel.app/get-app.html?batch=${encodeURIComponent(b.name)}`;
+        navigator.clipboard?.writeText(url).catch(() => {});
+        const waMsg = `📚 ${b.name} — Nks EduOrbit वर join करा!\n${url}`;
+        window.open('https://wa.me/?text=' + encodeURIComponent(waMsg), '_blank', 'noopener');
+        APP.toast('Link copy झाली + WhatsApp उघडत आहे', 'success');
+      });
       item.querySelector('.btn-rename-batch').addEventListener('click', async e => {
         const { id, name, icon } = e.target.dataset;
         const newName = await APP.promptAsync(`"${name}" चे नवीन नाव:`, 'text', name);
@@ -1867,6 +1946,46 @@ const ADMIN = (() => {
 
       list.appendChild(item);
     });
+  }
+
+  // Exports the CURRENTLY FILTERED student list (same search/course filter
+  // as what's on screen) — Name, Mobile, Std/Batches, Expiry, Status.
+  async function _exportStudentsCSV() {
+    const cleanQuery  = String($('student-search')?.value || '').trim().toLowerCase();
+    const cleanCourse = String($('student-course-filter')?.value || '').trim();
+
+    let students = _studentsCache || [];
+    if (cleanQuery) {
+      students = students.filter(s =>
+        [s.student_code, s.name, s.mobile, ...(s.assigned_batches || [])]
+          .some(v => String(v || '').toLowerCase().includes(cleanQuery))
+      );
+    }
+    if (cleanCourse) {
+      students = students.filter(s => (s.assigned_batches || []).includes(cleanCourse));
+    }
+
+    if (!students.length) {
+      APP.toast('No students to export', 'info');
+      return;
+    }
+
+    const header = ['Student Code', 'Name', 'Mobile Number', 'Std / Batches', 'Expiry Date', 'Status'];
+    const rows = students.map(s => [
+      s.student_code || '',
+      s.name || '',
+      s.mobile || '',
+      (s.assigned_batches || []).join('; '),
+      s.expiry_date ? new Date(s.expiry_date).toISOString().slice(0, 10) : '',
+      s.status || '',
+    ]);
+
+    const csv = [header, ...rows]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    await _downloadBlob(blob, `students_${new Date().toISOString().slice(0, 10)}.csv`);
+    APP.toast(`Exported ${students.length} student(s)`, 'success');
   }
 
   async function _loadStudentsAdmin() {
@@ -2630,10 +2749,7 @@ const ADMIN = (() => {
       APP.toast('Google Drive integration — add gapi.js for full support', 'info');
       const payload = await DB.exportJSON();
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `teachingboard_backup_${new Date().toISOString().slice(0,10)}.json`;
-      a.click();
+      await _downloadBlob(blob, `teachingboard_backup_${new Date().toISOString().slice(0,10)}.json`);
     });
 
     // Test portal
@@ -2673,6 +2789,7 @@ const ADMIN = (() => {
     $('btn-save-student')?.addEventListener('click', _saveStudentAccount);
     $('btn-reset-student')?.addEventListener('click', _resetStudentForm);
     $('btn-refresh-students')?.addEventListener('click', _loadStudentsAdmin);
+    $('btn-export-students-csv')?.addEventListener('click', _exportStudentsCSV);
     $('btn-gen-code')?.addEventListener('click', () => {
       const name = String($('student-name')?.value || '').trim();
       const code = _autoStudentCode(name);

@@ -1,4 +1,4 @@
-const SW_VERSION = 'v74';
+const SW_VERSION = 'v77';
 const CACHE_PREFIX = 'nkseduorbit';
 const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
@@ -21,6 +21,7 @@ const CORE_ASSETS = [
   './icons/nk-logo.png',
   './core/db.js',
   './core/helpers.js',
+  './core/fileExport.js',
   './core/math.js',
   './core/i18n.js',
   './core/pdf.js',

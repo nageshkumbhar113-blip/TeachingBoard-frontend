@@ -664,7 +664,25 @@ const PDF = (() => {
     return 0;
   }
 
-  function _openPrintWindow(html) {
+  async function _openPrintWindow(html) {
+    // window.open('', '_blank') inside the Capacitor Android WebView gets
+    // routed to the system browser as an external Intent (or just silently
+    // fails) — the app never gets a print dialog, it just looks like the
+    // export "went to some website". On native we save the print-ready HTML
+    // as a file and hand it to Share, so the user can open it in Chrome
+    // (which does support Print → Save as PDF) or send it anywhere.
+    if (window.Capacitor?.isNativePlatform?.()) {
+      const blob = new Blob([html], { type: "text/html" });
+      try {
+        await FILE_EXPORT.saveAndShare(blob, `question_paper_${Date.now()}.html`);
+        APP.toast("Saved — open it and use Print → Save as PDF", "success");
+      } catch (err) {
+        APP.toast(err?.message || "Export failed", "error");
+      }
+      return;
+    }
+
+    // Web/PWA: the classic popup + print flow works fine here.
     const win = window.open("", "_blank", "noopener,noreferrer,width=1024,height=900");
 
     if (!win) {

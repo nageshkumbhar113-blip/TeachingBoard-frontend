@@ -1245,6 +1245,13 @@ const API = (() => {
     });
   }
 
+  async function verifyPayment({ student_code, pin, razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+    return request('/payment/verify', {
+      method: 'POST',
+      body: JSON.stringify({ student_code, pin, razorpay_order_id, razorpay_payment_id, razorpay_signature }),
+    });
+  }
+
   async function resetStudentDevice(studentId, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/students/${encodeURIComponent(studentId)}/reset-device`, {
@@ -1452,6 +1459,15 @@ const API = (() => {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name: newName, ...(icon !== undefined ? { icon } : {}) }),
+    });
+  }
+
+  async function setBatchCoverImage(name, coverImageUrl) {
+    const token = await ensureAdminSession();
+    return request(`/batches/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name, cover_image: coverImageUrl }),
     });
   }
 
@@ -1907,7 +1923,7 @@ const API = (() => {
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
-    getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus,
+    getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
@@ -1933,7 +1949,7 @@ const API = (() => {
     cacheQuizQuestions, cacheLessons,
     syncServerQuestions, syncStudentQuestions, syncServerLessons, syncServerBatches,
     fetchMyAttempts, syncMyAttempts,
-    createBatchCatalog, deleteBatchCatalog, renameBatchCatalog,
+    createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,
     addCatalogSubject, deleteCatalogSubject,
     addCatalogChapter, deleteCatalogChapter,
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,

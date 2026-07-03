@@ -985,6 +985,18 @@ body.admin-app {
 .batch-admin-name { flex: 1; font-weight: 600; color: var(--text); }
 .batch-admin-actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 
+.batch-admin-cover-wrap { flex: 0 0 auto; }
+.batch-admin-cover {
+  width: 64px; height: 36px; /* 16:9 */
+  border-radius: 6px;
+  object-fit: cover;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  background: var(--surface-2, #2a2a2a);
+  border: 1px solid var(--border);
+}
+.batch-admin-cover-empty { color: var(--text-secondary, #999); }
+
 /* ════════════════════════════════════════
    20. STUDENT SECTION
 ════════════════════════════════════════ */

@@ -276,9 +276,10 @@ const NOTES_VIEWER = (() => {
           return `<h${level} class="nv-heading">${_esc(block.data?.text || '')}</h${level}>`;
 
         case 'image':
+          const sizeWidth = { small: '40%', medium: '70%', large: '100%' }[block.data?.size] || '70%';
           return `
             <figure class="nv-figure">
-              <img src="${_esc(block.data?.url || '')}" alt="${_esc(block.data?.caption || '')}" class="nv-image">
+              <img src="${_esc(block.data?.url || '')}" alt="${_esc(block.data?.caption || '')}" class="nv-image" style="width:${sizeWidth}">
               ${block.data?.caption ? `<figcaption>${_esc(block.data.caption)}</figcaption>` : ''}
             </figure>
           `;
@@ -444,10 +445,13 @@ const NOTES_VIEWER = (() => {
       <div class="nv-concepts-list">
         ${concepts.map(c => `
           <div class="nv-concept-item" onclick="NOTES_VIEWER.viewConcept('${c._id}')">
-            <div class="nv-concept-title">${_esc(c.title?.english || c.title)}</div>
-            <div class="nv-concept-meta">
-              ${c.difficulty ? `<span class="nv-difficulty nv-diff-${c.difficulty}">${c.difficulty}</span>` : ''}
-              ${c.examTags?.slice(0, 2).map(tag => `<span class="nv-tag">${_tagLabel(tag)}</span>`).join('')}
+            <div class="nv-concept-cover">${_conceptCoverEmoji(c)}</div>
+            <div class="nv-concept-body">
+              <div class="nv-concept-title">${_esc(c.title?.english || c.title)}</div>
+              <div class="nv-concept-meta">
+                ${c.difficulty ? `<span class="nv-difficulty nv-diff-${c.difficulty}">${c.difficulty}</span>` : ''}
+                ${c.examTags?.slice(0, 1).map(tag => `<span class="nv-tag">${_tagLabel(tag)}</span>`).join('')}
+              </div>
             </div>
           </div>
         `).join('')}
@@ -507,6 +511,17 @@ const NOTES_VIEWER = (() => {
   // ════════════════════════════════════════════════════════════════════════════
   // HELPERS
   // ════════════════════════════════════════════════════════════════════════════
+
+  // Cover "art" for a book-shelf style concept card — picked from the exam
+  // tag (diagram/numerical/etc.) since concepts don't carry a cover image.
+  function _conceptCoverEmoji(concept) {
+    const tagEmoji = {
+      diagram: '🖼️', numerical: '🔢', theory: '📖',
+      board_exam: '📋', important: '⭐', repeated: '🔄', mcq: '❓', viva: '🗣️',
+    };
+    const tag = (concept.examTags || []).find(t => tagEmoji[t]);
+    return tagEmoji[tag] || '📘';
+  }
 
   function _tagLabel(tag) {
     const labels = {

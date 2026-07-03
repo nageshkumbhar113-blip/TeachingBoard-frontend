@@ -206,39 +206,73 @@
 
 .nv-concepts-list {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 8px;
 }
 
 .nv-concept-item {
-  padding: 16px;
+  width: 132px;
   background: var(--nv-bg-secondary);
   border: 1px solid var(--nv-border);
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .nv-concept-item:active {
-  background: var(--nv-bg);
+  transform: translateY(1px);
   border-color: var(--nv-primary);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.nv-concept-cover {
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  background: linear-gradient(135deg, var(--nv-primary, #2563eb), #1e40af);
+  color: #fff;
+  position: relative;
+}
+
+.nv-concept-cover::after {
+  /* spine shadow so the card reads as a book, not a plain tile */
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  background: rgba(0,0,0,0.18);
+}
+
+.nv-concept-body {
+  padding: 10px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .nv-concept-title {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--nv-text);
-  line-height: 1.4;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .nv-concept-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .nv-difficulty {
@@ -397,20 +431,23 @@
 .nv-figure {
   margin: 16px 0;
   text-align: center;
+  background: var(--nv-bg-secondary);
+  border: 1px solid var(--nv-border);
+  border-radius: 10px;
+  padding: 14px 12px;
 }
 
 .nv-image {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
-  border: 1px solid var(--nv-border);
+  border-radius: 6px;
 }
 
 .nv-figure figcaption {
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 13px;
-  color: var(--nv-text-secondary);
-  font-style: italic;
+  font-weight: 600;
+  color: var(--nv-text);
 }
 
 .nv-table {

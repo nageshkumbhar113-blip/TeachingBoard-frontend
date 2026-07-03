@@ -337,8 +337,12 @@ const CONCEPT_MANAGER = (() => {
       </div>
 
       <div class="editor-section">
-        <h3>Content (EditorJS)</h3>
-        <div id="cm-editor-js"></div>
+        <h3>Content (Description)</h3>
+        <div id="cm-blocks-list" class="cm-blocks-list"></div>
+        <div class="cm-blocks-add-row">
+          <button type="button" id="cm-add-para-btn" class="btn btn-small">+ Add Paragraph</button>
+          <button type="button" id="cm-add-image-btn" class="btn btn-small">+ Add Image</button>
+        </div>
       </div>
 
       <div class="editor-section">
@@ -393,6 +397,7 @@ const CONCEPT_MANAGER = (() => {
       </div>
 
       <div class="editor-actions">
+        <button type="button" id="cm-preview-btn" class="btn btn-secondary">👁 Preview</button>
         <button type="button" id="cm-save-draft-btn" class="btn btn-secondary">Save Draft</button>
         <button type="button" id="cm-publish-btn-inline" class="btn btn-primary">Publish</button>
         <button type="button" id="cm-cancel-btn-inline" class="btn btn-tertiary">Cancel</button>
@@ -416,31 +421,176 @@ const CONCEPT_MANAGER = (() => {
     $('cm-save-draft-btn')?.addEventListener('click', () => _saveConcept(false));
     $('cm-publish-btn-inline')?.addEventListener('click', () => _saveConcept(true));
     $('cm-cancel-btn-inline')?.addEventListener('click', () => _cancelEdit());
+    $('cm-preview-btn')?.addEventListener('click', () => _previewConcept());
+    $('cm-add-para-btn')?.addEventListener('click', () => _addBlock('paragraph'));
+    $('cm-add-image-btn')?.addEventListener('click', () => _addBlock('image'));
 
-    _initEditorJS();
+    _renderContentBlocks();
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // EDITORJS INITIALIZATION
+  // CONTENT BLOCKS (description.english.blocks) — paragraph + image, with
+  // reordering and an image size control so a note can look like a textbook
+  // page (image → caption → body text), not a single flat text field.
   // ════════════════════════════════════════════════════════════════════════════
 
-  async function _initEditorJS() {
-    const container = $('cm-editor-js');
-    if (!container) return;
+  function _blocks() {
+    if (!_currentConcept.description) _currentConcept.description = { english: { blocks: [] }, marathi: { blocks: [] } };
+    if (!_currentConcept.description.english) _currentConcept.description.english = { blocks: [] };
+    if (!Array.isArray(_currentConcept.description.english.blocks)) _currentConcept.description.english.blocks = [];
+    return _currentConcept.description.english.blocks;
+  }
 
-    // For now, using basic textarea instead of full EditorJS
-    // EditorJS would require additional CDN loading and setup
-    const currentBlocks = _currentConcept.description.english.blocks;
-    const htmlContent = currentBlocks.map(block => {
-      if (block.type === 'paragraph') return `<p>${_esc(block.data?.text || '')}</p>`;
-      if (block.type === 'heading') return `<h${block.data?.level || 2}>${_esc(block.data?.text || '')}</h${block.data?.level || 2}>`;
+  function _renderContentBlocks() {
+    const list = $('cm-blocks-list');
+    if (!list) return;
+    const blocks = _blocks();
+
+    if (!blocks.length) {
+      list.innerHTML = '<p class="cm-blocks-empty">No content blocks yet — add a paragraph or image below.</p>';
+      return;
+    }
+
+    list.innerHTML = blocks.map((block, idx) => {
+      const moveUp   = idx > 0 ? '' : 'disabled';
+      const moveDown = idx < blocks.length - 1 ? '' : 'disabled';
+      const controls = `
+        <div class="cm-block-controls">
+          <button type="button" class="btn-icon" ${moveUp} onclick="CONCEPT_MANAGER._moveBlock(${idx},-1)" title="Move up">↑</button>
+          <button type="button" class="btn-icon" ${moveDown} onclick="CONCEPT_MANAGER._moveBlock(${idx},1)" title="Move down">↓</button>
+          <button type="button" class="btn-icon" onclick="CONCEPT_MANAGER._removeBlock(${idx})" title="Delete">✕</button>
+        </div>`;
+
+      if (block.type === 'image') {
+        const url = block.data?.url || '';
+        const size = block.data?.size || 'medium';
+        return `
+          <div class="cm-block cm-block-image">
+            <div class="cm-block-head"><span class="cm-block-label">🖼️ Image</span>${controls}</div>
+            <div class="cm-block-image-row">
+              <div class="cm-block-image-preview">${url ? `<img src="${_esc(url)}" alt="">` : '<span class="cm-no-image">No image</span>'}</div>
+              <div class="cm-block-image-fields">
+                <input type="text" class="form-input" placeholder="Image URL" value="${_esc(url)}"
+                       onchange="CONCEPT_MANAGER._updateBlockImageUrl(${idx}, this.value)">
+                <button type="button" class="btn btn-small" onclick="document.getElementById('cm-img-upload-${idx}').click()">⬆ Upload</button>
+                <input type="file" id="cm-img-upload-${idx}" accept="image/*" style="display:none"
+                       onchange="CONCEPT_MANAGER._uploadBlockImage(${idx}, this.files[0])">
+                <input type="text" class="form-input" placeholder="Caption" value="${_esc(block.data?.caption || '')}"
+                       onchange="CONCEPT_MANAGER._updateBlockField(${idx}, 'caption', this.value)">
+                <label class="cm-size-label">Size:
+                  <select class="form-input" onchange="CONCEPT_MANAGER._updateBlockField(${idx}, 'size', this.value)">
+                    <option value="small"  ${size === 'small'  ? 'selected' : ''}>Small</option>
+                    <option value="medium" ${size === 'medium' ? 'selected' : ''}>Medium</option>
+                    <option value="large"  ${size === 'large'  ? 'selected' : ''}>Large (full width)</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      // paragraph (default)
+      return `
+        <div class="cm-block cm-block-paragraph">
+          <div class="cm-block-head"><span class="cm-block-label">📝 Paragraph</span>${controls}</div>
+          <textarea class="form-input" rows="3" placeholder="Enter paragraph text"
+                    onchange="CONCEPT_MANAGER._updateBlockField(${idx}, 'text', this.value)">${_esc(block.data?.text || '')}</textarea>
+        </div>`;
+    }).join('');
+  }
+
+  function _addBlock(type) {
+    const blocks = _blocks();
+    blocks.push(type === 'image' ? { type: 'image', data: { url: '', caption: '', size: 'medium' } } : { type: 'paragraph', data: { text: '' } });
+    _renderContentBlocks();
+  }
+
+  function _moveBlock(idx, dir) {
+    const blocks = _blocks();
+    const target = idx + dir;
+    if (target < 0 || target >= blocks.length) return;
+    [blocks[idx], blocks[target]] = [blocks[target], blocks[idx]];
+    _renderContentBlocks();
+  }
+
+  function _removeBlock(idx) {
+    _blocks().splice(idx, 1);
+    _renderContentBlocks();
+  }
+
+  function _updateBlockField(idx, field, value) {
+    const block = _blocks()[idx];
+    if (block) block.data[field] = value;
+  }
+
+  function _updateBlockImageUrl(idx, value) {
+    _updateBlockField(idx, 'url', value);
+    _renderContentBlocks();
+  }
+
+  async function _uploadBlockImage(idx, file) {
+    if (!file) return;
+    try {
+      const dataUrl = await _fileToDataUrl(file);
+      const result = await API.uploadWordImage(dataUrl);
+      _updateBlockField(idx, 'url', result?.url || result?.data?.url || '');
+      _renderContentBlocks();
+    } catch (err) {
+      APP.toast(err?.message || 'Image upload failed', 'error');
+    }
+  }
+
+  function _fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // PREVIEW — renders the note the same way the student app would, so admin
+  // can check image sizing/order before publishing.
+  // ════════════════════════════════════════════════════════════════════════════
+
+  const _sizeWidth = { small: '40%', medium: '70%', large: '100%' };
+
+  function _renderBlocksHtml(blocks) {
+    return blocks.map(block => {
+      if (block.type === 'paragraph') return `<p class="cm-pv-paragraph">${_esc(block.data?.text || '')}</p>`;
+      if (block.type === 'image') {
+        const width = _sizeWidth[block.data?.size] || _sizeWidth.medium;
+        return `
+          <figure class="cm-pv-figure">
+            <img src="${_esc(block.data?.url || '')}" alt="" style="width:${width}">
+            ${block.data?.caption ? `<figcaption>${_esc(block.data.caption)}</figcaption>` : ''}
+          </figure>`;
+      }
       return '';
     }).join('');
+  }
 
-    container.innerHTML = `
-      <textarea id="cm-editor-textarea" class="editor-textarea" placeholder="Enter content (Markdown or EditorJS JSON format)" rows="10">${_esc(htmlContent)}</textarea>
-      <small>Note: For now, use plain text. Full EditorJS integration coming in Phase 3.</small>
-    `;
+  function _previewConcept() {
+    const concept = _currentConcept;
+    const titleEn = _getValue('cm-title-en').trim() || concept.title?.english || '';
+    const blocks = _blocks();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'cm-preview-overlay';
+    overlay.innerHTML = `
+      <div class="cm-preview-card">
+        <div class="cm-preview-header">
+          <h2>${_esc(titleEn)}</h2>
+          <button type="button" class="btn-icon" id="cm-preview-close">✕</button>
+        </div>
+        <div class="cm-preview-body">
+          ${blocks.length ? _renderBlocksHtml(blocks) : '<p class="cm-blocks-empty">No content yet.</p>'}
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#cm-preview-close')?.addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -681,14 +831,8 @@ const CONCEPT_MANAGER = (() => {
     _currentConcept.language = document.querySelector('input[name="language"]:checked')?.value || 'english';
     _currentConcept.difficulty = _getValue('cm-difficulty') || 'easy';
 
-    // Simple content handling for now
-    const textarea = $('cm-editor-textarea');
-    if (textarea) {
-      _currentConcept.description.english.blocks = [{
-        type: 'paragraph',
-        data: { text: textarea.value.trim() }
-      }];
-    }
+    // description.english.blocks is kept live-updated by the block editor
+    // (_addBlock/_updateBlockField/etc.) — nothing to sync here.
 
     try {
       const body = { ..._currentConcept, changesSummary: publish ? 'Published' : 'Draft saved' };
@@ -796,7 +940,12 @@ const CONCEPT_MANAGER = (() => {
     _updateRevisionItem,
     _removeRevisionItem,
     _removeAttachment,
-    _toggleExamTag
+    _toggleExamTag,
+    _moveBlock,
+    _removeBlock,
+    _updateBlockField,
+    _updateBlockImageUrl,
+    _uploadBlockImage
   };
 })();
 

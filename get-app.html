@@ -247,6 +247,21 @@
     }
     .how-card h3 { font-size: 0.92rem; font-weight: 700; margin-bottom: 6px; }
     .how-card p  { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
+    .hidden { display: none !important; }
+
+    .how-path-toggle {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-top: 28px; margin-bottom: 8px;
+    }
+    .how-path-btn {
+      padding: 10px 18px; border-radius: 999px;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text2); font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; transition: all .15s;
+    }
+    .how-path-btn.active {
+      background: var(--p1); border-color: var(--p1); color: #fff;
+    }
 
     /* ══ VOCAB FEATURE HIGHLIGHT ══ */
     .vocab-highlight {
@@ -363,13 +378,13 @@
 
   <!-- ══ HERO ══ -->
   <section class="hero">
-    <div class="hero-icon">
-      <img src="/icons/nks-edorbit-logo.png" alt="Nks EduOrbit" onerror="this.style.display='none'" />
+    <div class="hero-icon" id="hero-icon-wrap">
+      <img src="/icons/nks-edorbit-logo.png" alt="Nks EduOrbit" id="hero-logo-img" onerror="this.style.display='none'" />
     </div>
-    <div class="hero-class-badge">🏫 इयत्ता 1 ली ते 12 वी साठी</div>
-    <h1><span class="gt">Nks EduOrbit</span></h1>
-    <p class="hero-sub">स्मार्ट Student App — Quiz, Test, Vocabulary &amp; बरेच काही</p>
-    <div class="hero-badges">
+    <div class="hero-class-badge" id="hero-badge">🏫 इयत्ता 1 ली ते 12 वी साठी</div>
+    <h1 id="hero-title"><span class="gt">Nks EduOrbit</span></h1>
+    <p class="hero-sub" id="hero-sub">स्मार्ट Student App — Quiz, Test, Vocabulary &amp; बरेच काही</p>
+    <div class="hero-badges" id="hero-badges-row">
       <span class="badge b-green">✓ Free</span>
       <span class="badge b-cyan">📱 Android</span>
       <span class="badge b-amber">🌐 Offline Ready</span>
@@ -432,8 +447,8 @@
         </div>
         <div class="feat-card fade-up">
           <div class="feat-icon" style="background:rgba(139,92,246,0.15)">📖</div>
-          <h3>Deep Study</h3>
-          <p>Notes, lessons आणि explanations — Teacher ने दिलेले study material offline सुद्धा वाचता येते.</p>
+          <h3>Study Notes — Figures सकट</h3>
+          <p>Chapter-wise notes — diagram/figure, स्पष्टीकरण आणि Quick Revision points सगळं एकत्र. Notes offline सुद्धा वाचता येतात.</p>
         </div>
         <div class="feat-card fade-up">
           <div class="feat-icon" style="background:rgba(245,158,11,0.15)">📊</div>
@@ -447,8 +462,13 @@
         </div>
         <div class="feat-card fade-up">
           <div class="feat-icon" style="background:rgba(240,136,62,0.15)">👨‍👩‍👧</div>
-          <h3>Parent Tracking</h3>
-          <p>Parents ला student चा progress, test scores आणि vocabulary results notifications येतात — app install नाही लागत!</p>
+          <h3>Parent Login — तोच Code, तोच PIN</h3>
+          <p>वेगळं Parent account लागत नाही! त्याच student Code + PIN ने "Parent" टॅब निवडून login करा — progress, test scores आणि Fee status बघता येतं.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(16,185,129,0.15)">🙋</div>
+          <h3>स्वतः Registration + Free Trial</h3>
+          <p>Teacher कडे code नसेल तरी चालेल — स्वतः नाव/शाळा/PIN टाकून register करा, 1 दिवस Free Trial घ्या किंवा थेट Monthly/Yearly Plan निवडा. Payment झाल्यावर account लगेच active होतं, approval ची वाट नाही.</p>
         </div>
         <div class="feat-card fade-up">
           <div class="feat-icon" style="background:rgba(21,101,192,0.15)">📶</div>
@@ -587,7 +607,12 @@
         <div class="section-label">🚀 How it Works</div>
         <h2 class="section-title">App कसा वापरायचा?</h2>
       </div>
-      <div class="how-grid">
+      <div class="how-path-toggle fade-up">
+        <button type="button" class="how-path-btn active" data-path="teacher">👩‍🏫 Teacher कडून Code आहे</button>
+        <button type="button" class="how-path-btn" data-path="self">🙋 Code नाही — स्वतः Register करा</button>
+      </div>
+
+      <div class="how-grid" data-path-view="teacher">
         <div class="how-card fade-up">
           <div class="how-num">1</div>
           <h3>Download &amp; Install</h3>
@@ -600,8 +625,8 @@
         </div>
         <div class="how-card fade-up">
           <div class="how-num">3</div>
-          <h3>Quiz / Test निवडा</h3>
-          <p>Home screen वर assigned quizzes, tests आणि vocabulary दिसेल</p>
+          <h3>Quiz / Test / Notes निवडा</h3>
+          <p>Home screen वर assigned quizzes, tests, vocabulary आणि study notes दिसतील</p>
         </div>
         <div class="how-card fade-up">
           <div class="how-num">4</div>
@@ -611,12 +636,45 @@
         <div class="how-card fade-up">
           <div class="how-num">5</div>
           <h3>Score बघा</h3>
-          <p>Analytics tab मध्ये progress chart आणि weak topics बघा</p>
+          <p>Analytics tab मध्ये progress chart आणि weak topics बघा. Parent पण त्याच Code+PIN ने "Parent" टॅब निवडून बघू शकतात!</p>
         </div>
         <div class="how-card fade-up">
           <div class="how-num">6</div>
           <h3>Improve करा</h3>
           <p>चुकलेले answers review करा → पुन्हा practice करा → Exam Ready!</p>
+        </div>
+      </div>
+
+      <div class="how-grid hidden" data-path-view="self">
+        <div class="how-card fade-up">
+          <div class="how-num">1</div>
+          <h3>Download &amp; Install</h3>
+          <p>APK download करा → Install करा → App उघडा</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">2</div>
+          <h3>"नवीन Registration" दाबा</h3>
+          <p>Login screen खाली "नवीन Registration? येथे करा" — नाव, शाळेचे नाव, mobile आणि 4-अंकी PIN टाका</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">3</div>
+          <h3>तुमचा Code मिळेल</h3>
+          <p>Registration submit केल्यावर एक unique Student Code दिसेल — तो जपून ठेवा, हाच login साठी लागेल</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">4</div>
+          <h3>Class/Batch + Plan निवडा</h3>
+          <p>1 दिवसाचा Free Trial सुरू करा, किंवा Monthly/Yearly subscription घ्या — payment झाल्यावर account लगेच active होतं</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">5</div>
+          <h3>Login करा</h3>
+          <p>तोच Code आणि PIN टाकून लगेच login करा — approval ची वाट बघावी लागत नाही</p>
+        </div>
+        <div class="how-card fade-up">
+          <div class="how-num">6</div>
+          <h3>Practice सुरू करा</h3>
+          <p>Quiz, Test, Vocabulary, Study Notes सर्व लगेच उपलब्ध — Parent सुद्धा same Code+PIN ने "Parent" टॅबमधून progress बघू शकतात</p>
         </div>
       </div>
     </div>
@@ -756,6 +814,57 @@
         else setError();
       }
     }
+
+    // ── Batch-branded hero (?batch=NAME in the share link) ────────
+    const API_BASE = 'https://teachingboard-backend.onrender.com/api';
+    async function applyBatchBranding() {
+      const batchName = new URLSearchParams(location.search).get('batch');
+      if (!batchName) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/batches/pricing/all`);
+        const data = await res.json();
+        const batch = (data.data || []).find(
+          b => b.name.toLowerCase() === batchName.toLowerCase()
+        );
+        if (!batch) return;
+
+        document.getElementById('hero-badge').textContent = `🎓 ${batch.name} बॅच साठी`;
+        document.getElementById('hero-sub').textContent =
+          batch.description || `${batch.name} — Quiz, Test, Vocabulary आणि Study Notes`;
+
+        if (batch.cover_image) {
+          const iconWrap = document.getElementById('hero-icon-wrap');
+          iconWrap.innerHTML = `<img src="${batch.cover_image}" alt="${batch.name}" style="width:100%;height:100%;object-fit:cover;border-radius:24px" />`;
+        }
+
+        const priceParts = [];
+        if (batch.trial_days > 0) priceParts.push(`🎁 ${batch.trial_days}-दिवस Free Trial`);
+        if (batch.monthly_price > 0) priceParts.push(`📅 ₹${batch.monthly_price}/month`);
+        if (batch.yearly_price > 0) priceParts.push(`🗓️ ₹${batch.yearly_price}/year`);
+        if (priceParts.length) {
+          const priceRow = document.createElement('div');
+          priceRow.className = 'hero-badges';
+          priceRow.style.marginTop = '-16px';
+          priceRow.innerHTML = priceParts.map(p => `<span class="badge b-amber">${p}</span>`).join('');
+          document.getElementById('hero-badges-row').after(priceRow);
+        }
+      } catch {
+        // Silent — falls back to the generic page, no harm.
+      }
+    }
+    applyBatchBranding();
+
+    // ── How-it-works path toggle (Teacher-code vs Self-register) ──
+    document.querySelectorAll('.how-path-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const path = btn.dataset.path;
+        document.querySelectorAll('.how-path-btn').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('[data-path-view]').forEach(view => {
+          view.classList.toggle('hidden', view.dataset.pathView !== path);
+        });
+      });
+    });
 
     // ── Fade-up animation ─────────────────────────────────────
     const obs = new IntersectionObserver(entries => {

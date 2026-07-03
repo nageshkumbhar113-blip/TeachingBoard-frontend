@@ -69,6 +69,9 @@ const PAYMENT = (() => {
     if (!host || !batch) return;
 
     const trialDays = batch.trial_days != null ? batch.trial_days : 1;
+    const coverHtml = batch.cover_image
+      ? `<img src="${_esc(batch.cover_image)}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;margin-bottom:12px">`
+      : '';
     const btns = [];
     if (trialDays > 0) {
       btns.push(`<button class="onboarding-btn" data-plan="trial" style="background:#16a34a">🎁 ${trialDays}-दिवस Free Trial</button>`);
@@ -79,7 +82,7 @@ const PAYMENT = (() => {
     if (batch.yearly_price > 0) {
       btns.push(`<button class="onboarding-btn" data-plan="yearly">🗓️ Yearly — ₹${_esc(batch.yearly_price)}</button>`);
     }
-    host.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">${btns.join('')}</div>
+    host.innerHTML = `${coverHtml}<div style="display:flex;flex-direction:column;gap:8px">${btns.join('')}</div>
       <p id="pay-msg" class="pin-error hidden" role="alert" style="margin-top:10px"></p>`;
 
     host.querySelectorAll('button[data-plan]').forEach(btn => {
@@ -132,9 +135,25 @@ const PAYMENT = (() => {
       order_id: order.order_id,
       prefill: { name: student.name || '', contact: student.contact || '' },
       theme: { color: '#001f5c' },
-      handler: () => {
-        // Payment captured on client; the webhook activates the account.
+      handler: async (response) => {
+        // Verify + activate synchronously — don't depend solely on the
+        // webhook (which can be delayed, misconfigured, or never delivered).
         _msg(host, 'Payment मिळाले! Account active होत आहे…', false);
+        try {
+          await API.verifyPayment({
+            student_code: student.student_code,
+            pin: student.pin,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+          _toast('✅ Account active! आता login करा.', 'success');
+          _close();
+          onActivated?.();
+          return;
+        } catch (err) {
+          console.warn('verifyPayment failed, falling back to polling', err);
+        }
         _pollActivation(student, onActivated, host);
       },
       modal: { ondismiss: () => _msg(host, 'Payment रद्द झाले.') },

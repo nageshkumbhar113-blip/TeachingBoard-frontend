@@ -4564,6 +4564,35 @@ h1,h2,h3,h4,h5 {
   text-transform: uppercase;
 }
 
+.splash-welcome {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #888;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  animation: splashTagIn 0.5s ease 0.35s both;
+}
+
+.splash-brand {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  animation: splashTagIn 0.5s ease 0.45s both;
+}
+.splash-brand span { display: inline-block; }
+.sb-n  { color: #e53935; }
+.sb-k  { color: #fb8c00; }
+.sb-s  { color: #fdd835; }
+.sb-e  { color: #43a047; }
+.sb-d  { color: #00acc1; }
+.sb-u  { color: #1e88e5; }
+.sb-o  { color: #3949ab; }
+.sb-r  { color: #8e24aa; }
+.sb-b  { color: #d81b60; }
+.sb-i  { color: #e53935; }
+.sb-t2 { color: #fb8c00; }
+
 /* Tagline */
 .splash-tagline {
   text-align: center;

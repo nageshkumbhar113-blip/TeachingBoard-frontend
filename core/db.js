@@ -469,10 +469,11 @@ const DB = (() => {
     await _del('batches', id);
     if (!batch?.name) return;
 
-    const [subjects, chapters, questions] = await Promise.all([
+    const [subjects, chapters, questions, quizzes] = await Promise.all([
       getSubjectsByBatch(batch.name),
       getAllSubjectChapters(),
       getAllQuestions(),
+      getAllQuizzes(),
     ]);
 
     // Delete subjects and chapters
@@ -483,11 +484,18 @@ const DB = (() => {
         .map(item => _del('subject_chapters', item.id))
     );
 
-    // Unlink questions (set batch to empty string, matching backend behavior)
-    const questionsToUnlink = questions.filter(
-      q => _cleanText(q.batch || '').toLowerCase() === _cleanText(batch.name).toLowerCase()
-    );
-    await Promise.all(questionsToUnlink.map(q => _put('questions', { ...q, batch: '' })));
+    // Unlink questions AND quizzes (set batch to empty string, matching
+    // backend behavior). Quizzes were previously left untouched here, which
+    // meant syncHierarchyFromExisting() — run on next login/sync — would
+    // scan the still-cached quiz's stale batch name and silently recreate
+    // the "deleted" batch from it.
+    const cleanName = _cleanText(batch.name).toLowerCase();
+    const questionsToUnlink = questions.filter(q => _cleanText(q.batch || '').toLowerCase() === cleanName);
+    const quizzesToUnlink   = quizzes.filter(q => _cleanText(q.batch || '').toLowerCase() === cleanName);
+    await Promise.all([
+      ...questionsToUnlink.map(q => _put('questions', { ...q, batch: '' })),
+      ...quizzesToUnlink.map(q => _put('quizzes', { ...q, batch: '' })),
+    ]);
   }
 
   const DEFAULT_BATCHES_SEEDED_KEY = 'teachingboard_default_batches_seeded';

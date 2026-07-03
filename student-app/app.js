@@ -550,6 +550,7 @@ const APP = (() => {
         ac.abort();
         screen.classList.add('hidden');
         _isTeacherOrParentMode = false;
+        _dashboardRole = null;
         // Stop sync before clearing session so cycle doesn't fire with empty credentials
         window.SYNC?.stopStudentAutoSync?.();
         // Clear all per-student IDB data (sessions, attempts, sync queue, notes cache)
@@ -973,6 +974,7 @@ const APP = (() => {
 
   function _showTeacherDashboard() {
     _isTeacherOrParentMode = true;
+    _dashboardRole = 'teacher';
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-teacher-dashboard');
     if (screen) screen.classList.remove('hidden');
@@ -986,6 +988,7 @@ const APP = (() => {
 
   function _showParentDashboard() {
     _isTeacherOrParentMode = true;
+    _dashboardRole = 'parent';
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-parent-dashboard');
     if (screen) screen.classList.remove('hidden');
@@ -999,6 +1002,13 @@ const APP = (() => {
 
   let _pushSetupDone = false;
   let _isTeacherOrParentMode = false;
+  let _dashboardRole = null; // 'teacher' | 'parent' | null
+
+  function _goHomeRoleAware() {
+    if (_dashboardRole === 'teacher') { _showTeacherDashboard(); return; }
+    if (_dashboardRole === 'parent')  { _showParentDashboard();  return; }
+    loadHome();
+  }
 
   async function _setupPushNotifications(role) {
     if (_pushSetupDone) return;
@@ -1047,6 +1057,8 @@ const APP = (() => {
   }
 
   async function _openProfileSettings() {
+    document.getElementById('profile-settings-overlay')?.remove();
+
     const profile = await API.getStudentProfile().catch(() => null);
     const name    = profile?.name || profile?.student_code || 'Student';
     const code    = profile?.student_code || '';
@@ -1054,6 +1066,7 @@ const APP = (() => {
 
     // Profile info modal with Switch Account option
     const overlay = document.createElement('div');
+    overlay.id = 'profile-settings-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:24px';
     overlay.innerHTML = `
       <div style="background:var(--surface,#fff);border-radius:20px;padding:28px 24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);animation:splashFadeIn 0.25s ease">
@@ -1127,7 +1140,7 @@ const APP = (() => {
       history.pushState({ tb: true }, '');
     }
 
-    $('btn-home')?.addEventListener('click', () => loadHome());
+    $('btn-home')?.addEventListener('click', () => _goHomeRoleAware());
 
     $('btn-theme')?.addEventListener('click', async () => {
       const cur  = _activeTheme();
@@ -1181,7 +1194,7 @@ const APP = (() => {
     });
 
     // ── Bottom Navigation ────────────────────────────
-    $('bnav-home')?.addEventListener('click', () => loadHome());
+    $('bnav-home')?.addEventListener('click', () => _goHomeRoleAware());
     $('bnav-analytics')?.addEventListener('click', () => window.ANALYTICS?.open());
     $('bnav-mode')?.addEventListener('click', async () => {
       const next = _activeUiMode() === 'board' ? 'normal' : 'board';
