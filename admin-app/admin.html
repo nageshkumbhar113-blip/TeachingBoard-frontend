@@ -430,11 +430,12 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
 
             <!-- Pending Registration Requests -->
             <section class="import-section admin-card" id="pending-requests-section" style="display:none" aria-label="Pending Registrations">
-              <h3 class="admin-section-title" style="display:flex;align-items:center;gap:8px">
-                🟡 Pending Requests
+              <h3 class="admin-section-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                🕓 Interested — No Batch Yet
                 <span id="pending-count-badge" class="student-status-badge pending" style="font-size:0.85rem">0</span>
+                <button id="btn-export-leads-csv" class="admin-btn-secondary" type="button" style="margin-left:auto">📤 Export Leads</button>
               </h3>
-              <p class="import-hint">Students नी स्वतः registration केलं — course assign करून approve करा.</p>
+              <p class="import-hint">Students नी code/PIN घेतला पण अजून कोणताही batch/plan निवडला नाही — course assign करून approve करा, किंवा follow-up साठी export करा.</p>
               <div id="pending-student-list" class="batch-admin-list" role="list"></div>
             </section>
 

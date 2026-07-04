@@ -40,6 +40,7 @@ const ADMIN = (() => {
   let _questionSearchTimer = null;
   let _quizSearchTimer = null;
   let _studentsCache = [];
+  let _leadsCache = [];
   let _studentSearchTimer = null;
 
   function _autoStudentCode(name) {
@@ -1995,16 +1996,44 @@ const ADMIN = (() => {
     list.innerHTML = '<p class="empty-hint">Loading students...</p>';
     try {
       _studentsCache = await API.fetchStudents();
-      // Separate pending self-registrations
+      // Separate pending self-registrations — these students have a
+      // code/PIN but never picked a batch/plan, i.e. "interested" leads.
       const pending = _studentsCache.filter(s => s.status === 'pending' && s.request_source === 'self');
       const active  = _studentsCache.filter(s => !(s.status === 'pending' && s.request_source === 'self'));
       _studentsCache = active;
+      _leadsCache = pending;
       await _renderPendingStudents(pending);
       await _populateCourseFilter();
       _renderStudentList($('student-search')?.value || '');
     } catch (err) {
       list.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load students')}</p>`;
     }
+  }
+
+  // Export students who registered (code+PIN issued) but never chose a
+  // batch/plan — follow-up targets to convert into paying students.
+  async function _exportLeadsCSV() {
+    const leads = _leadsCache || [];
+    if (!leads.length) {
+      APP.toast('No interested leads to export', 'info');
+      return;
+    }
+
+    const header = ['Student Code', 'Name', 'Mobile Number', 'School', 'Registered Date'];
+    const rows = leads.map(s => [
+      s.student_code || '',
+      s.name || '',
+      s.mobile || '',
+      s.school_name || '',
+      s.created_at ? new Date(s.created_at).toISOString().slice(0, 10) : '',
+    ]);
+
+    const csv = [header, ...rows]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    await _downloadBlob(blob, `interested_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    APP.toast(`Exported ${leads.length} lead(s)`, 'success');
   }
 
   function _showCredsModal(code, pin, courses, expiry) {
@@ -2790,6 +2819,7 @@ const ADMIN = (() => {
     $('btn-reset-student')?.addEventListener('click', _resetStudentForm);
     $('btn-refresh-students')?.addEventListener('click', _loadStudentsAdmin);
     $('btn-export-students-csv')?.addEventListener('click', _exportStudentsCSV);
+    $('btn-export-leads-csv')?.addEventListener('click', _exportLeadsCSV);
     $('btn-gen-code')?.addEventListener('click', () => {
       const name = String($('student-name')?.value || '').trim();
       const code = _autoStudentCode(name);

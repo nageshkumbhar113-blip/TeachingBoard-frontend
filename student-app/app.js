@@ -690,27 +690,30 @@ const APP = (() => {
         const res = await API.selfRegister({ name, mobile, school_name, pin });
         const code = res?.student_code || '';
         const codeEl = document.getElementById('reg-success-code');
-        if (codeEl) codeEl.textContent = `तुमचा Student Code: ${code}`;
+        if (codeEl) codeEl.textContent = code;
         const detailEl = document.getElementById('reg-success-detail');
         if (detailEl) {
           detailEl.innerHTML =
-            '<button type="button" id="reg-copy-code" class="onboarding-skip" style="margin:6px 0">📋 Code Copy करा</button>' +
-            '<br>💾 <strong>हा code जपून ठेवा</strong> — login साठी लागेल.' +
-            '<br><button type="button" id="reg-choose-plan" class="onboarding-btn" style="margin-top:10px">🎟️ Plan निवडा & सुरू करा →</button>';
+            '<button type="button" id="reg-copy-code" class="onboarding-skip" style="margin:2px 0">📋 Code Copy करा</button>' +
+            '<br>💾 <strong>हा code जपून ठेवा</strong> — login साठी लागेल.';
           detailEl.querySelector('#reg-copy-code')?.addEventListener('click', () => {
             navigator.clipboard?.writeText(code)
               .then(() => toast('Code copy झाला ✓', 'success'))
               .catch(() => toast('Copy करता आले नाही', 'error'));
           });
-          const _goLogin = () => {
-            regCard?.classList.add('hidden');
-            if (loginCard) loginCard.classList.remove('hidden');
-            const codeIn = document.getElementById('ob-student-code');
-            if (codeIn) codeIn.value = code;
-            document.getElementById('ob-pin')?.focus();
-            toast('आता तुमचा PIN टाकून login करा', 'info');
-          };
-          detailEl.querySelector('#reg-choose-plan')?.addEventListener('click', () => {
+        }
+        const _goLogin = () => {
+          regCard?.classList.add('hidden');
+          if (loginCard) loginCard.classList.remove('hidden');
+          const codeIn = document.getElementById('ob-student-code');
+          if (codeIn) codeIn.value = code;
+          document.getElementById('ob-pin')?.focus();
+          toast('आता तुमचा PIN टाकून login करा', 'info');
+        };
+        const choosePlanBtn = document.getElementById('reg-choose-plan');
+        if (choosePlanBtn) {
+          choosePlanBtn.classList.remove('hidden');
+          choosePlanBtn.addEventListener('click', () => {
             if (window.PAYMENT?.openPlanSelect) {
               PAYMENT.openPlanSelect({ student_code: code, pin, name, contact: mobile }, _goLogin);
             } else {

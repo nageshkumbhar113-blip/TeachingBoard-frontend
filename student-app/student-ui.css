@@ -1067,6 +1067,223 @@ body.student-app.mode-board.theme-board-light::before {
   75%      { transform: translateX(6px); }
 }
 
+/* ══════════════════════════════════════════════════════════
+   ADMIT-CARD THEME — registration / plan-select / payment
+   Ink-navy + gold "admit card" motif. Scoped to .admit-theme
+   so the rest of the app keeps its existing look untouched.
+══════════════════════════════════════════════════════════ */
+
+.admit-theme {
+  --ink-1: #0B1830; --ink-2: #14264A; --ink-3: #1B3160;
+  --gold-1: #B8863A; --gold-2: #E7C165; --gold-3: #F6E3A6;
+  --gold-grad: linear-gradient(90deg, var(--gold-1), var(--gold-2) 40%, var(--gold-3) 55%, var(--gold-2) 70%, var(--gold-1));
+  --ink-grad: linear-gradient(150deg, var(--ink-1) 0%, var(--ink-2) 60%, var(--ink-3) 100%);
+  --admit-emerald: #2AAE82;
+}
+
+.admit-theme .onboarding-card {
+  padding: 0 !important;
+  overflow: hidden;
+  gap: 0 !important;
+  max-width: 420px !important;
+}
+.admit-theme .onboarding-card.hidden { display: none; }
+
+.admit-head {
+  background: var(--ink-grad);
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.admit-head::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 88% -10%, rgba(231,193,101,0.28), transparent 55%);
+}
+.admit-seal {
+  position: relative;
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: var(--gold-grad);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(184,134,58,0.45), inset 0 1px 2px rgba(255,255,255,0.6);
+}
+.admit-seal-inner {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(11,24,48,0.4);
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; line-height: 1.05;
+  font-family: 'Fraunces', 'Baloo 2', serif;
+  font-weight: 800; font-size: 9px; color: #0B1830; letter-spacing: 0.3px;
+}
+.admit-eyebrow {
+  position: relative;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--gold-3);
+  margin-bottom: 4px;
+}
+.admit-head .onboarding-title {
+  position: relative;
+  font-family: 'Fraunces', 'Baloo 2', serif;
+  font-size: 1.35rem; text-align: left; color: #fff; margin: 0;
+}
+.admit-head .onboarding-sub {
+  position: relative;
+  text-align: left; margin: 5px 0 0; color: #B9C6DE;
+}
+
+.admit-perforation {
+  display: flex; gap: 6px; align-items: center;
+  padding: 10px 20px; overflow: hidden;
+  background: var(--card, #161b22);
+}
+.admit-perforation::before { content: ''; display: block; width: 0; }
+.admit-perforation {
+  background-image: radial-gradient(circle, var(--bg1, #0d1117) 2.2px, transparent 2.6px);
+  background-size: 13px 100%;
+  background-position: 0 center;
+  background-repeat: repeat-x;
+  border-bottom: 1px dashed var(--border, #30363d);
+  height: 16px;
+}
+
+.admit-body {
+  padding: 22px 24px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.admit-body .onboarding-field { gap: 6px; }
+
+.admit-theme .onboarding-btn {
+  background: var(--gold-grad) !important;
+  color: #2A1F06 !important;
+  font-family: 'Work Sans', 'Baloo 2', sans-serif;
+  font-weight: 800 !important;
+  box-shadow: 0 10px 22px -8px rgba(184,134,58,0.55) !important;
+}
+.admit-theme .onboarding-btn:hover { opacity: 1 !important; filter: brightness(1.04) !important; }
+
+.admit-theme .onboarding-input:focus {
+  border-color: var(--gold-1) !important;
+  box-shadow: 0 0 0 3px rgba(184,134,58,0.18) !important;
+}
+
+.admit-theme .ob-role-tab.active {
+  background: var(--gold-grad) !important;
+  color: #2A1F06 !important;
+}
+
+.admit-head .onboarding-title {
+  background: none !important;
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+}
+
+.admit-success-box {
+  border: 1px solid var(--admit-emerald);
+  background: rgba(42,174,130,0.1);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+}
+.admit-success-icon { font-size: 26px; margin-bottom: 4px; }
+.admit-success-label {
+  font-family: 'Work Sans', 'Baloo 2', sans-serif; font-size: 12.5px; font-weight: 600;
+  color: var(--text2, #8b949e);
+}
+.admit-code-chip {
+  display: inline-flex; align-items: center; gap: 8px; margin: 6px 0 2px;
+  font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700;
+  letter-spacing: 1.2px; color: var(--text1, #e6edf3);
+  background: var(--bg2, #0d1117);
+  border: 1.5px dashed var(--gold-1); border-radius: 10px; padding: 7px 14px;
+}
+.admit-success-note { font-size: 12px; color: var(--text2, #8b949e); margin-top: 8px; line-height: 1.6; }
+
+/* batch cards (replaces the plan-select <select> dropdown) */
+.admit-slides-hint {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px;
+  color: var(--text2, #8b949e); text-transform: uppercase; text-align: right; margin: 0 0 8px;
+}
+.admit-batch-slides {
+  display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding: 4px 4px 12px; margin: 0 -4px 4px; -webkit-overflow-scrolling: touch;
+}
+.admit-batch-slides::-webkit-scrollbar { height: 5px; }
+.admit-batch-slides::-webkit-scrollbar-thumb { background: var(--border, #30363d); border-radius: 3px; }
+.admit-batch-slide {
+  scroll-snap-align: start; flex: 0 0 auto; width: 148px; cursor: pointer;
+  border: 1.5px solid var(--border, #30363d); border-radius: 14px;
+  background: var(--card, #161b22);
+  padding: 12px 12px 10px; position: relative;
+  transition: border-color .15s, box-shadow .15s;
+}
+.admit-batch-slide .admit-slide-cover {
+  width: 100%; aspect-ratio: 16/9; border-radius: 9px; margin-bottom: 9px;
+  background: var(--ink-grad);
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  position: relative; overflow: hidden;
+}
+.admit-batch-slide .admit-slide-cover img { width: 100%; height: 100%; object-fit: cover; }
+.admit-batch-slide .admit-slide-cover::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 85% -10%, rgba(231,193,101,0.35), transparent 55%);
+}
+.admit-batch-slide .admit-slide-name {
+  font-family: 'Work Sans', 'Baloo 2', sans-serif; font-weight: 700; font-size: 12px;
+  color: var(--text1, #e6edf3); line-height: 1.35;
+}
+.admit-batch-slide .admit-slide-dot {
+  position: absolute; top: 9px; right: 9px; width: 17px; height: 17px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.6); background: rgba(11,24,48,0.25);
+}
+.admit-batch-slide.active {
+  border-color: var(--gold-1);
+  box-shadow: 0 0 0 1px var(--gold-1), 0 10px 20px -10px rgba(184,134,58,0.5);
+}
+.admit-batch-slide.active .admit-slide-dot {
+  background: var(--gold-grad); border-color: transparent;
+  display: flex; align-items: center; justify-content: center;
+}
+.admit-batch-slide.active .admit-slide-dot::after {
+  content: '✓'; font-size: 10px; color: #2A1F06; font-weight: 800;
+}
+
+.admit-ledger-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 10px 0; border-bottom: 1px dashed var(--border, #30363d);
+  font-family: 'Work Sans', 'Baloo 2', sans-serif; font-size: 13px;
+}
+.admit-ledger-row:last-child { border-bottom: none; }
+.admit-ledger-row .l { color: var(--text2, #8b949e); font-weight: 500; }
+.admit-ledger-row .v { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text1, #e6edf3); }
+
+.admit-gold-rule { height: 2px; margin: 16px 0; border-radius: 2px; background: var(--gold-grad); }
+
+.admit-plan-btn {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 15px; border-radius: 12px; border: 1.5px solid var(--border, #30363d);
+  background: var(--card, #161b22); cursor: pointer; margin-bottom: 9px;
+  font-family: 'Work Sans', 'Baloo 2', sans-serif; text-align: left;
+}
+.admit-plan-btn .admit-plan-name { font-weight: 700; font-size: 13px; color: var(--text1, #e6edf3); display: flex; align-items: center; gap: 8px; }
+.admit-plan-btn .admit-plan-price { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13.5px; color: var(--text1, #e6edf3); }
+.admit-plan-btn.trial { border-color: var(--admit-emerald); background: rgba(42,174,130,0.08); }
+.admit-plan-btn.trial .admit-plan-price { color: var(--admit-emerald); }
+.admit-plan-btn.featured { border-color: var(--gold-1); box-shadow: 0 0 0 1px var(--gold-1); }
+.admit-plan-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  background: var(--gold-grad); color: #3A2B08; padding: 2px 7px; border-radius: 8px; text-transform: uppercase;
+}
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MOBILE UX â€” Student App Targeted Fixes
    â‰¤ 600px only. Desktop + Board mode unchanged.

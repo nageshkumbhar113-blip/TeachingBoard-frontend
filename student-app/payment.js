@@ -31,37 +31,61 @@ const PAYMENT = (() => {
     const paid = (batches || []).filter(b => (b.monthly_price > 0 || b.yearly_price > 0));
 
     _overlay = document.createElement('div');
+    _overlay.className = 'admit-theme';
     _overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto';
 
-    const optionsHtml = paid.length
-      ? `<label class="onboarding-label" for="pay-batch">Class / Batch निवडा</label>
-         <select id="pay-batch" class="onboarding-input">
-           ${paid.map(b => `<option value="${_esc(b.name)}">${_esc(b.icon || '📚')} ${_esc(b.name)}</option>`).join('')}
-         </select>
-         <div id="pay-plans" style="margin-top:14px"></div>`
+    const bodyHtml = paid.length
+      ? `<p class="admit-slides-hint">← स्वाइप करा →</p>
+         <div id="pay-batch-slides" class="admit-batch-slides">
+           ${paid.map((b, i) => `
+             <div class="admit-batch-slide${i === 0 ? ' active' : ''}" data-name="${_esc(b.name)}">
+               <div class="admit-slide-dot"></div>
+               <div class="admit-slide-cover">${b.cover_image ? `<img src="${_esc(b.cover_image)}" alt="">` : _esc(b.icon || '📚')}</div>
+               <div class="admit-slide-name">${_esc(b.name)}</div>
+             </div>`).join('')}
+         </div>
+         <div class="admit-ledger-row"><span class="l">Batch</span><span class="v" id="pay-batch-label">${_esc(paid[0].name)}</span></div>
+         <div class="admit-ledger-row"><span class="l">Student</span><span class="v">${_esc(student.name || '')} · ${_esc(student.student_code || '')}</span></div>
+         <div class="admit-gold-rule"></div>
+         <div id="pay-plans"></div>`
       : `<p style="color:var(--text2,#8b949e);text-align:center">अजून कोणतीही paid batch उपलब्ध नाही. Admin शी संपर्क करा.</p>`;
 
     _overlay.innerHTML = `
-      <div style="background:var(--surface,#fff);border-radius:18px;padding:22px 20px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.25)">
-        <div style="text-align:center;margin-bottom:14px">
-          <div style="font-size:1.8rem">🎟️</div>
-          <h2 style="margin:6px 0 2px;font-size:1.15rem;color:var(--text1,#111)">Plan निवडा</h2>
-          <p style="margin:0;font-size:0.82rem;color:var(--text2,#8b949e)">${_esc(student.name || '')} — ${_esc(student.student_code || '')}</p>
+      <div class="onboarding-card admit-card" style="max-width:380px;margin:0">
+        <div class="admit-head">
+          <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">VERIFIED<br>STUDENT</div></div>
+          <div>
+            <div class="admit-eyebrow">CHOOSE ACCESS</div>
+            <h2 class="onboarding-title" style="font-size:1.15rem">Plan निवडा</h2>
+            <p class="onboarding-sub">${_esc(student.name || '')} — ${_esc(student.student_code || '')}</p>
+          </div>
         </div>
-        ${optionsHtml}
-        <button id="pay-close" class="onboarding-skip" style="margin-top:14px;width:100%">नंतर करेन (बंद करा)</button>
+        <div class="admit-perforation" aria-hidden="true"></div>
+        <div class="admit-body">
+          ${bodyHtml}
+          <button id="pay-close" class="onboarding-skip" style="margin-top:2px">नंतर करेन (बंद करा)</button>
+        </div>
       </div>`;
     document.body.appendChild(_overlay);
 
     _overlay.querySelector('#pay-close')?.addEventListener('click', _close);
     _overlay.addEventListener('click', e => { if (e.target === _overlay) _close(); });
 
-    const batchSel = _overlay.querySelector('#pay-batch');
-    const renderPlans = () => _renderPlans(paid.find(b => b.name === batchSel.value), student, onActivated);
-    if (batchSel) {
-      batchSel.addEventListener('change', renderPlans);
-      renderPlans();
-    }
+    let currentBatch = paid[0];
+    const renderPlans = () => _renderPlans(currentBatch, student, onActivated);
+
+    _overlay.querySelectorAll('.admit-batch-slide').forEach(slide => {
+      slide.addEventListener('click', () => {
+        _overlay.querySelectorAll('.admit-batch-slide').forEach(s => s.classList.remove('active'));
+        slide.classList.add('active');
+        currentBatch = paid.find(b => b.name === slide.dataset.name);
+        const label = _overlay.querySelector('#pay-batch-label');
+        if (label) label.textContent = currentBatch.name;
+        renderPlans();
+      });
+    });
+
+    if (currentBatch) renderPlans();
   }
 
   function _renderPlans(batch, student, onActivated) {
@@ -69,21 +93,26 @@ const PAYMENT = (() => {
     if (!host || !batch) return;
 
     const trialDays = batch.trial_days != null ? batch.trial_days : 1;
-    const coverHtml = batch.cover_image
-      ? `<img src="${_esc(batch.cover_image)}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;margin-bottom:12px">`
-      : '';
     const btns = [];
     if (trialDays > 0) {
-      btns.push(`<button class="onboarding-btn" data-plan="trial" style="background:#16a34a">🎁 ${trialDays}-दिवस Free Trial</button>`);
+      btns.push(`<button class="admit-plan-btn trial" data-plan="trial">
+        <span class="admit-plan-name">🎁 ${trialDays}-दिवस Free Trial</span>
+        <span class="admit-plan-price">मोफत</span>
+      </button>`);
     }
     if (batch.monthly_price > 0) {
-      btns.push(`<button class="onboarding-btn" data-plan="monthly">📅 Monthly — ₹${_esc(batch.monthly_price)}</button>`);
+      btns.push(`<button class="admit-plan-btn featured" data-plan="monthly">
+        <span class="admit-plan-name">📅 Monthly <span class="admit-plan-badge">Popular</span></span>
+        <span class="admit-plan-price">₹${_esc(batch.monthly_price)}</span>
+      </button>`);
     }
     if (batch.yearly_price > 0) {
-      btns.push(`<button class="onboarding-btn" data-plan="yearly">🗓️ Yearly — ₹${_esc(batch.yearly_price)}</button>`);
+      btns.push(`<button class="admit-plan-btn" data-plan="yearly">
+        <span class="admit-plan-name">🗓️ Yearly</span>
+        <span class="admit-plan-price">₹${_esc(batch.yearly_price)}</span>
+      </button>`);
     }
-    host.innerHTML = `${coverHtml}<div style="display:flex;flex-direction:column;gap:8px">${btns.join('')}</div>
-      <p id="pay-msg" class="pin-error hidden" role="alert" style="margin-top:10px"></p>`;
+    host.innerHTML = `${btns.join('')}<p id="pay-msg" class="pin-error hidden" role="alert" style="margin-top:6px"></p>`;
 
     host.querySelectorAll('button[data-plan]').forEach(btn => {
       btn.addEventListener('click', () => _choosePlan(btn.dataset.plan, batch, student, onActivated, host));
