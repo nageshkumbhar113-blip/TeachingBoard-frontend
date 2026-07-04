@@ -415,6 +415,7 @@
 
 .nv-paragraph {
   margin: 0 0 12px 0;
+  white-space: pre-line; /* keep the line breaks admin actually typed */
 }
 
 .nv-heading {

@@ -568,6 +568,7 @@
 
 .cm-pv-paragraph {
   margin: 0 0 12px;
+  white-space: pre-line; /* keep the line breaks admin actually typed */
 }
 
 .cm-pv-figure {
