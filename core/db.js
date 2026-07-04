@@ -272,6 +272,9 @@ const DB = (() => {
     try {
       await Promise.all(normalized.map(q => _put('questions', q)));
       _questionCache = null;
+      // _ensureHierarchyEntry does the same incremental batch/subject/chapter
+      // maintenance the full rescan does — no need to invalidate the rescan's
+      // "already synced" flag here, it stays correct.
       for (const item of normalized) {
         await _ensureHierarchyEntry(item.batch, item.subject, item.chapter);
       }
@@ -617,7 +620,18 @@ const DB = (() => {
     return _del('subject_chapters', id);
   }
 
-  async function syncHierarchyFromExisting() {
+  // _ensureHierarchyEntry() (called from saveQuestion/saveQuestionsBatch/saveQuiz)
+  // already keeps batch/subject/chapter tables correct incrementally as content
+  // is written. This full rescan is only a repair pass for data that predates
+  // that incremental logic — running it on every loadHome()/refreshHome() means
+  // re-scanning the ENTIRE local questions+quizzes cache on nearly every
+  // navigation, which gets slower as more content syncs locally over time.
+  // Run it once per session and skip on subsequent calls.
+  let _hierarchySynced = false;
+
+  async function syncHierarchyFromExisting({ force = false } = {}) {
+    if (_hierarchySynced && !force) return;
+
     const [questions, quizzes, batches, batchSubjects, subjectChapters] = await Promise.all([
       getAllQuestions(),
       getAllQuizzes(),
@@ -664,6 +678,8 @@ const DB = (() => {
         }
       }
     }
+
+    _hierarchySynced = true;
   }
 
   // ════════════════════════

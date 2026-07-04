@@ -645,19 +645,16 @@ const APP = (() => {
       document.getElementById('reg-name')?.focus();
     });
 
+    const codeCard = document.getElementById('reg-code-card');
+
     $('reg-back')?.addEventListener('click', () => {
       regCard?.classList.add('hidden');
       if (loginCard) loginCard.classList.remove('hidden');
-      document.getElementById('reg-success')?.classList.add('hidden');
       ['reg-name','reg-mobile','reg-school','reg-pin'].forEach(id => { const el = $(id); if (el) el.value = ''; });
       const consentEl = document.getElementById('reg-consent');
       if (consentEl) consentEl.checked = false;
       const err = document.getElementById('reg-error-msg');
       if (err) { err.textContent = ''; err.classList.add('hidden'); }
-      const sb = document.getElementById('reg-submit');
-      if (sb) { sb.style.display = ''; sb.disabled = false; }
-      const backBtn = document.getElementById('reg-back');
-      if (backBtn) backBtn.textContent = '← Login कडे परत जा';
     });
 
     $('reg-submit')?.addEventListener('click', async () => {
@@ -667,7 +664,6 @@ const APP = (() => {
       const pin         = (document.getElementById('reg-pin')?.value    || '').trim();
       const consent     = !!document.getElementById('reg-consent')?.checked;
       const errEl       = document.getElementById('reg-error-msg');
-      const successEl   = document.getElementById('reg-success');
       const submitBtn   = document.getElementById('reg-submit');
 
       const _showErr = msg => {
@@ -689,41 +685,39 @@ const APP = (() => {
 
         const res = await API.selfRegister({ name, mobile, school_name, pin });
         const code = res?.student_code || '';
+
         const codeEl = document.getElementById('reg-success-code');
         if (codeEl) codeEl.textContent = code;
+        const pinEl = document.getElementById('reg-success-pin');
+        if (pinEl) pinEl.textContent = pin;
         const detailEl = document.getElementById('reg-success-detail');
-        if (detailEl) {
-          detailEl.innerHTML =
-            '<button type="button" id="reg-copy-code" class="onboarding-skip" style="margin:2px 0">📋 Code Copy करा</button>' +
-            '<br>💾 <strong>हा code जपून ठेवा</strong> — login साठी लागेल.';
-          detailEl.querySelector('#reg-copy-code')?.addEventListener('click', () => {
-            navigator.clipboard?.writeText(code)
-              .then(() => toast('Code copy झाला ✓', 'success'))
-              .catch(() => toast('Copy करता आले नाही', 'error'));
-          });
-        }
+        if (detailEl) detailEl.textContent = '💾 हे दोन्ही जपून ठेवा — login साठी लागतील.';
+
         const _goLogin = () => {
-          regCard?.classList.add('hidden');
+          codeCard?.classList.add('hidden');
           if (loginCard) loginCard.classList.remove('hidden');
           const codeIn = document.getElementById('ob-student-code');
           if (codeIn) codeIn.value = code;
           document.getElementById('ob-pin')?.focus();
           toast('आता तुमचा PIN टाकून login करा', 'info');
         };
-        const choosePlanBtn = document.getElementById('reg-choose-plan');
-        if (choosePlanBtn) {
-          choosePlanBtn.classList.remove('hidden');
-          choosePlanBtn.addEventListener('click', () => {
-            if (window.PAYMENT?.openPlanSelect) {
-              PAYMENT.openPlanSelect({ student_code: code, pin, name, contact: mobile }, _goLogin);
-            } else {
-              toast('Payment system उपलब्ध नाही', 'error');
-            }
-          });
-        }
-        if (successEl) successEl.classList.remove('hidden');
-        submitBtn.style.display = 'none';
-        document.getElementById('reg-back').textContent = '← Login कडे जा';
+
+        document.getElementById('reg-copy-code')?.addEventListener('click', () => {
+          navigator.clipboard?.writeText(`Code: ${code}\nPIN: ${pin}`)
+            .then(() => toast('Copy झाला ✓', 'success'))
+            .catch(() => toast('Copy करता आले नाही', 'error'));
+        }, { once: true });
+
+        document.getElementById('reg-choose-plan')?.addEventListener('click', () => {
+          if (window.PAYMENT?.openPlanSelect) {
+            PAYMENT.openPlanSelect({ student_code: code, pin, name, contact: mobile }, _goLogin);
+          } else {
+            toast('Payment system उपलब्ध नाही', 'error');
+          }
+        }, { once: true });
+
+        regCard?.classList.add('hidden');
+        codeCard?.classList.remove('hidden');
       } catch (err) {
         _showErr(err?.message || 'Registration failed — पुन्हा प्रयत्न करा');
       } finally {

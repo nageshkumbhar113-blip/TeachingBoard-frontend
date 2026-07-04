@@ -150,10 +150,9 @@ body.student-app.mode-board.theme-board-light::before {
   padding: 16px 22px;
   border: 1px solid var(--board-panel-border);
   border-radius: 26px;
-  background: linear-gradient(180deg, rgba(18, 22, 34, 0.92), rgba(12, 16, 27, 0.8));
+  /* backdrop-filter removed — always-visible bar, see .top-nav above */
+  background: linear-gradient(180deg, rgba(18, 22, 34, 0.97), rgba(12, 16, 27, 0.94));
   box-shadow: var(--board-glow);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   zoom: var(--board-zoom);
 }
 
@@ -197,9 +196,8 @@ body.student-app.mode-board.theme-board-light::before {
   gap: 10px;
   border-radius: 18px;
   border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* backdrop-filter removed — always-visible nav buttons, blur per-button adds up */
+  background: rgba(40, 44, 56, 0.9);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
@@ -315,10 +313,9 @@ body.student-app.mode-board.theme-board-light::before {
   padding: 18px 22px;
   border-radius: 26px;
   border: 1px solid var(--board-panel-border);
-  background: var(--board-panel-bg);
+  /* backdrop-filter removed — persistent through the whole quiz */
+  background: var(--board-panel-bg-solid, rgba(18, 22, 34, 0.97));
   box-shadow: var(--board-glow);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 .mode-board .quiz-meta,
@@ -399,10 +396,9 @@ body.student-app.mode-board.theme-board-light::before {
   padding: 12px 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
-  background: rgba(12, 16, 27, 0.85);
+  /* backdrop-filter removed — floating timer stays visible throughout the quiz */
+  background: rgba(12, 16, 27, 0.96);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 .mode-board .timer-wrap::before,
@@ -659,9 +655,8 @@ body.student-app.mode-board.theme-board-light::before {
   padding: 12px;
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(15, 18, 29, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  /* backdrop-filter removed — sticky bar during quiz-taking, see .quiz-nav */
+  background: rgba(15, 18, 29, 0.97);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
 }
 
@@ -1428,10 +1423,11 @@ body.student-app.mode-board.theme-board-light::before {
    TOP NAVIGATION â€” Premium glassmorphism
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .top-nav {
-  background: var(--topbar-bg, rgba(22,27,34,0.9)) !important;
+  /* backdrop-filter removed — always-on (fixed, always visible) blur forces
+     continuous GPU recompositing on Android WebView on every scroll/tap,
+     which was a major contributor to the app feeling slow to respond. */
+  background: var(--topbar-bg, rgba(22,27,34,0.98)) !important;
   border-bottom: 1px solid var(--topbar-border, var(--border));
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
   box-shadow: 0 1px 0 var(--border), var(--elev-1) !important;
 }
 
@@ -1622,11 +1618,12 @@ body.student-app.mode-board.theme-board-light::before {
 
 /* Quiz nav */
 .quiz-nav {
+  /* backdrop-filter removed — this bar stays on screen through the whole
+     quiz (the most tap-heavy part of the app), so a live blur here caused
+     the most noticeable per-tap jank. */
   border-radius: var(--r-xl) !important;
-  background: var(--glass-bg) !important;
+  background: var(--glass-bg-solid, rgba(22,27,34,0.96)) !important;
   border: 1px solid var(--glass-border) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
   box-shadow: var(--elev-3) !important;
 }
 

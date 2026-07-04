@@ -188,17 +188,33 @@
       </div>
 
       <p id="reg-error-msg" class="pin-error hidden" role="alert"></p>
-      <div id="reg-success" class="hidden">
-        <div class="admit-success-box">
-          <div class="admit-success-icon">✅</div>
-          <div class="admit-success-label">तुमचा Student Code</div>
-          <strong id="reg-success-code" class="admit-code-chip"></strong>
-          <div id="reg-success-detail" class="admit-success-note"></div>
-        </div>
-        <button type="button" id="reg-choose-plan" class="onboarding-btn hidden" style="margin-top:12px">🎟️ Plan निवडा &amp; सुरू करा →</button>
-      </div>
       <button id="reg-submit" class="onboarding-btn">Registration पाठवा →</button>
       <button id="reg-back" class="onboarding-skip">← Login कडे परत जा</button>
+      </div>
+    </div>
+
+    <!-- Code + PIN reveal (separate screen, shown right after registration) -->
+    <div class="onboarding-card admit-card hidden" id="reg-code-card">
+      <div class="admit-head">
+        <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">VERIFIED<br>STUDENT</div></div>
+        <div>
+          <div class="admit-eyebrow">REGISTRATION COMPLETE</div>
+          <h1 class="onboarding-title">तुमचे Login Details</h1>
+          <p class="onboarding-sub">हे जपून ठेवा — login साठी दोन्ही लागतील</p>
+        </div>
+      </div>
+      <div class="admit-perforation" aria-hidden="true"></div>
+      <div class="admit-body">
+        <div class="admit-success-box">
+          <div class="admit-success-icon">✅</div>
+          <div class="admit-success-label">Student Code</div>
+          <strong id="reg-success-code" class="admit-code-chip"></strong>
+          <div class="admit-success-label" style="margin-top:14px">PIN</div>
+          <strong id="reg-success-pin" class="admit-code-chip"></strong>
+          <div id="reg-success-detail" class="admit-success-note"></div>
+        </div>
+        <button type="button" id="reg-copy-code" class="onboarding-skip" style="margin-top:2px">📋 दोन्ही Copy करा</button>
+        <button type="button" id="reg-choose-plan" class="onboarding-btn" style="margin-top:10px">Next → Plan निवडा</button>
       </div>
     </div>
   </div>
