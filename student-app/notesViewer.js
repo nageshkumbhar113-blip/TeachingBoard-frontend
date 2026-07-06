@@ -55,7 +55,7 @@ const NOTES_VIEWER = (() => {
     $('nv-mode-revision')?.addEventListener('click', () => _setStudyMode('revision'));
 
     $('nv-search-input')?.addEventListener('input', e => _searchConcepts(e.target.value));
-    $('nv-back-btn')?.addEventListener('click', () => _showChapterList());
+    $('nv-back-btn')?.addEventListener('click', () => _goBack());
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -379,12 +379,16 @@ const NOTES_VIEWER = (() => {
     if (!container) return;
 
     const hasCurrentConcept = !!state.currentConcept;
+    // Chapter picked but no concept open yet -> viewing that chapter's
+    // concept list, one level below the top chapters grid.
+    const hasCurrentChapter = !hasCurrentConcept && !!state.currentChapter;
+    const showBack = hasCurrentConcept || hasCurrentChapter;
 
     container.innerHTML = `
       <!-- Header with controls -->
       <div class="nv-toolbar">
         <div class="nv-toolbar-left">
-          ${hasCurrentConcept ? `<button class="nv-btn-back" id="nv-back-btn">← Back</button>` : ''}
+          ${showBack ? `<button class="nv-btn-back" id="nv-back-btn">← Back</button>` : ''}
         </div>
         <div class="nv-toolbar-center">
           <h1 class="nv-app-title">${state.currentChapter ? _esc(state.currentChapter.name) : '📚 Study Notes'}</h1>
@@ -400,16 +404,17 @@ const NOTES_VIEWER = (() => {
         </div>
       </div>
 
-      <!-- Search (when showing chapters/concepts list) -->
-      ${!hasCurrentConcept ? `
+      <!-- Search (only at the top chapters/concepts list, not inside a chapter or a note) -->
+      ${!hasCurrentConcept && !hasCurrentChapter ? `
         <div class="nv-search-bar">
           <input type="text" id="nv-search-input" class="nv-search-input" placeholder="Search concepts...">
         </div>
       ` : ''}
 
-      <!-- Main content area -->
+      <!-- Main content area — concept/chapter views fill #nv-content themselves
+           right after this render (see viewConcept/selectChapter) -->
       <div id="nv-content" class="nv-content">
-        ${hasCurrentConcept ? '' : _renderChaptersList()}
+        ${hasCurrentConcept || hasCurrentChapter ? '' : _renderChaptersList()}
       </div>
     `;
 
@@ -436,6 +441,7 @@ const NOTES_VIEWER = (() => {
 
   async function selectChapter(chapterId) {
     await _loadConcepts(chapterId);
+    _renderUI();
     _showConceptsList();
   }
 
@@ -476,6 +482,21 @@ const NOTES_VIEWER = (() => {
         `).join('')}
       </div>
     `;
+  }
+
+  // One level at a time: a note open -> back to this chapter's concept list
+  // (student can tap the next concept); a chapter's concept list showing ->
+  // back to the top chapters grid. Previously this always cleared
+  // currentChapter too, so leaving a note skipped straight past the concept
+  // list to the chapters grid.
+  function _goBack() {
+    if (state.currentConcept) {
+      state.currentConcept = null;
+      _renderUI();
+      _showConceptsList();
+      return;
+    }
+    _showChapterList();
   }
 
   function _showChapterList() {

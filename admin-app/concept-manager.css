@@ -678,13 +678,35 @@
 }
 .cm-pv-list li:last-child { margin-bottom: 0; }
 
-.cm-pv-rev-section { margin-bottom: 14px; padding-left: 12px; }
-.cm-pv-rev-section:last-child { margin-bottom: 0; }
-.cm-pv-rev-section h4 { margin: 0 0 8px; font-size: 14px; }
-.cm-pv-rev-remember { border-left: 3px solid #12805b; }
-.cm-pv-rev-mistakes { border-left: 3px solid #dc2626; }
-.cm-pv-rev-examTips { border-left: 3px solid #8b5cf6; }
-.cm-pv-rev-formulas { border-left: 3px solid #b8860b; }
+.cm-pv-rev-box {
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cm-pv-rev-section { margin-bottom: 0; padding: 14px 16px; }
+.cm-pv-rev-section + .cm-pv-rev-section { border-top: 1px solid var(--color-border, #e0e0e0); }
+.cm-pv-rev-section h4 { margin: 0 0 9px; font-size: 13px; font-weight: 700; }
+.cm-pv-rev-remember { background: rgba(18,128,91,0.08); }
+.cm-pv-rev-remember h4 { color: #12805b; }
+.cm-pv-rev-mistakes { background: rgba(220,38,38,0.08); }
+.cm-pv-rev-mistakes h4 { color: #dc2626; }
+.cm-pv-rev-examTips { background: rgba(139,92,246,0.08); }
+.cm-pv-rev-examTips h4 { color: #8b5cf6; }
+.cm-pv-rev-formulas { background: rgba(184,134,58,0.08); }
+.cm-pv-rev-formulas h4 { color: #b8860b; }
+
+.cm-pv-key-points li {
+  list-style: none;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--color-border, #e0e0e0);
+  margin-bottom: 0 !important;
+}
+.cm-pv-key-points li:last-child { border-bottom: none; }
+.cm-pv-key-points { padding-left: 0 !important; }
+
+.cm-pv-rev-formulas .cm-pv-list { font-family: 'Consolas', monospace; }
+.cm-pv-rev-formulas .cm-pv-list li:first-child { font-weight: 700; font-size: 14px; }
+.cm-pv-rev-formulas .cm-pv-list li:not(:first-child) { color: #6b7a93; font-size: 12.5px; }
 
 .cm-pv-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .cm-pv-tag {

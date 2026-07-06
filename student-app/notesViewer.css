@@ -8,12 +8,25 @@
   --nv-warning: #f59e0b;
   --nv-danger: #ef4444;
   --nv-info: #0ea5e9;
+  --nv-accent: #f59e0b;
   --nv-bg: #ffffff;
   --nv-bg-secondary: #f9fafb;
   --nv-text: #1f2937;
   --nv-text-secondary: #6b7280;
   --nv-border: #e5e7eb;
   --nv-spacing: 16px;
+}
+
+/* Notes viewer previously had only one (light) palette regardless of the
+   app's own dark/light toggle — reading screen stayed light even in dark
+   mode. Redefining the same tokens under .theme-dark lets every existing
+   var(--nv-*) rule below adapt automatically, no need to touch each one. */
+.theme-dark {
+  --nv-bg: #0d1117;
+  --nv-bg-secondary: #161b22;
+  --nv-text: #e6edf3;
+  --nv-text-secondary: #8b949e;
+  --nv-border: #30363d;
 }
 
 #nv-container {
@@ -390,23 +403,18 @@
 
 /* Read Mode */
 
-.nv-mode-read .nv-outcomes {
-  background: #f0f9ff;
-  padding: 16px;
-  border-left: 4px solid var(--nv-info);
-  border-radius: 6px;
-}
-
 .nv-mode-read .nv-outcomes ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 0;
+  list-style: none;
 }
 
 .nv-mode-read .nv-outcomes li {
-  margin-bottom: 8px;
-  color: #0369a1;
+  margin-bottom: 10px;
+  color: var(--nv-text, #e6edf3);
   font-weight: 500;
 }
+.nv-mode-read .nv-outcomes li:last-child { margin-bottom: 0; }
 
 .nv-content-body {
   font-size: 15px;
@@ -493,15 +501,15 @@
 }
 
 .nv-note-info {
-  background: #f0f9ff;
+  background: rgba(14,165,233,0.1);
   border-color: var(--nv-info);
-  color: #0369a1;
+  color: var(--nv-text);
 }
 
 .nv-note-warning {
-  background: #fef3c7;
+  background: rgba(245,158,11,0.1);
   border-color: var(--nv-warning);
-  color: #92400e;
+  color: var(--nv-text);
 }
 
 .nv-quote {
@@ -552,63 +560,78 @@
 
 .nv-mode-exam .nv-key-points ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 0;
+  list-style: none;
 }
 
 .nv-mode-exam .nv-key-points li {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  padding: 10px 0;
   font-weight: 500;
   color: var(--nv-text);
+  border-bottom: 1px dashed var(--nv-border, #30363d);
+}
+.nv-mode-exam .nv-key-points li:last-child {
+  border-bottom: none;
 }
 
 .nv-formula-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  background: var(--nv-bg-secondary, #161b22);
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  padding: 14px 16px;
 }
 
 .nv-formula {
-  padding: 12px 16px;
-  background: var(--nv-bg-secondary);
-  border-left: 4px solid var(--nv-primary);
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: 'Consolas', 'Courier New', monospace;
   font-size: 13px;
-  overflow-x: auto;
+  margin-bottom: 8px;
 }
+.nv-formula:first-child code { font-weight: 700; color: #f59e0b; font-size: 15px; }
+.nv-formula:not(:first-child) code { color: var(--nv-text-secondary, #8b949e); font-size: 13px; }
+.nv-formula:last-child { margin-bottom: 0; }
 
 .nv-formula code {
-  color: #d97706;
   font-weight: 500;
 }
 
 /* Revision Mode */
 
 .nv-revision-box {
-  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
-  padding: 20px;
-  border-radius: 8px;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  border: 1px solid var(--nv-border, #30363d);
+  overflow: hidden;
 }
+.nv-revision-box > h3 { padding: 14px 16px 0; }
 
 .nv-revision-section {
-  margin-bottom: 16px;
-}
-
-.nv-revision-section:last-child {
   margin-bottom: 0;
+  padding: 14px 16px;
 }
 
-.nv-revision-remember { border-left: 3px solid #10b981; padding-left: 12px; }
-.nv-revision-mistakes { border-left: 3px solid #ef4444; padding-left: 12px; }
-.nv-revision-examTips { border-left: 3px solid #8b5cf6; padding-left: 12px; }
-.nv-revision-formulas { border-left: 3px solid #f59e0b; padding-left: 12px; }
+.nv-revision-section + .nv-revision-section {
+  border-top: 1px solid var(--nv-border, #30363d);
+}
+
+.nv-revision-remember { background: rgba(16,185,129,0.1); }
+.nv-revision-mistakes { background: rgba(239,68,68,0.1); }
+.nv-revision-examTips { background: rgba(139,92,246,0.1); }
+.nv-revision-formulas { background: rgba(245,158,11,0.1); }
 
 .nv-revision-section h4 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--nv-text);
+  margin: 0 0 9px 0;
+  font-size: 13px;
+  font-weight: 700;
 }
+.nv-revision-remember h4 { color: #10b981; }
+.nv-revision-mistakes h4 { color: #ef4444; }
+.nv-revision-examTips h4 { color: #8b5cf6; }
+.nv-revision-formulas h4 { color: #f59e0b; }
 
 .nv-revision-section ul {
   margin: 0;

@@ -627,7 +627,7 @@ const CONCEPT_MANAGER = (() => {
       html += `
         <div class="cm-pv-section">
           <h3 class="cm-pv-section-title">🔑 Key Points</h3>
-          <ul class="cm-pv-list">${shortNotes.map(n => `<li>${_richText(n)}</li>`).join('')}</ul>
+          <ul class="cm-pv-list cm-pv-key-points">${shortNotes.map(n => `<li>${_richText(n)}</li>`).join('')}</ul>
         </div>`;
     }
 
@@ -647,7 +647,7 @@ const CONCEPT_MANAGER = (() => {
         </div>`)
       .join('');
     if (revHtml) {
-      html += `<div class="cm-pv-section"><h3 class="cm-pv-section-title">📦 Revision Box</h3>${revHtml}</div>`;
+      html += `<div class="cm-pv-section"><h3 class="cm-pv-section-title">📦 Revision Box</h3><div class="cm-pv-rev-box">${revHtml}</div></div>`;
     }
 
     const examTags = concept.examTags || [];
