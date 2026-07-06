@@ -1513,6 +1513,45 @@ const API = (() => {
     }).catch(() => {});
   }
 
+  async function reorderCatalogChapters(batch, subject, orderedNames) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters/reorder`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ order: orderedNames }),
+    }).catch(() => {});
+  }
+
+  // Public — no admin session needed, so students can also fetch the
+  // admin-chosen chapter order (their local subject_chapters table has no
+  // order info of its own; it's derived alphabetically from synced content).
+  async function fetchChapterOrder(batch, subject) {
+    const payload = await request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters`);
+    return payload?.data || [];
+  }
+
+  // Returns the locally-known chapters for a batch/subject, re-sorted to
+  // match the admin's saved order when reachable. Falls back to the plain
+  // alphabetical local list when offline or if the backend has no order info.
+  async function getOrderedChapters(batch, subject) {
+    const local = await DB.getChaptersByBatchSubject(batch, subject);
+    if (!navigator.onLine) return local;
+    try {
+      const remote = await fetchChapterOrder(batch, subject);
+      if (!remote.length) return local;
+      const orderMap = new Map(remote.map(c => [c.name, c.order]));
+      return [...local].sort((a, b) => {
+        const oa = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity;
+        const ob = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity;
+        if (oa !== ob) return oa - ob;
+        return a.name.localeCompare(b.name);
+      });
+    } catch {
+      return local;
+    }
+  }
+
   // ════════════════════════
   // SLS CONCEPT — ADMIN API
   // ════════════════════════
@@ -1955,7 +1994,8 @@ const API = (() => {
     fetchMyAttempts, syncMyAttempts,
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,
     addCatalogSubject, deleteCatalogSubject,
-    addCatalogChapter, deleteCatalogChapter,
+    addCatalogChapter, deleteCatalogChapter, reorderCatalogChapters,
+    fetchChapterOrder, getOrderedChapters,
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,
     // ─── Fee Management (Teacher) ─────────────────────────────────
     createFeeConfig, listFeeConfigs, getFeeRecords, addFeePayment, updateFeeDueDate, closeFeeConfig,

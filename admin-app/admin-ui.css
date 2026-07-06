@@ -1003,6 +1003,58 @@ body.admin-app {
 }
 .batch-admin-cover-empty { color: var(--text-secondary, #999); }
 
+/* ── Chapter reorder (Classes tab) ───────────────────────────────── */
+.chapter-order-hint {
+  font-size: 0.78rem; color: var(--text-secondary, #999);
+  margin-bottom: var(--sp-3); line-height: 1.5;
+}
+.chapter-admin-list-inner { display: flex; flex-direction: column; gap: var(--sp-2); }
+.chapter-admin-item {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: border-color var(--ease-std), box-shadow var(--ease-std);
+  touch-action: none;
+}
+.chapter-admin-item.dragging {
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px -8px rgba(var(--accent-rgb), 0.5);
+  position: relative; z-index: 5; opacity: 0.95;
+}
+.chapter-admin-item.drop-target { border-color: var(--accent); }
+.chapter-drag-handle {
+  font-size: 1.1rem; color: var(--text-secondary, #999);
+  cursor: grab; padding: 4px 2px; flex-shrink: 0; letter-spacing: 2px;
+}
+.chapter-admin-item.dragging .chapter-drag-handle { cursor: grabbing; color: var(--accent); }
+.chapter-seq-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.15);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.chapter-admin-info { flex: 1; min-width: 0; }
+.chapter-admin-name { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chapter-admin-meta { font-size: 0.75rem; color: var(--text-secondary, #999); margin-top: 2px; }
+.chapter-admin-actions { display: flex; align-items: center; gap: var(--sp-1); flex-shrink: 0; }
+.chapter-arrow-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--surface-2, transparent); border: 1px solid var(--border);
+  color: var(--text-secondary, #999);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; cursor: pointer;
+}
+.chapter-arrow-btn:hover { border-color: var(--accent); color: var(--accent); }
+.chapter-arrow-btn:disabled { opacity: 0.3; cursor: default; }
+.chapter-order-save-row { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); align-items: center; }
+.chapter-order-status { font-size: 0.8rem; color: var(--text-secondary, #999); }
+.chapter-order-status.saved { color: #10b981; }
+
 /* ════════════════════════════════════════
    20. STUDENT SECTION
 ════════════════════════════════════════ */

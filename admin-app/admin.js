@@ -419,11 +419,16 @@ const ADMIN = (() => {
     list.appendChild(fragment);
   }
 
+  let _chapterOrderDirty = false;
+  let _chapterDragEl = null, _chapterDragIdx = null, _chapterDragStartY = 0, _chapterDragCurrentY = 0, _chapterRowHeight = 0;
+
   async function _loadChapterAdmin() {
     const batch = $('class-chapter-batch')?.value || '';
     const subject = $('class-chapter-subject')?.value || '';
     const list = $('chapter-admin-list');
     if (!list) return;
+
+    _chapterOrderDirty = false;
 
     if (!batch) {
       list.innerHTML = '<p class="empty-hint">Select a class to manage chapters.</p>';
@@ -440,33 +445,140 @@ const ADMIN = (() => {
       return;
     }
 
-    list.innerHTML = '';
-    const fragment = document.createDocumentFragment();
-    for (const chapter of chapters) {
-      const quizCount = await _countPublishedQuizzes(batch, subject, chapter.name);
-      const item = document.createElement('div');
-      item.className = 'batch-admin-item';
-      item.innerHTML = `
-        <div>
-          <div class="batch-admin-name">${_escHtml(chapter.name)}</div>
-          <div class="batch-admin-meta">${quizCount} published test${quizCount === 1 ? '' : 's'}</div>
-        </div>
-        <div class="batch-admin-actions">
-          <button class="admin-btn-danger" data-action="delete">Delete</button>
-        </div>
-      `;
-      item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-        if (!await APP.confirmAsync(`Delete chapter "${chapter.name}" from "${subject}"?`)) return;
-        await DB.deleteSubjectChapter(chapter.id);
-        await Promise.all([
-          _loadChapterAdmin(),
-          _loadBatchOptions(),
-        ]);
-        if (navigator.onLine) API.deleteCatalogChapter(batch, subject, chapter.name).catch(() => {});
+    const quizCounts = await Promise.all(
+      chapters.map(chapter => _countPublishedQuizzes(batch, subject, chapter.name))
+    );
+
+    list.innerHTML = `
+      <p class="chapter-order-hint">⠿ चिन्ह धरून वर-खाली ओढा, किंवा बाणांनी क्रम बदला — विद्यार्थ्यांना पुस्तकाच्याच क्रमाने chapters दिसतील.</p>
+      <div class="chapter-admin-list-inner" id="chapter-admin-list-inner"></div>
+      <div class="chapter-order-save-row">
+        <button class="admin-btn-primary" id="chapter-order-save" disabled>क्रम जतन करा (Save Order)</button>
+        <span class="chapter-order-status" id="chapter-order-status"></span>
+      </div>
+    `;
+
+    const inner = list.querySelector('#chapter-admin-list-inner');
+
+    const render = () => {
+      inner.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      chapters.forEach((chapter, idx) => {
+        const quizCount = quizCounts[idx];
+        const item = document.createElement('div');
+        item.className = 'chapter-admin-item';
+        item.dataset.idx = idx;
+        item.dataset.id = chapter.id;
+        item.innerHTML = `
+          <span class="chapter-drag-handle">⠿</span>
+          <span class="chapter-seq-num">${idx + 1}</span>
+          <div class="chapter-admin-info">
+            <div class="chapter-admin-name">${_escHtml(chapter.name)}</div>
+            <div class="chapter-admin-meta">${quizCount} published test${quizCount === 1 ? '' : 's'}</div>
+          </div>
+          <div class="chapter-admin-actions">
+            <button class="chapter-arrow-btn" data-action="up" ${idx === 0 ? 'disabled' : ''} title="Move up">↑</button>
+            <button class="chapter-arrow-btn" data-action="down" ${idx === chapters.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+            <button class="admin-btn-danger" data-action="delete">Delete</button>
+          </div>
+        `;
+        item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!await APP.confirmAsync(`Delete chapter "${chapter.name}" from "${subject}"?`)) return;
+          await DB.deleteSubjectChapter(chapter.id);
+          await Promise.all([
+            _loadChapterAdmin(),
+            _loadBatchOptions(),
+          ]);
+          if (navigator.onLine) API.deleteCatalogChapter(batch, subject, chapter.name).catch(() => {});
+        });
+        item.querySelector('[data-action="up"]')?.addEventListener('click', () => moveChapter(idx, -1));
+        item.querySelector('[data-action="down"]')?.addEventListener('click', () => moveChapter(idx, 1));
+        item.querySelector('.chapter-drag-handle').addEventListener('pointerdown', onChapterDragStart);
+        fragment.appendChild(item);
       });
-      fragment.appendChild(item);
+      inner.appendChild(fragment);
+    };
+
+    const markDirty = () => {
+      _chapterOrderDirty = true;
+      const saveBtn = $('chapter-order-save');
+      if (saveBtn) saveBtn.disabled = false;
+      const status = $('chapter-order-status');
+      if (status) { status.textContent = ''; status.classList.remove('saved'); }
+    };
+
+    function moveChapter(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= chapters.length) return;
+      [chapters[idx], chapters[target]] = [chapters[target], chapters[idx]];
+      markDirty();
+      render();
     }
-    list.appendChild(fragment);
+
+    function onChapterDragStart(e) {
+      const row = e.target.closest('.chapter-admin-item');
+      if (!row) return;
+      _chapterDragEl = row;
+      _chapterDragIdx = parseInt(row.dataset.idx, 10);
+      _chapterDragStartY = e.clientY;
+      _chapterRowHeight = row.offsetHeight + 8;
+      row.classList.add('dragging');
+      document.addEventListener('pointermove', onChapterDragMove);
+      document.addEventListener('pointerup', onChapterDragEnd);
+    }
+
+    function onChapterDragMove(e) {
+      if (!_chapterDragEl) return;
+      _chapterDragCurrentY = e.clientY;
+      const delta = _chapterDragCurrentY - _chapterDragStartY;
+      _chapterDragEl.style.transform = `translateY(${delta}px)`;
+      const shift = Math.round(delta / _chapterRowHeight);
+      const newIdx = Math.min(Math.max(_chapterDragIdx + shift, 0), chapters.length - 1);
+      inner.querySelectorAll('.chapter-admin-item').forEach(r => r.classList.remove('drop-target'));
+      if (newIdx !== _chapterDragIdx) {
+        const rows = [...inner.querySelectorAll('.chapter-admin-item')];
+        rows[newIdx]?.classList.add('drop-target');
+      }
+    }
+
+    function onChapterDragEnd() {
+      if (!_chapterDragEl) return;
+      const delta = _chapterDragCurrentY - _chapterDragStartY;
+      const shift = Math.round(delta / _chapterRowHeight);
+      const newIdx = Math.min(Math.max(_chapterDragIdx + shift, 0), chapters.length - 1);
+
+      _chapterDragEl.classList.remove('dragging');
+      _chapterDragEl.style.transform = '';
+      inner.querySelectorAll('.chapter-admin-item').forEach(r => r.classList.remove('drop-target'));
+
+      if (newIdx !== _chapterDragIdx) {
+        const [moved] = chapters.splice(_chapterDragIdx, 1);
+        chapters.splice(newIdx, 0, moved);
+        markDirty();
+      }
+      render();
+
+      _chapterDragEl = null; _chapterDragIdx = null;
+      document.removeEventListener('pointermove', onChapterDragMove);
+      document.removeEventListener('pointerup', onChapterDragEnd);
+    }
+
+    render();
+
+    $('chapter-order-save')?.addEventListener('click', async () => {
+      const saveBtn = $('chapter-order-save');
+      const status = $('chapter-order-status');
+      saveBtn.disabled = true;
+      const orderedIds = chapters.map(c => c.id);
+      const orderedNames = chapters.map(c => c.name);
+      await DB.reorderSubjectChapters(batch, subject, orderedIds);
+      if (navigator.onLine) API.reorderCatalogChapters(batch, subject, orderedNames).catch(() => {});
+      _chapterOrderDirty = false;
+      if (status) {
+        status.textContent = '✅ क्रम जतन झाला — student ला याच क्रमाने chapters दिसतील';
+        status.classList.add('saved');
+      }
+    });
   }
 
   async function _addBatchSubject() {

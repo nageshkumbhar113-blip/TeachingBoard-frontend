@@ -506,7 +506,7 @@ const UI = (() => {
     if (!section || !list) return;
 
     const questions = await DB.getQuestionsByChapter(batchName, subjectName, '');
-    const storedChapters = await DB.getChaptersByBatchSubject(batchName, subjectName);
+    const storedChapters = await API.getOrderedChapters(batchName, subjectName);
     const fallbackChapters = [...new Set(
       questions.map(q => q.chapter).filter(Boolean)
     )].sort((a, b) => a.localeCompare(b));

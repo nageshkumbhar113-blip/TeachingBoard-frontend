@@ -585,7 +585,12 @@ const DB = (() => {
         _cleanText(item.batch).toLowerCase() === cleanBatch.toLowerCase() &&
         _cleanText(item.subject).toLowerCase() === cleanSubject.toLowerCase()
       )
-      .sort((a, b) => _cleanText(a.name).localeCompare(_cleanText(b.name)));
+      .sort((a, b) => {
+        const oa = typeof a.order === 'number' ? a.order : Infinity;
+        const ob = typeof b.order === 'number' ? b.order : Infinity;
+        if (oa !== ob) return oa - ob;
+        return _cleanText(a.name).localeCompare(_cleanText(b.name));
+      });
   }
 
   async function saveSubjectChapter(chapter, { queueOnFailure = true } = {}) {
@@ -607,6 +612,12 @@ const DB = (() => {
       updated_at: Date.now(),
     };
     if (resolvedId != null) payload.id = resolvedId;
+    // New chapters are appended after existing ones so they don't jump ahead
+    // of an already-set manual order; existing chapters keep whatever order
+    // (or lack of one) they already had unless the caller explicitly changes it.
+    if (payload.order == null) {
+      payload.order = match?.order ?? existing.length;
+    }
     try {
       await _put('subject_chapters', payload);
       return payload;
@@ -614,6 +625,20 @@ const DB = (() => {
       if (queueOnFailure) _queuePendingWrite('saveSubjectChapter', payload, err);
       throw err;
     }
+  }
+
+  async function reorderSubjectChapters(batch, subject, orderedIds) {
+    const existing = await getChaptersByBatchSubject(batch, subject);
+    const byId = new Map(existing.map(item => [String(item.id), item]));
+    const updated = [];
+    for (let i = 0; i < orderedIds.length; i++) {
+      const item = byId.get(String(orderedIds[i]));
+      if (!item) continue;
+      const payload = { ...item, order: i, updated_at: Date.now() };
+      await _put('subject_chapters', payload);
+      updated.push(payload);
+    }
+    return updated;
   }
 
   async function deleteSubjectChapter(id) {
@@ -1057,6 +1082,7 @@ const DB = (() => {
     getAllSubjectChapters,
     getChaptersByBatchSubject,
     saveSubjectChapter,
+    reorderSubjectChapters,
     deleteSubjectChapter,
     syncHierarchyFromExisting,
 
