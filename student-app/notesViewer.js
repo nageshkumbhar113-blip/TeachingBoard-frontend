@@ -5,6 +5,11 @@ const NOTES_VIEWER = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+  // Escapes HTML, then turns **bold** (as pasted straight from ChatGPT) into
+  // <strong> so admin-written emphasis actually shows up bold/colored for
+  // students instead of the literal asterisks.
+  const _richText = s => _esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
   // ════════════════════════════════════════════════════════════════════════════
   // STATE
   // ════════════════════════════════════════════════════════════════════════════
@@ -113,6 +118,12 @@ const NOTES_VIEWER = (() => {
     try {
       state.currentConcept = await API.fetchSlsConcept(conceptId);
 
+      // _renderUI() redraws the toolbar (Back button + mode selector) and
+      // clears #nv-content for hasCurrentConcept — without this, the
+      // toolbar stays stuck on whatever it looked like before the concept
+      // loaded, so the Back button never appears and students get stuck
+      // on the note with no way out except leaving the whole Notes tab.
+      _renderUI();
       _updateProgress('reading');
       _renderConcept();
     } catch (err) {
@@ -181,7 +192,7 @@ const NOTES_VIEWER = (() => {
       html += '<h3 class="nv-section-title">📚 Learning Outcomes</h3>';
       html += '<ul>';
       outcomes.forEach(o => {
-        html += `<li>${_esc(o)}</li>`;
+        html += `<li>${_richText(o)}</li>`;
       });
       html += '</ul></div>';
     }
@@ -189,6 +200,14 @@ const NOTES_VIEWER = (() => {
     html += '<div class="nv-section nv-content-body">';
     html += _renderEditorJSBlocks(blocks);
     html += '</div>';
+
+    // Read mode is the default landing view, so it shows everything the
+    // admin filled in (Short Notes, Revision Box, Formula, Exam Tips) —
+    // students shouldn't have to know to switch modes to see them. The
+    // 🎯/⚡ mode buttons still work as focused, filtered views for anyone
+    // who wants just the exam-prep or quick-revision subset.
+    html += _renderExamMode(concept, lang);
+    html += _renderRevisionMode(concept, lang);
 
     if (concept.attachments?.length > 0) {
       html += _renderAttachments(concept.attachments, lang);
@@ -209,7 +228,7 @@ const NOTES_VIEWER = (() => {
       html += '<h3 class="nv-section-title">🔑 Key Points</h3>';
       html += '<ul>';
       notes.forEach(note => {
-        html += `<li>${_esc(note)}</li>`;
+        html += `<li>${_richText(note)}</li>`;
       });
       html += '</ul></div>';
     }
@@ -245,10 +264,10 @@ const NOTES_VIEWER = (() => {
       const items = box[key] || [];
       if (items.length > 0) {
         html += `
-          <div class="nv-revision-section">
+          <div class="nv-revision-section nv-revision-${key}">
             <h4>${icon} ${label}</h4>
             <ul>
-              ${items.map(item => `<li>${_esc(item)}</li>`).join('')}
+              ${items.map(item => `<li>${_richText(item)}</li>`).join('')}
             </ul>
           </div>
         `;
@@ -269,7 +288,7 @@ const NOTES_VIEWER = (() => {
     return blocks.map(block => {
       switch (block.type) {
         case 'paragraph':
-          return `<p class="nv-paragraph">${_esc(block.data?.text || '')}</p>`;
+          return `<p class="nv-paragraph">${_richText(block.data?.text || '')}</p>`;
 
         case 'heading':
           const level = Math.min(Math.max(block.data?.level || 2, 1), 6);
@@ -291,15 +310,15 @@ const NOTES_VIEWER = (() => {
           return `<table class="nv-table"><tbody>${rows}</tbody></table>`;
 
         case 'note_box':
-          return `<div class="nv-note-box nv-note-info">${_esc(block.data?.text || '')}</div>`;
+          return `<div class="nv-note-box nv-note-info">${_richText(block.data?.text || '')}</div>`;
 
         case 'warning_box':
-          return `<div class="nv-note-box nv-note-warning">${_esc(block.data?.text || '')}</div>`;
+          return `<div class="nv-note-box nv-note-warning">${_richText(block.data?.text || '')}</div>`;
 
         case 'quote':
           return `
             <blockquote class="nv-quote">
-              <p>${_esc(block.data?.text || '')}</p>
+              <p>${_richText(block.data?.text || '')}</p>
               ${block.data?.caption ? `<footer>— ${_esc(block.data.caption)}</footer>` : ''}
             </blockquote>
           `;

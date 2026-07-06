@@ -232,6 +232,33 @@
   color: var(--color-text, #333);
 }
 
+.cm-autofill-section {
+  background: rgba(240,136,62,0.06);
+  border: 1px dashed rgba(240,136,62,0.35);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.cm-autofill-hint {
+  font-size: 12.5px;
+  color: var(--color-text-secondary, #6b7a93);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.cm-autofill-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  margin-bottom: 10px;
+}
+
+.cm-autofill-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .radio-group,
 .tags-checkboxes {
   display: flex;
@@ -253,6 +280,62 @@
 .checkbox-label input[type="checkbox"] {
   cursor: pointer;
 }
+
+.cm-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cm-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--tag-bg, rgba(240,136,62,0.15));
+  border: 1px solid var(--tag-border, rgba(240,136,62,0.35));
+  color: var(--accent, #f0883e);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 6px 4px 10px;
+  border-radius: 20px;
+}
+
+.cm-tag-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px;
+  line-height: 1;
+  opacity: 0.75;
+}
+.cm-tag-remove:hover { opacity: 1; }
+
+.cm-tag-input-row {
+  display: flex;
+  gap: 8px;
+}
+.cm-tag-input-row .admin-input { flex: 1; }
+
+.cm-tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.cm-tag-suggestion {
+  background: var(--surface2, transparent);
+  border: 1px dashed var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.cm-tag-suggestion:hover { border-color: var(--accent, #f0883e); color: var(--accent, #f0883e); }
 
 .items-list {
   display: flex;
@@ -569,6 +652,49 @@
 .cm-pv-paragraph {
   margin: 0 0 12px;
   white-space: pre-line; /* keep the line breaks admin actually typed */
+}
+
+.cm-preview-body strong { color: #b8860b; }
+
+.cm-pv-section { margin-bottom: 22px; }
+.cm-pv-section:last-child { margin-bottom: 0; }
+
+.cm-pv-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7a93;
+  margin: 0 0 10px;
+}
+
+.cm-pv-list {
+  margin: 0;
+  padding-left: 20px;
+}
+.cm-pv-list li {
+  margin-bottom: 8px;
+  white-space: pre-line;
+}
+.cm-pv-list li:last-child { margin-bottom: 0; }
+
+.cm-pv-rev-section { margin-bottom: 14px; padding-left: 12px; }
+.cm-pv-rev-section:last-child { margin-bottom: 0; }
+.cm-pv-rev-section h4 { margin: 0 0 8px; font-size: 14px; }
+.cm-pv-rev-remember { border-left: 3px solid #12805b; }
+.cm-pv-rev-mistakes { border-left: 3px solid #dc2626; }
+.cm-pv-rev-examTips { border-left: 3px solid #8b5cf6; }
+.cm-pv-rev-formulas { border-left: 3px solid #b8860b; }
+
+.cm-pv-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.cm-pv-tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(184,134,58,0.12);
+  border: 1px solid rgba(184,134,58,0.3);
+  color: #8a6416;
 }
 
 .cm-pv-figure {

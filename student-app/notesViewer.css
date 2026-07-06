@@ -418,6 +418,21 @@
   white-space: pre-line; /* keep the line breaks admin actually typed */
 }
 
+/* **bold** text pasted from ChatGPT renders as <strong> (see _richText in
+   notesViewer.js) — color it so emphasis is actually visible, not just heavier. */
+.nv-content-body strong,
+.nv-outcomes strong,
+.nv-key-points strong,
+.nv-revision-section strong {
+  color: var(--nv-accent, #f59e0b);
+}
+
+.nv-outcomes li,
+.nv-key-points li {
+  white-space: pre-line;
+  margin-bottom: 10px;
+}
+
 .nv-heading {
   margin: 24px 0 12px 0;
   font-weight: 600;
@@ -582,6 +597,11 @@
 .nv-revision-section:last-child {
   margin-bottom: 0;
 }
+
+.nv-revision-remember { border-left: 3px solid #10b981; padding-left: 12px; }
+.nv-revision-mistakes { border-left: 3px solid #ef4444; padding-left: 12px; }
+.nv-revision-examTips { border-left: 3px solid #8b5cf6; padding-left: 12px; }
+.nv-revision-formulas { border-left: 3px solid #f59e0b; padding-left: 12px; }
 
 .nv-revision-section h4 {
   margin: 0 0 8px 0;

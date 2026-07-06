@@ -486,6 +486,18 @@ const ADMIN = (() => {
     // Sync to backend (silent fail if offline)
     if (navigator.onLine) API.addCatalogSubject(batch, name).catch(() => {});
     APP.toast(`Subject "${name}" added to ${batch}`, 'success');
+
+    // Word Editor's subject dropdowns only refresh on their own batch
+    // <select>'s change event — if that batch is already selected there
+    // (a different tab), a newly added subject would otherwise never show
+    // up until the batch is deselected and reselected.
+    for (const [batchSelId, subjectSelId] of [['we-batch', 'we-subject'], ['word-bulk-batch', 'word-bulk-subject']]) {
+      const batchSel = $(batchSelId);
+      if (batchSel?.value === batch) {
+        const subjects = (await DB.getSubjectsByBatch(batch)).map(s => s.name);
+        _setSelectOptions($(subjectSelId), subjects, 'Select Subject');
+      }
+    }
   }
 
   async function _addSubjectChapter() {

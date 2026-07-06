@@ -24,6 +24,7 @@ const VOCAB = (() => {
   let _scores       = { listen: 0, meaning: 0, picture: 0, spelling: 0 };
   let _wordScores   = {};  // { wordId: { listen: bool, meaning: bool, picture: bool, spelling: bool } }
   let _addWordFillData = null;
+  let _currentView = 'test-list';
 
   function $id(id) { return document.getElementById(id); }
   const _escHtml = s => String(s || '')
@@ -674,6 +675,7 @@ const VOCAB = (() => {
   // ─── View management ─────────────────────────────────────────────────────────
 
   function _showView(name) {
+    _currentView = name;
     ['vocab-test-list-view', 'vocab-player-view', 'vocab-score-view'].forEach(id => {
       const el = $id(id);
       if (el) el.classList.toggle('hidden', !id.includes(name));
@@ -694,8 +696,14 @@ const VOCAB = (() => {
   // ─── Init ────────────────────────────────────────────────────────────────────
 
   function init() {
-    // Back button on test list → go home
+    // Back button — step back one level (player/score → test-list) rather
+    // than always exiting to Home, so starting/finishing a test doesn't
+    // strand the student outside the Words section entirely.
     $id('vocab-back-btn')?.addEventListener('click', () => {
+      if (_currentView !== 'test-list') {
+        _showView('test-list');
+        return;
+      }
       // APP is a top-level `const` in app.js, not `window.APP` (see notes elsewhere in this file).
       if (typeof APP !== 'undefined' && APP?.loadHome) APP.loadHome();
     });

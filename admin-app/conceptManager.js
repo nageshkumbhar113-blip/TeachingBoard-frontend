@@ -4,6 +4,9 @@
 const CONCEPT_MANAGER = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  // Escapes HTML, then turns **bold** (as pasted straight from ChatGPT) into
+  // <strong> — the preview should render markdown emphasis, not literal asterisks.
+  const _richText = s => _esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
   // ════════════════════════════════════════════════════════════════════════════
   // STATE
@@ -87,9 +90,6 @@ const CONCEPT_MANAGER = (() => {
 
     // Auto-translate
     $('cm-translate-btn')?.addEventListener('click', () => _autoTranslate());
-
-    // Exam tags
-    _setupExamTagsCheckboxes();
   }
 
   // Deterministic chapterId — same logical chapter always maps to the same
@@ -310,6 +310,16 @@ const CONCEPT_MANAGER = (() => {
     if (!editor) return;
 
     editor.innerHTML = `
+      <div class="editor-section cm-autofill-section">
+        <h3>🤖 Auto-fill from ChatGPT</h3>
+        <p class="cm-autofill-hint">ChatGPT चा संपूर्ण output इथे paste करा — Title, Learning Outcomes, Content, Short Notes, Revision Box, Formula, Exam Tips, Exam Tags, Difficulty सगळं आपोआप भरेल.</p>
+        <textarea id="cm-autofill-input" class="form-input cm-autofill-textarea" rows="6" placeholder="ChatGPT चा संपूर्ण मजकूर इथे paste करा..."></textarea>
+        <div class="cm-autofill-actions">
+          <button type="button" id="cm-autofill-btn" class="btn btn-primary">✨ Auto-fill करा</button>
+          <button type="button" id="cm-copy-format-btn" class="btn btn-secondary">📋 Copy Format (ChatGPT साठी)</button>
+        </div>
+      </div>
+
       <div class="editor-header">
         <div class="form-group">
           <label>Title (English) *</label>
@@ -424,6 +434,30 @@ const CONCEPT_MANAGER = (() => {
     $('cm-preview-btn')?.addEventListener('click', () => _previewConcept());
     $('cm-add-para-btn')?.addEventListener('click', () => _addBlock('paragraph'));
     $('cm-add-image-btn')?.addEventListener('click', () => _addBlock('image'));
+    $('cm-autofill-btn')?.addEventListener('click', () => _runAutoFill());
+    $('cm-copy-format-btn')?.addEventListener('click', () => _copyPromptFormat());
+
+    // Title/language/difficulty aren't read until Save is pressed — wire a
+    // blur/change autosave so these aren't lost either if the admin navigates
+    // away mid-edit.
+    $('cm-title-en')?.addEventListener('blur', () => {
+      _currentConcept.title.english = _getValue('cm-title-en').trim();
+      _autoSaveDraft();
+    });
+    $('cm-title-mr')?.addEventListener('blur', () => {
+      _currentConcept.title.marathi = _getValue('cm-title-mr').trim();
+      _autoSaveDraft();
+    });
+    document.querySelectorAll('input[name="language"]').forEach(el => {
+      el.addEventListener('change', () => {
+        _currentConcept.language = el.value;
+        _autoSaveDraft();
+      });
+    });
+    $('cm-difficulty')?.addEventListener('change', () => {
+      _currentConcept.difficulty = _getValue('cm-difficulty');
+      _autoSaveDraft();
+    });
 
     _renderContentBlocks();
   }
@@ -521,6 +555,7 @@ const CONCEPT_MANAGER = (() => {
   function _updateBlockField(idx, field, value) {
     const block = _blocks()[idx];
     if (block) block.data[field] = value;
+    _autoSaveDraft();
   }
 
   function _updateBlockImageUrl(idx, value) {
@@ -558,7 +593,7 @@ const CONCEPT_MANAGER = (() => {
 
   function _renderBlocksHtml(blocks) {
     return blocks.map(block => {
-      if (block.type === 'paragraph') return `<p class="cm-pv-paragraph">${_esc(block.data?.text || '')}</p>`;
+      if (block.type === 'paragraph') return `<p class="cm-pv-paragraph">${_richText(block.data?.text || '')}</p>`;
       if (block.type === 'image') {
         const width = _sizeWidth[block.data?.size] || _sizeWidth.medium;
         return `
@@ -569,6 +604,62 @@ const CONCEPT_MANAGER = (() => {
       }
       return '';
     }).join('');
+  }
+
+  function _renderLearningOutcomesPreviewHtml(concept) {
+    const outcomes = concept.learningOutcomes?.english || [];
+    if (!outcomes.length) return '';
+    return `
+      <div class="cm-pv-section">
+        <h3 class="cm-pv-section-title">📚 Learning Outcomes</h3>
+        <ul class="cm-pv-list">${outcomes.map(o => `<li>${_richText(o)}</li>`).join('')}</ul>
+      </div>`;
+  }
+
+  // Same "everything on one screen" layout as the student notes viewer's
+  // Read mode (Short Notes, Revision Box, Exam Tags) — the admin preview
+  // should show what students will actually see.
+  function _renderPreviewSectionsHtml(concept) {
+    let html = '';
+
+    const shortNotes = concept.shortNotes?.english || [];
+    if (shortNotes.length) {
+      html += `
+        <div class="cm-pv-section">
+          <h3 class="cm-pv-section-title">🔑 Key Points</h3>
+          <ul class="cm-pv-list">${shortNotes.map(n => `<li>${_richText(n)}</li>`).join('')}</ul>
+        </div>`;
+    }
+
+    const revisionBox = concept.revisionBox?.english || {};
+    const revSections = [
+      { key: 'remember', icon: '🧠', label: 'Remember' },
+      { key: 'mistakes', icon: '❌', label: 'Mistakes to Avoid' },
+      { key: 'formulas', icon: '📐', label: 'Formulas' },
+      { key: 'examTips', icon: '⭐', label: 'Exam Tips' },
+    ];
+    const revHtml = revSections
+      .filter(({ key }) => (revisionBox[key] || []).length)
+      .map(({ key, icon, label }) => `
+        <div class="cm-pv-rev-section cm-pv-rev-${key}">
+          <h4>${icon} ${label}</h4>
+          <ul class="cm-pv-list">${revisionBox[key].map(i => `<li>${_richText(i)}</li>`).join('')}</ul>
+        </div>`)
+      .join('');
+    if (revHtml) {
+      html += `<div class="cm-pv-section"><h3 class="cm-pv-section-title">📦 Revision Box</h3>${revHtml}</div>`;
+    }
+
+    const examTags = concept.examTags || [];
+    if (examTags.length) {
+      html += `
+        <div class="cm-pv-section">
+          <h3 class="cm-pv-section-title">🏷️ Exam Tags</h3>
+          <div class="cm-pv-tags">${examTags.map(t => `<span class="cm-pv-tag">${_esc(t)}</span>`).join('')}</div>
+        </div>`;
+    }
+
+    return html;
   }
 
   function _previewConcept() {
@@ -585,7 +676,12 @@ const CONCEPT_MANAGER = (() => {
           <button type="button" class="btn-icon" id="cm-preview-close">✕</button>
         </div>
         <div class="cm-preview-body">
-          ${blocks.length ? _renderBlocksHtml(blocks) : '<p class="cm-blocks-empty">No content yet.</p>'}
+          ${_renderLearningOutcomesPreviewHtml(concept)}
+          <div class="cm-pv-section">
+            <h3 class="cm-pv-section-title">📚 Content</h3>
+            ${blocks.length ? _renderBlocksHtml(blocks) : '<p class="cm-blocks-empty">No content yet.</p>'}
+          </div>
+          ${_renderPreviewSectionsHtml(concept)}
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -720,47 +816,290 @@ const CONCEPT_MANAGER = (() => {
   // EXAM TAGS
   // ════════════════════════════════════════════════════════════════════════════
 
+  const RECENT_TAGS_KEY = 'cm_recent_exam_tags';
+
+  function _getRecentTags() {
+    try { return JSON.parse(localStorage.getItem(RECENT_TAGS_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function _rememberTag(tag) {
+    const recent = _getRecentTags().filter(t => t !== tag);
+    recent.unshift(tag);
+    localStorage.setItem(RECENT_TAGS_KEY, JSON.stringify(recent.slice(0, 20)));
+  }
+
   function _renderExamTags() {
     const container = $('cm-exam-tags-inline');
     if (!container) return;
 
-    const tags = ['board_exam', 'important', 'repeated', 'numerical', 'theory', 'diagram', 'viva', 'mcq'];
     const selected = _currentConcept.examTags || [];
+    const suggestions = _getRecentTags().filter(t => !selected.includes(t)).slice(0, 10);
 
-    container.innerHTML = tags.map(tag => {
-      const label = {
-        board_exam: '📋 Board Exam',
-        important: '⭐ Important',
-        repeated: '🔄 Repeated',
-        numerical: '🔢 Numerical',
-        theory: '📚 Theory',
-        diagram: '🖼️ Diagram',
-        viva: '🗣️ Viva',
-        mcq: '❓ MCQ'
-      }[tag];
+    container.innerHTML = `
+      <div class="cm-tag-chips" id="cm-tag-chips">
+        ${selected.map(tag => `
+          <span class="cm-tag-chip">
+            ${_esc(tag)}
+            <button type="button" class="cm-tag-remove" onclick="CONCEPT_MANAGER._removeExamTag('${_esc(tag)}')" aria-label="Remove tag">✕</button>
+          </span>
+        `).join('')}
+      </div>
+      <div class="cm-tag-input-row">
+        <input type="text" id="cm-tag-input" class="admin-input" placeholder="Tag टाईप करा आणि Enter दाबा...">
+        <button type="button" id="cm-tag-add-btn" class="admin-btn-secondary">+ Add</button>
+      </div>
+      ${suggestions.length ? `
+        <div class="cm-tag-suggestions">
+          ${suggestions.map(tag => `
+            <button type="button" class="cm-tag-suggestion" onclick="CONCEPT_MANAGER._addExamTag('${_esc(tag)}')">+ ${_esc(tag)}</button>
+          `).join('')}
+        </div>
+      ` : ''}
+    `;
 
-      return `
-        <label class="checkbox-label">
-          <input type="checkbox" value="${tag}" ${selected.includes(tag) ? 'checked' : ''}
-                 onchange="CONCEPT_MANAGER._toggleExamTag('${tag}', this.checked)">
-          ${label}
-        </label>
-      `;
-    }).join('');
+    const input = $('cm-tag-input');
+    const addFromInput = () => {
+      const val = input.value.trim();
+      if (val) _addExamTag(val);
+      input.value = '';
+      input.focus();
+    };
+    $('cm-tag-add-btn')?.addEventListener('click', addFromInput);
+    input?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); addFromInput(); }
+    });
   }
 
-  function _toggleExamTag(tag, checked) {
-    if (checked) {
-      if (!_currentConcept.examTags.includes(tag)) {
-        _currentConcept.examTags.push(tag);
-      }
-    } else {
-      _currentConcept.examTags = _currentConcept.examTags.filter(t => t !== tag);
+  function _addExamTag(tag) {
+    const clean = String(tag || '').trim();
+    if (!clean) return;
+    if (!_currentConcept.examTags.includes(clean)) {
+      _currentConcept.examTags.push(clean);
+      _rememberTag(clean);
     }
+    _renderExamTags();
+    _autoSaveDraft();
   }
 
-  function _setupExamTagsCheckboxes() {
-    // Setup initially - handled in _renderExamTags
+  function _removeExamTag(tag) {
+    _currentConcept.examTags = _currentConcept.examTags.filter(t => t !== tag);
+    _renderExamTags();
+    _autoSaveDraft();
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // AUTO-FILL FROM PASTED TEXT (ChatGPT-formatted note → all fields at once)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // Header lines are short and consist of little besides the keyword itself
+  // (plus emoji/symbol decoration) — anchoring on "only non-letters around the
+  // keyword" tells a real section header apart from the keyword merely
+  // appearing inside a sentence elsewhere (e.g. a content line that mentions
+  // "remember" in passing shouldn't reset the parser's current section).
+  const _headerOnly = word => new RegExp(`^[^\\p{L}\\p{N}]*${word}[^\\p{L}\\p{N}]*$`, 'iu');
+
+  const _AUTOFILL_SECTIONS = [
+    ['title',      /title\s*\(marathi\)/i],
+    ['learning',   /learning outcomes/i],
+    ['content',    /content\s*\(description\)/i],
+    ['shortNotes', /short notes/i],
+    ['remember',   _headerOnly('remember')],
+    ['mistakes',   /mistakes to avoid/i],
+    ['formula',    _headerOnly('formula')],
+    ['examTips',   /exam tips/i],
+    ['quickRev',   /quick revision/i],
+    ['examTags',   /exam tags/i],
+    ['difficulty', /difficulty level/i],
+  ];
+
+  // Best-effort line-by-line parser for the fixed ChatGPT template (section
+  // headers like "🎯 Learning Outcomes" / "📦 Revision Box" / "🏷️ Exam Tags")
+  // — not general NLP, just matches the exact structure the admin's prompt
+  // (see _copyPromptFormat) asks ChatGPT to always produce.
+  function _parseAutoFillText(raw) {
+    const lines = String(raw || '').replace(/\r\n/g, '\n').split('\n');
+    const result = {
+      titleMarathi: '', titleEnglish: '',
+      outcomes: [], contentParagraphs: [],
+      shortNotes: [], remember: [], mistakes: [], formulas: [], examTips: [],
+      examTags: [], difficulty: '',
+    };
+
+    let section = 'none';
+    let buffer = [];
+
+    const flushContent = () => {
+      const text = buffer.join('\n').trim();
+      buffer = [];
+      if (!text) return;
+      text.split(/\n\s*\n/).forEach(p => {
+        const t = p.trim();
+        if (t) result.contentParagraphs.push(t);
+      });
+    };
+
+    const captureTitle = line => {
+      result.titleMarathi = line;
+      const m = line.match(/\(([^)]+)\)\s*$/);
+      if (m) result.titleEnglish = m[1].trim();
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+
+      // Divider line only — doesn't hold content itself, children sections follow.
+      if (/revision box/i.test(line)) continue;
+
+      const matched = _AUTOFILL_SECTIONS.find(([, re]) => re.test(line));
+      if (matched) {
+        if (section === 'content') flushContent();
+        section = matched[0];
+        buffer = [];
+        continue;
+      }
+
+      if (section === 'none') {
+        if (line && !result.titleMarathi) captureTitle(line);
+        continue;
+      }
+      if (section === 'title') {
+        if (line) captureTitle(line);
+        continue;
+      }
+      if (section === 'content') {
+        buffer.push(rawLine); // keep blank lines — they mark paragraph breaks
+        continue;
+      }
+      if (!line) continue;
+
+      switch (section) {
+        case 'learning':   result.outcomes.push(line); break;
+        case 'shortNotes': result.shortNotes.push(line); break;
+        case 'remember':   result.remember.push(line); break;
+        case 'mistakes':   result.mistakes.push(line); break;
+        case 'formula':    result.formulas.push(line); break;
+        case 'examTips':   result.examTips.push(line); break;
+        case 'quickRev':   result.shortNotes.push(line); break;
+        case 'examTags': {
+          const tag = line.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+          if (tag) result.examTags.push(tag);
+          break;
+        }
+        case 'difficulty':
+          if (/easy|🟢/i.test(line)) result.difficulty = 'easy';
+          else if (/medium|🟡/i.test(line)) result.difficulty = 'medium';
+          else if (/hard|🔴/i.test(line)) result.difficulty = 'hard';
+          break;
+      }
+    }
+    if (section === 'content') flushContent();
+
+    return result;
+  }
+
+  function _applyAutoFillResult(parsed) {
+    if (!_currentConcept) return;
+
+    if (parsed.titleMarathi) {
+      _currentConcept.title.marathi = parsed.titleMarathi;
+      if ($('cm-title-mr')) $('cm-title-mr').value = parsed.titleMarathi;
+    }
+    if (parsed.titleEnglish) {
+      _currentConcept.title.english = parsed.titleEnglish;
+      if ($('cm-title-en')) $('cm-title-en').value = parsed.titleEnglish;
+    }
+
+    if (parsed.outcomes.length) {
+      _currentConcept.learningOutcomes.english = parsed.outcomes;
+      _renderLearningOutcomes();
+    }
+
+    if (parsed.contentParagraphs.length) {
+      _blocks().length = 0;
+      parsed.contentParagraphs.forEach(text => _blocks().push({ type: 'paragraph', data: { text } }));
+      _renderContentBlocks();
+    }
+
+    if (parsed.shortNotes.length) {
+      _currentConcept.shortNotes.english = parsed.shortNotes;
+      _renderShortNotes();
+    }
+
+    if (parsed.remember.length || parsed.mistakes.length || parsed.formulas.length || parsed.examTips.length) {
+      const box = _currentConcept.revisionBox.english;
+      if (parsed.remember.length) box.remember = parsed.remember;
+      if (parsed.mistakes.length) box.mistakes = parsed.mistakes;
+      if (parsed.formulas.length) box.formulas = parsed.formulas;
+      if (parsed.examTips.length) box.examTips = parsed.examTips;
+      _renderRevisionBox();
+    }
+
+    if (parsed.examTags.length) {
+      parsed.examTags.forEach(tag => {
+        if (!_currentConcept.examTags.includes(tag)) _currentConcept.examTags.push(tag);
+        _rememberTag(tag);
+      });
+      _renderExamTags();
+    }
+
+    if (parsed.difficulty) {
+      _currentConcept.difficulty = parsed.difficulty;
+      if ($('cm-difficulty')) $('cm-difficulty').value = parsed.difficulty;
+    }
+
+    _autoSaveDraft();
+    APP.toast('Auto-fill झालं — सगळे fields एकदा तपासा', 'success');
+  }
+
+  function _runAutoFill() {
+    const input = $('cm-autofill-input');
+    if (!input || !input.value.trim()) {
+      APP.toast('आधी मजकूर paste करा', 'error');
+      return;
+    }
+    _applyAutoFillResult(_parseAutoFillText(input.value));
+  }
+
+  const CHATGPT_FORMAT_PROMPT = `Ya format made mala note dya (Marathi madhe), exact hech section headings ani emoji vaparun, ekahi section skip na karta:
+
+Title (Marathi)
+[चॅप्टरचे शीर्षक] (English translation)
+
+🎯 Learning Outcomes
+✅ ...
+✅ ...
+
+📚 Content (Description)
+[परिच्छेद, ठळक शब्दांसाठी **bold** वापरा, महत्त्वाच्या मुद्द्यांसाठी वेगळी ओळ]
+
+📝 Short Notes
+📌 ...
+📌 ...
+
+📦 Revision Box
+🧠 Remember
+✅ ...
+❌ Mistakes to Avoid
+❌ ...
+
+📐 Formula
+[मुख्य सूत्र]
+[उप-मुद्दे]
+
+🎯 Exam Tips
+⭐ ...
+
+🏷️ Exam Tags
+☑️ ...
+
+⭐ Difficulty Level
+🟢 Easy / 🟡 Medium / 🔴 Hard`;
+
+  function _copyPromptFormat() {
+    navigator.clipboard?.writeText(CHATGPT_FORMAT_PROMPT)
+      .then(() => APP.toast('Prompt copy झाला — ChatGPT ला paste करा', 'success'))
+      .catch(() => APP.toast('Copy करता आलं नाही', 'error'));
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -770,6 +1109,7 @@ const CONCEPT_MANAGER = (() => {
   function _updateLearningOutcome(idx, value) {
     if (_currentConcept && _currentConcept.learningOutcomes.english) {
       _currentConcept.learningOutcomes.english[idx] = value;
+      _autoSaveDraft();
     }
   }
 
@@ -783,6 +1123,7 @@ const CONCEPT_MANAGER = (() => {
   function _updateShortNote(idx, value) {
     if (_currentConcept && _currentConcept.shortNotes.english) {
       _currentConcept.shortNotes.english[idx] = value;
+      _autoSaveDraft();
     }
   }
 
@@ -796,6 +1137,7 @@ const CONCEPT_MANAGER = (() => {
   function _updateRevisionItem(type, idx, value) {
     if (_currentConcept && _currentConcept.revisionBox.english && _currentConcept.revisionBox.english[type]) {
       _currentConcept.revisionBox.english[type][idx] = value;
+      _autoSaveDraft();
     }
   }
 
@@ -816,6 +1158,26 @@ const CONCEPT_MANAGER = (() => {
   // ════════════════════════════════════════════════════════════════════════════
   // SAVE / PUBLISH / DELETE
   // ════════════════════════════════════════════════════════════════════════════
+
+  let _autoSaveTimer = null;
+
+  // Silent, debounced draft save — used after tag/field edits so nothing is
+  // lost if the admin navigates away without pressing "Save Draft" (no toast,
+  // no chapter-list refresh, since those would be disruptive mid-edit).
+  function _autoSaveDraft() {
+    if (!_currentConcept || !_currentConcept.title?.english?.trim()) return;
+    clearTimeout(_autoSaveTimer);
+    _autoSaveTimer = setTimeout(async () => {
+      try {
+        const body = { ..._currentConcept, changesSummary: 'Auto-saved draft' };
+        _currentConcept = _currentConcept._id
+          ? await API.updateAdminConcept(_currentConcept._id, body)
+          : await API.createAdminConcept(body);
+      } catch (err) {
+        console.warn('Auto-save draft failed:', err.message);
+      }
+    }, 800);
+  }
 
   async function _saveConcept(publish = false) {
     if (!_currentConcept) return;
@@ -940,7 +1302,8 @@ const CONCEPT_MANAGER = (() => {
     _updateRevisionItem,
     _removeRevisionItem,
     _removeAttachment,
-    _toggleExamTag,
+    _addExamTag,
+    _removeExamTag,
     _moveBlock,
     _removeBlock,
     _updateBlockField,
