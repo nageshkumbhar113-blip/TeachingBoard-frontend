@@ -135,7 +135,11 @@
 
           <!-- Nav — vertical sidebar tabs (existing .atab + .admin-tabs class kept) -->
           <nav class="admin-tabs" role="tablist" aria-label="Admin sections">
-            <button class="atab active" role="tab" data-tab="questions" aria-controls="atab-questions" aria-selected="true">
+            <button class="atab active" role="tab" data-tab="dashboard" aria-controls="atab-dashboard" aria-selected="true">
+              <span class="atab-icon" aria-hidden="true">🏠</span>
+              <span class="atab-label">Dashboard</span>
+            </button>
+            <button class="atab" role="tab" data-tab="questions" aria-controls="atab-questions" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📝</span>
               <span class="atab-label">Questions</span>
             </button>
@@ -200,8 +204,76 @@
         <!-- MAIN CONTENT AREA -->
         <main class="admin-main" id="admin-main">
 
+          <!-- ── Dashboard Panel ───────────────────── -->
+          <div class="atab-content active" id="atab-dashboard" role="tabpanel" aria-labelledby="atab-btn-dashboard">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">🏠 Dashboard</h2>
+            </div>
+
+            <p class="dash-group-label">Revenue</p>
+            <div class="dash-stat-row" style="margin-bottom: var(--sp-4, 16px)">
+              <div class="dash-stat-card dash-stat-money">
+                <span class="dash-stat-icon">💰</span>
+                <div class="dash-stat-num" id="dash-stat-total-income">₹0</div>
+                <div class="dash-stat-label">Total Income</div>
+              </div>
+              <div class="dash-stat-card dash-stat-money">
+                <span class="dash-stat-icon">📆</span>
+                <div class="dash-stat-num" id="dash-stat-today-income">₹0</div>
+                <div class="dash-stat-label">Today's Income</div>
+              </div>
+              <div class="dash-stat-card dash-stat-money">
+                <span class="dash-stat-icon">📊</span>
+                <div class="dash-stat-num" id="dash-stat-month-income">₹0</div>
+                <div class="dash-stat-label">This Month</div>
+              </div>
+            </div>
+
+            <p class="dash-group-label">Students</p>
+            <div class="dash-stat-row" id="dash-stat-row">
+              <div class="dash-stat-card dash-stat-ok">
+                <span class="dash-stat-icon">👥</span>
+                <div class="dash-stat-num" id="dash-stat-students">0</div>
+                <div class="dash-stat-label">Active Students</div>
+              </div>
+              <div class="dash-stat-card dash-stat-warn">
+                <span class="dash-stat-icon">👀</span>
+                <div class="dash-stat-num" id="dash-stat-leads">0</div>
+                <div class="dash-stat-label">Interested (No Batch)</div>
+              </div>
+              <div class="dash-stat-card dash-stat-danger">
+                <span class="dash-stat-icon">⏳</span>
+                <div class="dash-stat-num" id="dash-stat-pending-payment">0</div>
+                <div class="dash-stat-label">Payment Not Done</div>
+              </div>
+            </div>
+
+            <div class="dash-ai-panel">
+              <div class="dash-ai-panel-inner">
+                <div class="dash-ai-badge">🤖</div>
+                <div class="dash-ai-body">
+                  <div class="dash-ai-top-row">
+                    <span class="dash-ai-eyebrow">AI Insight</span>
+                    <span class="dash-live-dot" aria-hidden="true"></span>
+                  </div>
+                  <div class="dash-ai-text" id="dash-ai-text">Data बघत आहे…</div>
+                  <div class="dash-ai-signal" id="dash-ai-signal"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-page-header">
+              <h2 class="admin-page-title" style="font-size: 1.05rem">🔔 Follow Up Now <span class="dash-count-chip" id="dash-followup-count">0</span></h2>
+              <button id="btn-refresh-dashboard" class="admin-btn-secondary">↻ Refresh</button>
+            </div>
+            <p class="empty-hint" id="dash-followup-hint" style="margin-bottom: var(--sp-3, 12px)">
+              ज्यांनी interest दाखवला किंवा payment सुरू करून पूर्ण केलं नाही — त्यांना call करा.
+            </p>
+            <div id="dash-followup-list"></div>
+          </div>
+
           <!-- ── Questions Panel ───────────────────── -->
-          <div class="atab-content active" id="atab-questions" role="tabpanel" aria-labelledby="atab-btn-questions">
+          <div class="atab-content hidden" id="atab-questions" role="tabpanel" aria-labelledby="atab-btn-questions">
             <div class="admin-page-header">
               <h2 class="admin-page-title">📝 Question Bank</h2>
               <button id="btn-add-question" class="admin-btn-primary">+ Add Question</button>
@@ -1227,7 +1299,11 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
 
     <!-- ── MOBILE BOTTOM NAV (hidden on desktop) ──────── -->
     <nav id="admin-bottom-nav" class="admin-bottom-nav hidden" role="tablist" aria-label="Admin navigation">
-      <button class="abn-tab active" data-tab="questions" role="tab" aria-selected="true">
+      <button class="abn-tab active" data-tab="dashboard" role="tab" aria-selected="true">
+        <span class="abn-icon">🏠</span>
+        <span class="abn-label">Dashboard</span>
+      </button>
+      <button class="abn-tab" data-tab="questions" role="tab" aria-selected="false">
         <span class="abn-icon">📝</span>
         <span class="abn-label">Questions</span>
       </button>
@@ -1239,10 +1315,6 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
         <span class="abn-icon">👨‍🎓</span>
         <span class="abn-label">Students</span>
       </button>
-      <button class="abn-tab" data-tab="import" role="tab" aria-selected="false">
-        <span class="abn-icon">📥</span>
-        <span class="abn-label">Import</span>
-      </button>
       <button class="abn-tab" id="abn-more-btn" data-tab="__more__" role="tab" aria-selected="false">
         <span class="abn-icon">☰</span>
         <span class="abn-label">More</span>
@@ -1252,6 +1324,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
     <!-- ── MORE DRAWER (slides up from bottom) ────────── -->
     <div id="admin-more-drawer" class="admin-more-drawer hidden" role="dialog" aria-label="More options">
       <div class="admin-more-drawer-handle"></div>
+      <button class="abn-drawer-item" data-tab="import">
+        <span>📥</span> Import
+      </button>
       <button class="abn-drawer-item" data-tab="lessons">
         <span>📖</span> Lessons
       </button>

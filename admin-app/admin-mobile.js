@@ -186,6 +186,7 @@
       if (tab === 'word-tests') window.WORD_TEST_BUILDER?.onTabActivated();
       if (tab === 'concepts')   window.CONCEPT_MANAGER?.init();
       if (tab === 'pricing')    window.BATCH_PRICING?.init();
+      if (tab === 'dashboard')  window.ADMIN?.loadDashboard?.();
     }
 
     // Handle bottom nav tab clicks
@@ -226,7 +227,7 @@
       const tab = btn.dataset.tab;
       // Update bottom nav active state
       bottomNav.querySelectorAll('.abn-tab').forEach(b => {
-        const mainTabs = ['questions', 'tests', 'students', 'import'];
+        const mainTabs = ['dashboard', 'questions', 'tests', 'students'];
         const isMain = mainTabs.includes(tab);
         const isActive = isMain
           ? b.dataset.tab === tab

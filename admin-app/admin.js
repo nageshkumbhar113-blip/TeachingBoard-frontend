@@ -213,6 +213,7 @@ const ADMIN = (() => {
     _resetTeacherForm();
     _resetParentForm();
     APP.renderDashboardStats?.();
+    _loadDashboard().catch(err => console.warn('_loadDashboard failed', err));
   }
 
   // ════════════════════════
@@ -239,6 +240,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
         if (tab.dataset.tab === 'pricing')     window.BATCH_PRICING?.init();
+        if (tab.dataset.tab === 'dashboard')   _loadDashboard();
       });
     });
   }
@@ -2134,6 +2136,142 @@ const ADMIN = (() => {
     }
   }
 
+  // Dashboard "Follow Up Now" — combines two kinds of buying intent:
+  //  1. Interested leads: registered (code+PIN) but never picked a batch/plan.
+  //  2. Abandoned payments: picked a paid plan, opened Razorpay checkout,
+  //     but never completed payment (fetched from the backend, which knows
+  //     this from StudentSubscription rows stuck in status:'created').
+  async function _loadDashboard() {
+    const activeCount = (_studentsCache || []).filter(s => s.status === 'active').length;
+    _setDashStat('dash-stat-students', activeCount);
+    _setDashStat('dash-stat-leads', (_leadsCache || []).length);
+
+    const [pendingPayments, revenue] = await Promise.all([
+      API.fetchPendingPayments().catch(err => { console.warn('fetchPendingPayments failed', err); return []; }),
+      API.fetchRevenueSummary().catch(err => { console.warn('fetchRevenueSummary failed', err); return { total: 0, today: 0, month: 0 }; }),
+    ]);
+
+    _setDashStat('dash-stat-pending-payment', pendingPayments.length);
+    _setDashStat('dash-stat-total-income', `₹${revenue.total.toLocaleString('en-IN')}`);
+    _setDashStat('dash-stat-today-income', `₹${revenue.today.toLocaleString('en-IN')}`);
+    _setDashStat('dash-stat-month-income', `₹${revenue.month.toLocaleString('en-IN')}`);
+
+    const followUps = [
+      ...(_leadsCache || []).map(s => ({
+        name: s.name,
+        mobile: s.mobile,
+        student_code: s.student_code,
+        reason: 'interested',
+        detail: 'Registered, अजून कुठलाही batch/plan निवडला नाही',
+        at: s.created_at,
+      })),
+      ...pendingPayments.map(p => ({
+        name: p.name,
+        mobile: p.mobile,
+        student_code: p.student_code,
+        reason: 'abandoned',
+        detail: `${p.batch} — ${p.period === 'yearly' ? 'Yearly' : 'Monthly'} ₹${p.amount} plan उघडला, payment पूर्ण केलं नाही`,
+        at: p.started_at,
+      })),
+    ].sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+
+    _renderFollowUpList(followUps);
+    _renderAiInsight(pendingPayments);
+  }
+
+  function _setDashStat(id, value) {
+    const el = $(id);
+    if (el) el.textContent = String(value);
+  }
+
+  // Not a real ML model — just a plain-language summary of which
+  // batch+plan combo has the most abandoned checkouts, so the admin knows
+  // where to focus follow-up calls first.
+  function _renderAiInsight(pendingPayments) {
+    const textEl   = $('dash-ai-text');
+    const signalEl = $('dash-ai-signal');
+    if (!textEl) return;
+
+    if (!pendingPayments.length) {
+      textEl.textContent = 'सध्या कुठलाही payment अर्धवट नाही — सगळं व्यवस्थित आहे 🎉';
+      if (signalEl) signalEl.textContent = '';
+      return;
+    }
+
+    const groups = new Map();
+    pendingPayments.forEach(p => {
+      const key = `${p.batch}—${p.period}`;
+      const g = groups.get(key) || { batch: p.batch, period: p.period, count: 0 };
+      g.count++;
+      groups.set(key, g);
+    });
+    const top = [...groups.values()].sort((a, b) => b.count - a.count)[0];
+    const planLabel = top.period === 'yearly' ? 'Yearly' : 'Monthly';
+
+    textEl.innerHTML = `<b>${_escHtml(top.batch)} — ${planLabel}</b> plan वर सर्वात जास्त drop-off झालाय — ` +
+      `${top.count} student${top.count === 1 ? '' : 's'} payment screen पर्यंत गेले, पूर्ण केलं नाही. आधी त्यांना call करा.`;
+    if (signalEl) signalEl.textContent = `based on ${pendingPayments.length} abandoned checkout${pendingPayments.length === 1 ? '' : 's'}`;
+  }
+
+  function _renderFollowUpList(items) {
+    const list = $('dash-followup-list');
+    const countEl = $('dash-followup-count');
+    if (countEl) countEl.textContent = String(items.length);
+    if (!list) return;
+
+    if (!items.length) {
+      list.innerHTML = '<p class="empty-hint">सध्या follow-up साठी कोणी नाही 🎉</p>';
+      return;
+    }
+
+    list.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    items.forEach(item => {
+      const mobile = (item.mobile || '').trim();
+      const ago = _timeAgo(item.at);
+      const isDanger = item.reason === 'abandoned';
+      const badge = isDanger
+        ? '<span class="dash-followup-badge dash-followup-badge-danger">Payment अर्धवट</span>'
+        : '<span class="dash-followup-badge dash-followup-badge-warn">Interested</span>';
+      const initial = (item.name || '?').trim().charAt(0);
+
+      const row = document.createElement('div');
+      row.className = `dash-followup-row ${isDanger ? 'dash-row-danger' : 'dash-row-warn'}`;
+      row.innerHTML = `
+        <div class="dash-avatar">${_escHtml(initial)}</div>
+        <div class="dash-followup-main">
+          <div class="dash-followup-top">
+            <span class="dash-followup-name">${_escHtml(item.name || '')}</span>
+            ${badge}
+          </div>
+          <div class="dash-meta-row">
+            <span>📞 ${_escHtml(mobile || '—')}</span><span class="dash-sep">·</span>
+            <span>${_escHtml(item.student_code || '—')}</span><span class="dash-sep">·</span>
+            <span>${ago}</span>
+          </div>
+          <div class="dash-followup-detail">${_escHtml(item.detail)}</div>
+          <div class="dash-followup-actions">
+            ${mobile ? `<a class="dash-action-btn dash-action-call" href="tel:${_escHtml(mobile)}">📞 Call</a>` : ''}
+            ${mobile ? `<a class="dash-action-btn dash-action-wa" target="_blank" rel="noopener noreferrer" href="https://wa.me/91${_escHtml(mobile)}">💬 WhatsApp</a>` : ''}
+          </div>
+        </div>
+      `;
+      fragment.appendChild(row);
+    });
+    list.appendChild(fragment);
+  }
+
+  function _timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 60) return `${mins} मि आधी`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} तास आधी`;
+    const days = Math.floor(hours / 24);
+    return `${days} दिवस आधी`;
+  }
+
   // Export students who registered (code+PIN issued) but never chose a
   // batch/plan — follow-up targets to convert into paying students.
   async function _exportLeadsCSV() {
@@ -2143,21 +2281,34 @@ const ADMIN = (() => {
       return;
     }
 
-    const header = ['Student Code', 'Name', 'Mobile Number', 'School', 'Registered Date'];
-    const rows = leads.map(s => [
-      s.student_code || '',
-      s.name || '',
-      s.mobile || '',
-      s.school_name || '',
-      s.created_at ? new Date(s.created_at).toISOString().slice(0, 10) : '',
-    ]);
+    // Split off leads with no mobile number — bulk-SMS-ing a CSV that
+    // includes blank numbers sends empty/failed SMS for those rows, so keep
+    // them in a clearly separate file instead of silently including them.
+    const withMobile = leads.filter(s => (s.mobile || '').trim());
+    const noMobile    = leads.filter(s => !(s.mobile || '').trim());
 
-    const csv = [header, ...rows]
-      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    await _downloadBlob(blob, `interested_leads_${new Date().toISOString().slice(0, 10)}.csv`);
-    APP.toast(`Exported ${leads.length} lead(s)`, 'success');
+    const toCsv = rows => [
+      ['Student Code', 'Name', 'Mobile Number', 'School', 'Registered Date'],
+      ...rows.map(s => [
+        s.student_code || '',
+        s.name || '',
+        s.mobile || '',
+        s.school_name || '',
+        s.created_at ? new Date(s.created_at).toISOString().slice(0, 10) : '',
+      ]),
+    ].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([toCsv(withMobile)], { type: 'text/csv;charset=utf-8;' });
+    await _downloadBlob(blob, `interested_leads_${dateStr}.csv`);
+
+    if (noMobile.length) {
+      const blob2 = new Blob([toCsv(noMobile)], { type: 'text/csv;charset=utf-8;' });
+      await _downloadBlob(blob2, `interested_leads_NO_MOBILE_${dateStr}.csv`);
+      APP.toast(`Exported ${withMobile.length} lead(s). ${noMobile.length} have no mobile number — separate file, can't SMS these.`, 'info');
+    } else {
+      APP.toast(`Exported ${withMobile.length} lead(s)`, 'success');
+    }
   }
 
   function _showCredsModal(code, pin, courses, expiry) {
@@ -2944,6 +3095,7 @@ const ADMIN = (() => {
     $('btn-refresh-students')?.addEventListener('click', _loadStudentsAdmin);
     $('btn-export-students-csv')?.addEventListener('click', _exportStudentsCSV);
     $('btn-export-leads-csv')?.addEventListener('click', _exportLeadsCSV);
+    $('btn-refresh-dashboard')?.addEventListener('click', () => _loadDashboard());
     $('btn-gen-code')?.addEventListener('click', () => {
       const name = String($('student-name')?.value || '').trim();
       const code = _autoStudentCode(name);
@@ -4001,7 +4153,7 @@ const ADMIN = (() => {
   // ════════════════════════
 
   window.ADMIN_UTILS = { compressImage: _compressImage };
-  return { init, open, close, loadQuestionBank, loadQuizList, loadWordBank: _loadWordBank };
+  return { init, open, close, loadQuestionBank, loadQuizList, loadWordBank: _loadWordBank, loadDashboard: _loadDashboard };
 })();
 
 window.ADMIN = ADMIN;

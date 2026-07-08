@@ -673,7 +673,8 @@ const APP = (() => {
 
       if (!name)        return _showErr('पूर्ण नाव टाका');
       if (!school_name) return _showErr('शाळेचे नाव टाका');
-      if (mobile && !_isValidMobile(mobile)) return _showErr('वैध 10 अंकी mobile number टाका (6-9 ने सुरू)');
+      if (!mobile)       return _showErr('Mobile Number टाका');
+      if (!_isValidMobile(mobile)) return _showErr('वैध 10 अंकी mobile number टाका (6-9 ने सुरू)');
       if (!/^\d{4}$/.test(pin)) return _showErr('PIN 4 अंकी असणे आवश्यक आहे');
       if (_isWeakPin(pin)) return _showErr('हा PIN खूप सोपा आहे (उदा. 0000, 1234). वेगळा PIN निवडा');
       if (!consent) return _showErr('पुढे जाण्यासाठी संमती checkbox निवडा');

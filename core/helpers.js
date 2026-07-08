@@ -1531,6 +1531,25 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // Admin: students who picked a paid plan and started Razorpay checkout
+  // but never completed payment — real buying intent, worth a follow-up call.
+  async function fetchPendingPayments(pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/payment/admin/pending', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  // Admin: total / today / this-month revenue (sum of verified payments).
+  async function fetchRevenueSummary(pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/payment/admin/revenue', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || { total: 0, today: 0, month: 0 };
+  }
+
   // Returns the locally-known chapters for a batch/subject, re-sorted to
   // match the admin's saved order when reachable. Falls back to the plain
   // alphabetical local list when offline or if the backend has no order info.
@@ -1967,6 +1986,7 @@ const API = (() => {
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
+    fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
