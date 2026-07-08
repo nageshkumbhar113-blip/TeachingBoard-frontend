@@ -423,8 +423,17 @@ const ADMIN = (() => {
 
   let _chapterOrderDirty = false;
   let _chapterDragEl = null, _chapterDragIdx = null, _chapterDragStartY = 0, _chapterDragCurrentY = 0, _chapterRowHeight = 0;
+  // If a drag is interrupted (pointerup never fires — lost pointer capture,
+  // app backgrounded mid-touch, etc.) before the next _loadChapterAdmin()
+  // call, its document-level pointermove/up listeners would otherwise never
+  // be removed (each render's handlers are fresh closures, so a later call
+  // can't reference an earlier call's listener functions to remove them).
+  let _chapterDragCleanup = null;
 
   async function _loadChapterAdmin() {
+    _chapterDragCleanup?.();
+    _chapterDragCleanup = null;
+
     const batch = $('class-chapter-batch')?.value || '';
     const subject = $('class-chapter-subject')?.value || '';
     const list = $('chapter-admin-list');
@@ -527,6 +536,11 @@ const ADMIN = (() => {
       row.classList.add('dragging');
       document.addEventListener('pointermove', onChapterDragMove);
       document.addEventListener('pointerup', onChapterDragEnd);
+      _chapterDragCleanup = () => {
+        document.removeEventListener('pointermove', onChapterDragMove);
+        document.removeEventListener('pointerup', onChapterDragEnd);
+        row.classList.remove('dragging');
+      };
     }
 
     function onChapterDragMove(e) {
@@ -563,6 +577,7 @@ const ADMIN = (() => {
       _chapterDragEl = null; _chapterDragIdx = null;
       document.removeEventListener('pointermove', onChapterDragMove);
       document.removeEventListener('pointerup', onChapterDragEnd);
+      _chapterDragCleanup = null;
     }
 
     render();
