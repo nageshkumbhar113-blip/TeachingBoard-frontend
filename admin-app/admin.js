@@ -2186,6 +2186,9 @@ const ADMIN = (() => {
         student_code: p.student_code,
         reason: 'abandoned',
         detail: `${p.batch} — ${p.period === 'yearly' ? 'Yearly' : 'Monthly'} ₹${p.amount} plan उघडला, payment पूर्ण केलं नाही`,
+        batch: p.batch,
+        period: p.period,
+        amount: p.amount,
         at: p.started_at,
       })),
     ].sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
@@ -2267,13 +2270,31 @@ const ADMIN = (() => {
           <div class="dash-followup-detail">${_escHtml(item.detail)}</div>
           <div class="dash-followup-actions">
             ${mobile ? `<a class="dash-action-btn dash-action-call" href="tel:${_escHtml(mobile)}">📞 Call</a>` : ''}
-            ${mobile ? `<a class="dash-action-btn dash-action-wa" target="_blank" rel="noopener noreferrer" href="https://wa.me/91${_escHtml(mobile)}">💬 WhatsApp</a>` : ''}
+            ${mobile ? `<a class="dash-action-btn dash-action-wa" target="_blank" rel="noopener noreferrer" href="https://wa.me/91${_escHtml(mobile)}?text=${encodeURIComponent(_buildFollowUpMessage(item))}">💬 WhatsApp</a>` : ''}
           </div>
         </div>
       `;
       fragment.appendChild(row);
     });
     list.appendChild(fragment);
+  }
+
+  // Pre-filled WhatsApp text (Marathi + English) so the admin doesn't have
+  // to type the same follow-up message by hand for every lead.
+  function _buildFollowUpMessage(item) {
+    if (item.reason === 'abandoned') {
+      const planLabel = item.period === 'yearly' ? 'Yearly' : 'Monthly';
+      return `नमस्कार 🙏 Nks EduOrbit मधून बोलतोय.\n\n` +
+        `तुम्ही ${item.batch} साठी ${planLabel} ₹${item.amount} प्लॅन उघडला होता, पण payment पूर्ण झालं नाही. काही अडचण आली का? मदत हवी असल्यास सांगा, आम्ही लगेच मदत करतो. 😊\n\n` +
+        `---\n\n` +
+        `Hi! This is Nks EduOrbit.\n\n` +
+        `You started a ${planLabel} ₹${item.amount} plan for ${item.batch} but the payment didn't complete. Did you face any issue? Let us know, happy to help you finish it.`;
+    }
+    return `नमस्कार 🙏 Nks EduOrbit मधून बोलतोय.\n\n` +
+      `तुम्ही नोंदणी केली आहे, पण अजून कुठलाही Batch/Plan निवडलेला नाही. काही मदत हवी आहे का? कॉल करा किंवा इथेच रिप्लाय करा. 😊\n\n` +
+      `---\n\n` +
+      `Hi! This is Nks EduOrbit.\n\n` +
+      `You've registered but haven't picked a batch/plan yet. Need any help? Feel free to call or reply here.`;
   }
 
   function _timeAgo(dateStr) {
