@@ -243,6 +243,29 @@ const UI = (() => {
 
     // Use allowedBatches as source of truth — show class even if local DB has no questions yet
     const batchMeta = new Map(batches.map(b => [String(b?.name || '').trim(), b]));
+
+    // The locally-cached `batches` table is built incrementally from synced
+    // question/quiz content (core/db.js's _ensureHierarchyEntry), which only
+    // ever writes a generic 📚 icon — it never carries the admin's real
+    // icon/cover_image. Those live on the backend Batch catalog and were,
+    // until now, only ever fetched for the payment/plan-select screen. Merge
+    // them in here too (best-effort — offline just keeps the generic icon).
+    if (navigator.onLine) {
+      try {
+        const remoteBatches = await API.getBatchPlans();
+        remoteBatches.forEach(rb => {
+          const name = String(rb?.name || '').trim();
+          const existing = batchMeta.get(name);
+          if (existing) {
+            existing.icon = rb.icon || existing.icon;
+            existing.cover_image = rb.cover_image || '';
+          } else {
+            batchMeta.set(name, { name, icon: rb.icon || '📚', cover_image: rb.cover_image || '' });
+          }
+        });
+      } catch (e) { console.warn('batch cover fetch failed', e); }
+    }
+
     const visibleQuestions = _filterByAllowedBatches(questions, allowedBatches);
     const questionCounts = visibleQuestions.reduce((counts, q) => {
       counts[q.batch] = (counts[q.batch] || 0) + 1;
@@ -257,7 +280,9 @@ const UI = (() => {
       card.className = 'batch-card';
       card.setAttribute('role', 'listitem');
       card.innerHTML = `
-        <div class="batch-icon">${meta.icon || '📚'}</div>
+        ${meta.cover_image
+          ? `<div class="batch-cover"><img src="${meta.cover_image}" alt="" loading="lazy"></div>`
+          : `<div class="batch-icon">${meta.icon || '📚'}</div>`}
         <div class="batch-name">${batchName}</div>
         <div class="batch-count">${count} questions</div>
       `;
