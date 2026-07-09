@@ -283,6 +283,52 @@ const APP = (() => {
     $('update-sheet')?.classList.add('hidden');
   }
 
+  // Shows once per expiry cycle (tracked via the 'expiry_popup_shown_for'
+  // setting, compared against the exact expiry_date string) — renewing gets
+  // a new expiry_date, which naturally lets the sheet show again next time.
+  async function _maybeShowExpirySheet() {
+    try {
+      const profile = await API.getStudentProfile();
+      if (!profile?.expiry_date) return;
+      const expiry = new Date(profile.expiry_date);
+      if (Number.isNaN(expiry.getTime())) return;
+
+      const daysLeft = Math.ceil((expiry - new Date()) / 86400000);
+      if (daysLeft < 0 || daysLeft > 5) return;
+
+      const shownFor = await DB.getSetting('expiry_popup_shown_for', null);
+      if (shownFor === profile.expiry_date) return;
+
+      const sub = $('expiry-sheet-sub');
+      if (sub) {
+        sub.textContent = daysLeft > 0
+          ? `तुमची subscription ${daysLeft} दिवसात संपेल. Access बंद होण्याआधी renew करा.`
+          : `तुमची subscription आज संपते. Access बंद होण्याआधी renew करा.`;
+      }
+
+      $('expiry-sheet-backdrop')?.classList.remove('hidden');
+      $('expiry-sheet')?.classList.remove('hidden');
+      await DB.setSetting('expiry_popup_shown_for', profile.expiry_date);
+
+      const closeSheet = () => {
+        $('expiry-sheet-backdrop')?.classList.add('hidden');
+        $('expiry-sheet')?.classList.add('hidden');
+      };
+      $('btn-expiry-renew')?.addEventListener('click', async () => {
+        closeSheet();
+        const pin = await DB.getSetting('student_pin', '');
+        if (window.PAYMENT?.openPlanSelect && profile.student_code) {
+          PAYMENT.openPlanSelect(
+            { student_code: profile.student_code, pin, name: profile.name || '', contact: profile.mobile || '' },
+            () => refreshHome()
+          );
+        }
+      }, { once: true });
+      $('expiry-sheet-close')?.addEventListener('click', closeSheet, { once: true });
+      $('expiry-sheet-backdrop')?.addEventListener('click', closeSheet, { once: true });
+    } catch (e) { console.warn('expiry sheet check failed', e); }
+  }
+
   function _showInstallGuide() {
     const existing = $('install-guide');
     if (existing) existing.remove();
@@ -1394,6 +1440,7 @@ const APP = (() => {
       onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
     });
     await _renderHomeHierarchy();
+    _maybeShowExpirySheet();
   }
 
   // Lightweight stats refresh — called after quiz end, admin changes, etc.
