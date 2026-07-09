@@ -1361,8 +1361,9 @@ const ADMIN = (() => {
   }
 
   // Center-crop + resize to an exact target size (fixed format for batch
-  // covers — 1200x675 / 16:9 — so every batch card looks consistent in the
-  // student showcase regardless of what image admin picked).
+  // covers — 1280x720 / 16:9 — so every batch card looks consistent in the
+  // student showcase regardless of what image admin picked). Uploading an
+  // image already sized 1280x720 passes through with zero cropping.
   function _resizeImageDataUrl(dataUrl, targetW, targetH) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -1412,7 +1413,7 @@ const ADMIN = (() => {
           <div class="batch-admin-meta">${qs.length} questions</div>
         </div>
         <div class="batch-admin-actions">
-          <button class="admin-btn-secondary btn-cover-batch" data-name="${_esc(b.name)}">🖼️ Cover</button>
+          <button class="admin-btn-secondary btn-cover-batch" data-name="${_esc(b.name)}" title="शिफारस: 1280×720 (16:9) size मध्ये डिझाईन करा">🖼️ Cover</button>
           <input type="file" class="batch-cover-upload" accept="image/*" style="display:none">
           <button class="admin-btn-secondary btn-share-batch" data-name="${_esc(b.name)}">🔗 Share</button>
           <button class="admin-btn-secondary btn-rename-batch" data-id="${b.id}" data-name="${_esc(b.name)}" data-icon="${_esc(b.icon || '📚')}">✏️ Rename</button>
@@ -1420,6 +1421,7 @@ const ADMIN = (() => {
         </div>
       `;
       item.querySelector('.btn-cover-batch').addEventListener('click', () => {
+        APP.toast('शिफारस: 1280×720 (16:9) size मध्ये डिझाईन करून upload करा', 'info');
         item.querySelector('.batch-cover-upload').click();
       });
       item.querySelector('.batch-cover-upload').addEventListener('change', async e => {
@@ -1428,7 +1430,7 @@ const ADMIN = (() => {
         try {
           APP.toast('Cover image अपलोड होत आहे…', 'info');
           const dataUrl = await _fileToDataUrl(file);
-          const resized = await _resizeImageDataUrl(dataUrl, 1200, 675); // fixed 16:9
+          const resized = await _resizeImageDataUrl(dataUrl, 1280, 720); // fixed 16:9
           const uploaded = await API.uploadWordImage(resized);
           const url = uploaded?.url || uploaded?.data?.url || '';
           if (!url) throw new Error('Upload response had no URL');
