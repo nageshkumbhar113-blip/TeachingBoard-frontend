@@ -159,45 +159,61 @@ const PAYMENT = (() => {
     }
   }
 
+  // Checkout runs in the device's external browser (not the app's own
+  // WebView) via pay.html — a Play Store policy requirement: an app that
+  // itself initiates/completes an in-app digital-content purchase must use
+  // Google Play Billing, but a purchase that happens on a website the app
+  // merely links out to is exempt. Order creation + verification are
+  // unchanged; only where the Razorpay checkout UI is displayed moves.
   function _openCheckout(order, plan, batch, student, onActivated, host) {
-    const rzp = new Razorpay({
-      key: order.key_id,
-      amount: order.amount,
-      currency: order.currency || 'INR',
-      name: 'Nks EduOrbit',
-      description: `${batch.name} — ${plan === 'yearly' ? 'Yearly' : 'Monthly'}`,
+    const params = new URLSearchParams({
       order_id: order.order_id,
-      prefill: { name: student.name || '', contact: student.contact || '' },
-      theme: { color: '#001f5c' },
-      handler: async (response) => {
-        // Verify + activate synchronously — don't depend solely on the
-        // webhook (which can be delayed, misconfigured, or never delivered).
-        _msg(host, 'Payment मिळाले! Account active होत आहे…', false);
-        try {
-          await API.verifyPayment({
-            student_code: student.student_code,
-            pin: student.pin,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          });
-          _toast('✅ Account active! आता login करा.', 'success');
-          _close();
-          onActivated?.();
-          return;
-        } catch (err) {
-          console.warn('verifyPayment failed, falling back to polling', err);
-        }
-        _pollActivation(student, onActivated, host);
-      },
-      modal: { ondismiss: () => _msg(host, 'Payment रद्द झाले.') },
+      amount:   String(order.amount),
+      currency: order.currency || 'INR',
+      key_id:   order.key_id,
+      batch:    batch.name,
+      period:   plan,
+      name:     student.name || '',
+      contact:  student.contact || '',
     });
-    rzp.on('payment.failed', resp => _msg(host, resp?.error?.description || 'Payment अयशस्वी'));
-    rzp.open();
+    const payUrl = `https://teachingboard-frontend.vercel.app/pay.html?${params.toString()}`;
+
+    const BrowserPlugin = window.Capacitor?.Plugins?.Browser;
+    if (BrowserPlugin) {
+      BrowserPlugin.open({ url: payUrl });
+    } else {
+      window.open(payUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    _showWaitingForPayment(student, onActivated, host);
+  }
+
+  function _showWaitingForPayment(student, onActivated, host) {
+    if (!host) return;
+    host.innerHTML = `
+      <div style="text-align:center;padding:8px 0">
+        <p style="font-size:0.85rem;color:var(--text2,#8b949e);line-height:1.6;margin-bottom:14px">
+          Payment साठी browser उघडला आहे. पूर्ण झाल्यावर इथे परत या आणि खालील बटण दाबा.
+        </p>
+        <button id="pay-check-status" class="admit-plan-btn featured" style="width:100%">✅ मी Payment केलं — Check करा</button>
+        <p id="pay-msg" class="pin-error hidden" role="alert" style="margin-top:10px"></p>
+      </div>
+    `;
+    host.querySelector('#pay-check-status')?.addEventListener('click', () => {
+      _pollActivation(student, onActivated, host, 0, /* singleShot */ true);
+    });
   }
 
   // Webhook activation is async — poll status until active (≈20s max).
-  async function _pollActivation(student, onActivated, host, tries = 0) {
+  // singleShot=true is used by the "Check करा" button (external-browser
+  // checkout flow) — gives immediate "checking…" feedback instead of
+  // silently retrying in the background with no visible state change.
+  async function _pollActivation(student, onActivated, host, tries = 0, singleShot = false) {
+    const btn = host?.querySelector('#pay-check-status');
+    if (singleShot && tries === 0) {
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking…'; }
+      _msg(host, '', false);
+    }
     try {
       const res = await API.getSubscriptionStatus({ student_code: student.student_code, pin: student.pin });
       if (res?.student?.status === 'active') {
@@ -208,10 +224,11 @@ const PAYMENT = (() => {
       }
     } catch {}
     if (tries >= 10) {
-      _msg(host, 'Payment झाले. Activation मध्ये थोडा वेळ — १ मिनिटाने login करा.', false);
+      _msg(host, 'अजून payment दिसत नाही. Payment पूर्ण केलं असेल तर १ मिनिटाने परत Check करा.', true);
+      if (btn) { btn.disabled = false; btn.textContent = '✅ मी Payment केलं — Check करा'; }
       return;
     }
-    setTimeout(() => _pollActivation(student, onActivated, host, tries + 1), 2000);
+    setTimeout(() => _pollActivation(student, onActivated, host, tries + 1, singleShot), 2000);
   }
 
   return { openPlanSelect };
