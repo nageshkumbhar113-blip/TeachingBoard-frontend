@@ -20,7 +20,6 @@ const CONCEPT_MANAGER = (() => {
   let _concepts = [];
   let _editorInstance = null;
   let _initialized = false;
-  let _exerciseQuestions = [];
 
   // ════════════════════════════════════════════════════════════════════════════
   // UI HELPERS
@@ -387,26 +386,6 @@ const CONCEPT_MANAGER = (() => {
       </div>
 
       <div class="editor-section">
-        <h3>📝 Exercise</h3>
-        <p class="cm-autofill-hint">Question + Answer + Marks एकत्र पेस्ट करा, आपोआप वेगळे होतील — किंवा खाली मॅन्युअली एक-एक जोडा. हेच प्रश्न पुढे "Make Question Paper" मध्ये वापरता येतील.</p>
-        ${_currentConcept._id ? '' : '<p class="cm-autofill-hint" style="color:var(--accent,#e16b13)">आधी "Save Draft" करा, मग Exercise प्रश्न जोडता येतील.</p>'}
-        <textarea id="cm-exercise-autofill-input" class="cm-autofill-textarea" placeholder="Q1. गुरुत्वाकर्षण बल म्हणजे काय?
-Ans: दोन वस्तूंमधील एकमेकांना आकर्षित करणारे बल.
-Marks: 2
-
-Q2. मुक्तपतन म्हणजे काय?
-Ans: फक्त गुरुत्वाकर्षण बलाच्या प्रभावाखाली वस्तूचे पडणे.
-Marks: 1" ${_currentConcept._id ? '' : 'disabled'}></textarea>
-        <div class="cm-autofill-actions">
-          <button type="button" id="cm-exercise-autofill-btn" class="btn btn-small" ${_currentConcept._id ? '' : 'disabled'}>✨ Auto-fill Exercise</button>
-          <button type="button" id="cm-exercise-manual-btn" class="btn btn-small" ${_currentConcept._id ? '' : 'disabled'}>+ मॅन्युअली प्रश्न जोडा</button>
-          <button type="button" id="cm-exercise-copy-format-btn" class="btn btn-small">📋 Copy Format (ChatGPT/Claude साठी)</button>
-        </div>
-        <div id="cm-exercise-manual-form"></div>
-        <div id="cm-exercise-list" class="items-list" style="margin-top:10px"></div>
-      </div>
-
-      <div class="editor-section">
         <h3>Attachments</h3>
         <div id="cm-attachments-list-inline" class="items-list"></div>
         <button type="button" id="cm-add-attachment-btn-inline" class="btn btn-small">+ Add Attachment</button>
@@ -453,10 +432,6 @@ Marks: 1" ${_currentConcept._id ? '' : 'disabled'}></textarea>
     $('cm-publish-btn-inline')?.addEventListener('click', () => _saveConcept(true));
     $('cm-cancel-btn-inline')?.addEventListener('click', () => _cancelEdit());
     $('cm-preview-btn')?.addEventListener('click', () => _previewConcept());
-    $('cm-exercise-autofill-btn')?.addEventListener('click', () => _runExerciseAutoFill());
-    $('cm-exercise-manual-btn')?.addEventListener('click', () => _showExerciseManualForm());
-    $('cm-exercise-copy-format-btn')?.addEventListener('click', () => _copyExerciseFormat());
-    if (_currentConcept._id) _loadExerciseQuestions();
     $('cm-add-para-btn')?.addEventListener('click', () => _addBlock('paragraph'));
     $('cm-add-image-btn')?.addEventListener('click', () => _addBlock('image'));
     $('cm-autofill-btn')?.addEventListener('click', () => _runAutoFill());
@@ -1086,198 +1061,6 @@ Marks: 1" ${_currentConcept._id ? '' : 'disabled'}></textarea>
     _applyAutoFillResult(_parseAutoFillText(input.value));
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // EXERCISE — Q&A bank tied to this concept (feeds the Paper Builder later)
-  // ════════════════════════════════════════════════════════════════════════════
-
-  // Splits pasted text into "Q<n>. ... Ans: ... Marks: <n>" blocks. Not a
-  // general parser — matches the exact template shown in the textarea
-  // placeholder, same philosophy as _parseAutoFillText above.
-  function _parseExerciseText(raw) {
-    const text = String(raw || '').replace(/\r\n/g, '\n');
-    const blocks = text.split(/(?=^\s*Q(?:uestion)?\s*\d+\s*[.):])/im).map(b => b.trim()).filter(Boolean);
-    const parsed = [];
-    for (const block of blocks) {
-      const qMatch = block.match(/^Q(?:uestion)?\s*\d+\s*[.):]\s*([\s\S]*?)(?=\n\s*(?:Ans(?:wer)?)\s*[:.]|$)/i);
-      const aMatch = block.match(/(?:Ans(?:wer)?)\s*[:.]\s*([\s\S]*?)(?=\n\s*Marks?\s*[:.]|$)/i);
-      const mMatch = block.match(/Marks?\s*[:.]\s*(\d)/i);
-      const question = qMatch ? qMatch[1].trim() : '';
-      const answer   = aMatch ? aMatch[1].trim() : '';
-      const marks    = mMatch ? Math.min(5, Math.max(1, parseInt(mMatch[1], 10))) : 1;
-      if (question && answer) parsed.push({ question, answer, marks });
-    }
-    return parsed;
-  }
-
-  function _norm(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
-
-  async function _loadExerciseQuestions() {
-    if (!_currentConcept?._id) { _exerciseQuestions = []; _renderExerciseList(); return; }
-    try {
-      _exerciseQuestions = await API.fetchAdminSlsQuestions({ conceptId: _currentConcept._id, status: '' });
-    } catch (err) {
-      console.warn('load exercise questions failed', err);
-      _exerciseQuestions = [];
-    }
-    _renderExerciseList();
-  }
-
-  function _renderExerciseList() {
-    const list = $('cm-exercise-list');
-    if (!list) return;
-    if (!_exerciseQuestions.length) {
-      list.innerHTML = '<p class="empty-hint">अजून Exercise प्रश्न नाहीत.</p>';
-      return;
-    }
-    list.innerHTML = _exerciseQuestions.map((q, i) => `
-      <div class="cm-qitem" data-id="${_esc(q._id)}">
-        <div class="cm-qitem-top">
-          <b>प्रश्न ${i + 1}</b>
-          <span class="cm-marks-chip">${q.marks} marks</span>
-        </div>
-        <div class="cm-qtext">${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>
-        <div class="cm-atext">${_richText(q.answerText?.marathi || q.answerText?.english || '')}</div>
-        <div class="cm-qactions">
-          <button type="button" class="btn btn-small cm-exercise-edit-btn" data-id="${_esc(q._id)}">✏️ Edit</button>
-          <button type="button" class="btn btn-small cm-exercise-delete-btn" data-id="${_esc(q._id)}">🗑 Delete</button>
-        </div>
-      </div>
-    `).join('');
-    list.querySelectorAll('.cm-exercise-edit-btn').forEach(btn =>
-      btn.addEventListener('click', () => _showExerciseManualForm(btn.dataset.id)));
-    list.querySelectorAll('.cm-exercise-delete-btn').forEach(btn =>
-      btn.addEventListener('click', () => _deleteExerciseQuestion(btn.dataset.id)));
-  }
-
-  async function _runExerciseAutoFill() {
-    if (!_currentConcept?._id) {
-      APP.toast('आधी "Save Draft" करा', 'error');
-      return;
-    }
-    const input = $('cm-exercise-autofill-input');
-    if (!input || !input.value.trim()) {
-      APP.toast('आधी मजकूर paste करा', 'error');
-      return;
-    }
-    const parsed = _parseExerciseText(input.value);
-    if (!parsed.length) {
-      APP.toast('कुठलाही प्रश्न ओळखता आला नाही — format तपासा', 'error');
-      return;
-    }
-
-    const existingNorm = new Set(_exerciseQuestions.map(q => _norm(q.questionText?.marathi || q.questionText?.english)));
-    let created = 0, skipped = 0;
-    for (const item of parsed) {
-      if (existingNorm.has(_norm(item.question))) { skipped++; continue; }
-      try {
-        await API.createAdminSlsQuestion({
-          conceptId: _currentConcept._id,
-          chapterId: _chapterId,
-          subjectId: _subject,
-          batchId: _batch,
-          questionText: { english: item.question, marathi: item.question },
-          answerText: { english: item.answer, marathi: item.answer },
-          marks: item.marks,
-          questionType: 'short_answer',
-          difficulty: 'medium',
-          status: 'published',
-        });
-        existingNorm.add(_norm(item.question));
-        created++;
-      } catch (err) {
-        console.warn('create exercise question failed', err);
-      }
-    }
-
-    input.value = '';
-    await _loadExerciseQuestions();
-    if (skipped) {
-      APP.toast(`${created} प्रश्न जोडले, ${skipped} आधीच होते (duplicate वगळले)`, 'info');
-    } else {
-      APP.toast(`✅ ${created} प्रश्न जोडले`, 'success');
-    }
-  }
-
-  function _showExerciseManualForm(editId = null) {
-    const existing = editId ? _exerciseQuestions.find(q => q._id === editId) : null;
-    const host = $('cm-exercise-manual-form');
-    if (!host) return;
-    host.innerHTML = `
-      <div class="cm-qitem" style="margin-top:10px">
-        <label class="form-label">Question</label>
-        <textarea id="cm-ex-question" class="form-input" rows="2">${_esc(existing?.questionText?.marathi || existing?.questionText?.english || '')}</textarea>
-        <label class="form-label">Answer</label>
-        <textarea id="cm-ex-answer" class="form-input" rows="2">${_esc(existing?.answerText?.marathi || existing?.answerText?.english || '')}</textarea>
-        <label class="form-label">Marks</label>
-        <select id="cm-ex-marks" class="form-input">
-          ${[1,2,3,4,5].map(m => `<option value="${m}" ${existing?.marks === m ? 'selected' : ''}>${m} ${m === 1 ? 'Mark' : 'Marks'}</option>`).join('')}
-        </select>
-        <div class="cm-qactions" style="margin-top:8px">
-          <button type="button" id="cm-ex-save-btn" class="btn btn-small btn-primary">💾 Save</button>
-          <button type="button" id="cm-ex-cancel-btn" class="btn btn-small">Cancel</button>
-        </div>
-      </div>
-    `;
-    $('cm-ex-save-btn')?.addEventListener('click', () => _saveExerciseManual(editId));
-    $('cm-ex-cancel-btn')?.addEventListener('click', () => { host.innerHTML = ''; });
-  }
-
-  async function _saveExerciseManual(editId) {
-    const question = $('cm-ex-question')?.value.trim() || '';
-    const answer   = $('cm-ex-answer')?.value.trim() || '';
-    const marks    = parseInt($('cm-ex-marks')?.value, 10) || 1;
-    if (!question || !answer) {
-      APP.toast('Question आणि Answer दोन्ही लागतील', 'error');
-      return;
-    }
-
-    if (!editId) {
-      const existingNorm = new Set(_exerciseQuestions.map(q => _norm(q.questionText?.marathi || q.questionText?.english)));
-      if (existingNorm.has(_norm(question))) {
-        APP.toast('हा प्रश्न आधीच जोडलेला आहे', 'info');
-        return;
-      }
-    }
-
-    try {
-      const payload = {
-        questionText: { english: question, marathi: question },
-        answerText: { english: answer, marathi: answer },
-        marks,
-      };
-      if (editId) {
-        await API.updateAdminSlsQuestion(editId, payload);
-      } else {
-        await API.createAdminSlsQuestion({
-          ...payload,
-          conceptId: _currentConcept._id,
-          chapterId: _chapterId,
-          subjectId: _subject,
-          batchId: _batch,
-          questionType: 'short_answer',
-          difficulty: 'medium',
-          status: 'published',
-        });
-      }
-      $('cm-exercise-manual-form').innerHTML = '';
-      await _loadExerciseQuestions();
-      APP.toast('✅ Saved', 'success');
-    } catch (err) {
-      APP.toast(err?.message || 'Save अयशस्वी', 'error');
-    }
-  }
-
-  async function _deleteExerciseQuestion(id) {
-    if (!await APP.confirmAsync('हा Exercise प्रश्न delete करायचा?')) return;
-    try {
-      await API.deleteAdminSlsQuestion(id);
-      await _loadExerciseQuestions();
-      APP.toast('Deleted', 'success');
-    } catch (err) {
-      APP.toast(err?.message || 'Delete अयशस्वी', 'error');
-    }
-  }
-
   const CHATGPT_FORMAT_PROMPT = `Ya format made mala note dya (Marathi madhe), exact hech section headings ani emoji vaparun, ekahi section skip na karta:
 
 Title (Marathi)
@@ -1316,26 +1099,6 @@ Title (Marathi)
   function _copyPromptFormat() {
     navigator.clipboard?.writeText(CHATGPT_FORMAT_PROMPT)
       .then(() => APP.toast('Prompt copy झाला — ChatGPT ला paste करा', 'success'))
-      .catch(() => APP.toast('Copy करता आलं नाही', 'error'));
-  }
-
-  const EXERCISE_FORMAT_PROMPT = `Ya note वरून सराव प्रश्न (Exercise) तयार कर, Marathi मध्ये, exact ह्याच format मध्ये — एकही ओळ इकडे-तिकडे न करता, प्रत्येक प्रश्नानंतर एक रिकामी ओळ सोड:
-
-Q1. [प्रश्न]
-Ans: [उत्तर]
-Marks: [1 ते 5 मधला आकडा]
-
-Q2. [प्रश्न]
-Ans: [उत्तर]
-Marks: [1 ते 5 मधला आकडा]
-
-...अशा पद्धतीने १ mark, २ marks, ३ marks, ४ marks, ५ marks — प्रत्येक प्रकारचे किमान १-२ प्रश्न बनव, वेगवेगळ्या अडचण पातळीचे (सोपे/मध्यम/कठीण मिसळून). खालील note चा मजकूर आधार म्हणून वापर:
-
-[इथे तुमच्या note चा मजकूर paste करा]`;
-
-  function _copyExerciseFormat() {
-    navigator.clipboard?.writeText(EXERCISE_FORMAT_PROMPT)
-      .then(() => APP.toast('Prompt copy झाला — ChatGPT/Claude ला paste करा', 'success'))
       .catch(() => APP.toast('Copy करता आलं नाही', 'error'));
   }
 

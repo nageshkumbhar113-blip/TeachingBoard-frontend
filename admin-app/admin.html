@@ -188,6 +188,10 @@
               <span class="atab-icon" aria-hidden="true">📚</span>
               <span class="atab-label">Concepts (SLS)</span>
             </button>
+            <button class="atab" role="tab" data-tab="exercise" aria-controls="atab-exercise" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📝</span>
+              <span class="atab-label">Exercise</span>
+            </button>
             <button class="atab" role="tab" data-tab="papers" aria-controls="atab-papers" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📄</span>
               <span class="atab-label">Paper Builder</span>
@@ -1236,6 +1240,47 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </div>
 
+          <!-- ── Exercise Panel (standalone, independent of Concepts/Notes) ── -->
+          <div class="atab-content hidden" id="atab-exercise" role="tabpanel" aria-labelledby="atab-btn-exercise">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">📝 Exercise</h2>
+            </div>
+
+            <div class="pb-container">
+              <div class="pb-form-section admin-card">
+                <h3>Select</h3>
+                <select id="em-batch-sel" class="form-select"><option value="">Select Batch</option></select>
+                <select id="em-subject-sel" class="form-select" disabled><option value="">Select Subject</option></select>
+                <select id="em-chapter-sel" class="form-select" disabled><option value="">Select Chapter</option></select>
+              </div>
+
+              <div class="pb-form-section admin-card" id="em-exno-section" style="display:none">
+                <h3>Exercise No.</h3>
+                <div id="em-exno-chips" class="em-exno-chips"></div>
+                <button type="button" id="em-add-exno-btn" class="btn btn-small">+ नवीन Exercise No.</button>
+              </div>
+
+              <div class="pb-form-section admin-card" id="em-work-section" style="display:none">
+                <h3 id="em-work-title">Exercise चे प्रश्न</h3>
+                <p class="cm-autofill-hint">Question + Answer + Marks एकत्र paste करा, आपोआप वेगळे होतील — गणितीय सूत्रं $...$ किंवा $$...$$ मध्ये लिहिली तर आपोआप render होतील.</p>
+                <textarea id="em-autofill-input" class="cm-autofill-textarea" placeholder="Q1. गुरुत्वाकर्षण बल म्हणजे काय?
+Ans: दोन वस्तूंमधील एकमेकांना आकर्षित करणारे बल. $F = \frac{Gm_1m_2}{r^2}$
+Marks: 2
+
+Q2. मुक्तपतन म्हणजे काय?
+Ans: फक्त गुरुत्वाकर्षण बलाच्या प्रभावाखाली वस्तूचे पडणे.
+Marks: 1"></textarea>
+                <div class="cm-autofill-actions">
+                  <button type="button" id="em-autofill-btn" class="btn btn-small">✨ Auto-fill</button>
+                  <button type="button" id="em-manual-btn" class="btn btn-small">+ मॅन्युअली प्रश्न जोडा</button>
+                  <button type="button" id="em-copy-format-btn" class="btn btn-small">📋 Copy Format (ChatGPT/Claude साठी)</button>
+                </div>
+                <div id="em-exercise-manual-form"></div>
+                <div id="em-exercise-list" class="items-list" style="margin-top:10px"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Paper Builder Panel ───────────────────── -->
           <div class="atab-content hidden" id="atab-papers" role="tabpanel" aria-labelledby="atab-btn-papers">
             <div class="admin-page-header">
@@ -1400,6 +1445,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       </button>
       <button class="abn-drawer-item" data-tab="concepts">
         <span>📚</span> Concepts (SLS)
+      </button>
+      <button class="abn-drawer-item" data-tab="exercise">
+        <span>📝</span> Exercise
       </button>
       <button class="abn-drawer-item" data-tab="papers">
         <span>📄</span> Paper Builder
@@ -1670,6 +1718,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="wordTestBuilder.js" defer></script>
   <script src="notesManager.js" defer></script>
   <script src="conceptManager.js" defer></script>
+  <script src="exerciseManager.js" defer></script>
   <script src="paperBuilder.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="admin.js" defer></script>

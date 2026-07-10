@@ -880,6 +880,30 @@
       </section>
 
       <!-- ── VOCABULARY / WORD LEARNING SCREEN ──────────── -->
+      <!-- ── EXERCISE (independent of Notes) ───────────────── -->
+      <section id="screen-exercise" class="screen hidden" aria-label="Exercise">
+        <header class="quiz-header">
+          <h2 class="quiz-title">📝 Exercise</h2>
+        </header>
+
+        <div class="ev-container">
+          <select id="ev-batch-sel" class="td-modal-select"><option value="">Select Batch</option></select>
+          <select id="ev-subject-sel" class="td-modal-select" disabled><option value="">Select Subject</option></select>
+          <select id="ev-chapter-sel" class="td-modal-select" disabled><option value="">Select Chapter</option></select>
+
+          <div id="ev-groups-section" style="display:none">
+            <h3 class="ev-section-h">Exercise निवडा</h3>
+            <div id="ev-groups-list" class="ev-groups-list"></div>
+          </div>
+
+          <div id="ev-questions-section" style="display:none">
+            <button type="button" id="ev-back-btn" class="back-btn">‹ मागे</button>
+            <h3 class="ev-section-h" id="ev-questions-title">Exercise</h3>
+            <div id="ev-questions-list" class="ev-questions-list"></div>
+          </div>
+        </div>
+      </section>
+
       <section id="screen-vocab" class="screen hidden" aria-label="Word Learning">
 
         <!-- Test list view -->
@@ -1129,6 +1153,10 @@
         <span class="bnav-icon">📚</span>
         <span class="bnav-label">Words</span>
       </button>
+      <button class="bnav-btn" id="bnav-exercise" aria-label="Exercise">
+        <span class="bnav-icon">📝</span>
+        <span class="bnav-label">Exercise</span>
+      </button>
       <button class="bnav-btn" id="bnav-me" aria-label="My Profile">
         <span class="bnav-icon">👤</span>
         <span class="bnav-label">Me</span>
@@ -1184,6 +1212,7 @@
   <script src="tts.js" defer></script>
   <script src="teacherDashboard.js" defer></script>
   <script src="teacherPaperBuilder.js" defer></script>
+  <script src="exerciseViewer.js" defer></script>
   <script src="parentDashboard.js" defer></script>
   <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>

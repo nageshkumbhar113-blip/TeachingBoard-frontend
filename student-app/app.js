@@ -1297,6 +1297,7 @@ const APP = (() => {
     const labels = {
       home: 'Home', quiz: 'Practice', results: 'Results',
       'test-player': 'Test', analytics: 'Analytics', 'deep-study': 'Deep Study',
+      exercise: 'Exercise',
     };
     UI.setBreadcrumb(labels[name] || name);
     _updateBottomNav(name);
@@ -1311,6 +1312,7 @@ const APP = (() => {
       results: 'bnav-home',
       'deep-study': 'bnav-home',
       vocab: 'bnav-vocab',
+      exercise: 'bnav-exercise',
     };
     document.querySelectorAll('.bnav-btn').forEach(btn => btn.classList.remove('bnav-active'));
     const activeId = tabMap[screen] ?? 'bnav-home';

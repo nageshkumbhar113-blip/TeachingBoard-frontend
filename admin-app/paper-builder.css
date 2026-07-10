@@ -129,3 +129,30 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* Exercise Manager (standalone, admin) */
+.em-exno-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.em-exno-chip {
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  background: transparent;
+  cursor: pointer;
+}
+.em-exno-chip.active {
+  background: #e16b13;
+  color: #fff;
+  border-color: #e16b13;
+  font-weight: 700;
+}
+.em-exno-new-wrap {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}

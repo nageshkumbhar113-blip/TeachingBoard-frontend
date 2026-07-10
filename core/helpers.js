@@ -2125,6 +2125,18 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  // Exercise (independent of Notes/Concepts) — chapterId required, exerciseNo
+  // optional (omit to get every exercise for the chapter, grouped client-side).
+  async function fetchStudentExerciseQuestions(chapterId, exerciseNo) {
+    const token = await ensureStudentSession();
+    const qs = new URLSearchParams({ chapterId });
+    if (exerciseNo) qs.set('exerciseNo', exerciseNo);
+    const payload = await request(`/sls/student/exercise-questions?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
   // ════════════════════════
 
   return {
@@ -2191,6 +2203,7 @@ const API = (() => {
     fetchAdminSlsPaper, publishAdminSlsPaper,
     fetchTeacherSlsQuestions, createTeacherSlsPaperManual,
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
+    fetchStudentExerciseQuestions,
   };
 })();
 
