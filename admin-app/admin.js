@@ -239,6 +239,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
+        if (tab.dataset.tab === 'papers')      window.PAPER_BUILDER?.init();
         if (tab.dataset.tab === 'pricing')     window.BATCH_PRICING?.init();
         if (tab.dataset.tab === 'dashboard')   _loadDashboard();
       });

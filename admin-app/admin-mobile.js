@@ -185,6 +185,7 @@
       if (tab === 'words')      window.ADMIN?.loadWordBank?.();
       if (tab === 'word-tests') window.WORD_TEST_BUILDER?.onTabActivated();
       if (tab === 'concepts')   window.CONCEPT_MANAGER?.init();
+      if (tab === 'papers')     window.PAPER_BUILDER?.init();
       if (tab === 'pricing')    window.BATCH_PRICING?.init();
       if (tab === 'dashboard')  window.ADMIN?.loadDashboard?.();
     }

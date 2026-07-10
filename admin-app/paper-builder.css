@@ -1,0 +1,125 @@
+/* Paper Builder — reuses .form-select/.btn/.btn-small/.admin-input/.admin-card
+   and .cm-marks-chip from concept-manager.css for visual consistency. */
+
+.pb-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 720px;
+}
+
+.pb-form-section h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.pb-form-section .form-select,
+.pb-form-section .admin-input {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.pb-marks-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.pb-mark-btn {
+  min-width: 84px;
+}
+
+.pb-mark-picker {
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 6px;
+}
+
+.pb-mark-picker.hidden {
+  display: none;
+}
+
+.pb-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.pb-picker-search-row {
+  margin-bottom: 8px;
+}
+
+.pb-picker-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pb-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border, #eee);
+  border-radius: 8px;
+}
+
+.pb-picker-qtext {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.pb-picker-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+}
+
+.pb-autofill-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.pb-selected-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.pb-total-chip {
+  background: rgba(240, 136, 62, 0.12);
+  color: #e16b13;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.pb-selected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pb-selected-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--border, #eee);
+  border-radius: 8px;
+}
+
+.pb-selected-text {
+  flex: 1;
+  font-size: 0.9rem;
+}

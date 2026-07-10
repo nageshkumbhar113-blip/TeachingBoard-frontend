@@ -20,6 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin-ui.css" />
   <link rel="stylesheet" href="concept-manager.css" />
+  <link rel="stylesheet" href="paper-builder.css" />
   <link rel="stylesheet" href="batch-pricing.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
@@ -186,6 +187,10 @@
             <button class="atab" role="tab" data-tab="concepts" aria-controls="atab-concepts" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📚</span>
               <span class="atab-label">Concepts (SLS)</span>
+            </button>
+            <button class="atab" role="tab" data-tab="papers" aria-controls="atab-papers" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📄</span>
+              <span class="atab-label">Paper Builder</span>
             </button>
             <button class="atab" role="tab" data-tab="pricing" aria-controls="atab-pricing" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">💰</span>
@@ -1231,6 +1236,49 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
           </div>
 
+          <!-- ── Paper Builder Panel ───────────────────── -->
+          <div class="atab-content hidden" id="atab-papers" role="tabpanel" aria-labelledby="atab-btn-papers">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">📄 Make Question Paper</h2>
+            </div>
+
+            <div class="pb-container">
+              <div class="pb-form-section admin-card">
+                <h3>Paper Details</h3>
+                <select id="pb-batch-sel" class="form-select"><option value="">Select Batch</option></select>
+                <select id="pb-subject-sel" class="form-select" disabled><option value="">Select Subject</option></select>
+                <select id="pb-chapter-sel" class="form-select" disabled><option value="">Select Chapter</option></select>
+                <input id="pb-title" class="admin-input" type="text" placeholder="Paper Title (उदा. Unit Test 1)" />
+              </div>
+
+              <div class="pb-form-section admin-card" id="pb-marks-section" style="display:none">
+                <h3>प्रश्न जोडा (Marks नुसार)</h3>
+                <div class="pb-marks-btns">
+                  <button type="button" class="btn pb-mark-btn" data-marks="1">1 Mark</button>
+                  <button type="button" class="btn pb-mark-btn" data-marks="2">2 Marks</button>
+                  <button type="button" class="btn pb-mark-btn" data-marks="3">3 Marks</button>
+                  <button type="button" class="btn pb-mark-btn" data-marks="4">4 Marks</button>
+                  <button type="button" class="btn pb-mark-btn" data-marks="5">5 Marks</button>
+                </div>
+                <div id="pb-mark-picker" class="pb-mark-picker hidden"></div>
+
+                <div class="pb-autofill-row">
+                  <input id="pb-autofill-target" class="admin-input" type="number" min="1" placeholder="एकूण Target Marks (उदा. 20)" style="width:200px" />
+                  <button type="button" id="pb-autofill-btn" class="btn btn-secondary">⚡ उरलेलं Auto-fill करा</button>
+                </div>
+              </div>
+
+              <div class="pb-form-section admin-card" id="pb-selected-section" style="display:none">
+                <div class="pb-selected-header">
+                  <h3>Paper मध्ये जोडलेले प्रश्न</h3>
+                  <span id="pb-total-marks" class="pb-total-chip">Total: 0 marks</span>
+                </div>
+                <div id="pb-selected-list" class="pb-selected-list"></div>
+                <button type="button" id="pb-save-btn" class="admin-btn-primary" style="margin-top:12px">💾 Paper Save करा</button>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Pricing Panel (Batch Pricing) ───────── -->
           <div class="atab-content hidden" id="atab-pricing" role="tabpanel" aria-labelledby="atab-btn-pricing">
             <div id="bp-container" class="bp-container">
@@ -1350,6 +1398,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
       </button>
       <button class="abn-drawer-item" data-tab="concepts">
         <span>📚</span> Concepts (SLS)
+      </button>
+      <button class="abn-drawer-item" data-tab="papers">
+        <span>📄</span> Paper Builder
       </button>
       <button class="abn-drawer-item" data-tab="pricing">
         <span>💰</span> Pricing
@@ -1616,6 +1667,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
   <script src="wordTestBuilder.js" defer></script>
   <script src="notesManager.js" defer></script>
   <script src="conceptManager.js" defer></script>
+  <script src="paperBuilder.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
