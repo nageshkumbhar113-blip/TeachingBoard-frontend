@@ -1779,6 +1779,25 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  async function fetchTeacherSlsPapers(params = {}) {
+    const token = await ensureTeacherSession();
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([k, v]) => v !== undefined && v !== null && (v !== '' || k === 'status')))
+    );
+    const payload = await request(`/sls/admin/papers?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function fetchTeacherSlsPaper(id) {
+    const token = await ensureTeacherSession();
+    const payload = await request(`/sls/admin/papers/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
   // ════════════════════════
   // PUBLIC API
   // ════════════════════════
@@ -2171,6 +2190,7 @@ const API = (() => {
     createAdminSlsPaperManual, generateAdminSlsPaper, fetchAdminSlsPapers,
     fetchAdminSlsPaper, publishAdminSlsPaper,
     fetchTeacherSlsQuestions, createTeacherSlsPaperManual,
+    fetchTeacherSlsPapers, fetchTeacherSlsPaper,
   };
 })();
 

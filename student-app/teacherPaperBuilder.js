@@ -125,10 +125,14 @@ const TEACHER_PAPER_BUILDER = (() => {
     $('tpb-selected-section').style.display = hasChapter ? '' : 'none';
   }
 
-  function _resetPaperState() {
+  function _resetPaperState(hidePdfPanel = true) {
     _selectedQuestions = [];
     $('tpb-mark-picker')?.classList.add('hidden');
     _renderSelectedList();
+    if (hidePdfPanel) {
+      const panel = $('tpb-pdf-section');
+      if (panel) panel.style.display = 'none';
+    }
   }
 
   async function _openMarkPicker(marks) {
@@ -299,7 +303,8 @@ const TEACHER_PAPER_BUILDER = (() => {
         questions: _selectedQuestions.map(q => ({ questionId: q._id, marks: q.marks }))
       });
       APP?.toast?.(`✅ Paper "${paper.paperTitle}" saved (Paper #${paper.paperNumber})`, 'success');
-      _resetPaperState();
+      _showPdfExportPanel(paper);
+      _resetPaperState(false);
       if ($('tpb-title')) $('tpb-title').value = '';
       if ($('tpb-autofill-target')) $('tpb-autofill-target').value = '';
     } catch (err) {
@@ -308,6 +313,47 @@ const TEACHER_PAPER_BUILDER = (() => {
     } finally {
       btn.disabled = false;
       btn.textContent = '💾 Paper Save करा';
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // PDF EXPORT (Phase 4 — core/paperPdf.js, shared with admin paperBuilder.js)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function _showPdfExportPanel(paper) {
+    const panel = $('tpb-pdf-section');
+    if (!panel) return;
+    panel.style.display = '';
+    panel.innerHTML = `
+      <h4>📄 "${_esc(paper.paperTitle)}" तयार झाला</h4>
+      <div class="tpb-pdf-actions">
+        <button type="button" class="td-send-notif-btn" id="tpb-pdf-qp-btn">📄 Question Paper PDF</button>
+        <button type="button" class="td-send-notif-btn" id="tpb-pdf-ans-btn">📝 Answer Sheet PDF</button>
+      </div>
+      <p class="td-hint td-hint-sm" id="tpb-pdf-status"></p>
+    `;
+    $('tpb-pdf-qp-btn').addEventListener('click', () => _exportPdf(paper, false, $('tpb-pdf-qp-btn')));
+    $('tpb-pdf-ans-btn').addEventListener('click', () => _exportPdf(paper, true, $('tpb-pdf-ans-btn')));
+  }
+
+  async function _exportPdf(paper, withAnswers, btn) {
+    const status = $('tpb-pdf-status');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ तयार करत आहे...';
+    if (status) status.textContent = '';
+    try {
+      const full = await API.fetchTeacherSlsPaper(paper._id);
+      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full);
+      else await PAPER_PDF.exportQuestionPaper(full);
+      if (status) status.textContent = '✅ PDF तयार झाला — share sheet उघडलं आहे.';
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      if (status) status.textContent = '❌ PDF तयार करताना error आला.';
+      APP?.toast?.('PDF export failed', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
     }
   }
 

@@ -4465,3 +4465,9 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   border-radius: 6px;
 }
 .btn-icon:hover { background: var(--surface2, #eee); }
+
+.tpb-pdf-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}

@@ -123,3 +123,9 @@
   flex: 1;
   font-size: 0.9rem;
 }
+
+.pb-pdf-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}

@@ -1342,10 +1342,22 @@ const ADMIN = (() => {
     // FILE_EXPORT so it actually reaches the device (native: write + Share
     // sheet; web/PWA: falls back to the classic anchor download).
     try {
-      await FILE_EXPORT.saveAndShare(blob, name);
+      const branded = await _brandCsvBlob(blob);
+      await FILE_EXPORT.saveAndShare(branded, name);
     } catch (err) {
       APP.toast(err?.message || 'Export failed', 'error');
     }
+  }
+
+  // Every CSV export gets a leading branding row — centralized here so new
+  // CSV exports get it automatically instead of needing to remember to add
+  // it per call site. Non-CSV blobs (zip/JSON backups) pass through as-is.
+  async function _brandCsvBlob(blob) {
+    if (!String(blob.type || '').includes('csv')) return blob;
+    const text = await blob.text();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const brandRow = `"NKS EduOrbit — Exported ${dateStr}"\n\n`;
+    return new Blob([brandRow + text], { type: blob.type });
   }
 
   // ════════════════════════
