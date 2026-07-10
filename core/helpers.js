@@ -1641,6 +1641,111 @@ const API = (() => {
   }
 
   // ════════════════════════
+  // SLS QUESTION BANK — ADMIN API (mounted at /api/sls, not /api/admin/sls —
+  // slsRouter, a separate router from the concept CRUD above)
+  // ════════════════════════
+
+  async function fetchAdminSlsQuestions(params = {}) {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([k, v]) => v !== undefined && v !== null && (v !== '' || k === 'status')))
+    );
+    const payload = await request(`/sls/admin/questions?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function createAdminSlsQuestion(question) {
+    const token = await ensureAdminSession();
+    const payload = await request('/sls/admin/questions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(question),
+    });
+    return payload?.data || null;
+  }
+
+  async function updateAdminSlsQuestion(id, question) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/sls/admin/questions/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(question),
+    });
+    return payload?.data || null;
+  }
+
+  async function deleteAdminSlsQuestion(id) {
+    const token = await ensureAdminSession();
+    return request(`/sls/admin/questions/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  async function publishAdminSlsQuestion(id) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/sls/admin/questions/${encodeURIComponent(id)}/publish`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
+  // ════════════════════════
+  // SLS PRACTICE PAPERS — ADMIN API
+  // ════════════════════════
+
+  async function createAdminSlsPaperManual(paper) {
+    const token = await ensureAdminSession();
+    const payload = await request('/sls/admin/papers', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(paper),
+    });
+    return payload?.data || null;
+  }
+
+  async function generateAdminSlsPaper(config) {
+    const token = await ensureAdminSession();
+    const payload = await request('/sls/admin/papers/generate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(config),
+    });
+    return payload?.data || null;
+  }
+
+  async function fetchAdminSlsPapers(params = {}) {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''))
+    );
+    const payload = await request(`/sls/admin/papers?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function fetchAdminSlsPaper(id) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/sls/admin/papers/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
+  async function publishAdminSlsPaper(id) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/sls/admin/papers/${encodeURIComponent(id)}/publish`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
+  // ════════════════════════
   // PUBLIC API
   // ════════════════════════
   // WORD TEST — ADMIN API
@@ -2027,6 +2132,10 @@ const API = (() => {
     fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, fetchSlsConcept,
     fetchAdminChapterConcepts, fetchAdminConcept, createAdminConcept, updateAdminConcept,
     deleteAdminConcept, publishAdminConcept, translateAdminConcept,
+    fetchAdminSlsQuestions, createAdminSlsQuestion, updateAdminSlsQuestion,
+    deleteAdminSlsQuestion, publishAdminSlsQuestion,
+    createAdminSlsPaperManual, generateAdminSlsPaper, fetchAdminSlsPapers,
+    fetchAdminSlsPaper, publishAdminSlsPaper,
   };
 })();
 
