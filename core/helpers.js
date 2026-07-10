@@ -1411,7 +1411,11 @@ const API = (() => {
   }
 
   async function syncServerBatches() {
-    const token = await ensureAdminSession().catch(() => '');
+    // Admin sessions use their own cached token; a teacher (no admin login)
+    // falls back to their own session — GET /batches is read-only (no
+    // pricing) and now open to requireTeacherOrAdmin server-side.
+    const token = await ensureAdminSession().catch(() => '')
+      || await ensureTeacherSession().catch(() => '');
     if (!token) return;
     const payload = await request('/batches', {
       headers: { Authorization: `Bearer ${token}` },
@@ -1741,6 +1745,36 @@ const API = (() => {
     const payload = await request(`/sls/admin/papers/${encodeURIComponent(id)}/publish`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
+  // ════════════════════════
+  // SLS QUESTIONS/PAPERS — TEACHER API (same /sls/admin/* routes as above,
+  // now open to requireTeacherOrAdmin server-side — teachers get read-only
+  // question access + full paper CRUD, no question create/edit/delete.
+  // Uses ensureTeacherSession(), not ensureAdminSession() — a teacher is
+  // never logged in as admin, so the admin-token wrappers above would
+  // always fail for a teacher caller.)
+  // ════════════════════════
+
+  async function fetchTeacherSlsQuestions(params = {}) {
+    const token = await ensureTeacherSession();
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([k, v]) => v !== undefined && v !== null && (v !== '' || k === 'status')))
+    );
+    const payload = await request(`/sls/admin/questions?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function createTeacherSlsPaperManual(paper) {
+    const token = await ensureTeacherSession();
+    const payload = await request('/sls/admin/papers', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(paper),
     });
     return payload?.data || null;
   }
@@ -2136,6 +2170,7 @@ const API = (() => {
     deleteAdminSlsQuestion, publishAdminSlsQuestion,
     createAdminSlsPaperManual, generateAdminSlsPaper, fetchAdminSlsPapers,
     fetchAdminSlsPaper, publishAdminSlsPaper,
+    fetchTeacherSlsQuestions, createTeacherSlsPaperManual,
   };
 })();
 

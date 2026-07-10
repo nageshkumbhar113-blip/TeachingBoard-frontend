@@ -54,6 +54,13 @@ const TEACHER_DASHBOARD = (() => {
     $('td-tab-notifications')?.classList.toggle('hidden', tab !== 'notifications');
     $('td-tab-vocab')?.classList.toggle('hidden', tab !== 'vocab');
     $('td-tab-fee')?.classList.toggle('hidden', tab !== 'fee');
+    $('td-tab-papers')?.classList.toggle('hidden', tab !== 'papers');
+
+    if (tab === 'papers') {
+      $('td-back-btn')?.classList.add('hidden');
+      $('td-detail-name').textContent = 'Question Paper तयार करा';
+      window.TEACHER_PAPER_BUILDER?.init();
+    }
 
     if (tab === 'analytics') {
       $('td-back-btn')?.classList.add('hidden');

@@ -713,6 +713,7 @@
           <button class="td-tab" data-tdtab="notifications" role="tab" aria-selected="false">🔔 Notify</button>
           <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
           <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
+          <button class="td-tab" data-tdtab="papers" role="tab" aria-selected="false">📄 Paper</button>
         </div>
 
         <!-- Students tab -->
@@ -785,6 +786,44 @@
           </div>
           <div id="td-notif-history-all">
             <p class="td-hint td-hint-sm">Sent notifications येथे दिसतील.</p>
+          </div>
+        </div>
+
+        <!-- Paper Builder tab -->
+        <div id="td-tab-papers" class="td-tab-pane hidden">
+          <div class="tpb-container">
+            <div class="tpb-form-section">
+              <h4>Paper Details</h4>
+              <select id="tpb-batch-sel" class="td-modal-select"><option value="">Select Batch</option></select>
+              <select id="tpb-subject-sel" class="td-modal-select" disabled><option value="">Select Subject</option></select>
+              <select id="tpb-chapter-sel" class="td-modal-select" disabled><option value="">Select Chapter</option></select>
+              <input id="tpb-title" class="td-modal-select" type="text" placeholder="Paper Title (उदा. Unit Test 1)" />
+            </div>
+
+            <div class="tpb-form-section" id="tpb-marks-section" style="display:none">
+              <h4>प्रश्न जोडा (Marks नुसार)</h4>
+              <div class="tpb-marks-btns">
+                <button type="button" class="td-send-notif-btn tpb-mark-btn" data-marks="1">1 Mark</button>
+                <button type="button" class="td-send-notif-btn tpb-mark-btn" data-marks="2">2 Marks</button>
+                <button type="button" class="td-send-notif-btn tpb-mark-btn" data-marks="3">3 Marks</button>
+                <button type="button" class="td-send-notif-btn tpb-mark-btn" data-marks="4">4 Marks</button>
+                <button type="button" class="td-send-notif-btn tpb-mark-btn" data-marks="5">5 Marks</button>
+              </div>
+              <div id="tpb-mark-picker" class="tpb-mark-picker hidden"></div>
+              <div class="tpb-autofill-row">
+                <input id="tpb-autofill-target" class="td-modal-select" type="number" min="1" placeholder="Target Marks" style="width:140px" />
+                <button type="button" id="tpb-autofill-btn" class="td-send-notif-btn">⚡ उरलेलं Auto-fill करा</button>
+              </div>
+            </div>
+
+            <div class="tpb-form-section" id="tpb-selected-section" style="display:none">
+              <div class="tpb-selected-header">
+                <h4>Paper मध्ये जोडलेले प्रश्न</h4>
+                <span id="tpb-total-marks" class="tpb-total-chip">Total: 0 marks</span>
+              </div>
+              <div id="tpb-selected-list" class="tpb-selected-list"></div>
+              <button type="button" id="tpb-save-btn" class="td-send-notif-btn" style="margin-top:10px">💾 Paper Save करा</button>
+            </div>
           </div>
         </div>
       </section>
@@ -1141,6 +1180,7 @@
   <script src="deepStudy.js" defer></script>
   <script src="tts.js" defer></script>
   <script src="teacherDashboard.js" defer></script>
+  <script src="teacherPaperBuilder.js" defer></script>
   <script src="parentDashboard.js" defer></script>
   <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>

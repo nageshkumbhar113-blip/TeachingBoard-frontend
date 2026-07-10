@@ -4357,3 +4357,111 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   padding:9px 18px; border-radius:8px; border:none;
   background:var(--accent,#f97316); color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; min-height:44px;
 }
+
+/* ── Teacher Paper Builder tab (Phase 3.5 — cut-down TEACHER_PAPER_BUILDER) ── */
+.tpb-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tpb-form-section {
+  background: var(--surface2, #f5f5f5);
+  border-radius: 12px;
+  padding: 12px;
+}
+.tpb-form-section h4 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+.tpb-form-section .td-modal-select {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.tpb-marks-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.tpb-mark-picker {
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 6px;
+}
+.tpb-mark-picker.hidden { display: none; }
+.tpb-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.tpb-picker-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tpb-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border, #eee);
+  border-radius: 8px;
+  background: var(--surface1, #fff);
+}
+.tpb-picker-qtext { flex: 1; font-size: 0.88rem; }
+.tpb-picker-meta { font-size: 0.72rem; color: var(--text-muted, #888); white-space: nowrap; }
+.tpb-autofill-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.tpb-selected-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.tpb-total-chip {
+  background: rgba(240, 136, 62, 0.12);
+  color: #e16b13;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+.tpb-selected-list { display: flex; flex-direction: column; gap: 6px; }
+.tpb-selected-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--border, #eee);
+  border-radius: 8px;
+  background: var(--surface1, #fff);
+}
+.tpb-selected-text { flex: 1; font-size: 0.88rem; }
+.tpb-marks-chip {
+  background: rgba(240, 136, 62, 0.12);
+  color: #e16b13;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.btn-icon:hover { background: var(--surface2, #eee); }
