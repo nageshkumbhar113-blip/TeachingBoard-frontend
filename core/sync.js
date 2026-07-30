@@ -36,7 +36,11 @@ const SYNC = (() => {
   const QUEUE_KEY  = 'teachingboard_sync_queue';
   const MAX_RETRY  = 3;
   const AUTO_MS    = 5 * 60 * 1000;   // 5 minutes between background cycles
-  const STUDENT_AUTO_MS = 45 * 1000;
+  // Was 45s — polling that aggressively while the app sits open kept the
+  // backend permanently "awake" (no 15-min idle gap ever), which is what
+  // burned through Render's free-tier instance-hours in a single month.
+  // 2 minutes still keeps content reasonably fresh during active use.
+  const STUDENT_AUTO_MS = 2 * 60 * 1000;
 
   let _autoInterval       = null;
   let _isSyncing          = false;
@@ -47,6 +51,9 @@ const SYNC = (() => {
   let _studentOnlineWired = false;
   let _statusListeners    = [];         // callbacks for sync status bar updates
   let _onlineDebounce     = null;       // debounce timer for rapid online events
+  let _visibilityWired    = false;      // guard: wire visibilitychange once
+  let _wasAutoRunning        = false;   // remembers which interval(s) were
+  let _wasStudentAutoRunning = false;   // active before a background pause
 
   // ════════════════════════
   // STATUS DOT
@@ -940,6 +947,7 @@ const SYNC = (() => {
 
     // Start the repeating interval
     startAutoSync();
+    _wireVisibilityPause();
 
     // Wire online/offline exactly once; debounce rapid on/off/on flapping
     if (!_onlineWired) {
@@ -973,6 +981,7 @@ const SYNC = (() => {
     _setStatus(_isOnline() ? 'online' : 'offline');
 
     startStudentAutoSync();
+    _wireVisibilityPause();
 
     if (!_studentOnlineWired) {
       _studentOnlineWired = true;
@@ -1015,6 +1024,29 @@ const SYNC = (() => {
       clearInterval(_studentAutoInterval);
       _studentAutoInterval = null;
     }
+  }
+
+  // Pause both auto-sync intervals while the app is backgrounded (Home
+  // button, screen lock, app switch) and resume — with an immediate catch-up
+  // sync — once it's foregrounded again. Without this, an app left open but
+  // untouched still polls forever, so the backend never gets the 15-minute
+  // idle gap a free-tier host needs to spin down (this is what silently
+  // burned through Render's free-tier monthly instance-hours).
+  function _wireVisibilityPause() {
+    if (_visibilityWired) return;
+    _visibilityWired = true;
+    if (typeof document === 'undefined') return;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        _wasAutoRunning = !!_autoInterval;
+        _wasStudentAutoRunning = !!_studentAutoInterval;
+        stopAutoSync();
+        stopStudentAutoSync();
+      } else {
+        if (_wasAutoRunning) { startAutoSync(); setTimeout(_runCycle, 0); }
+        if (_wasStudentAutoRunning) { startStudentAutoSync(); setTimeout(_runStudentCycle, 0); }
+      }
+    });
   }
 
   // ════════════════════════
