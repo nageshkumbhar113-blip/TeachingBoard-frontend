@@ -291,14 +291,35 @@ const WORD_TEST_PLAYER = (() => {
     const btn = $id('wtp-next-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
 
+    const answers = _answers.filter(Boolean);
+    const localAttempt = {
+      local_id: `wt_${_testId}_${Date.now()}`,
+      test_id : _testId,
+      batch   : _batch,
+      subject : _subject,
+      answers,
+      submitted_at: Date.now(),
+    };
+
+    // Routed through SYNC (not API directly) so a connection drop right at
+    // submission doesn't lose the student's completed answers — mirrors
+    // testPlayer.js's use of SYNC.submitAttempt() for the classic quiz.
+    let outcome;
     try {
-      const answers = _answers.filter(Boolean);
-      _result = await API.submitWordTestAttempt(_testId, answers);
-      _showScoreView();
+      outcome = await SYNC.submitWordTestAttempt(localAttempt);
     } catch (err) {
       APP?.toast?.(err.message || 'Submit failed', 'error');
       if (btn) { btn.disabled = false; btn.textContent = 'Submit Test'; }
+      return;
     }
+
+    if (outcome.queued) {
+      APP?.toast?.('Offline — test साठवला, नेट आल्यावर आपोआप submit होईल', 'info');
+      _showPendingScoreView();
+      return;
+    }
+    _result = outcome.response;
+    _showScoreView();
   }
 
   // ─── Score view ──────────────────────────────────────────────────────────────
@@ -316,6 +337,19 @@ const WORD_TEST_PLAYER = (() => {
     $id('wtp-fail-badge')?.classList.toggle('hidden', !!r.passed);
 
     _renderReview(r.correct_answers || {});
+  }
+
+  // Shown when submission was queued offline — the real score can only come
+  // from the server, so there's nothing to display yet. Reuses the score
+  // view's markup rather than adding new HTML.
+  function _showPendingScoreView() {
+    _showView('wtp-score-view');
+    const scoreEl = $id('wtp-score-total');
+    if (scoreEl) scoreEl.textContent = 'Pending…';
+    $id('wtp-pass-badge')?.classList.add('hidden');
+    $id('wtp-fail-badge')?.classList.add('hidden');
+    const el = $id('wtp-review-list');
+    if (el) el.innerHTML = '<p class="empty-hint">Internet नाही — Test submit झाला आहे (उत्तरं साठवली आहेत), नेट आल्यावर आपोआप result दिसेल.</p>';
   }
 
   function _renderReview(correctAnswers) {

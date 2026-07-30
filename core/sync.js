@@ -164,9 +164,9 @@ const SYNC = (() => {
    */
   async function _enqueue(op, payload) {
     if (!_queueReady) await _initQueue();
-    const stableId = payload?.attempt_id || payload?.quizId || payload?.quiz_id || null;
+    const stableId = payload?.attempt_id || payload?.quizId || payload?.quiz_id || payload?.local_id || null;
     const dupe = stableId
-      ? _loadQueue().some(i => i.op === op && (i.payload?.attempt_id || i.payload?.quizId || i.payload?.quiz_id) === stableId)
+      ? _loadQueue().some(i => i.op === op && (i.payload?.attempt_id || i.payload?.quizId || i.payload?.quiz_id || i.payload?.local_id) === stableId)
       : _loadQueue().some(i => i.op === op && JSON.stringify(i.payload) === JSON.stringify(payload));
     if (!dupe) {
       const item = { id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`, op, payload, at: Date.now(), attempts: 0 };
@@ -454,6 +454,51 @@ const SYNC = (() => {
     };
   }
 
+  // Word Test submission — separate from the classic quiz's submitAttempt
+  // above (different payload shape: testId+answers, not a single attempt
+  // object) but reuses the exact same queue/drain machinery via the
+  // 'submitWordTestAttempt' op tag, so entries never collide with quiz
+  // attempts even though both live in the same sync_queue store.
+  async function _doSubmitWordTestAttempt(payload) {
+    const current = payload?.local_id
+      ? await DB.getWordTestAttempt(payload.local_id).catch(() => null)
+      : null;
+    if (current?.synced === true) {
+      return { synced: true, attempt: current, skipped: true };
+    }
+
+    const response = await API.submitWordTestAttempt(payload.test_id, payload.answers);
+    const stored = await DB.saveWordTestAttempt({
+      ...payload,
+      synced        : true,
+      synced_at     : Date.now(),
+      pending_sync  : false,
+      sync_error    : '',
+      backend_result: response?.data || response || null,
+    });
+
+    return { synced: true, attempt: stored, response };
+  }
+
+  async function submitWordTestAttempt(localAttempt) {
+    if (!_isOnline()) {
+      const queued = await DB.saveWordTestAttempt({ ...localAttempt, synced: false, pending_sync: true, sync_error: '' });
+      await _enqueue('submitWordTestAttempt', localAttempt);
+      return { queued: true, attempt: queued };
+    }
+    try {
+      return await _doSubmitWordTestAttempt(localAttempt);
+    } catch (err) {
+      if (_isNetworkError(err)) {
+        const queued = await DB.saveWordTestAttempt({ ...localAttempt, synced: false, pending_sync: true, sync_error: '' });
+        await _enqueue('submitWordTestAttempt', localAttempt);
+        return { queued: true, attempt: queued };
+      }
+      await DB.saveWordTestAttempt({ ...localAttempt, synced: false, pending_sync: false, sync_error: String(err?.message || 'Attempt sync failed') });
+      throw err;
+    }
+  }
+
   /**
    * Replay queued operations now that we're online.
    * Each successful item is removed; failed items increment their attempt counter
@@ -481,6 +526,8 @@ const SYNC = (() => {
           await _doSyncAll();
         } else if (item.op === 'submitAttempt') {
           await _doSubmitAttempt(item.payload);
+        } else if (item.op === 'submitWordTestAttempt') {
+          await _doSubmitWordTestAttempt(item.payload);
         }
         await DB.removeSyncItem(item.id).catch(() => {});
         drained++;
@@ -1116,6 +1163,7 @@ const SYNC = (() => {
 
     // Attempt sync
     submitAttempt,
+    submitWordTestAttempt,
 
     // Full sync
     deltaSync,
