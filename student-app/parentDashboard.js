@@ -10,6 +10,24 @@ const PARENT_DASHBOARD = (() => {
   let _activeTab   = 'analytics'; // 'analytics' | 'fee'
   let _activeCode  = null;
 
+  // Cache-first, background-refresh, offline-clear-error — same pattern as
+  // teacherDashboard.js, sharing a generic encrypted store per (key).
+  async function _cacheFirst(cacheKey, fetchFn) {
+    const cached = await DB.getGenericCache('parent_dashboard_cache', cacheKey).catch(() => null);
+    if (cached) {
+      if (navigator.onLine) {
+        fetchFn().then(fresh => DB.putGenericCache('parent_dashboard_cache', cacheKey, fresh).catch(() => {})).catch(() => {});
+      }
+      return cached;
+    }
+    if (navigator.onLine) {
+      const fresh = await fetchFn();
+      await DB.putGenericCache('parent_dashboard_cache', cacheKey, fresh).catch(() => {});
+      return fresh;
+    }
+    throw new Error('Internet नाही — हा data आधी online पाहा.');
+  }
+
   // ── Init ─────────────────────────────────────────────────────────────────────
 
   function init() {
@@ -31,7 +49,7 @@ const PARENT_DASHBOARD = (() => {
     if (listEl) listEl.innerHTML = '<p class="td-hint">Loading...</p>';
 
     try {
-      _children = await API.fetchParentChildren();
+      _children = await _cacheFirst('children', () => API.fetchParentChildren());
     } catch (err) {
       if (listEl) listEl.innerHTML = `<p class="td-hint">${_esc(err.message || 'Failed to load children')}</p>`;
       return;
@@ -138,7 +156,7 @@ const PARENT_DASHBOARD = (() => {
     body.innerHTML = '<p class="td-hint">Loading...</p>';
 
     try {
-      const attempts = await API.fetchChildAttempts(studentCode);
+      const attempts = await _cacheFirst('attempts:' + studentCode, () => API.fetchChildAttempts(studentCode));
       if (!attempts.length) {
         body.innerHTML = '<p class="td-hint">कोणतेही test attempts नाहीत.</p>';
         return;
@@ -226,7 +244,7 @@ const PARENT_DASHBOARD = (() => {
     body.innerHTML = '<p class="td-hint">Loading...</p>';
 
     try {
-      const records = await API.fetchChildFee(studentCode);
+      const records = await _cacheFirst('fee:' + studentCode, () => API.fetchChildFee(studentCode));
       if (!records.length) {
         body.innerHTML = '<p class="td-hint">कोणतीही fee entry नाही.<br>Admin / Teacher ला सांगा.</p>';
         return;
