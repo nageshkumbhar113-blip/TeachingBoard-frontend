@@ -8,7 +8,7 @@
 
 const DB = (() => {
   const DB_NAME    = 'TeachingBoardDB';
-  const DB_VERSION = 14;
+  const DB_VERSION = 15;
   const PENDING_WRITE_KEY = 'teachingboard_pending_writes';
 
   let _db = null;
@@ -140,6 +140,17 @@ const DB = (() => {
         // safer than fetching+merging every page just to cache "everything".
         if (!db.objectStoreNames.contains('words_cache')) {
           db.createObjectStore('words_cache', { keyPath: 'cache_key' });
+        }
+
+        // teacher_dashboard_cache / parent_dashboard_cache — generic
+        // encrypted key→response cache, one row per distinct read call
+        // (student list, analytics, notification history, fee configs,
+        // children list, etc.) — see DB.getGenericCache/putGenericCache.
+        if (!db.objectStoreNames.contains('teacher_dashboard_cache')) {
+          db.createObjectStore('teacher_dashboard_cache', { keyPath: 'cache_key' });
+        }
+        if (!db.objectStoreNames.contains('parent_dashboard_cache')) {
+          db.createObjectStore('parent_dashboard_cache', { keyPath: 'cache_key' });
         }
       };
 
@@ -953,7 +964,7 @@ const DB = (() => {
 
   // Clear all IDB stores that hold per-student data (call on account switch)
   async function clearStudentLocalData() {
-    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts', 'exercise_questions_cache', 'words_cache'];
+    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts', 'exercise_questions_cache', 'words_cache', 'teacher_dashboard_cache', 'parent_dashboard_cache'];
     const db = await open();
     for (const name of stores) {
       try {
@@ -1186,6 +1197,25 @@ const DB = (() => {
   }
 
   // ════════════════════════
+  // GENERIC ENCRYPTED CACHE (Teacher/Parent dashboards — one row per
+  // distinct read call, keyed by whatever string the caller builds from
+  // its own function name + args, e.g. 'students', 'weekly:TCH123')
+  // ════════════════════════
+
+  async function putGenericCache(storeName, key, payload) {
+    const packed = await CRYPTO.encrypt({ payload, cached_at: Date.now() });
+    await _put(storeName, { cache_key: key, ...packed });
+    return payload;
+  }
+
+  async function getGenericCache(storeName, key) {
+    const row = await _get(storeName, key);
+    if (!row) return null;
+    const decrypted = await CRYPTO.decrypt(row);
+    return decrypted ? decrypted.payload : null;
+  }
+
+  // ════════════════════════
   // RESET ALL
   // ════════════════════════
 
@@ -1193,7 +1223,8 @@ const DB = (() => {
     const db = await open();
     const stores = ['questions','batches','batch_subjects','subject_chapters','sessions','settings',
                     'images','lessons','quizzes','test_attempts','sync_queue','notes_cache',
-                    'sls_chapters','sls_concepts','word_test_attempts','exercise_questions_cache','words_cache'];
+                    'sls_chapters','sls_concepts','word_test_attempts','exercise_questions_cache','words_cache',
+                    'teacher_dashboard_cache','parent_dashboard_cache'];
     for (const name of stores) {
       if (db.objectStoreNames.contains(name)) {
         const tx = db.transaction(name, 'readwrite');
@@ -1315,6 +1346,10 @@ const DB = (() => {
     // Words/Dictionary cache (encrypted, offline reading)
     putWordsPageCache,
     getWordsPageCache,
+
+    // Generic cache (Teacher/Parent dashboards)
+    putGenericCache,
+    getGenericCache,
 
     // Reset
     resetAll,

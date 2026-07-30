@@ -14,6 +14,25 @@ const TEACHER_DASHBOARD = (() => {
   let _notifMode           = null;   // 'batch' | 'individual'
   let _notifStudentCode    = null;   // for individual mode
 
+  // Cache-first, background-refresh, offline-throw — same pattern used
+  // across Notes/Exercise/Dictionary, generalized so every read below can
+  // reuse it with one line instead of hand-rolling the 4-branch logic.
+  async function _cacheFirst(cacheKey, fetchFn) {
+    const cached = await DB.getGenericCache('teacher_dashboard_cache', cacheKey).catch(() => null);
+    if (cached) {
+      if (navigator.onLine) {
+        fetchFn().then(fresh => DB.putGenericCache('teacher_dashboard_cache', cacheKey, fresh).catch(() => {})).catch(() => {});
+      }
+      return cached;
+    }
+    if (navigator.onLine) {
+      const fresh = await fetchFn();
+      await DB.putGenericCache('teacher_dashboard_cache', cacheKey, fresh).catch(() => {});
+      return fresh;
+    }
+    throw new Error('Internet नाही — हा data आधी online पाहा.');
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────────
 
   function init() {
@@ -125,7 +144,7 @@ const TEACHER_DASHBOARD = (() => {
     _showStudentList();
 
     try {
-      _students = await API.fetchTeacherStudents();
+      _students = await _cacheFirst('students', () => API.fetchTeacherStudents());
     } catch (err) {
       if (wrapEl) wrapEl.innerHTML = `<p class="td-hint">${_esc(err.message || 'Failed to load')}</p>`;
       return;
@@ -201,7 +220,7 @@ const TEACHER_DASHBOARD = (() => {
     attEl.innerHTML = '<p class="td-hint">Loading...</p>';
 
     try {
-      const attempts = await API.fetchStudentAttemptsForTeacher(studentCode);
+      const attempts = await _cacheFirst('attempts:' + studentCode, () => API.fetchStudentAttemptsForTeacher(studentCode));
       if (!attempts.length) {
         attEl.innerHTML = '<p class="td-hint">कोणतेही test attempts नाहीत.</p>';
       } else {
@@ -243,7 +262,7 @@ const TEACHER_DASHBOARD = (() => {
     histSection.classList.remove('hidden');
 
     try {
-      const records = await API.fetchTeacherNotificationHistory(studentCode);
+      const records = await _cacheFirst('notif:' + studentCode, () => API.fetchTeacherNotificationHistory(studentCode));
       if (!records.length) {
         histList.innerHTML = '<p class="td-hint td-hint-sm">या student च्या parent ला अजून कोणतीही notification पाठवली नाही.</p>';
         return;
@@ -262,7 +281,7 @@ const TEACHER_DASHBOARD = (() => {
     el.innerHTML = '<p class="td-hint td-hint-sm">Loading...</p>';
 
     try {
-      const records = await API.fetchTeacherNotificationHistory();
+      const records = await _cacheFirst('notif:all', () => API.fetchTeacherNotificationHistory());
       if (!records.length) {
         el.innerHTML = '<p class="td-hint td-hint-sm">अजून कोणतीही notification पाठवली नाही.</p>';
         return;
@@ -404,11 +423,11 @@ const TEACHER_DASHBOARD = (() => {
 
     try {
       const [weekly, monthly, weak, strong, ranking] = await Promise.all([
-        API.fetchTeacherWeekly(),
-        API.fetchTeacherMonthly(),
-        API.fetchTeacherWeakTopics(),
-        API.fetchTeacherStrongTopics(),
-        API.fetchTeacherRanking(),
+        _cacheFirst('analytics:weekly', () => API.fetchTeacherWeekly()),
+        _cacheFirst('analytics:monthly', () => API.fetchTeacherMonthly()),
+        _cacheFirst('analytics:weak', () => API.fetchTeacherWeakTopics()),
+        _cacheFirst('analytics:strong', () => API.fetchTeacherStrongTopics()),
+        _cacheFirst('analytics:ranking', () => API.fetchTeacherRanking()),
       ]);
       _analyticsLoaded = true;
       _renderAnalytics(container, { weekly, monthly, weak, strong, ranking });
@@ -589,7 +608,7 @@ const TEACHER_DASHBOARD = (() => {
     const subject = $('td-vocab-subject-sel')?.value || '';
 
     try {
-      const scores = await API.fetchTeacherVocabScores({ batch, subject });
+      const scores = await _cacheFirst('vocab:' + batch + ':' + subject, () => API.fetchTeacherVocabScores({ batch, subject }));
       if (!scores.length) {
         listEl.innerHTML = '<p class="td-hint td-hint-sm">No vocab attempts found.</p>';
         return;
@@ -651,7 +670,7 @@ const TEACHER_DASHBOARD = (() => {
 
   async function _loadFeeUpiConfig() {
     try {
-      const res = await API.fetchFeeUpiConfig();
+      const res = await _cacheFirst('fee:upi', () => API.fetchFeeUpiConfig());
       _feeUpiConfig = { upi_id: res.upi_id || '', upi_name: res.upi_name || '' };
     } catch (_) { /* non-fatal */ }
   }
@@ -714,7 +733,7 @@ const TEACHER_DASHBOARD = (() => {
     if (!listEl) return;
     listEl.innerHTML = '<p class="td-hint td-hint-sm">Loading...</p>';
     try {
-      const res = await API.listFeeConfigs();
+      const res = await _cacheFirst('fee:configs', () => API.listFeeConfigs());
       _feeConfigs = res.configs || [];
       _renderFeeConfigs();
     } catch (err) {
