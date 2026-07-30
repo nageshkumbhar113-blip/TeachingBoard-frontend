@@ -1,4 +1,4 @@
-const SW_VERSION = 'v95';
+const SW_VERSION = 'v96';
 const CACHE_PREFIX = 'nkseduorbit';
 const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
@@ -26,6 +26,8 @@ const CORE_ASSETS = [
   './core/i18n.js',
   './core/pdf.js',
   './core/sync.js',
+  './core/paperPdf.js',
+  './core/crypto.js',
   './student-app/index.html',
   './student-app/app.js',
   './student-app/payment.js',
@@ -36,6 +38,7 @@ const CORE_ASSETS = [
   './student-app/deepStudy.js',
   './student-app/tts.js',
   './student-app/teacherDashboard.js',
+  './student-app/teacherPaperBuilder.js',
   './student-app/parentDashboard.js',
   './student-app/student-mobile.js',
   './student-app/dictionary.js',
@@ -43,6 +46,7 @@ const CORE_ASSETS = [
   './student-app/wordTestPlayer.js',
   './student-app/wordTestInsights.js',
   './student-app/notesViewer.js',
+  './student-app/exerciseViewer.js',
   './student-app/student-ui.css',
   './student-app/notesViewer.css',
   './student-app/manifest.json',
@@ -54,10 +58,13 @@ const CORE_ASSETS = [
   './admin-app/wordTestBuilder.js',
   './admin-app/notesManager.js',
   './admin-app/conceptManager.js',
+  './admin-app/exerciseManager.js',
+  './admin-app/paperBuilder.js',
   './admin-app/batchPricingManager.js',
   './admin-app/parser.js',
   './admin-app/admin-ui.css',
   './admin-app/concept-manager.css',
+  './admin-app/paper-builder.css',
   './admin-app/batch-pricing.css',
   './admin-app/manifest.json',
 ];

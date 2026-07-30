@@ -8,7 +8,7 @@
 
 const DB = (() => {
   const DB_NAME    = 'TeachingBoardDB';
-  const DB_VERSION = 10;
+  const DB_VERSION = 11;
   const PENDING_WRITE_KEY = 'teachingboard_pending_writes';
 
   let _db = null;
@@ -103,6 +103,17 @@ const DB = (() => {
         if (!db.objectStoreNames.contains('notes_cache')) {
           const nc = db.createObjectStore('notes_cache', { keyPath: 'note_id' });
           nc.createIndex('expires_at', 'expires_at');
+        }
+
+        // sls_chapters — encrypted offline cache of the student's chapter list
+        if (!db.objectStoreNames.contains('sls_chapters')) {
+          db.createObjectStore('sls_chapters', { keyPath: 'chapterId' });
+        }
+
+        // sls_concepts — encrypted offline cache of concept list/detail per chapter
+        if (!db.objectStoreNames.contains('sls_concepts')) {
+          const cn = db.createObjectStore('sls_concepts', { keyPath: '_id' });
+          cn.createIndex('chapterId', 'chapterId');
         }
       };
 
@@ -916,7 +927,7 @@ const DB = (() => {
 
   // Clear all IDB stores that hold per-student data (call on account switch)
   async function clearStudentLocalData() {
-    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache'];
+    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts'];
     const db = await open();
     for (const name of stores) {
       try {
@@ -1029,13 +1040,73 @@ const DB = (() => {
   }
 
   // ════════════════════════
+  // SLS NOTES CACHE (chapters/concepts — encrypted, offline reading)
+  // ════════════════════════
+
+  async function saveChaptersCache(chapters = []) {
+    if (!chapters.length) return [];
+    await Promise.all(chapters.map(async ch => {
+      const packed = await CRYPTO.encrypt({ ...ch, cached_at: Date.now() });
+      return _put('sls_chapters', { chapterId: ch.chapterId, ...packed });
+    }));
+    return chapters;
+  }
+
+  async function getCachedChapters() {
+    const rows = await _getAll('sls_chapters');
+    if (!rows.length) return null;
+    const decrypted = await Promise.all(rows.map(r => CRYPTO.decrypt(r)));
+    const valid = decrypted.filter(Boolean);
+    return valid.length ? valid : null;
+  }
+
+  async function saveConceptsCache(chapterId, concepts = []) {
+    if (!concepts.length) return [];
+    await Promise.all(concepts.map(async c => {
+      const payload = { ...c, chapterId, cached_at: Date.now(), full: c.full ?? false };
+      const packed = await CRYPTO.encrypt(payload);
+      return _put('sls_concepts', { _id: c._id, chapterId, ...packed });
+    }));
+    return concepts;
+  }
+
+  async function getCachedConcepts(chapterId) {
+    const rows = await _getAll('sls_concepts', 'chapterId', chapterId);
+    if (!rows.length) return null;
+    const decrypted = await Promise.all(rows.map(r => CRYPTO.decrypt(r)));
+    const valid = decrypted.filter(Boolean);
+    return valid.length ? valid : null;
+  }
+
+  async function saveConceptCache(concept) {
+    const payload = { ...concept, cached_at: Date.now(), full: true };
+    const packed = await CRYPTO.encrypt(payload);
+    await _put('sls_concepts', { _id: concept._id, chapterId: concept.chapterId, ...packed });
+    return payload;
+  }
+
+  async function getCachedConcept(conceptId) {
+    const row = await _get('sls_concepts', conceptId);
+    if (!row) return null;
+    const decrypted = await CRYPTO.decrypt(row);
+    return decrypted && decrypted.full ? decrypted : null;
+  }
+
+  async function deleteSlsCacheForChapter(chapterId) {
+    const rows = await _getAll('sls_concepts', 'chapterId', chapterId);
+    await Promise.all(rows.map(r => _del('sls_concepts', r._id)));
+    await _del('sls_chapters', chapterId);
+  }
+
+  // ════════════════════════
   // RESET ALL
   // ════════════════════════
 
   async function resetAll() {
     const db = await open();
     const stores = ['questions','batches','batch_subjects','subject_chapters','sessions','settings',
-                    'images','lessons','quizzes','test_attempts','sync_queue','notes_cache'];
+                    'images','lessons','quizzes','test_attempts','sync_queue','notes_cache',
+                    'sls_chapters','sls_concepts'];
     for (const name of stores) {
       if (db.objectStoreNames.contains(name)) {
         const tx = db.transaction(name, 'readwrite');
@@ -1135,6 +1206,15 @@ const DB = (() => {
     putNoteCache,
     deleteNoteCache,
     clearExpiredNoteCache,
+
+    // SLS notes cache (chapters/concepts, encrypted, offline reading)
+    saveChaptersCache,
+    getCachedChapters,
+    saveConceptsCache,
+    getCachedConcepts,
+    saveConceptCache,
+    getCachedConcept,
+    deleteSlsCacheForChapter,
 
     // Reset
     resetAll,

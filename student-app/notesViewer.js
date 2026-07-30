@@ -62,18 +62,39 @@ const NOTES_VIEWER = (() => {
   // LOAD CHAPTERS
   // ════════════════════════════════════════════════════════════════════════════
 
+  function _applyChapters(chapters) {
+    state.chapters = chapters.map(ch => ({
+      chapter_id: ch.chapterId,
+      name: ch.chapter || '',
+      batch: [ch.standard ? `Std ${ch.standard}` : '', ch.subject].filter(Boolean).join(' · '),
+      subject: ch.subject || '',
+      conceptCount: ch.conceptCount || 0,
+    }));
+  }
+
+  // Cache-first, background-refresh, offline-clear-error — mirrors the
+  // already-proven testPlayer.js:_resolveQuizForStart() pattern. Content is
+  // encrypted at rest (core/crypto.js via core/db.js) so a previously-read
+  // chapter/concept stays readable offline without storing plaintext admin
+  // content in the open on the device.
   async function _loadChapters() {
     try {
-      // Chapters come from the server (SLS concept library), not the local
-      // quiz question-bank cache — the two are unrelated data sets.
-      const chapters = await API.fetchSlsChapters();
-      state.chapters = chapters.map(ch => ({
-        chapter_id: ch.chapterId,
-        name: ch.chapter || '',
-        batch: [ch.standard ? `Std ${ch.standard}` : '', ch.subject].filter(Boolean).join(' · '),
-        subject: ch.subject || '',
-        conceptCount: ch.conceptCount || 0,
-      }));
+      const cached = await DB.getCachedChapters().catch(() => null);
+      if (cached) {
+        _applyChapters(cached);
+        if (navigator.onLine) SYNC.refreshSlsChapters().catch(() => {});
+        return;
+      }
+      if (navigator.onLine) {
+        // Chapters come from the server (SLS concept library), not the local
+        // quiz question-bank cache — the two are unrelated data sets.
+        const chapters = await API.fetchSlsChapters();
+        await DB.saveChaptersCache(chapters).catch(() => {});
+        _applyChapters(chapters);
+        return;
+      }
+      state.chapters = [];
+      APP.toast('Internet नाही — Chapters आधी एकदा online पाहा.', 'error');
     } catch (err) {
       console.error('Failed to load chapters:', err);
     }
@@ -85,8 +106,21 @@ const NOTES_VIEWER = (() => {
 
   async function _loadConcepts(chapterId) {
     try {
-      state.concepts = await API.fetchSlsConcepts(chapterId);
-      state.currentChapter = state.chapters.find(ch => ch.chapter_id === chapterId);
+      const cached = await DB.getCachedConcepts(chapterId).catch(() => null);
+      if (cached) {
+        state.concepts = cached;
+        state.currentChapter = state.chapters.find(ch => ch.chapter_id === chapterId);
+        if (navigator.onLine) SYNC.refreshSlsConcepts(chapterId).catch(() => {});
+        return;
+      }
+      if (navigator.onLine) {
+        state.concepts = await API.fetchSlsConcepts(chapterId);
+        await DB.saveConceptsCache(chapterId, state.concepts).catch(() => {});
+        state.currentChapter = state.chapters.find(ch => ch.chapter_id === chapterId);
+        return;
+      }
+      state.concepts = [];
+      APP.toast('Internet नाही — हे Chapter आधी एकदा online पाहा.', 'error');
     } catch (err) {
       console.error('Failed to load concepts:', err);
       APP.toast('Failed to load concepts', 'error');
@@ -100,6 +134,13 @@ const NOTES_VIEWER = (() => {
   async function _searchConcepts(query) {
     if (!query || query.length < 2) {
       _renderConceptsList(state.concepts);
+      return;
+    }
+    // Search isn't cached (full-text search over the whole corpus isn't
+    // something the offline cache is set up to serve) — make the offline
+    // failure explicit instead of a silent console warning.
+    if (!navigator.onLine) {
+      APP.toast('Search साठी Internet लागतो', 'error');
       return;
     }
 
@@ -116,7 +157,17 @@ const NOTES_VIEWER = (() => {
 
   async function viewConcept(conceptId) {
     try {
-      state.currentConcept = await API.fetchSlsConcept(conceptId);
+      const cached = await DB.getCachedConcept(conceptId).catch(() => null);
+      if (cached) {
+        state.currentConcept = cached;
+        if (navigator.onLine) SYNC.refreshSlsConcept(conceptId).catch(() => {});
+      } else if (navigator.onLine) {
+        state.currentConcept = await API.fetchSlsConcept(conceptId);
+        await DB.saveConceptCache(state.currentConcept).catch(() => {});
+      } else {
+        APP.toast('Internet नाही — ही Note आधी एकदा online उघडा.', 'error');
+        return;
+      }
 
       // _renderUI() redraws the toolbar (Back button + mode selector) and
       // clears #nv-content for hasCurrentConcept — without this, the

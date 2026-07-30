@@ -792,6 +792,31 @@ const SYNC = (() => {
   }
 
   // ════════════════════════
+  // SLS NOTES — offline-cache refresh (mirrors refreshQuiz above)
+  // ════════════════════════
+
+  async function refreshSlsChapters() {
+    if (!_isOnline()) return null;
+    const chapters = await API.fetchSlsChapters();
+    await DB.saveChaptersCache(chapters).catch(() => {});
+    return chapters;
+  }
+
+  async function refreshSlsConcepts(chapterId) {
+    if (!_isOnline()) return null;
+    const concepts = await API.fetchSlsConcepts(chapterId);
+    await DB.saveConceptsCache(chapterId, concepts).catch(() => {});
+    return concepts;
+  }
+
+  async function refreshSlsConcept(conceptId) {
+    if (!_isOnline()) return null;
+    const concept = await API.fetchSlsConcept(conceptId);
+    if (concept) await DB.saveConceptCache(concept).catch(() => {});
+    return concept;
+  }
+
+  // ════════════════════════
   // FULL SYNC  (internal)
   // ════════════════════════
 
@@ -1083,6 +1108,11 @@ const SYNC = (() => {
     retryQueue,
     fetchQuizzes,
     refreshQuiz,
+
+    // SLS Notes offline-cache refresh
+    refreshSlsChapters,
+    refreshSlsConcepts,
+    refreshSlsConcept,
 
     // Attempt sync
     submitAttempt,
