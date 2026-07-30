@@ -8,7 +8,7 @@
 
 const DB = (() => {
   const DB_NAME    = 'TeachingBoardDB';
-  const DB_VERSION = 12;
+  const DB_VERSION = 13;
   const PENDING_WRITE_KEY = 'teachingboard_pending_writes';
 
   let _db = null;
@@ -124,6 +124,14 @@ const DB = (() => {
         if (!db.objectStoreNames.contains('word_test_attempts')) {
           const wt = db.createObjectStore('word_test_attempts', { keyPath: 'local_id' });
           wt.createIndex('test_id', 'test_id');
+        }
+
+        // exercise_questions_cache — encrypted offline cache of Exercise
+        // questions per chapter. Separate from sls_concepts/sls_chapters:
+        // different backend model (SLSQuestion vs Concept), different
+        // natural cache key (chapterId alone, no per-concept granularity).
+        if (!db.objectStoreNames.contains('exercise_questions_cache')) {
+          db.createObjectStore('exercise_questions_cache', { keyPath: 'chapter_id' });
         }
       };
 
@@ -937,7 +945,7 @@ const DB = (() => {
 
   // Clear all IDB stores that hold per-student data (call on account switch)
   async function clearStudentLocalData() {
-    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts'];
+    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts', 'exercise_questions_cache'];
     const db = await open();
     for (const name of stores) {
       try {
@@ -1131,6 +1139,23 @@ const DB = (() => {
   }
 
   // ════════════════════════
+  // EXERCISE QUESTIONS CACHE (encrypted, offline reading)
+  // ════════════════════════
+
+  async function putExerciseQuestionsCache(chapterId, questions = []) {
+    const packed = await CRYPTO.encrypt({ questions, cached_at: Date.now() });
+    await _put('exercise_questions_cache', { chapter_id: chapterId, ...packed });
+    return questions;
+  }
+
+  async function getExerciseQuestionsCache(chapterId) {
+    const row = await _get('exercise_questions_cache', chapterId);
+    if (!row) return null;
+    const decrypted = await CRYPTO.decrypt(row);
+    return decrypted?.questions?.length ? decrypted.questions : null;
+  }
+
+  // ════════════════════════
   // RESET ALL
   // ════════════════════════
 
@@ -1138,7 +1163,7 @@ const DB = (() => {
     const db = await open();
     const stores = ['questions','batches','batch_subjects','subject_chapters','sessions','settings',
                     'images','lessons','quizzes','test_attempts','sync_queue','notes_cache',
-                    'sls_chapters','sls_concepts','word_test_attempts'];
+                    'sls_chapters','sls_concepts','word_test_attempts','exercise_questions_cache'];
     for (const name of stores) {
       if (db.objectStoreNames.contains(name)) {
         const tx = db.transaction(name, 'readwrite');
@@ -1252,6 +1277,10 @@ const DB = (() => {
     saveWordTestAttempt,
     getWordTestAttempt,
     getWordTestAttemptsByTest,
+
+    // Exercise questions cache (encrypted, offline reading)
+    putExerciseQuestionsCache,
+    getExerciseQuestionsCache,
 
     // Reset
     resetAll,

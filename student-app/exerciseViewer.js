@@ -132,18 +132,42 @@ const EXERCISE_VIEWER = (() => {
     section.style.display = '';
     list.innerHTML = '<p class="empty-hint">Loading…</p>';
     try {
-      const questions = await API.fetchStudentExerciseQuestions(_chapterId);
-      _exerciseGroups = new Map();
-      questions.forEach(q => {
-        const no = q.exerciseNo || '(No.शिवाय)';
-        if (!_exerciseGroups.has(no)) _exerciseGroups.set(no, []);
-        _exerciseGroups.get(no).push(q);
-      });
+      const questions = await _resolveExerciseQuestions(_chapterId);
+      _groupQuestions(questions);
       _renderGroupList();
     } catch (err) {
       console.error('Failed to load exercise groups:', err);
-      list.innerHTML = '<p class="empty-hint">Exercise लोड करता आले नाही.</p>';
+      list.innerHTML = '<p class="empty-hint">Internet नाही आणि हे Exercise offline साठी अजून download झालेले नाही. एकदा online होऊन उघडा.</p>';
     }
+  }
+
+  function _groupQuestions(questions) {
+    _exerciseGroups = new Map();
+    questions.forEach(q => {
+      const no = q.exerciseNo || '(No.शिवाय)';
+      if (!_exerciseGroups.has(no)) _exerciseGroups.set(no, []);
+      _exerciseGroups.get(no).push(q);
+    });
+  }
+
+  // Cache-first, background-refresh, offline-clear-error — same pattern as
+  // notesViewer.js. Encrypted at rest via core/crypto.js.
+  async function _resolveExerciseQuestions(chapterId) {
+    const cached = await DB.getExerciseQuestionsCache(chapterId).catch(() => null);
+    if (cached) {
+      if (navigator.onLine) {
+        API.fetchStudentExerciseQuestions(chapterId)
+          .then(fresh => DB.putExerciseQuestionsCache(chapterId, fresh).catch(() => {}))
+          .catch(() => {});
+      }
+      return cached;
+    }
+    if (navigator.onLine) {
+      const fresh = await API.fetchStudentExerciseQuestions(chapterId);
+      await DB.putExerciseQuestionsCache(chapterId, fresh).catch(() => {});
+      return fresh;
+    }
+    throw new Error('offline, no cache');
   }
 
   function _renderGroupList() {
