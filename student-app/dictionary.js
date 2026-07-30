@@ -54,7 +54,7 @@ const DICT = (() => {
     if (pagEl)   pagEl.classList.add('hidden');
 
     try {
-      const res   = await API.fetchVocabDictionary(_batch, _subject, page, q);
+      const res = await _resolveWordsPage(_batch, _subject, page, q);
       const words = res.words || [];
       _totalPages = res.total_pages || 1;
 
@@ -75,6 +75,27 @@ const DICT = (() => {
     } catch (err) {
       if (listEl) listEl.innerHTML = `<div class="dict-error">⚠️ ${_esc(err.message)}</div>`;
     }
+  }
+
+  // Cache-first, background-refresh, offline-clear-error — same pattern as
+  // Notes/Exercise. Cached per (batch, subject, page, query) since the
+  // server paginates/searches server-side. Encrypted at rest.
+  async function _resolveWordsPage(batch, subject, page, q) {
+    const cached = await DB.getWordsPageCache(batch, subject, page, q).catch(() => null);
+    if (cached) {
+      if (navigator.onLine) {
+        API.fetchVocabDictionary(batch, subject, page, q)
+          .then(fresh => DB.putWordsPageCache(batch, subject, page, q, fresh).catch(() => {}))
+          .catch(() => {});
+      }
+      return cached;
+    }
+    if (navigator.onLine) {
+      const fresh = await API.fetchVocabDictionary(batch, subject, page, q);
+      await DB.putWordsPageCache(batch, subject, page, q, fresh).catch(() => {});
+      return fresh;
+    }
+    throw new Error('Internet नाही — हे पान offline साठी अजून पाहिलेले नाही.');
   }
 
   // ─── Word card ────────────────────────────────────────────────

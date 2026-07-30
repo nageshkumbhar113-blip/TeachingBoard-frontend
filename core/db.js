@@ -8,7 +8,7 @@
 
 const DB = (() => {
   const DB_NAME    = 'TeachingBoardDB';
-  const DB_VERSION = 13;
+  const DB_VERSION = 14;
   const PENDING_WRITE_KEY = 'teachingboard_pending_writes';
 
   let _db = null;
@@ -132,6 +132,14 @@ const DB = (() => {
         // natural cache key (chapterId alone, no per-concept granularity).
         if (!db.objectStoreNames.contains('exercise_questions_cache')) {
           db.createObjectStore('exercise_questions_cache', { keyPath: 'chapter_id' });
+        }
+
+        // words_cache — encrypted offline cache of the word-bank dictionary,
+        // keyed per (batch, subject, page, search-query) since the server
+        // paginates/searches server-side — caching per-query is simpler and
+        // safer than fetching+merging every page just to cache "everything".
+        if (!db.objectStoreNames.contains('words_cache')) {
+          db.createObjectStore('words_cache', { keyPath: 'cache_key' });
         }
       };
 
@@ -945,7 +953,7 @@ const DB = (() => {
 
   // Clear all IDB stores that hold per-student data (call on account switch)
   async function clearStudentLocalData() {
-    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts', 'exercise_questions_cache'];
+    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts', 'exercise_questions_cache', 'words_cache'];
     const db = await open();
     for (const name of stores) {
       try {
@@ -1156,6 +1164,28 @@ const DB = (() => {
   }
 
   // ════════════════════════
+  // WORDS / DICTIONARY CACHE (encrypted, per batch+subject+page+query)
+  // ════════════════════════
+
+  function _wordsCacheKey(batch, subject, page, q) {
+    return `${batch}::${subject}::${page}::${q || ''}`;
+  }
+
+  async function putWordsPageCache(batch, subject, page, q, payload) {
+    const key = _wordsCacheKey(batch, subject, page, q);
+    const packed = await CRYPTO.encrypt({ ...payload, cached_at: Date.now() });
+    await _put('words_cache', { cache_key: key, ...packed });
+    return payload;
+  }
+
+  async function getWordsPageCache(batch, subject, page, q) {
+    const key = _wordsCacheKey(batch, subject, page, q);
+    const row = await _get('words_cache', key);
+    if (!row) return null;
+    return CRYPTO.decrypt(row);
+  }
+
+  // ════════════════════════
   // RESET ALL
   // ════════════════════════
 
@@ -1163,7 +1193,7 @@ const DB = (() => {
     const db = await open();
     const stores = ['questions','batches','batch_subjects','subject_chapters','sessions','settings',
                     'images','lessons','quizzes','test_attempts','sync_queue','notes_cache',
-                    'sls_chapters','sls_concepts','word_test_attempts','exercise_questions_cache'];
+                    'sls_chapters','sls_concepts','word_test_attempts','exercise_questions_cache','words_cache'];
     for (const name of stores) {
       if (db.objectStoreNames.contains(name)) {
         const tx = db.transaction(name, 'readwrite');
@@ -1281,6 +1311,10 @@ const DB = (() => {
     // Exercise questions cache (encrypted, offline reading)
     putExerciseQuestionsCache,
     getExerciseQuestionsCache,
+
+    // Words/Dictionary cache (encrypted, offline reading)
+    putWordsPageCache,
+    getWordsPageCache,
 
     // Reset
     resetAll,
