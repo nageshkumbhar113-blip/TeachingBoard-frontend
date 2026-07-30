@@ -4,8 +4,8 @@ echo  Nks EduOrbit — STUDENT APK Build
 echo ========================================
 
 :: ── Version — update BOTH values for every release ──────────────────────────
-set VERSION=7.2.0
-set VERSION_CODE=94
+set VERSION=7.2.1
+set VERSION_CODE=95
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: [PRE] Stale .bak cleanup
