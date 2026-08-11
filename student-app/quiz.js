@@ -637,11 +637,19 @@ const QUIZ = (() => {
       if (document.querySelector('.screen:not(.hidden)')?.id !== 'screen-quiz') return;
       if (document.querySelector('.modal-overlay:not(.hidden)')) return;
       if (_isTypingTarget(e.target)) return;
+      // A focused answer button (remote/keyboard user tabbed onto an option)
+      // already handles Enter/Space natively as a click — don't also fire
+      // the global next-question/reveal-answer shortcut on the same keypress,
+      // or selecting an answer would instantly skip past its feedback.
+      const onAnswerBtn = e.target?.matches?.('.option-btn, .tf-btn');
 
       switch (e.key) {
         case 'ArrowRight': nextQuestion(); break;
         case 'ArrowLeft':  prevQuestion(); break;
         case 'Enter':
+          if (onAnswerBtn) break;
+          nextQuestion();
+          break;
         case 'n':
         case 'N':
           nextQuestion();
@@ -651,6 +659,7 @@ const QUIZ = (() => {
           prevQuestion();
           break;
         case ' ':
+          if (onAnswerBtn) break;
           e.preventDefault();
           if (!state.answered) _revealAnswer();
           break;

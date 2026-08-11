@@ -72,6 +72,56 @@ const UI = (() => {
   });
 
   // ════════════════════════
+  // GRID ARROW-KEY NAVIGATION (TV D-pad)
+  // ════════════════════════
+  // Lets Up/Down/Left/Right move focus between sibling "cards"/answer
+  // buttons in a grid, instead of only linear Tab order. Delegated +
+  // geometry-based (nearest neighbour in the pressed direction), so it
+  // needs no per-screen wiring and keeps working after re-renders.
+  //
+  // .option-btn/.tf-btn (quiz + test-player answer grids) intentionally
+  // only get Up/Down here — quiz.js/testPlayer.js already bind
+  // ArrowLeft/ArrowRight globally to prev/next-question, a pre-existing
+  // shortcut this must not override.
+  const _GRID_ALL_DIRS_SELECTOR = '.batch-card, .subject-card, .chapter-item, .mtp-item, .vocab-test-card, .wtp-test-card';
+  const _GRID_VERT_ONLY_SELECTOR = '.option-btn, .tf-btn';
+  const _GRID_ITEM_SELECTOR = `${_GRID_ALL_DIRS_SELECTOR}, ${_GRID_VERT_ONLY_SELECTOR}`;
+
+  document.addEventListener('keydown', e => {
+    const dir = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[e.key];
+    if (!dir) return;
+
+    const active = document.activeElement;
+    if (!active || !active.matches?.(_GRID_ITEM_SELECTOR)) return;
+    if ((dir === 'left' || dir === 'right') && active.matches(_GRID_VERT_ONLY_SELECTOR)) return;
+
+    const container = active.parentElement;
+    if (!container) return;
+    const items = Array.from(container.children).filter(el =>
+      el !== active && el.matches(_GRID_ITEM_SELECTOR) && !el.disabled && el.offsetParent !== null
+    );
+    if (!items.length) return;
+
+    const a  = active.getBoundingClientRect();
+    const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+
+    let best = null, bestScore = Infinity;
+    for (const el of items) {
+      const r  = el.getBoundingClientRect();
+      const ex = r.left + r.width / 2, ey = r.top + r.height / 2;
+      const dx = ex - ax, dy = ey - ay;
+      let primary, cross;
+      if (dir === 'up')    { if (dy >= -1) continue; primary = -dy; cross = Math.abs(dx); }
+      if (dir === 'down')  { if (dy <=  1) continue; primary =  dy; cross = Math.abs(dx); }
+      if (dir === 'left')  { if (dx >= -1) continue; primary = -dx; cross = Math.abs(dy); }
+      if (dir === 'right') { if (dx <=  1) continue; primary =  dx; cross = Math.abs(dy); }
+      const score = primary + cross * 2; // prioritize staying aligned over pure closeness
+      if (score < bestScore) { bestScore = score; best = el; }
+    }
+    if (best) { e.preventDefault(); best.focus(); }
+  });
+
+  // ════════════════════════
   // TOAST SYSTEM
   // ════════════════════════
 
