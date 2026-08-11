@@ -1297,7 +1297,7 @@ const APP = (() => {
     const labels = {
       home: 'Home', quiz: 'Practice', results: 'Results',
       'test-player': 'Test', analytics: 'Analytics', 'deep-study': 'Deep Study',
-      exercise: 'Exercise',
+      exercise: 'Exercise', 'chapter-hub': 'Chapter', 'test-list': 'Tests',
     };
     UI.setBreadcrumb(labels[name] || name);
     _updateBottomNav(name);
@@ -1380,15 +1380,20 @@ const APP = (() => {
       // fire immediately — only *when* it runs has changed.
       UI.renderChapterHub({
         chapter,
-        onTest: () => UI.renderAvailableQuizzes({
-          batch: batchName,
-          subject,
-          chapter,
-          ..._homeQuizHandlers(batchName, subject, chapter),
-        }),
+        onTest: () => {
+          showScreen('test-list');
+          const titleEl = $('test-list-title');
+          if (titleEl) titleEl.textContent = chapter;
+          UI.renderAvailableQuizzes({
+            batch: batchName,
+            subject,
+            chapter,
+            ..._homeQuizHandlers(batchName, subject, chapter),
+          });
+        },
         onNotes: () => {
-          window.NOTES_VIEWER?.init();
           showScreen('notes');
+          window.NOTES_VIEWER?.openChapter?.(batchName, subject, chapter);
         },
         onExercise: () => {
           window.EXERCISE_VIEWER?.openChapter?.(batchName, subject, chapter);
@@ -1426,10 +1431,12 @@ const APP = (() => {
 
     if (!_homeChapter) return;
 
+    // Just re-highlight the previously-picked chapter — Chapter Hub is now
+    // its own screen (not inline home content), so a background refresh
+    // (e.g. after finishing a quiz) must not forcibly navigate the student
+    // away from home. They reach the Hub the same way as any other time:
+    // by tapping the chapter again.
     _activateHomeChoice('.chapter-item', _homeChapter, '.chapter-name');
-    // Reuse the exact same chapter-click handler (shows the Chapter Hub)
-    // instead of duplicating its onTest/onNotes/onExercise wiring here.
-    await _bindChapterFlow(_homeBatch.name, _homeSubject)(_homeChapter);
   }
 
   async function loadHome() {

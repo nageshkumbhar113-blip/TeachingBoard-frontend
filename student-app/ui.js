@@ -681,10 +681,9 @@ const UI = (() => {
   // automatically, no extra remote-nav wiring needed here.
 
   function renderChapterHub({ chapter = '', onTest = null, onNotes = null, onExercise = null } = {}) {
-    const section = $('chapter-hub-section');
-    const grid    = $('chapter-hub-grid');
-    const title   = $('chapter-hub-title');
-    if (!section || !grid) return;
+    const grid  = $('chapter-hub-grid');
+    const title = $('chapter-hub-title');
+    if (!grid) return;
 
     if (title) title.textContent = chapter || 'Chapter';
     grid.innerHTML = '';
@@ -714,8 +713,11 @@ const UI = (() => {
     });
     grid.appendChild(fragment);
 
-    section.classList.remove('hidden');
     $('available-tests-section')?.classList.add('hidden');
+    // Chapter Hub is its own screen (not another inline home-page section),
+    // so a chapter click actually navigates instead of just revealing more
+    // content to scroll to.
+    APP?.showScreen?.('chapter-hub');
   }
 
   async function renderAvailableQuizzes({

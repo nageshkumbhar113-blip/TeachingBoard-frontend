@@ -496,6 +496,26 @@ const NOTES_VIEWER = (() => {
     _showConceptsList();
   }
 
+  // Opens straight into a specific batch/subject/chapter's notes — used by
+  // the home screen's Chapter Hub. Notes chapters come from a different
+  // (SLS) source than the quiz-content batch/subject/chapter data, so they
+  // don't share IDs — matched here by subject + chapter name instead. If
+  // this chapter has no notes yet, shows a clear empty state rather than
+  // silently falling back to whatever chapter was open before.
+  async function openChapter(batch, subject, chapter) {
+    await init();
+    const match = state.chapters.find(c => c.subject === subject && c.name === chapter);
+    if (match) {
+      await selectChapter(match.chapter_id);
+      return;
+    }
+    state.currentChapter = null;
+    state.currentConcept = null;
+    _renderUI();
+    const container = $('nv-content');
+    if (container) container.innerHTML = '<div class="nv-empty-state">या प्रकरणासाठी अजून Notes उपलब्ध नाहीत.</div>';
+  }
+
   function _showConceptsList() {
     const container = $('nv-content');
     if (!container) return;
@@ -635,7 +655,8 @@ const NOTES_VIEWER = (() => {
   return {
     init,
     viewConcept,
-    selectChapter
+    selectChapter,
+    openChapter
   };
 })();
 
