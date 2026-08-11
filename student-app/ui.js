@@ -40,6 +40,38 @@ const UI = (() => {
   }
 
   // ════════════════════════
+  // REMOTE / KEYBOARD (TV D-pad) NAVIGATION
+  // ════════════════════════
+  // Custom clickable <div> "cards" (batch/subject/chapter/student cards etc.)
+  // aren't natively focusable or keyboard-activatable like <button>/<a>.
+  // makeFocusable() marks such an element so a TV remote's D-pad can tab onto
+  // it, and the global keydown listener below fires its existing click
+  // handler on Enter/Space — the click handler itself is never touched.
+
+  function makeFocusable(el) {
+    if (!el) return el;
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+    return el;
+  }
+
+  // Single app-wide listener: Enter/Space/NumpadEnter on a focused element
+  // triggers a synthetic click on that same element. Text inputs, textareas,
+  // selects and contenteditable are excluded so normal typing/form-submit
+  // behavior (e.g. the login/onboarding fields) is completely unaffected.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'NumpadEnter') return;
+    const target = e.target;
+    if (!target || target === document.body) return;
+    const tag = target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return;
+    if (tag === 'BUTTON' || tag === 'A') return; // native elements already handle this themselves
+    if (target.getAttribute('tabindex') === null) return; // only elements we explicitly made focusable
+    e.preventDefault();
+    target.click();
+  });
+
+  // ════════════════════════
   // TOAST SYSTEM
   // ════════════════════════
 
@@ -279,6 +311,7 @@ const UI = (() => {
       const card  = document.createElement('div');
       card.className = 'batch-card';
       card.setAttribute('role', 'listitem');
+      makeFocusable(card);
       card.innerHTML = `
         ${meta.cover_image
           ? `<div class="batch-cover"><img src="${meta.cover_image}" alt="" loading="lazy"></div>`
@@ -337,6 +370,7 @@ const UI = (() => {
       const item = document.createElement('div');
       item.className = 'chapter-item';
       item.setAttribute('role', 'listitem');
+      makeFocusable(item);
       item.innerHTML = `
         <div class="chapter-info">
           <div class="chapter-name">${ch}</div>
@@ -505,6 +539,7 @@ const UI = (() => {
       const card  = document.createElement('div');
       card.className = 'subject-card';
       card.setAttribute('role', 'listitem');
+      makeFocusable(card);
       card.innerHTML = `
         <div class="subject-icon">${icon}</div>
         <div class="subject-name">${sub}</div>
@@ -558,6 +593,7 @@ const UI = (() => {
       const item = document.createElement('div');
       item.className = 'chapter-item';
       item.setAttribute('role', 'listitem');
+      makeFocusable(item);
       item.innerHTML = `
         <div class="chapter-info">
           <div class="chapter-name">${ch}</div>
@@ -776,5 +812,7 @@ const UI = (() => {
     // Dialogs (Android-safe replacements for confirm/prompt)
     confirmAsync,
     promptAsync,
+    // Remote/keyboard (TV D-pad) navigation
+    makeFocusable,
   };
 })();

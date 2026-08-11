@@ -186,8 +186,10 @@ const EXERCISE_VIEWER = (() => {
           <span>${qs.length} प्रश्न · ${totalMarks} गुण</span>
         </div>`;
     }).join('');
-    list.querySelectorAll('.ev-group-card').forEach(card =>
-      card.addEventListener('click', () => _showQuestions(card.dataset.no)));
+    list.querySelectorAll('.ev-group-card').forEach(card => {
+      UI.makeFocusable(card);
+      card.addEventListener('click', () => _showQuestions(card.dataset.no));
+    });
   }
 
   function _showQuestions(no) {

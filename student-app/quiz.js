@@ -383,6 +383,7 @@ const QUIZ = (() => {
       el.textContent = item;
       el.dataset.idx  = i;
       el.dataset.side = 'left';
+      UI.makeFocusable(el);
       el.addEventListener('click', () => _mtpClick(el, q, pairs, right));
       leftDiv.appendChild(el);
     });
@@ -393,6 +394,7 @@ const QUIZ = (() => {
       el.textContent = item;
       el.dataset.idx  = i;
       el.dataset.side = 'right';
+      UI.makeFocusable(el);
       el.addEventListener('click', () => _mtpClick(el, q, pairs, right));
       rightDiv.appendChild(el);
     });

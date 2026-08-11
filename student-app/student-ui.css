@@ -1,5 +1,18 @@
 ﻿@import "../css/style.css";
 
+/* Remote/keyboard (TV D-pad) navigation — a clear, app-wide focus ring for
+   elements UI.makeFocusable() marks (batch/subject/chapter/test "cards" —
+   plain divs that don't get a browser default focus outline). Additive only:
+   existing per-component :focus rules elsewhere in this file are untouched. */
+[role="button"]:focus-visible,
+.batch-card:focus-visible,
+.subject-card:focus-visible,
+.chapter-item:focus-visible,
+.mtp-item:focus-visible {
+  outline: 3px solid var(--accent, #60a5fa);
+  outline-offset: 2px;
+}
+
 body.student-app {
   min-height: 100vh;
   --board-zoom: 1;

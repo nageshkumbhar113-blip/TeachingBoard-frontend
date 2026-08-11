@@ -104,6 +104,7 @@ const WORD_TEST_PLAYER = (() => {
             <div class="wtp-card-status">
               ${att ? `${pct}% ${att.passed ? '✅ Passed' : '📝 Done'}` : '🆕 New'}
             </div>`;
+          UI.makeFocusable(card);
           card.addEventListener('click', () => _startTest(t.test_id, t.title));
           grid.appendChild(card);
         });

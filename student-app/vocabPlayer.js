@@ -105,6 +105,7 @@ const VOCAB = (() => {
             <div class="vocab-test-status">
               ${t.attempted ? `${pct}% ${t.passed ? 'Passed' : 'Done'}` : 'New'}
             </div>`;
+          UI.makeFocusable(card);
           card.addEventListener('click', () => _startTest(t.test_num));
           grid.appendChild(card);
         });

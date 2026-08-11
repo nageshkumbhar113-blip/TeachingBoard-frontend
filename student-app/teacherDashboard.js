@@ -790,6 +790,7 @@ const TEACHER_DASHBOARD = (() => {
 
     listEl.querySelector('#fee-upi-warn-btn')?.addEventListener('click', _openUpiSettingsModal);
     listEl.querySelectorAll('.fee-config-card').forEach(card => {
+      UI.makeFocusable(card);
       card.addEventListener('click', () => _openFeeRecords(card.dataset.id));
     });
   }
