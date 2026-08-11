@@ -118,7 +118,14 @@ const UI = (() => {
       const score = primary + cross * 2; // prioritize staying aligned over pure closeness
       if (score < bestScore) { bestScore = score; best = el; }
     }
-    if (best) { e.preventDefault(); best.focus(); }
+    if (best) {
+      e.preventDefault();
+      best.focus();
+      // Unlike native Tab, a scripted .focus() doesn't always scroll the
+      // target into view on its own — make sure the newly focused card
+      // is actually visible after the jump.
+      best.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   });
 
   // ════════════════════════
