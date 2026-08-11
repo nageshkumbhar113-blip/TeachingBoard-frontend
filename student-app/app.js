@@ -1374,11 +1374,25 @@ const APP = (() => {
         }, { once: false });
       }
 
-      await UI.renderAvailableQuizzes({
-        batch: batchName,
-        subject,
+      // Chapter Hub — one clear choice screen (Test / Notes / Exercise)
+      // instead of jumping straight into the tests list. The "Test" branch
+      // below is the exact same renderAvailableQuizzes call this used to
+      // fire immediately — only *when* it runs has changed.
+      UI.renderChapterHub({
         chapter,
-        ..._homeQuizHandlers(batchName, subject, chapter),
+        onTest: () => UI.renderAvailableQuizzes({
+          batch: batchName,
+          subject,
+          chapter,
+          ..._homeQuizHandlers(batchName, subject, chapter),
+        }),
+        onNotes: () => {
+          window.NOTES_VIEWER?.init();
+          showScreen('notes');
+        },
+        onExercise: () => {
+          window.EXERCISE_VIEWER?.openChapter?.(batchName, subject, chapter);
+        },
       });
     };
   }
@@ -1413,12 +1427,9 @@ const APP = (() => {
     if (!_homeChapter) return;
 
     _activateHomeChoice('.chapter-item', _homeChapter, '.chapter-name');
-    await UI.renderAvailableQuizzes({
-      batch: _homeBatch.name,
-      subject: _homeSubject,
-      chapter: _homeChapter,
-      ..._homeQuizHandlers(_homeBatch.name, _homeSubject, _homeChapter),
-    });
+    // Reuse the exact same chapter-click handler (shows the Chapter Hub)
+    // instead of duplicating its onTest/onNotes/onExercise wiring here.
+    await _bindChapterFlow(_homeBatch.name, _homeSubject)(_homeChapter);
   }
 
   async function loadHome() {

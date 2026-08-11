@@ -668,7 +668,54 @@ const UI = (() => {
 
     section.classList.remove('hidden');
     $('available-tests-section')?.classList.add('hidden');
+    $('chapter-hub-section')?.classList.add('hidden');
     await renderLessons();
+  }
+
+  // ════════════════════════
+  // CHAPTER HUB (Test / Notes / Exercise)
+  // ════════════════════════
+  // Shown after a chapter is picked, instead of immediately revealing the
+  // tests list — one clear choice screen. All 3 options are native
+  // <button> elements, so keyboard/TV D-pad support (Tab + Enter) works
+  // automatically, no extra remote-nav wiring needed here.
+
+  function renderChapterHub({ chapter = '', onTest = null, onNotes = null, onExercise = null } = {}) {
+    const section = $('chapter-hub-section');
+    const grid    = $('chapter-hub-grid');
+    const title   = $('chapter-hub-title');
+    if (!section || !grid) return;
+
+    if (title) title.textContent = chapter || 'Chapter';
+    grid.innerHTML = '';
+
+    const options = [
+      { icon: '📝', label: 'Test',     meta: 'चाचणी द्या',        handler: onTest },
+      { icon: '📓', label: 'Notes',    meta: 'वाचन साहित्य',       handler: onNotes },
+      { icon: '📄', label: 'Exercise', meta: 'सराव प्रश्न',        handler: onExercise },
+    ];
+
+    const fragment = document.createDocumentFragment();
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chapter-hub-btn';
+      btn.setAttribute('aria-label', opt.label);
+      btn.innerHTML = `
+        <span class="chapter-hub-icon">${opt.icon}</span>
+        <span class="chapter-hub-text">
+          <strong>${opt.label}</strong>
+          <small>${opt.meta}</small>
+        </span>
+        <span class="chapter-hub-arrow" aria-hidden="true">›</span>
+      `;
+      if (opt.handler) btn.addEventListener('click', opt.handler);
+      fragment.appendChild(btn);
+    });
+    grid.appendChild(fragment);
+
+    section.classList.remove('hidden');
+    $('available-tests-section')?.classList.add('hidden');
   }
 
   async function renderAvailableQuizzes({
@@ -859,6 +906,7 @@ const UI = (() => {
     renderBatchGrid,
     renderSubjectGrid,
     renderChapterList,
+    renderChapterHub,
     renderLessons,
     renderRecentAttempts,
     renderAvailableQuizzes,

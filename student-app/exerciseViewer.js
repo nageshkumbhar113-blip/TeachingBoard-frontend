@@ -119,6 +119,28 @@ const EXERCISE_VIEWER = (() => {
     await _loadExerciseGroups();
   }
 
+  // Opens the Exercise screen with a batch/subject/chapter already picked —
+  // used by the home screen's Chapter Hub so a student doesn't have to
+  // re-select what they already chose there. Reuses the exact same private
+  // handlers the manual dropdowns call; nothing about them changes.
+  async function openChapter(batch, subject, chapter) {
+    APP?.navigate?.('exercise');
+    await _populateBatches();
+
+    const batchSel = $('ev-batch-sel');
+    if (batchSel) batchSel.value = batch;
+    await _onBatchChange(batch);
+
+    const subjectSel = $('ev-subject-sel');
+    if (subjectSel) subjectSel.value = subject;
+    await _onSubjectChange(subject);
+
+    const chapterId = _makeChapterId(batch, subject, chapter);
+    const chapterSel = $('ev-chapter-sel');
+    if (chapterSel) chapterSel.value = chapterId;
+    await _onChapterChange(chapterId);
+  }
+
   function _resetBelowChapter() {
     _exerciseGroups = new Map();
     _activeExerciseNo = '';
@@ -233,7 +255,7 @@ const EXERCISE_VIEWER = (() => {
     $('ev-groups-section').style.display = '';
   }
 
-  return { init };
+  return { init, openChapter };
 })();
 
 window.EXERCISE_VIEWER = EXERCISE_VIEWER;
