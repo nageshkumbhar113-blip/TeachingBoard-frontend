@@ -67,14 +67,30 @@ const QUIZ_PDF = (() => {
   /**
    * Accepts either shape — a quiz with real `sections[]` (each carrying its
    * own question_ids/marks) or a bare quiz with only a flat `questions[]`
-   * (server response with no local sections cached, or a legacy quiz) —
-   * and always returns { title, batch, subject, chapter, sections[] } where
-   * each section has resolved marks and its own question list. Per-question
-   * marks (denormalized at publish time) win over section/quiz-level marks,
-   * same resolution order as student-app/testPlayer.js.
+   * (server response with no local sections cached, or a legacy quiz) — OR
+   * a pre-publish DRAFT quiz from testBuilder.js Step 3, which never has a
+   * flat `questions[]` at all, only `sections[].question_ids` pointing into
+   * the local question bank (DB). Always returns
+   * { title, batch, subject, chapter, sections[] } where each section has
+   * resolved marks and its own question list. Per-question marks
+   * (denormalized at publish time) win over section/quiz-level marks, same
+   * resolution order as student-app/testPlayer.js.
    */
-  function _normalizeQuizForPdf(quiz) {
-    const questionMap = new Map((quiz.questions || []).filter(q => q?.q_id).map(q => [q.q_id, q]));
+  async function _normalizeQuizForPdf(quiz) {
+    const embedded = (quiz.questions || []).filter(q => q?.q_id);
+    // Draft/pre-publish quiz — quiz.questions is empty, resolve section
+    // question_ids from the local bank instead (same fallback core/pdf.js
+    // already uses for exportQuizPaper).
+    const bankQuestions = (!embedded.length && typeof DB !== 'undefined')
+      ? await (async () => {
+          const byBatch = await DB.getQuestionsByBatch(quiz.batch || '');
+          return byBatch.length ? byBatch : await DB.getAllQuestions();
+        })()
+      : [];
+    const questionMap = new Map([
+      ...bankQuestions.map(q => [q.q_id, q]),
+      ...embedded.map(q => [q.q_id, q]),
+    ]);
 
     let sections = Array.isArray(quiz.sections) && quiz.sections.length
       ? quiz.sections
@@ -250,7 +266,7 @@ const QUIZ_PDF = (() => {
   }
 
   async function exportQuizPaper(quiz, { withAnswers = false } = {}) {
-    const paper = _normalizeQuizForPdf(quiz || {});
+    const paper = await _normalizeQuizForPdf(quiz || {});
     if (!paper.sections.length) {
       APP.toast('No questions in this quiz', 'error');
       return;

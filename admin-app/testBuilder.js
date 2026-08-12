@@ -287,13 +287,23 @@ const TEST_BUILDER = (() => {
     chapterSelect.value = chapters.includes(nextChapter) ? nextChapter : '';
   }
 
+  // Rapid sequential edits (batch → subject → chapter, the normal usage
+  // pattern) each trigger their own async _renderSectionsList() call before
+  // the previous one's DB lookups resolve — without a guard, whichever
+  // render happens to finish last wins and can stomp a later selection with
+  // stale data. Every await below re-checks this token and bails out the
+  // instant a newer render has started.
+  let _sectionsRenderToken = 0;
+
   async function _renderSectionsList() {
     const list = $('tb-sections-list');
     if (!list) return;
+    const myToken = ++_sectionsRenderToken;
     const isMixed = state.paperMode === 'mixed';
     list.innerHTML = '';
 
     const batches = isMixed ? await DB.getAllBatches() : [];
+    if (myToken !== _sectionsRenderToken) return;
 
     for (let i = 0; i < state.sections.length; i++) {
       const sec = state.sections[i];
@@ -337,11 +347,13 @@ const TEST_BUILDER = (() => {
         const subjectSel = row.querySelector('.tb-sec-subject');
         const chapterSel = row.querySelector('.tb-sec-chapter');
         const subjects = sec.source_batch ? (await DB.getSubjectsByBatch(sec.source_batch)).map(s => s.name) : [];
+        if (myToken !== _sectionsRenderToken) return;
         _setTopicSelectOptions(subjectSel, subjects, 'Subject');
         if (subjects.includes(sec.subject)) subjectSel.value = sec.subject;
         const chapters = (sec.source_batch && subjectSel.value)
           ? (await DB.getChaptersByBatchSubject(sec.source_batch, subjectSel.value)).map(c => c.name)
           : [];
+        if (myToken !== _sectionsRenderToken) return;
         _setTopicSelectOptions(chapterSel, chapters, 'Chapter');
         if (chapters.includes(sec.chapter)) chapterSel.value = sec.chapter;
       }
