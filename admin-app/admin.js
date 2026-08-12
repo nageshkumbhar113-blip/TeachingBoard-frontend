@@ -1658,7 +1658,9 @@ const ADMIN = (() => {
           <button class="admin-btn-secondary quiz-edit-btn" data-id="${quiz.quiz_id}"
             style="padding:4px 10px;font-size:0.8rem">✏️ Edit</button>
           <button class="admin-btn-secondary quiz-export-btn" data-id="${quiz.quiz_id}"
-            style="padding:4px 10px;font-size:0.8rem">🖨 Export</button>
+            style="padding:4px 10px;font-size:0.8rem">📄 PDF</button>
+          <button class="admin-btn-secondary quiz-print-btn" data-id="${quiz.quiz_id}"
+            style="padding:4px 10px;font-size:0.8rem">🖨 Print</button>
           ${quiz.status === 'published'
             ? `<button class="admin-btn-secondary quiz-play-btn" data-id="${quiz.quiz_id}"
                 style="padding:4px 10px;font-size:0.8rem;color:var(--correct)">▶ Start</button>`
@@ -1671,7 +1673,22 @@ const ADMIN = (() => {
       item.querySelector('.quiz-edit-btn').addEventListener('click', () => {
         TEST_BUILDER.open(quiz.quiz_id);
       });
-      item.querySelector('.quiz-export-btn').addEventListener('click', () => {
+      item.querySelector('.quiz-export-btn').addEventListener('click', async () => {
+        // Real PDF, fetched fresh from the server so it works even if this
+        // browser's local IDB cache is stale/empty — falls back to the
+        // local object (and the old print-dialog path) when offline.
+        try {
+          await QUIZ_PDF.exportById(quiz.quiz_id);
+        } catch (err) {
+          console.warn('QUIZ_PDF.exportById failed, falling back to local quiz object:', err?.message);
+          try {
+            await QUIZ_PDF.exportQuizPaper(quiz);
+          } catch (fallbackErr) {
+            APP.toast(fallbackErr?.message || 'PDF export failed', 'error');
+          }
+        }
+      });
+      item.querySelector('.quiz-print-btn').addEventListener('click', () => {
         PDF.exportQuizPaper(quiz);
       });
       item.querySelector('.quiz-play-btn')?.addEventListener('click', () => {

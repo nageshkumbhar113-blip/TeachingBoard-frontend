@@ -860,7 +860,8 @@ const TEST_BUILDER = (() => {
     $('tb-footer').innerHTML = `
       <div class="tb-footer-actions">
         <button class="admin-btn-secondary" id="tb-back-2">← Back</button>
-        <button class="admin-btn-secondary" id="tb-print-quiz">Print / PDF</button>
+        <button class="admin-btn-secondary" id="tb-export-pdf">📄 Download PDF</button>
+        <button class="admin-btn-secondary" id="tb-print-quiz">🖨 Print</button>
         <button class="admin-btn-secondary" id="tb-toggle-answers">
           ${state.previewShowAnswers ? '🙈 Hide Answers' : '👁 Show Answers'}
         </button>
@@ -870,6 +871,7 @@ const TEST_BUILDER = (() => {
     `;
 
     $('tb-back-2').addEventListener('click', () => _renderStep(2));
+    $('tb-export-pdf').addEventListener('click', () => QUIZ_PDF.exportQuizPaper(state.quiz));
     $('tb-print-quiz').addEventListener('click', () => PDF.exportQuizPaper(state.quiz));
     $('tb-save-draft3').addEventListener('click', () => _saveQuiz('draft'));
     $('tb-publish').addEventListener('click', () => _saveQuiz('published'));
