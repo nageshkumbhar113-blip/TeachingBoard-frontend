@@ -232,31 +232,103 @@ const SYNC = (() => {
   }
 
   async function _buildPublishPayload(quiz) {
-    const allQIds = (quiz.sections || []).flatMap(section => section.question_ids || []);
-    const allQs   = await DB.getAllQuestions();
-    const qMap    = new Map(allQs.map(question => [question.q_id, question]));
+    const sections = Array.isArray(quiz.sections) ? quiz.sections : [];
+    const allQIds  = sections.flatMap(section => section.question_ids || []);
+    const allQs    = await DB.getAllQuestions();
+    const qMap     = new Map(allQs.map(question => [question.q_id, question]));
 
-    const questions = allQIds.map(qId => qMap.get(qId)).filter(Boolean);
+    // The flat questions[] array stays the source of truth; a question
+    // referenced by more than one section must appear once here (each
+    // section keeps its own full question_ids list, duplicates and all).
+    const seenQIds = new Set();
+    const orderedUniqueQIds = [];
+    allQIds.forEach(qId => {
+      if (!seenQIds.has(qId)) {
+        seenQIds.add(qId);
+        orderedUniqueQIds.push(qId);
+      }
+    });
+
+    const questions = orderedUniqueQIds.map(qId => qMap.get(qId)).filter(Boolean);
 
     if (!questions.length) {
       throw new Error(`Quiz "${quiz.title || quiz.quiz_id}" has no questions to publish`);
     }
 
-    if (questions.length !== allQIds.length) {
-      throw new Error(`Quiz "${quiz.title || quiz.quiz_id}" is missing ${allQIds.length - questions.length} local question(s)`);
+    if (questions.length !== orderedUniqueQIds.length) {
+      throw new Error(`Quiz "${quiz.title || quiz.quiz_id}" is missing ${orderedUniqueQIds.length - questions.length} local question(s)`);
     }
+
+    // First section that references a q_id "owns" it for marks resolution.
+    const sectionByQId = new Map();
+    sections.forEach(section => {
+      (section.question_ids || []).forEach(qId => {
+        if (!sectionByQId.has(qId)) sectionByQId.set(qId, section);
+      });
+    });
+
+    const backendQuestions = questions.map(question => {
+      const backendQuestion = _toBackendQuizQuestion(question, quiz.title || quiz.quiz_id);
+      const owningSection = sectionByQId.get(question.q_id);
+      const posMarks = owningSection?.positive_marks ?? quiz.positive_marks;
+      const negMarks = owningSection?.negative_marks ?? quiz.negative_marks;
+      return {
+        ...backendQuestion,
+        ...(posMarks !== undefined && posMarks !== null && posMarks !== '' ? { marks: Number(posMarks) } : {}),
+        ...(negMarks !== undefined && negMarks !== null && negMarks !== '' ? { negative_marks: Number(negMarks) } : {}),
+      };
+    });
+
+    // Single common value across sections wins; otherwise "Mixed"; if no
+    // section carries its own subject/chapter (today's manual/random-only
+    // quizzes), fall back to the quiz-level value — unchanged behavior.
+    const distinctSubjects = new Set(sections.map(s => s.subject).filter(Boolean));
+    const distinctChapters = new Set(sections.map(s => s.chapter).filter(Boolean));
+    const derivedSubject =
+      distinctSubjects.size === 1 ? [...distinctSubjects][0] : distinctSubjects.size > 1 ? 'Mixed' : (quiz.subject || '');
+    const derivedChapter =
+      distinctChapters.size === 1 ? [...distinctChapters][0] : distinctChapters.size > 1 ? 'Mixed' : (quiz.chapter || '');
+
+    const backendSections = sections.length
+      ? sections.map(section => ({
+          id: section.id,
+          label: section.label || '',
+          type: 'mcq',
+          question_ids: section.question_ids || [],
+          source_batch: section.source_batch || quiz.batch || '',
+          subject: section.subject || quiz.subject || '',
+          chapter: section.chapter || quiz.chapter || '',
+          mode: section.mode === 'random' ? 'random' : 'manual',
+          ...(section.count !== undefined && section.count !== null && section.count !== '' ? { count: Number(section.count) } : {}),
+          ...(section.positive_marks !== undefined && section.positive_marks !== null && section.positive_marks !== ''
+            ? { positive_marks: Number(section.positive_marks) }
+            : {}),
+          ...(section.negative_marks !== undefined && section.negative_marks !== null && section.negative_marks !== ''
+            ? { negative_marks: Number(section.negative_marks) }
+            : {}),
+          ...(section.timer !== undefined && section.timer !== null && section.timer !== '' ? { timer: Number(section.timer) } : {}),
+        }))
+      : undefined;
 
     return {
       quiz_id    : quiz.quiz_id,
       title      : quiz.title || 'Untitled Quiz',
-      subject    : quiz.subject || '',
-      chapter    : quiz.chapter || '',
+      subject    : derivedSubject,
+      chapter    : derivedChapter,
       batch      : quiz.batch || '',
       status     : 'published',
       timer_mode : quiz.timer_mode || 'none',
       timer_value: Number(quiz.timer_value || 0) || 0,
       shuffle    : !!quiz.shuffle,
-      questions  : questions.map(question => _toBackendQuizQuestion(question, quiz.title || quiz.quiz_id)),
+      questions  : backendQuestions,
+      ...(backendSections ? { sections: backendSections } : {}),
+      ...(quiz.positive_marks !== undefined && quiz.positive_marks !== null && quiz.positive_marks !== ''
+        ? { positive_marks: Number(quiz.positive_marks) }
+        : {}),
+      ...(quiz.negative_marks !== undefined && quiz.negative_marks !== null && quiz.negative_marks !== ''
+        ? { negative_marks: Number(quiz.negative_marks) }
+        : {}),
+      ...(quiz.paper_mode ? { paper_mode: quiz.paper_mode } : {}),
     };
   }
 
@@ -347,6 +419,10 @@ const SYNC = (() => {
       synced_at : Date.now(),
       difficulty: 'medium',
       tags      : [],
+      ...(remoteQuestion.marks !== undefined && remoteQuestion.marks !== null ? { marks: remoteQuestion.marks } : {}),
+      ...(remoteQuestion.negative_marks !== undefined && remoteQuestion.negative_marks !== null
+        ? { negative_marks: remoteQuestion.negative_marks }
+        : {}),
     };
   }
 
@@ -404,6 +480,15 @@ const SYNC = (() => {
       shuffle        : !!remoteQuiz?.shuffle,
       timer_mode     : remoteQuiz?.timer_mode || existing?.timer_mode || 'none',
       timer_value    : Number(remoteQuiz?.timer_value || existing?.timer_value || 0) || 0,
+      ...((remoteQuiz?.positive_marks ?? existing?.positive_marks) !== undefined
+        ? { positive_marks: remoteQuiz?.positive_marks ?? existing?.positive_marks }
+        : {}),
+      ...((remoteQuiz?.negative_marks ?? existing?.negative_marks) !== undefined
+        ? { negative_marks: remoteQuiz?.negative_marks ?? existing?.negative_marks }
+        : {}),
+      ...((remoteQuiz?.paper_mode || existing?.paper_mode)
+        ? { paper_mode: remoteQuiz?.paper_mode || existing?.paper_mode }
+        : {}),
       source         : 'api',
       synced         : true,
       synced_at      : Date.now(),
