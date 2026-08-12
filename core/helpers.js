@@ -2137,6 +2137,28 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // YouTube Teacher Partner videos for an exercise — two-step: omit
+  // teacherId for the Step-1 card list (all approved+live teachers for this
+  // exercise), pass teacherId for Step-2 (that teacher's parts).
+  async function fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId }) {
+    const token = await ensureStudentSession();
+    const qs = new URLSearchParams({ batch, subject, chapter, exercise });
+    if (teacherId) qs.set('teacher_id', teacherId);
+    const payload = await request(`/youtube-teacher/videos-for-exercise?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  // "Video Opens" counter — best-effort, never blocks playback if it fails.
+  async function recordYoutubeVideoOpen(videoId) {
+    const token = await ensureStudentSession();
+    return request(`/youtube-teacher/video-open/${encodeURIComponent(videoId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null);
+  }
+
   // ════════════════════════
 
   return {
@@ -2204,6 +2226,7 @@ const API = (() => {
     fetchTeacherSlsQuestions, createTeacherSlsPaperManual,
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
     fetchStudentExerciseQuestions,
+    fetchYoutubeVideosForExercise, recordYoutubeVideoOpen,
   };
 })();
 
