@@ -683,6 +683,34 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // Admin-only — reusable Paper Patterns (e.g. "NMMS Pattern") for the
+  // Mixed Test Paper Builder. save() upserts by pattern_id when present.
+  async function fetchQuizPatterns() {
+    const token = await ensureAdminSession();
+    const payload = await request('/quiz-patterns', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function saveQuizPattern(pattern) {
+    const token = await ensureAdminSession();
+    const payload = await request('/quiz-patterns', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(pattern),
+    });
+    return payload?.data || null;
+  }
+
+  async function deleteQuizPattern(patternId) {
+    const token = await ensureAdminSession();
+    return request(`/quiz-patterns/${encodeURIComponent(patternId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function fetchLessons(limit = 50) {
     const profile = await getStudentProfile();
     const token   = profile?.student_code ? await ensureStudentSession() : '';
@@ -2187,7 +2215,9 @@ const API = (() => {
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
-    fetchQuiz, fetchPublishedQuizzes, fetchQuizById, generateQuizQuestions, fetchLessons, fetchQuestions, fetchAttempts,
+    fetchQuiz, fetchPublishedQuizzes, fetchQuizById, generateQuizQuestions,
+    fetchQuizPatterns, saveQuizPattern, deleteQuizPattern,
+    fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,

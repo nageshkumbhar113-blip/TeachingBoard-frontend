@@ -174,13 +174,15 @@ const TEST_BUILDER = (() => {
           </label>
           <label style="display:flex;align-items:center;gap:6px">
             <input type="radio" name="tb-paper-mode" value="random" ${state.paperMode === 'random' ? 'checked' : ''}>
-            Random from chapter
+            Subject-wise (random)
           </label>
           <label style="display:flex;align-items:center;gap:6px">
             <input type="radio" name="tb-paper-mode" value="mixed" ${state.paperMode === 'mixed' ? 'checked' : ''}>
-            Mixed (section-wise)
+            Mixed / Paper Pattern
           </label>
         </div>
+
+        <div id="tb-pattern-panel"></div>
 
         <p class="tb-step-label">📂 Sections</p>
         <div id="tb-sections-list"></div>
@@ -190,6 +192,7 @@ const TEST_BUILDER = (() => {
 
     _loadBatchSelect();
     _renderSectionsList();
+    _renderPatternPanel();
 
     document.querySelectorAll('input[name="tb-paper-mode"]').forEach(radio => {
       radio.addEventListener('change', e => {
@@ -206,6 +209,7 @@ const TEST_BUILDER = (() => {
           if (state.paperMode === 'mixed') sec.type = 'mcq';
         });
         _renderSectionsList();
+        _renderPatternPanel();
       });
     });
 
@@ -425,6 +429,110 @@ const TEST_BUILDER = (() => {
     _renderSectionsList();
   }
 
+  // ── Paper Pattern (save/load reusable section structure) ─────
+
+  let _patternCache = null;
+
+  async function _renderPatternPanel() {
+    const panel = $('tb-pattern-panel');
+    if (!panel) return;
+    if (state.paperMode !== 'mixed') { panel.innerHTML = ''; return; }
+
+    if (!_patternCache) {
+      try { _patternCache = await API.fetchQuizPatterns(); }
+      catch (err) { console.warn('Failed to load patterns:', err?.message); _patternCache = []; }
+    }
+
+    panel.innerHTML = `
+      <p class="tb-step-label">📐 Paper Pattern</p>
+      <div class="tb-field-inline" style="gap:8px;flex-wrap:wrap">
+        <select id="tb-pattern-select" class="admin-select" style="min-width:220px">
+          <option value="">Load a saved pattern…</option>
+          ${_patternCache.map(p => `<option value="${_esc(p.pattern_id)}">${_esc(p.name)} (${p.sections.length} sections)</option>`).join('')}
+        </select>
+        <button class="admin-btn-secondary" id="tb-pattern-load">📥 Load</button>
+        <button class="admin-btn-secondary" id="tb-pattern-save">💾 Save current as Pattern</button>
+        <button class="admin-btn-secondary" id="tb-pattern-delete">🗑️ Delete</button>
+      </div>
+      <p class="tb-sub-hint">Load a pattern (e.g. "NMMS Pattern") to auto-fill the sections below — pick Batch, then Generate each section.</p>
+    `;
+
+    $('tb-pattern-load')?.addEventListener('click', _loadSelectedPattern);
+    $('tb-pattern-save')?.addEventListener('click', _saveCurrentAsPattern);
+    $('tb-pattern-delete')?.addEventListener('click', _deleteSelectedPattern);
+  }
+
+  function _loadSelectedPattern() {
+    const patternId = $('tb-pattern-select')?.value;
+    if (!patternId) { APP.toast('Select a pattern first', 'error'); return; }
+    const pattern = _patternCache.find(p => p.pattern_id === patternId);
+    if (!pattern) return;
+
+    const batch = $('tb-batch')?.value || '';
+    const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+    state.sections = pattern.sections.map((ps, i) => ({
+      id: `sec_${Date.now()}_${i}`,
+      label: ps.label || `Section ${labels[i] || i + 1}`,
+      type: 'mcq',
+      question_ids: [],
+      timer: 30,
+      positive_marks: ps.positive_marks ?? 1,
+      negative_marks: ps.negative_marks ?? 0,
+      mode: ps.mode || 'random',
+      source_batch: batch,
+      subject: ps.subject || '',
+      chapter: '', // patterns are subject-wide by design
+      ...(ps.count ? { count: ps.count } : {}),
+    }));
+    state.activeSection = 0;
+    _renderSectionsList();
+    APP.toast(`✅ "${pattern.name}" loaded — ${pattern.sections.length} sections`, 'success');
+  }
+
+  async function _saveCurrentAsPattern() {
+    if (!state.sections.length) { APP.toast('No sections to save', 'error'); return; }
+    const name = await APP.promptAsync('Pattern name (e.g. "NMMS Pattern"):', 'text', '');
+    if (!name || !name.trim()) return;
+
+    const sections = state.sections.map(sec => ({
+      label: sec.label || '',
+      // state.quiz isn't populated until Step 1 is committed (moving to
+      // Step 2) — Save-as-Pattern lives on Step 1 itself, so fall back to
+      // the live form field, not state.quiz.
+      subject: sec.subject || $('tb-subject')?.value || '',
+      count: sec.count || sec.question_ids.length || 10,
+      mode: sec.mode === 'random' ? 'random' : 'manual',
+      positive_marks: sec.positive_marks ?? 1,
+      negative_marks: sec.negative_marks ?? 0,
+    }));
+
+    try {
+      await API.saveQuizPattern({ name: name.trim(), sections });
+      _patternCache = null; // force refresh
+      await _renderPatternPanel();
+      APP.toast(`✅ Pattern "${name.trim()}" saved`, 'success');
+    } catch (err) {
+      APP.toast(err?.message || 'Failed to save pattern', 'error');
+    }
+  }
+
+  async function _deleteSelectedPattern() {
+    const patternId = $('tb-pattern-select')?.value;
+    if (!patternId) { APP.toast('Select a pattern first', 'error'); return; }
+    const pattern = _patternCache.find(p => p.pattern_id === patternId);
+    if (!pattern) return;
+    if (!await APP.confirmAsync(`Delete pattern "${pattern.name}"?`)) return;
+
+    try {
+      await API.deleteQuizPattern(patternId);
+      _patternCache = null;
+      await _renderPatternPanel();
+      APP.toast('🗑️ Pattern deleted', 'info');
+    } catch (err) {
+      APP.toast(err?.message || 'Failed to delete pattern', 'error');
+    }
+  }
+
   async function _commitStep1() {
     const title   = $('tb-title')?.value.trim();
     const batch   = $('tb-batch')?.value;
@@ -434,7 +542,14 @@ const TEST_BUILDER = (() => {
     if (!title)   { APP.toast('Quiz title is required', 'error');      return false; }
     if (!batch)   { APP.toast('Please select a class/batch', 'error'); return false; }
     if (!subject) { APP.toast('Subject is required', 'error');         return false; }
-    if (!chapter) { APP.toast('Chapter is required', 'error');         return false; }
+    // Chapter is only required for manual (chapter-wise) pick — random
+    // sections are subject-wide by design (scholarship/NMMS-style papers
+    // draw from a whole subject, not one chapter), and Mixed sections each
+    // set their own chapter (or leave it blank for subject-wide) anyway.
+    if (!chapter && state.paperMode === 'manual') {
+      APP.toast('Chapter is required for chapter-wise mode', 'error');
+      return false;
+    }
 
     state.quiz = {
       ...(state.quiz || {}),
@@ -730,27 +845,25 @@ const TEST_BUILDER = (() => {
     if (!sec || sec.mode !== 'random') { panel.innerHTML = ''; return; }
 
     const scope = _sectionScope(sec);
-    const scopeLabel = [scope.batch, scope.subject, scope.chapter].filter(Boolean).join(' › ');
+    // chapter is optional here — omitted means subject-wide, pulling from
+    // every existing test's questions in that subject (the normal case for
+    // scholarship/NMMS-style sections). Only batch+subject are required.
+    const scopeLabel = scope.chapter
+      ? [scope.batch, scope.subject, scope.chapter].filter(Boolean).join(' › ')
+      : [scope.batch, scope.subject].filter(Boolean).join(' › ') + (scope.batch && scope.subject ? ' (whole subject)' : '');
 
     panel.innerHTML = `
       <div class="tb-automix" style="border-color:#6366f1">
-        <p class="tb-sub-label">🎲 Random Pick${scopeLabel ? ` — ${_esc(scopeLabel)}` : ''}</p>
-        ${(!scope.batch || !scope.subject || !scope.chapter)
-          ? `<p class="tb-sub-hint" style="color:#dc2626">Set this section's Batch/Subject/Chapter first.</p>`
+        <p class="tb-sub-label">🎲 Random Pick${scopeLabel.trim() ? ` — ${_esc(scopeLabel)}` : ''}</p>
+        ${(!scope.batch || !scope.subject)
+          ? `<p class="tb-sub-hint" style="color:#dc2626">Set this section's Batch/Subject first.</p>`
           : `
             <div class="tb-automix-row">
               <label>Count <input type="number" id="tb-rp-count" class="admin-input tb-mix-inp" min="1" max="200" value="${sec.count || 10}"></label>
-              <label>Difficulty
-                <select id="tb-rp-diff" class="admin-select">
-                  <option value="">Any</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </label>
               <button class="admin-btn-secondary" id="tb-rp-generate">🎲 Generate</button>
               <button class="admin-btn-secondary" id="tb-rp-reroll">🔄 Re-roll</button>
             </div>
+            <p class="tb-sub-hint">Picks from questions already in your existing published tests for this ${scope.chapter ? 'chapter' : 'subject'}.</p>
             <p class="tb-sub-hint" id="tb-rp-status"></p>
           `}
       </div>
@@ -764,10 +877,9 @@ const TEST_BUILDER = (() => {
     const sec = state.sections[state.activeSection];
     if (!sec) return;
     const scope = _sectionScope(sec);
-    if (!scope.batch || !scope.subject || !scope.chapter) return;
+    if (!scope.batch || !scope.subject) return;
 
     const count = Math.max(1, parseInt($('tb-rp-count')?.value) || sec.count || 10);
-    const difficulty = $('tb-rp-diff')?.value || undefined;
     sec.count = count;
 
     // Generate (additive): never re-pick questions already in this section.
@@ -779,12 +891,12 @@ const TEST_BUILDER = (() => {
     try {
       const results = await API.generateQuizQuestions([{
         key: sec.id, source_batch: scope.batch, subject: scope.subject, chapter: scope.chapter,
-        count, difficulty, exclude_q_ids: excludeIds,
+        count, exclude_q_ids: excludeIds,
       }]);
       const result = results[0];
 
       if (!result || !result.questions.length) {
-        APP.toast('No matching questions found in that chapter', 'error');
+        APP.toast(scope.chapter ? 'No matching questions found in that chapter' : 'No matching questions found in that subject', 'error');
         if (statusEl) statusEl.textContent = '';
         return;
       }
@@ -921,17 +1033,21 @@ const TEST_BUILDER = (() => {
     const selected = _getAllSelectedQIds();
     const scope    = _sectionScope(sec);
 
-    // True server-side random pick (a real cross-restart-random $sample, not
-    // a client-side reshuffle of whatever happens to already be loaded)
-    // whenever we know this section's chapter — i.e. almost always, since
-    // Step 1 requires batch/subject/chapter and Mixed sections carry their own.
-    if (scope.batch && scope.subject && scope.chapter) {
+    // True server-side random pick (a real $sample from existing tests'
+    // questions, not a client-side reshuffle of whatever happens to already
+    // be loaded) whenever we know this section's batch+subject — chapter is
+    // optional (subject-wide). Note: the source (existing quizzes'
+    // questions[]) doesn't carry a difficulty tag, so the Easy/Med/Hard
+    // buckets below no longer distinguish server-side — each bucket draws
+    // from the same subject-wide pool; client-side dedup below still keeps
+    // the final selection correct, just not difficulty-differentiated.
+    if (scope.batch && scope.subject) {
       try {
         const reqSections = Object.entries(counts)
           .filter(([, n]) => n > 0)
           .map(([difficulty, count]) => ({
             key: `${sec.id}_${difficulty}`, source_batch: scope.batch, subject: scope.subject, chapter: scope.chapter,
-            count, difficulty, exclude_q_ids: selected,
+            count, exclude_q_ids: selected,
           }));
         const results = await API.generateQuizQuestions(reqSections);
         let pickedCount = 0;
@@ -941,7 +1057,7 @@ const TEST_BUILDER = (() => {
             if (!sec.question_ids.includes(q.q_id)) { sec.question_ids.push(q.q_id); pickedCount++; }
           }
         }
-        if (!pickedCount) { APP.toast('No matching questions available in that chapter', 'info'); return; }
+        if (!pickedCount) { APP.toast('No matching questions available', 'info'); return; }
         await _loadBankQuestions();
         _renderBankList();
         _renderSelectedList();
