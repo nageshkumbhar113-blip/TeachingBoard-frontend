@@ -77,19 +77,19 @@ const VIDEO_TEACHER_SELECT = (() => {
       const parts = await API.fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId });
       if (!parts.length) return; // shouldn't happen (card implies ≥1), fail quiet
       if (parts.length === 1) {
-        _openPlayer(parts[0].video_id, parts[0].part_label || teacherName);
+        _openPlayer(parts[0].id, parts[0].video_id, parts[0].part_label || teacherName);
         return;
       }
       APP?.navigate?.('video-teachers');
       $('vts-title').textContent = `🎬 ${teacherName} — Parts`;
       const list = $('vts-list');
       list.innerHTML = parts.map(p => `
-        <button type="button" class="vts-part-card" data-video="${_esc(p.video_id)}" data-label="${_esc(p.part_label || 'Part')}">
+        <button type="button" class="vts-part-card" data-id="${_esc(p.id)}" data-video="${_esc(p.video_id)}" data-label="${_esc(p.part_label || 'Part')}">
           ▶ ${_esc(p.part_label || 'Video')}
         </button>
       `).join('');
       list.querySelectorAll('.vts-part-card').forEach(card => {
-        card.addEventListener('click', () => _openPlayer(card.dataset.video, card.dataset.label));
+        card.addEventListener('click', () => _openPlayer(card.dataset.id, card.dataset.video, card.dataset.label));
       });
     } catch (err) {
       console.warn('VIDEO_TEACHER_SELECT: failed to load parts', err);
@@ -97,17 +97,21 @@ const VIDEO_TEACHER_SELECT = (() => {
   }
 
   // ── Embedded player ───────────────────────────────────────────────────────
-  function _openPlayer(videoId, label) {
+  // dbId = the YoutubeTeacherVideo document _id (for the open-count metric),
+  // youtubeId = the actual YouTube video ID (for the iframe embed) — these
+  // are two different IDs, must not be conflated (see backend's
+  // /video-open/:videoId route, which expects the Mongo _id).
+  function _openPlayer(dbId, youtubeId, label) {
     const iframe = $('vp-iframe');
-    if (!iframe || !videoId) return;
+    if (!iframe || !youtubeId) return;
     // No autoplay — YouTube policy + student explicitly presses ▶ inside the
     // iframe itself once it loads.
-    iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0`;
+    iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeId)}?rel=0`;
     $('vp-title').textContent = `▶ ${label || 'Video'}`;
     APP?.navigate?.('video-player');
     _bindRotateToFill();
     _watchPlayerScreenClose(iframe);
-    API.recordYoutubeVideoOpen(videoId).catch(() => {}); // best-effort metric
+    if (dbId) API.recordYoutubeVideoOpen(dbId).catch(() => {}); // best-effort metric
   }
 
   // Rotate-to-fill: fills the viewport in landscape, pure CSS/JS (no native
