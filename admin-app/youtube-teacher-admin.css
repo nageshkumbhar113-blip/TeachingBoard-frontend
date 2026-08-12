@@ -1,0 +1,38 @@
+/* youtube-teacher-admin.css — styling for the YouTube Teachers admin tab
+   (youtubeTeacherAdmin.js). Reuses .bp-container/.bp-header/.import-hint
+   from batch-pricing.css — only new classes defined here. */
+
+.atab-sub {
+  padding: 8px 16px; border-radius: 8px; border: 1px solid #dcdfe6;
+  background: #fff; color: #333; font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.atab-sub:hover { background: #f5f6fa; }
+.atab-sub.active { background: #001f5c; color: #fff; border-color: #001f5c; }
+
+.ytt-input {
+  padding: 8px 12px; border-radius: 8px; border: 1px solid #dcdfe6;
+  font-size: 0.88rem; min-width: 220px; background: #fff; color: #222;
+}
+
+.ytt-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 16px; border-radius: 10px; background: #f7f8fb;
+  border: 1px solid #eceef3; margin-bottom: 8px; flex-wrap: wrap;
+}
+.ytt-row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ytt-row-info strong { font-size: 0.92rem; color: #1c1c1c; }
+.ytt-row-info small { font-size: 0.78rem; color: #6b7280; }
+.ytt-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.btn-tiny {
+  padding: 6px 12px; border-radius: 8px; border: none; font-size: 0.78rem;
+  font-weight: 700; cursor: pointer;
+}
+.btn-approve { background: #0d6d64; color: #fff; }
+.btn-reject  { background: #fbe9e1; color: #b3441f; }
+
+.status-chip { font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+.status-chip.approved { background: #e3f2ef; color: #0d6d64; }
+.status-chip.rejected { background: #fbe9e1; color: #b3441f; }
+.status-chip.pending  { background: #fdf0d9; color: #9a6a0a; }

@@ -242,6 +242,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'exercise')    window.EXERCISE_MANAGER?.init();
         if (tab.dataset.tab === 'papers')      window.PAPER_BUILDER?.init();
         if (tab.dataset.tab === 'pricing')     window.BATCH_PRICING?.init();
+        if (tab.dataset.tab === 'youtube-teachers') window.YOUTUBE_TEACHER_ADMIN?.init();
         if (tab.dataset.tab === 'dashboard')   _loadDashboard();
       });
     });
