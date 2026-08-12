@@ -34,6 +34,10 @@ const TEST_BUILDER = (() => {
     bankQuestions     : [],
     filters           : { subject: '', chapter: '', difficulty: '' },
     previewShowAnswers: true,
+    // 'manual' / 'random' / 'mixed' — all three share the exact same
+    // state.sections array; 'mixed' is the only mode where each section
+    // gets its own batch/subject/chapter instead of inheriting Step 1's.
+    paperMode         : 'manual',
   };
 
   // ════════════════════════
@@ -46,12 +50,14 @@ const TEST_BUILDER = (() => {
       if (!existing) { APP.toast('Quiz not found', 'error'); return; }
       state.quiz     = existing;
       state.sections = JSON.parse(JSON.stringify(existing.sections || []));
+      state.paperMode = existing.paper_mode || 'manual';
     } else {
       state.quiz     = null;
       state.sections = [
         { id: 'sec_1', label: 'Section A', type: 'mcq',
-          question_ids: [], timer: 30, positive_marks: 1, negative_marks: 0 },
+          question_ids: [], timer: 30, positive_marks: 1, negative_marks: 0, mode: 'manual' },
       ];
+      state.paperMode = 'manual';
     }
 
     state.step               = 1;
@@ -160,6 +166,22 @@ const TEST_BUILDER = (() => {
           <label for="tb-shuffle">Auto-shuffle questions</label>
         </div>
 
+        <p class="tb-step-label">🧩 Paper Mode</p>
+        <div class="tb-field-inline" style="gap:18px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="radio" name="tb-paper-mode" value="manual" ${state.paperMode === 'manual' ? 'checked' : ''}>
+            Chapter-wise (manual pick)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="radio" name="tb-paper-mode" value="random" ${state.paperMode === 'random' ? 'checked' : ''}>
+            Random from chapter
+          </label>
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="radio" name="tb-paper-mode" value="mixed" ${state.paperMode === 'mixed' ? 'checked' : ''}>
+            Mixed (section-wise)
+          </label>
+        </div>
+
         <p class="tb-step-label">📂 Sections</p>
         <div id="tb-sections-list"></div>
         <button class="admin-btn-secondary" id="tb-add-section" style="margin-top:6px">+ Add Section</button>
@@ -168,6 +190,24 @@ const TEST_BUILDER = (() => {
 
     _loadBatchSelect();
     _renderSectionsList();
+
+    document.querySelectorAll('input[name="tb-paper-mode"]').forEach(radio => {
+      radio.addEventListener('change', e => {
+        state.paperMode = e.target.value;
+        // Non-mixed modes have exactly one implicit section that inherits
+        // Step 1's batch/subject/chapter — collapse down to it so a user
+        // switching away from Mixed doesn't leave orphaned extra sections.
+        if (state.paperMode !== 'mixed' && state.sections.length > 1) {
+          state.sections = [state.sections[0]];
+          state.activeSection = 0;
+        }
+        state.sections.forEach(sec => {
+          sec.mode = state.paperMode === 'random' ? 'random' : (sec.mode || 'manual');
+          if (state.paperMode === 'mixed') sec.type = 'mcq';
+        });
+        _renderSectionsList();
+      });
+    });
 
     $('tb-footer').innerHTML = `
       <div class="tb-footer-actions">
@@ -247,35 +287,108 @@ const TEST_BUILDER = (() => {
     chapterSelect.value = chapters.includes(nextChapter) ? nextChapter : '';
   }
 
-  function _renderSectionsList() {
+  async function _renderSectionsList() {
     const list = $('tb-sections-list');
     if (!list) return;
+    const isMixed = state.paperMode === 'mixed';
     list.innerHTML = '';
 
-    state.sections.forEach((sec, i) => {
+    const batches = isMixed ? await DB.getAllBatches() : [];
+
+    for (let i = 0; i < state.sections.length; i++) {
+      const sec = state.sections[i];
       const row = document.createElement('div');
       row.className = 'tb-section-row';
       row.innerHTML = `
         <input class="admin-input tb-sec-label"
           value="${_esc(sec.label)}" placeholder="Label" data-idx="${i}">
-        <select class="admin-select tb-sec-type" data-idx="${i}">
+        <select class="admin-select tb-sec-type" data-idx="${i}" ${isMixed ? 'disabled' : ''}>
           <option value="mcq" ${sec.type === 'mcq' ? 'selected' : ''}>MCQ</option>
-          <option value="tf"  ${sec.type === 'tf'  ? 'selected' : ''}>True/False</option>
-          <option value="fib" ${sec.type === 'fib' ? 'selected' : ''}>Fill in Blank</option>
+          ${isMixed ? '' : `
+            <option value="tf"  ${sec.type === 'tf'  ? 'selected' : ''}>True/False</option>
+            <option value="fib" ${sec.type === 'fib' ? 'selected' : ''}>Fill in Blank</option>
+          `}
         </select>
+        ${isMixed ? `
+          <select class="admin-select tb-sec-batch" data-idx="${i}">
+            <option value="">Batch</option>
+            ${batches.map(b => `<option value="${_esc(b.name)}" ${sec.source_batch === b.name ? 'selected' : ''}>${_esc(b.name)}</option>`).join('')}
+          </select>
+          <select class="admin-select tb-sec-subject" data-idx="${i}"><option value="">Subject</option></select>
+          <select class="admin-select tb-sec-chapter" data-idx="${i}"><option value="">Chapter</option></select>
+          <select class="admin-select tb-sec-mode" data-idx="${i}">
+            <option value="manual" ${sec.mode !== 'random' ? 'selected' : ''}>Manual</option>
+            <option value="random" ${sec.mode === 'random' ? 'selected' : ''}>Random</option>
+          </select>
+          ${sec.mode === 'random'
+            ? `<input type="number" class="admin-input tb-sec-count" data-idx="${i}" min="1" max="200" placeholder="Count" value="${sec.count ?? ''}" style="width:70px">`
+            : ''}
+          <input type="number" class="admin-input tb-sec-pos" data-idx="${i}" min="0" step="0.25" placeholder="+marks" value="${sec.positive_marks ?? 1}" style="width:70px">
+          <input type="number" class="admin-input tb-sec-neg" data-idx="${i}" min="0" step="0.25" placeholder="-marks" value="${sec.negative_marks ?? 0}" style="width:70px">
+        ` : ''}
         <span class="tb-sec-count">${sec.question_ids.length} Q</span>
         ${state.sections.length > 1
           ? `<button class="tb-sec-del" data-idx="${i}" title="Remove">✕</button>`
           : ''}
       `;
       list.appendChild(row);
-    });
+
+      if (isMixed) {
+        const subjectSel = row.querySelector('.tb-sec-subject');
+        const chapterSel = row.querySelector('.tb-sec-chapter');
+        const subjects = sec.source_batch ? (await DB.getSubjectsByBatch(sec.source_batch)).map(s => s.name) : [];
+        _setTopicSelectOptions(subjectSel, subjects, 'Subject');
+        if (subjects.includes(sec.subject)) subjectSel.value = sec.subject;
+        const chapters = (sec.source_batch && subjectSel.value)
+          ? (await DB.getChaptersByBatchSubject(sec.source_batch, subjectSel.value)).map(c => c.name)
+          : [];
+        _setTopicSelectOptions(chapterSel, chapters, 'Chapter');
+        if (chapters.includes(sec.chapter)) chapterSel.value = sec.chapter;
+      }
+    }
 
     list.querySelectorAll('.tb-sec-label').forEach(inp =>
       inp.addEventListener('change', e => { state.sections[+e.target.dataset.idx].label = e.target.value; })
     );
     list.querySelectorAll('.tb-sec-type').forEach(sel =>
       sel.addEventListener('change', e => { state.sections[+e.target.dataset.idx].type = e.target.value; })
+    );
+    list.querySelectorAll('.tb-sec-batch').forEach(sel =>
+      sel.addEventListener('change', e => {
+        const sec = state.sections[+e.target.dataset.idx];
+        sec.source_batch = e.target.value;
+        sec.subject = '';
+        sec.chapter = '';
+        _renderSectionsList();
+      })
+    );
+    list.querySelectorAll('.tb-sec-subject').forEach(sel =>
+      sel.addEventListener('change', e => {
+        const sec = state.sections[+e.target.dataset.idx];
+        sec.subject = e.target.value;
+        sec.chapter = '';
+        _renderSectionsList();
+      })
+    );
+    list.querySelectorAll('.tb-sec-chapter').forEach(sel =>
+      sel.addEventListener('change', e => { state.sections[+e.target.dataset.idx].chapter = e.target.value; })
+    );
+    list.querySelectorAll('.tb-sec-mode').forEach(sel =>
+      sel.addEventListener('change', e => {
+        state.sections[+e.target.dataset.idx].mode = e.target.value;
+        _renderSectionsList();
+      })
+    );
+    list.querySelectorAll('.tb-sec-count').forEach(inp =>
+      inp.addEventListener('change', e => {
+        state.sections[+e.target.dataset.idx].count = Math.max(1, parseInt(e.target.value) || 0) || undefined;
+      })
+    );
+    list.querySelectorAll('.tb-sec-pos').forEach(inp =>
+      inp.addEventListener('change', e => { state.sections[+e.target.dataset.idx].positive_marks = parseFloat(e.target.value) || 0; })
+    );
+    list.querySelectorAll('.tb-sec-neg').forEach(inp =>
+      inp.addEventListener('change', e => { state.sections[+e.target.dataset.idx].negative_marks = parseFloat(e.target.value) || 0; })
     );
     list.querySelectorAll('.tb-sec-del').forEach(btn =>
       btn.addEventListener('click', e => {
@@ -293,6 +406,9 @@ const TEST_BUILDER = (() => {
     state.sections.push({
       id: `sec_${Date.now()}`, label, type: 'mcq',
       question_ids: [], timer: 30, positive_marks: 1, negative_marks: 0,
+      mode: state.paperMode === 'random' ? 'random' : 'manual',
+      source_batch: $('tb-batch')?.value || '',
+      subject: '', chapter: '',
     });
     _renderSectionsList();
   }
@@ -321,6 +437,7 @@ const TEST_BUILDER = (() => {
       negative_marks: parseFloat($('tb-neg-marks')?.value) ?? 0,
       shuffle       : $('tb-shuffle')?.checked             || false,
       sections      : state.sections,
+      paper_mode    : state.paperMode,
     };
     return true;
   }
@@ -348,6 +465,7 @@ const TEST_BUILDER = (() => {
             </div>
           </div>
           <div class="tb-section-tabs" id="tb-section-tabs"></div>
+          <div id="tb-random-pick-panel"></div>
           <div class="tb-bank-list" id="tb-bank-list">
             <p class="tb-empty-hint">Loading questions…</p>
           </div>
@@ -512,28 +630,47 @@ const TEST_BUILDER = (() => {
     await _loadBankQuestions();
     _buildFilterOptions();
     _renderSectionTabs();
+    _renderRandomPickPanel();
     _renderBankList();
     _renderSelectedList();
   }
 
   async function _loadBankQuestions() {
-    const batch = state.quiz?.batch || '';
+    const sec = state.sections[state.activeSection];
+    // Mixed-mode sections carry their own batch — the bank browser must show
+    // what that section can actually draw from, not the whole quiz's batch.
+    const batch = (state.paperMode === 'mixed' && sec?.source_batch)
+      ? sec.source_batch
+      : (state.quiz?.batch || '');
     state.bankQuestions = batch
       ? await DB.getQuestionsByBatch(batch)
       : await DB.getAllQuestions();
   }
 
   function _buildFilterOptions() {
+    // Re-callable (Mixed mode reloads this on every section-tab switch,
+    // since each section can draw from a different batch) — always rebuild
+    // from scratch rather than appending on top of the previous section's options.
     const subjects = [...new Set(state.bankQuestions.map(q => q.subject).filter(Boolean))];
-    subjects.forEach(s => {
-      const o = document.createElement('option'); o.value = s; o.textContent = s;
-      $('tb-f-subject')?.appendChild(o);
-    });
+    const subjectSel = $('tb-f-subject');
+    if (subjectSel) {
+      subjectSel.innerHTML = '<option value="">All Subjects</option>';
+      subjects.forEach(s => {
+        const o = document.createElement('option'); o.value = s; o.textContent = s;
+        subjectSel.appendChild(o);
+      });
+      subjectSel.value = subjects.includes(state.filters.subject) ? state.filters.subject : '';
+    }
     const chapters = [...new Set(state.bankQuestions.map(q => q.chapter).filter(Boolean))];
-    chapters.forEach(c => {
-      const o = document.createElement('option'); o.value = c; o.textContent = c;
-      $('tb-f-chapter')?.appendChild(o);
-    });
+    const chapterSel = $('tb-f-chapter');
+    if (chapterSel) {
+      chapterSel.innerHTML = '<option value="">All Chapters</option>';
+      chapters.forEach(c => {
+        const o = document.createElement('option'); o.value = c; o.textContent = c;
+        chapterSel.appendChild(o);
+      });
+      chapterSel.value = chapters.includes(state.filters.chapter) ? state.filters.chapter : '';
+    }
   }
 
   function _renderSectionTabs() {
@@ -544,14 +681,125 @@ const TEST_BUILDER = (() => {
       const btn = document.createElement('button');
       btn.className   = `tb-sec-tab${i === state.activeSection ? ' active' : ''}`;
       btn.textContent = `${sec.label} (${sec.question_ids.length})`;
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         state.activeSection = i;
+        if (state.paperMode === 'mixed') {
+          // Each mixed-mode section can draw from a different batch/subject —
+          // reset the bank filters to the new section's own scope.
+          state.filters = {
+            subject: sec.subject || '',
+            chapter: sec.chapter || '',
+            difficulty: '',
+          };
+          await _loadBankQuestions();
+          _buildFilterOptions();
+        }
         _renderSectionTabs();
+        _renderRandomPickPanel();
         _renderSelectedList();
         _renderBankList();
       });
       tabs.appendChild(btn);
     });
+  }
+
+  // ── Random Pick (server-side $sample, for 'random'/'mixed' sections) ──
+
+  function _sectionScope(sec) {
+    return state.paperMode === 'mixed'
+      ? { batch: sec?.source_batch || '', subject: sec?.subject || '', chapter: sec?.chapter || '' }
+      : { batch: state.quiz?.batch || '', subject: state.quiz?.subject || '', chapter: state.quiz?.chapter || '' };
+  }
+
+  function _renderRandomPickPanel() {
+    const panel = $('tb-random-pick-panel');
+    if (!panel) return;
+    const sec = state.sections[state.activeSection];
+    if (!sec || sec.mode !== 'random') { panel.innerHTML = ''; return; }
+
+    const scope = _sectionScope(sec);
+    const scopeLabel = [scope.batch, scope.subject, scope.chapter].filter(Boolean).join(' › ');
+
+    panel.innerHTML = `
+      <div class="tb-automix" style="border-color:#6366f1">
+        <p class="tb-sub-label">🎲 Random Pick${scopeLabel ? ` — ${_esc(scopeLabel)}` : ''}</p>
+        ${(!scope.batch || !scope.subject || !scope.chapter)
+          ? `<p class="tb-sub-hint" style="color:#dc2626">Set this section's Batch/Subject/Chapter first.</p>`
+          : `
+            <div class="tb-automix-row">
+              <label>Count <input type="number" id="tb-rp-count" class="admin-input tb-mix-inp" min="1" max="200" value="${sec.count || 10}"></label>
+              <label>Difficulty
+                <select id="tb-rp-diff" class="admin-select">
+                  <option value="">Any</option>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </label>
+              <button class="admin-btn-secondary" id="tb-rp-generate">🎲 Generate</button>
+              <button class="admin-btn-secondary" id="tb-rp-reroll">🔄 Re-roll</button>
+            </div>
+            <p class="tb-sub-hint" id="tb-rp-status"></p>
+          `}
+      </div>
+    `;
+
+    $('tb-rp-generate')?.addEventListener('click', () => _doRandomPick({ replace: false }));
+    $('tb-rp-reroll')?.addEventListener('click', () => _doRandomPick({ replace: true }));
+  }
+
+  async function _doRandomPick({ replace }) {
+    const sec = state.sections[state.activeSection];
+    if (!sec) return;
+    const scope = _sectionScope(sec);
+    if (!scope.batch || !scope.subject || !scope.chapter) return;
+
+    const count = Math.max(1, parseInt($('tb-rp-count')?.value) || sec.count || 10);
+    const difficulty = $('tb-rp-diff')?.value || undefined;
+    sec.count = count;
+
+    // Generate (additive): never re-pick questions already in this section.
+    // Re-roll: clear the section first, so a full fresh set is requested.
+    const excludeIds = replace ? [] : sec.question_ids.slice();
+    const statusEl = $('tb-rp-status');
+    if (statusEl) statusEl.textContent = 'Fetching…';
+
+    try {
+      const results = await API.generateQuizQuestions([{
+        key: sec.id, source_batch: scope.batch, subject: scope.subject, chapter: scope.chapter,
+        count, difficulty, exclude_q_ids: excludeIds,
+      }]);
+      const result = results[0];
+
+      if (!result || !result.questions.length) {
+        APP.toast('No matching questions found in that chapter', 'error');
+        if (statusEl) statusEl.textContent = '';
+        return;
+      }
+
+      for (const q of result.questions) {
+        await DB.saveQuestion({ ...q, batch: scope.batch, subject: scope.subject, chapter: scope.chapter });
+      }
+
+      if (replace) sec.question_ids = [];
+      result.questions.forEach(q => {
+        if (!sec.question_ids.includes(q.q_id)) sec.question_ids.push(q.q_id);
+      });
+
+      await _loadBankQuestions();
+      _renderBankList();
+      _renderSelectedList();
+      _renderSectionTabs();
+
+      if (statusEl) {
+        statusEl.textContent = result.returned < result.requested
+          ? `⚠️ Only ${result.returned} of ${result.requested} available in this chapter`
+          : `✅ ${result.returned} questions picked`;
+      }
+    } catch (err) {
+      APP.toast(err?.message || 'Random pick failed', 'error');
+      if (statusEl) statusEl.textContent = '';
+    }
   }
 
   function _renderBankList() {
@@ -650,22 +898,60 @@ const TEST_BUILDER = (() => {
   // ── Auto-Mix ──────────────────────────────
 
   async function _doAutoMix() {
-    const easy   = Math.max(0, parseInt($('tb-mix-easy')?.value)   || 0);
-    const medium = Math.max(0, parseInt($('tb-mix-medium')?.value) || 0);
-    const hard   = Math.max(0, parseInt($('tb-mix-hard')?.value)   || 0);
-
-    if (!easy && !medium && !hard) { APP.toast('Enter at least one count', 'error'); return; }
+    const counts = {
+      easy  : Math.max(0, parseInt($('tb-mix-easy')?.value)   || 0),
+      medium: Math.max(0, parseInt($('tb-mix-medium')?.value) || 0),
+      hard  : Math.max(0, parseInt($('tb-mix-hard')?.value)   || 0),
+    };
+    if (!counts.easy && !counts.medium && !counts.hard) { APP.toast('Enter at least one count', 'error'); return; }
 
     const sec      = state.sections[state.activeSection];
     const selected = _getAllSelectedQIds();
-    const pool     = state.bankQuestions.filter(q => !selected.includes(q.q_id));
+    const scope    = _sectionScope(sec);
 
+    // True server-side random pick (a real cross-restart-random $sample, not
+    // a client-side reshuffle of whatever happens to already be loaded)
+    // whenever we know this section's chapter — i.e. almost always, since
+    // Step 1 requires batch/subject/chapter and Mixed sections carry their own.
+    if (scope.batch && scope.subject && scope.chapter) {
+      try {
+        const reqSections = Object.entries(counts)
+          .filter(([, n]) => n > 0)
+          .map(([difficulty, count]) => ({
+            key: `${sec.id}_${difficulty}`, source_batch: scope.batch, subject: scope.subject, chapter: scope.chapter,
+            count, difficulty, exclude_q_ids: selected,
+          }));
+        const results = await API.generateQuizQuestions(reqSections);
+        let pickedCount = 0;
+        for (const result of results) {
+          for (const q of result.questions) {
+            await DB.saveQuestion({ ...q, batch: scope.batch, subject: scope.subject, chapter: scope.chapter });
+            if (!sec.question_ids.includes(q.q_id)) { sec.question_ids.push(q.q_id); pickedCount++; }
+          }
+        }
+        if (!pickedCount) { APP.toast('No matching questions available in that chapter', 'info'); return; }
+        await _loadBankQuestions();
+        _renderBankList();
+        _renderSelectedList();
+        _renderSectionTabs();
+        APP.toast(`✅ ${pickedCount} questions auto-selected`, 'success');
+        return;
+      } catch (err) {
+        console.warn('Server auto-mix failed, falling back to local bank sampling:', err?.message);
+        // fall through to the offline-safe client-side sampling below
+      }
+    }
+
+    // Fallback: legacy client-side sampling from the already-loaded local
+    // bank — used when this section's scope isn't set yet, or the server
+    // call failed/is offline.
+    const pool = state.bankQuestions.filter(q => !selected.includes(q.q_id));
     const pick = (diff, count) => {
       const bucket = pool.filter(q => q.difficulty === diff);
       return [...bucket].sort(() => Math.random() - 0.5).slice(0, count).map(q => q.q_id);
     };
 
-    const picked = [...pick('easy', easy), ...pick('medium', medium), ...pick('hard', hard)];
+    const picked = [...pick('easy', counts.easy), ...pick('medium', counts.medium), ...pick('hard', counts.hard)];
     if (!picked.length) { APP.toast('No matching questions available in bank', 'info'); return; }
 
     picked.forEach(id => { if (!sec.question_ids.includes(id)) sec.question_ids.push(id); });
@@ -829,7 +1115,10 @@ const TEST_BUILDER = (() => {
 
     const quiz       = state.quiz;
     const allQIds    = _getAllSelectedQIds();
-    const totalMarks = allQIds.length * (quiz?.positive_marks ?? 1);
+    const totalMarks = state.sections.reduce(
+      (sum, sec) => sum + sec.question_ids.length * (sec.positive_marks ?? quiz?.positive_marks ?? 1),
+      0
+    );
     const timerLabel = quiz?.timer_mode === 'full_test'
       ? `${quiz.timer_value}s total` : `${quiz.timer_value}s / question`;
 

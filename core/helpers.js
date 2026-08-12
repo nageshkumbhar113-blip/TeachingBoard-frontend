@@ -670,6 +670,19 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  // Admin-only — server-side random MCQ pick for the Mixed Test Paper
+  // Builder's "random" sections (testBuilder.js). Each call re-rolls a
+  // fresh $sample from the matching Question pool.
+  async function generateQuizQuestions(sections) {
+    const token = await ensureAdminSession();
+    const payload = await request('/quizzes/generate-questions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ sections }),
+    });
+    return payload?.data || [];
+  }
+
   async function fetchLessons(limit = 50) {
     const profile = await getStudentProfile();
     const token   = profile?.student_code ? await ensureStudentSession() : '';
@@ -2174,7 +2187,7 @@ const API = (() => {
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
-    fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
+    fetchQuiz, fetchPublishedQuizzes, fetchQuizById, generateQuizQuestions, fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
