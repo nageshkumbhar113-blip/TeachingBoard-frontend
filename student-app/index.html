@@ -338,11 +338,6 @@
           <div class="lesson-list" id="lesson-list"></div>
         </section>
 
-        <section class="home-section hidden" id="available-tests-section" aria-label="Published Quizzes">
-          <h3 class="section-label">📝 Published Quizzes</h3>
-          <div id="available-tests-list"></div>
-        </section>
-
         <section class="home-section" aria-label="Recent Attempts">
           <div class="section-label-row">
             <h3 class="section-label">📊 Recent Attempts</h3>
@@ -926,6 +921,25 @@
             <iframe id="vp-iframe" class="vp-iframe" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen title="Video"></iframe>
           </div>
         </div>
+      </section>
+
+      <!-- ── CHAPTER HUB (Test / Notes / Exercise) ─────────── -->
+      <section id="screen-chapter-hub" class="screen hidden" aria-label="Chapter Options">
+        <header class="quiz-header">
+          <h2 class="quiz-title" id="chapter-hub-title">Chapter</h2>
+        </header>
+        <div class="chapter-hub-grid" id="chapter-hub-grid" role="list"></div>
+      </section>
+
+      <!-- ── TEST LIST (opened from Chapter Hub) ───────────── -->
+      <section id="screen-test-list" class="screen hidden" aria-label="Tests">
+        <header class="quiz-header">
+          <h2 class="quiz-title" id="test-list-title">Tests</h2>
+        </header>
+        <section class="home-section hidden" id="available-tests-section" aria-label="Published Quizzes">
+          <h3 class="section-label">📝 Published Quizzes</h3>
+          <div id="available-tests-list"></div>
+        </section>
       </section>
 
       <section id="screen-vocab" class="screen hidden" aria-label="Word Learning">

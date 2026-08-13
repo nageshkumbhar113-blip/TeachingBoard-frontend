@@ -658,6 +658,30 @@ select {
 
 .chapter-arrow { color: var(--text3); font-size: 1.1rem; margin-left: 8px; flex-shrink: 0; }
 
+/* ── Chapter Hub (Test / Notes / Exercise) ──────── */
+.chapter-hub-grid { display: flex; flex-direction: column; gap: 8px; }
+
+.chapter-hub-btn {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color var(--transition), transform var(--transition);
+}
+.chapter-hub-btn:hover        { border-color: var(--accent); transform: translateX(4px); }
+.chapter-hub-btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chapter-hub-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1; }
+.chapter-hub-text { flex: 1; min-width: 0; color: var(--text); }
+.chapter-hub-text strong { display: block; font-size: 0.95rem; font-weight: 700; }
+.chapter-hub-text small  { display: block; font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
+.chapter-hub-arrow { color: var(--text3); font-size: 1.1rem; flex-shrink: 0; }
+
 /* ── History items (home + results) ─── */
 .history-section { margin-top: 8px; }
 .history-list    { display: flex; flex-direction: column; gap: 8px; }

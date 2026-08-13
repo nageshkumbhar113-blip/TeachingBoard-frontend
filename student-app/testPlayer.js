@@ -1087,10 +1087,18 @@ const TEST_PLAYER = (() => {
       if ($('tp-quiz-view')?.classList.contains('hidden')) return;
       if (document.querySelector('.modal-overlay:not(.hidden)')) return;
       if (_isTypingTarget(e.target)) return;
+      // A focused answer button (remote/keyboard user tabbed onto an option)
+      // already handles Enter/Space natively as a click — don't also fire
+      // the global next-question/timeout shortcut on the same keypress, or
+      // selecting an answer would instantly skip/lock the question instead.
+      const onAnswerBtn = e.target?.matches?.('.option-btn, .tf-btn');
 
       switch (e.key) {
-        case 'ArrowRight':
-        case 'Enter'     : _nextQ(); break;
+        case 'ArrowRight': _nextQ(); break;
+        case 'Enter'     :
+          if (onAnswerBtn) break;
+          _nextQ();
+          break;
         case 'ArrowLeft' : _prevQ(); break;
         case 'n':
         case 'N':
@@ -1113,6 +1121,7 @@ const TEST_PLAYER = (() => {
           _flagCurrentQuestion();
           break;
         case ' ':
+          if (onAnswerBtn) break;
           e.preventDefault();
           if (!state.answered) _onPerQTimeout();
           break;

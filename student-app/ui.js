@@ -40,6 +40,95 @@ const UI = (() => {
   }
 
   // ════════════════════════
+  // REMOTE / KEYBOARD (TV D-pad) NAVIGATION
+  // ════════════════════════
+  // Custom clickable <div> "cards" (batch/subject/chapter/student cards etc.)
+  // aren't natively focusable or keyboard-activatable like <button>/<a>.
+  // makeFocusable() marks such an element so a TV remote's D-pad can tab onto
+  // it, and the global keydown listener below fires its existing click
+  // handler on Enter/Space — the click handler itself is never touched.
+
+  function makeFocusable(el) {
+    if (!el) return el;
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+    return el;
+  }
+
+  // Single app-wide listener: Enter/Space/NumpadEnter on a focused element
+  // triggers a synthetic click on that same element. Text inputs, textareas,
+  // selects and contenteditable are excluded so normal typing/form-submit
+  // behavior (e.g. the login/onboarding fields) is completely unaffected.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'NumpadEnter') return;
+    const target = e.target;
+    if (!target || target === document.body) return;
+    const tag = target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return;
+    if (tag === 'BUTTON' || tag === 'A') return; // native elements already handle this themselves
+    if (target.getAttribute('tabindex') === null) return; // only elements we explicitly made focusable
+    e.preventDefault();
+    target.click();
+  });
+
+  // ════════════════════════
+  // GRID ARROW-KEY NAVIGATION (TV D-pad)
+  // ════════════════════════
+  // Lets Up/Down/Left/Right move focus between sibling "cards"/answer
+  // buttons in a grid, instead of only linear Tab order. Delegated +
+  // geometry-based (nearest neighbour in the pressed direction), so it
+  // needs no per-screen wiring and keeps working after re-renders.
+  //
+  // .option-btn/.tf-btn (quiz + test-player answer grids) intentionally
+  // only get Up/Down here — quiz.js/testPlayer.js already bind
+  // ArrowLeft/ArrowRight globally to prev/next-question, a pre-existing
+  // shortcut this must not override.
+  const _GRID_ALL_DIRS_SELECTOR = '.batch-card, .subject-card, .chapter-item, .mtp-item, .vocab-test-card, .wtp-test-card';
+  const _GRID_VERT_ONLY_SELECTOR = '.option-btn, .tf-btn';
+  const _GRID_ITEM_SELECTOR = `${_GRID_ALL_DIRS_SELECTOR}, ${_GRID_VERT_ONLY_SELECTOR}`;
+
+  document.addEventListener('keydown', e => {
+    const dir = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[e.key];
+    if (!dir) return;
+
+    const active = document.activeElement;
+    if (!active || !active.matches?.(_GRID_ITEM_SELECTOR)) return;
+    if ((dir === 'left' || dir === 'right') && active.matches(_GRID_VERT_ONLY_SELECTOR)) return;
+
+    const container = active.parentElement;
+    if (!container) return;
+    const items = Array.from(container.children).filter(el =>
+      el !== active && el.matches(_GRID_ITEM_SELECTOR) && !el.disabled && el.offsetParent !== null
+    );
+    if (!items.length) return;
+
+    const a  = active.getBoundingClientRect();
+    const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+
+    let best = null, bestScore = Infinity;
+    for (const el of items) {
+      const r  = el.getBoundingClientRect();
+      const ex = r.left + r.width / 2, ey = r.top + r.height / 2;
+      const dx = ex - ax, dy = ey - ay;
+      let primary, cross;
+      if (dir === 'up')    { if (dy >= -1) continue; primary = -dy; cross = Math.abs(dx); }
+      if (dir === 'down')  { if (dy <=  1) continue; primary =  dy; cross = Math.abs(dx); }
+      if (dir === 'left')  { if (dx >= -1) continue; primary = -dx; cross = Math.abs(dy); }
+      if (dir === 'right') { if (dx <=  1) continue; primary =  dx; cross = Math.abs(dy); }
+      const score = primary + cross * 2; // prioritize staying aligned over pure closeness
+      if (score < bestScore) { bestScore = score; best = el; }
+    }
+    if (best) {
+      e.preventDefault();
+      best.focus();
+      // Unlike native Tab, a scripted .focus() doesn't always scroll the
+      // target into view on its own — make sure the newly focused card
+      // is actually visible after the jump.
+      best.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
+
+  // ════════════════════════
   // TOAST SYSTEM
   // ════════════════════════
 
@@ -279,6 +368,7 @@ const UI = (() => {
       const card  = document.createElement('div');
       card.className = 'batch-card';
       card.setAttribute('role', 'listitem');
+      makeFocusable(card);
       card.innerHTML = `
         ${meta.cover_image
           ? `<div class="batch-cover"><img src="${meta.cover_image}" alt="" loading="lazy"></div>`
@@ -337,6 +427,7 @@ const UI = (() => {
       const item = document.createElement('div');
       item.className = 'chapter-item';
       item.setAttribute('role', 'listitem');
+      makeFocusable(item);
       item.innerHTML = `
         <div class="chapter-info">
           <div class="chapter-name">${ch}</div>
@@ -505,6 +596,7 @@ const UI = (() => {
       const card  = document.createElement('div');
       card.className = 'subject-card';
       card.setAttribute('role', 'listitem');
+      makeFocusable(card);
       card.innerHTML = `
         <div class="subject-icon">${icon}</div>
         <div class="subject-name">${sub}</div>
@@ -558,6 +650,7 @@ const UI = (() => {
       const item = document.createElement('div');
       item.className = 'chapter-item';
       item.setAttribute('role', 'listitem');
+      makeFocusable(item);
       item.innerHTML = `
         <div class="chapter-info">
           <div class="chapter-name">${ch}</div>
@@ -575,7 +668,56 @@ const UI = (() => {
 
     section.classList.remove('hidden');
     $('available-tests-section')?.classList.add('hidden');
+    $('chapter-hub-section')?.classList.add('hidden');
     await renderLessons();
+  }
+
+  // ════════════════════════
+  // CHAPTER HUB (Test / Notes / Exercise)
+  // ════════════════════════
+  // Shown after a chapter is picked, instead of immediately revealing the
+  // tests list — one clear choice screen. All 3 options are native
+  // <button> elements, so keyboard/TV D-pad support (Tab + Enter) works
+  // automatically, no extra remote-nav wiring needed here.
+
+  function renderChapterHub({ chapter = '', onTest = null, onNotes = null, onExercise = null } = {}) {
+    const grid  = $('chapter-hub-grid');
+    const title = $('chapter-hub-title');
+    if (!grid) return;
+
+    if (title) title.textContent = chapter || 'Chapter';
+    grid.innerHTML = '';
+
+    const options = [
+      { icon: '📝', label: 'Test',     meta: 'चाचणी द्या',        handler: onTest },
+      { icon: '📓', label: 'Notes',    meta: 'वाचन साहित्य',       handler: onNotes },
+      { icon: '📄', label: 'Exercise', meta: 'सराव प्रश्न',        handler: onExercise },
+    ];
+
+    const fragment = document.createDocumentFragment();
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chapter-hub-btn';
+      btn.setAttribute('aria-label', opt.label);
+      btn.innerHTML = `
+        <span class="chapter-hub-icon">${opt.icon}</span>
+        <span class="chapter-hub-text">
+          <strong>${opt.label}</strong>
+          <small>${opt.meta}</small>
+        </span>
+        <span class="chapter-hub-arrow" aria-hidden="true">›</span>
+      `;
+      if (opt.handler) btn.addEventListener('click', opt.handler);
+      fragment.appendChild(btn);
+    });
+    grid.appendChild(fragment);
+
+    $('available-tests-section')?.classList.add('hidden');
+    // Chapter Hub is its own screen (not another inline home-page section),
+    // so a chapter click actually navigates instead of just revealing more
+    // content to scroll to.
+    APP?.showScreen?.('chapter-hub');
   }
 
   async function renderAvailableQuizzes({
@@ -766,6 +908,7 @@ const UI = (() => {
     renderBatchGrid,
     renderSubjectGrid,
     renderChapterList,
+    renderChapterHub,
     renderLessons,
     renderRecentAttempts,
     renderAvailableQuizzes,
@@ -776,5 +919,7 @@ const UI = (() => {
     // Dialogs (Android-safe replacements for confirm/prompt)
     confirmAsync,
     promptAsync,
+    // Remote/keyboard (TV D-pad) navigation
+    makeFocusable,
   };
 })();
