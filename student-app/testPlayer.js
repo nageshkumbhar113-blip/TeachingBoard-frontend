@@ -134,6 +134,35 @@ const TEST_PLAYER = (() => {
     return fallback;
   }
 
+  // Shows the instructions modal and resolves true only if the student
+  // ticks "I have read the instructions" and presses Start; false if they
+  // close/cancel. Uses the plain openModal/closeModal(id) pair from ui.js —
+  // same generic .modal-overlay markup already styled app-wide.
+  function _showInstructionsGate(instructionsText) {
+    return new Promise(resolve => {
+      const textEl  = $('instr-gate-text');
+      const ackBox  = $('instr-gate-ack');
+      const startBtn = $('instr-gate-start');
+      if (!textEl || !ackBox || !startBtn) { resolve(true); return; } // markup missing — never block the test
+
+      textEl.textContent = instructionsText;
+      ackBox.checked = false;
+      startBtn.disabled = true;
+
+      const onAckChange = () => { startBtn.disabled = !ackBox.checked; };
+      const cleanup = () => {
+        ackBox.removeEventListener('change', onAckChange);
+        startBtn.removeEventListener('click', onStart);
+        UI.closeModal('instructions-gate-modal');
+      };
+      const onStart = () => { cleanup(); resolve(true); };
+
+      ackBox.addEventListener('change', onAckChange);
+      startBtn.addEventListener('click', onStart);
+      UI.openModal('instructions-gate-modal');
+    });
+  }
+
   async function startTest(quiz_id, mode = 'practice') {
     let quiz = null;
     try {
@@ -151,6 +180,14 @@ const TEST_PLAYER = (() => {
     if (!hasEmbeddedQuestions && !hasSectionRefs) {
       APP.toast('This quiz has no questions yet', 'error');
       return;
+    }
+
+    // Paper Pattern (Mixed) tests can carry exam instructions set by the
+    // admin — student must read + tick before the test actually begins.
+    // Quizzes without instructions skip this entirely (no behavior change).
+    if (quiz.instructions && quiz.instructions.trim()) {
+      const proceed = await _showInstructionsGate(quiz.instructions);
+      if (!proceed) return;
     }
 
     const questions = await _loadQuizQuestions(quiz);

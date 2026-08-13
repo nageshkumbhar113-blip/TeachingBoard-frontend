@@ -461,11 +461,114 @@ const TEST_BUILDER = (() => {
         <input id="tb-pattern-name" class="admin-input" placeholder="Pattern name (e.g. &quot;NMMS Pattern&quot;)" style="flex:1;min-width:200px">
         <button class="admin-btn-secondary" id="tb-pattern-save">💾 Save current sections as this Pattern</button>
       </div>
+
+      <p class="tb-step-label" style="margin-top:16px">📄 Exam Instructions (shown to student before test starts)</p>
+      <p class="tb-sub-hint">Paste the exam's instructions here (e.g. "All questions compulsory", "90 minutes", "No negative marking" etc.) — the student will see this on a screen with a "मी सूचना वाचल्या आहेत" tick before Start, and it will print on the exported PDF's first page.</p>
+      <textarea id="tb-instructions" class="admin-input" rows="6"
+        placeholder="1. सर्व प्रश्न सोडवणे आवश्यक आहे.&#10;2. प्रत्येक प्रश्नाला 1 गुण आहे.&#10;3. वेळ संपल्यावर पेपर आपोआप जमा होईल.&#10;..."
+        style="width:100%;resize:vertical;font-family:inherit">${_esc(state.quiz?.instructions)}</textarea>
+
+      <p class="tb-step-label" style="margin-top:16px">🤖 Build this Pattern from a real exam paper</p>
+      <p class="tb-sub-hint">Have a real question paper (NMMS/scholarship PDF etc.)? Copy this prompt into a separate Claude chat along with that PDF — it will give back a small structured block. Paste that block below and click "Apply" to auto-fill the Sections + Instructions above (nothing is sent anywhere from here — this app never reads the PDF itself).</p>
+      <pre id="tb-pattern-ai-prompt" class="bulk-prompt-text">I'm giving you a real exam question paper (PDF/image). Read it and reply with ONLY the following block, no extra text — using the actual sections/subjects/marks/instructions found in this real paper:
+
+PATTERN NAME: &lt;a short name for this paper, e.g. "NMMS MAT 2024-25"&gt;
+INSTRUCTIONS:
+&lt;copy the exam's own candidate instructions here, numbered, one per line&gt;
+END INSTRUCTIONS
+SECTIONS:
+&lt;Section label&gt; | &lt;Subject name&gt; | &lt;question count&gt; | &lt;marks per question&gt; | &lt;negative marks per wrong answer, 0 if none&gt;
+&lt;one line per section, same "|" format, in the paper's actual section order&gt;</pre>
+      <button type="button" class="admin-btn-secondary" id="tb-pattern-copy-prompt">📋 Copy Prompt</button>
+      <textarea id="tb-pattern-paste" class="admin-input" rows="6"
+        placeholder="Paste the PATTERN NAME / INSTRUCTIONS / SECTIONS block Claude gave you here…"
+        style="width:100%;resize:vertical;font-family:inherit;margin-top:8px"></textarea>
+      <button type="button" class="admin-btn-primary" id="tb-pattern-apply-paste" style="margin-top:8px">✅ Apply — Fill Sections &amp; Instructions</button>
     `;
 
     $('tb-pattern-load')?.addEventListener('click', _loadSelectedPattern);
     $('tb-pattern-save')?.addEventListener('click', _saveCurrentAsPattern);
     $('tb-pattern-delete')?.addEventListener('click', _deleteSelectedPattern);
+    $('tb-pattern-copy-prompt')?.addEventListener('click', _copyPatternAiPrompt);
+    $('tb-pattern-apply-paste')?.addEventListener('click', _applyPastedPatternBlock);
+  }
+
+  function _copyPatternAiPrompt() {
+    const text = $('tb-pattern-ai-prompt')?.textContent || '';
+    if (!text) return;
+    navigator.clipboard?.writeText(text)
+      .then(() => APP.toast('📋 Prompt copied — paste it into Claude along with the paper', 'success'))
+      .catch(() => APP.toast('Could not copy — select the text manually', 'error'));
+  }
+
+  // Parses the plain-text block described in the AI prompt above:
+  //   PATTERN NAME: ...
+  //   INSTRUCTIONS: ... END INSTRUCTIONS
+  //   SECTIONS: <label> | <subject> | <count> | <marks> | <negative>  (one per line)
+  // Deliberately tolerant (trims, skips blank/malformed lines) since this is
+  // free text coming back from an LLM, not a machine-generated file.
+  function _parsePatternBlock(raw) {
+    const text = String(raw || '').replace(/\r\n/g, '\n');
+    const nameMatch = text.match(/PATTERN NAME:\s*(.+)/i);
+    const instrMatch = text.match(/INSTRUCTIONS:\s*\n([\s\S]*?)\nEND INSTRUCTIONS/i);
+    const sectionsMatch = text.match(/SECTIONS:\s*\n([\s\S]*)$/i);
+
+    const sections = [];
+    if (sectionsMatch) {
+      sectionsMatch[1].split('\n').forEach(line => {
+        const parts = line.split('|').map(p => p.trim());
+        if (parts.length < 3) return;
+        const [label, subject, countStr, marksStr, negStr] = parts;
+        const count = parseInt(countStr, 10);
+        if (!label || !subject || !Number.isFinite(count) || count <= 0) return;
+        sections.push({
+          label,
+          subject,
+          count,
+          positive_marks: Number.isFinite(parseFloat(marksStr)) ? parseFloat(marksStr) : 1,
+          negative_marks: Number.isFinite(parseFloat(negStr)) ? parseFloat(negStr) : 0,
+        });
+      });
+    }
+
+    return {
+      name: nameMatch ? nameMatch[1].trim() : '',
+      instructions: instrMatch ? instrMatch[1].trim() : '',
+      sections,
+    };
+  }
+
+  function _applyPastedPatternBlock() {
+    const raw = $('tb-pattern-paste')?.value || '';
+    if (!raw.trim()) { APP.toast('Paste the block from Claude first', 'error'); return; }
+
+    const parsed = _parsePatternBlock(raw);
+    if (!parsed.sections.length) {
+      APP.toast('Could not find any valid SECTIONS lines — check the pasted format', 'error');
+      return;
+    }
+
+    const batch = $('tb-batch')?.value || '';
+    state.sections = parsed.sections.map((ps, i) => ({
+      id: `sec_${Date.now()}_${i}`,
+      label: ps.label,
+      type: 'mcq',
+      question_ids: [],
+      timer: 30,
+      positive_marks: ps.positive_marks,
+      negative_marks: ps.negative_marks,
+      mode: 'random',
+      source_batch: batch,
+      subject: ps.subject,
+      count: ps.count,
+    }));
+    state.activeSection = 0;
+    _renderSectionsList();
+
+    if (parsed.instructions && $('tb-instructions')) $('tb-instructions').value = parsed.instructions;
+    if (parsed.name && $('tb-pattern-name')) $('tb-pattern-name').value = parsed.name;
+
+    APP.toast(`✅ Filled ${parsed.sections.length} sections${parsed.instructions ? ' + instructions' : ''} from the pasted block`, 'success');
   }
 
   function _loadSelectedPattern() {
@@ -588,6 +691,11 @@ const TEST_BUILDER = (() => {
       shuffle       : $('tb-shuffle')?.checked             || false,
       sections      : state.sections,
       paper_mode    : state.paperMode,
+      // Only meaningful for 'mixed' (Paper Pattern) — shown to the student
+      // on a confirmation screen before the test starts, and printed on the
+      // exported PDF's first page. Harmless to keep for other modes too
+      // (simply stays empty/unused), so no branching needed here.
+      instructions  : $('tb-instructions')?.value.trim()   || '',
     };
     return true;
   }
@@ -1552,7 +1660,7 @@ For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
   // PUBLIC API
   // ════════════════════════
 
-  return { init, open, close, parseBulkText };
+  return { init, open, close, parseBulkText, parsePatternBlock: _parsePatternBlock };
 })();
 
 window.TEST_BUILDER = TEST_BUILDER;

@@ -469,6 +469,25 @@
         </section>
       </section>
 
+      <!-- Exam instructions gate — shown before a Paper Pattern (Mixed) test
+           with quiz.instructions actually starts. Hidden/unused for quizzes
+           without instructions (nothing renders, no behavior change). -->
+      <div id="instructions-gate-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="instr-gate-title">
+        <div class="modal-panel qedit-panel">
+          <div class="modal-header">
+            <h2 id="instr-gate-title">📄 Instructions</h2>
+          </div>
+          <div style="padding:16px 20px">
+            <div id="instr-gate-text" style="font-size:14px;line-height:1.7;white-space:pre-line;max-height:50vh;overflow-y:auto;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:14px">
+              <input type="checkbox" id="instr-gate-ack">
+              मी सूचना वाचल्या आहेत / I have read the instructions
+            </label>
+            <button id="instr-gate-start" class="action-btn accent" style="width:100%;margin-top:14px" disabled>▶️ Start Test</button>
+          </div>
+        </div>
+      </div>
+
       <section id="screen-test-player" class="screen hidden" aria-label="Test Player">
         <div id="tp-quiz-view">
           <header class="quiz-header">
