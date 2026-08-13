@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-08-13):** `7.4.1` · versionCode `98` · SW `v98`
+**सध्याची version (last updated 2026-08-13):** `7.4.2` · versionCode `99` · SW `v99`
 
 ---
 
@@ -71,3 +71,4 @@
 | ... | ... | ... | ... | (history gap — table not kept current between 7.0.0 and 7.3.0) |
 | **7.4.0** | **97** | **v97** | **2026-08-13** | MCQ Mixed Test Paper Builder + Paper Pattern, YouTube Teacher Partner Portal, Android TV remote support, --text1 CSS contrast fix |
 | **7.4.1** | **98** | **v98** | **2026-08-13** | Live-testing fixes: random-pick order shuffle, 4 explicit Paper Modes (Regular/Whole Chapter/Whole Subject/Paper Pattern), labeled section fields, AI bulk-paste prompt, visible Pattern Name field |
+| **7.4.2** | **99** | **v99** | **2026-08-13** | Mixed-test student visibility fix, Subject-optional for Paper Pattern, Exam Instructions gate + AI pattern import, PDF export margin fix + realistic layout (Roll No/Seat No box, 2-column, question/option images) |
