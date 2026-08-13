@@ -313,34 +313,46 @@ const TEST_BUILDER = (() => {
       const sec = state.sections[i];
       const row = document.createElement('div');
       row.className = 'tb-section-row';
+      const field = (labelText, innerHtml, width) => `
+        <div class="tb-sec-field" style="display:flex;flex-direction:column;gap:2px;${width ? `width:${width}` : ''}">
+          <label style="font-size:10px;color:var(--text2,#888);text-transform:uppercase;letter-spacing:0.03em">${labelText}</label>
+          ${innerHtml}
+        </div>
+      `;
+
       row.innerHTML = `
-        <input class="admin-input tb-sec-label"
-          value="${_esc(sec.label)}" placeholder="Label" data-idx="${i}">
-        <select class="admin-select tb-sec-type" data-idx="${i}" ${isMixed ? 'disabled' : ''}>
-          <option value="mcq" ${sec.type === 'mcq' ? 'selected' : ''}>MCQ</option>
-          ${isMixed ? '' : `
-            <option value="tf"  ${sec.type === 'tf'  ? 'selected' : ''}>True/False</option>
-            <option value="fib" ${sec.type === 'fib' ? 'selected' : ''}>Fill in Blank</option>
-          `}
-        </select>
+        ${field('Label', `<input class="admin-input tb-sec-label" value="${_esc(sec.label)}" placeholder="Label" data-idx="${i}">`)}
+        ${field('Type', `
+          <select class="admin-select tb-sec-type" data-idx="${i}" ${isMixed ? 'disabled' : ''}>
+            <option value="mcq" ${sec.type === 'mcq' ? 'selected' : ''}>MCQ</option>
+            ${isMixed ? '' : `
+              <option value="tf"  ${sec.type === 'tf'  ? 'selected' : ''}>True/False</option>
+              <option value="fib" ${sec.type === 'fib' ? 'selected' : ''}>Fill in Blank</option>
+            `}
+          </select>
+        `)}
         ${isMixed ? `
-          <select class="admin-select tb-sec-batch" data-idx="${i}">
-            <option value="">Batch</option>
-            ${batches.map(b => `<option value="${_esc(b.name)}" ${sec.source_batch === b.name ? 'selected' : ''}>${_esc(b.name)}</option>`).join('')}
-          </select>
-          <select class="admin-select tb-sec-subject" data-idx="${i}"><option value="">Subject</option></select>
-          <select class="admin-select tb-sec-chapter" data-idx="${i}"><option value="">Chapter</option></select>
-          <select class="admin-select tb-sec-mode" data-idx="${i}">
-            <option value="manual" ${sec.mode !== 'random' ? 'selected' : ''}>Manual</option>
-            <option value="random" ${sec.mode === 'random' ? 'selected' : ''}>Random</option>
-          </select>
+          ${field('Batch', `
+            <select class="admin-select tb-sec-batch" data-idx="${i}">
+              <option value="">Select Batch</option>
+              ${batches.map(b => `<option value="${_esc(b.name)}" ${sec.source_batch === b.name ? 'selected' : ''}>${_esc(b.name)}</option>`).join('')}
+            </select>
+          `)}
+          ${field('Subject', `<select class="admin-select tb-sec-subject" data-idx="${i}"><option value="">Select Subject</option></select>`)}
+          ${field('Chapter (blank = all chapters)', `<select class="admin-select tb-sec-chapter" data-idx="${i}"><option value="">— All Chapters —</option></select>`)}
+          ${field('Question Source', `
+            <select class="admin-select tb-sec-mode" data-idx="${i}">
+              <option value="manual" ${sec.mode !== 'random' ? 'selected' : ''}>Manual (pick myself)</option>
+              <option value="random" ${sec.mode === 'random' ? 'selected' : ''}>🎲 Random (auto-pick)</option>
+            </select>
+          `)}
           ${sec.mode === 'random'
-            ? `<input type="number" class="admin-input tb-sec-count" data-idx="${i}" min="1" max="200" placeholder="Count" value="${sec.count ?? ''}" style="width:70px">`
+            ? field('How Many Questions?', `<input type="number" class="admin-input tb-sec-count" data-idx="${i}" min="1" max="200" placeholder="e.g. 25" value="${sec.count ?? ''}">`, '90px')
             : ''}
-          <input type="number" class="admin-input tb-sec-pos" data-idx="${i}" min="0" step="0.25" placeholder="+marks" value="${sec.positive_marks ?? 1}" style="width:70px">
-          <input type="number" class="admin-input tb-sec-neg" data-idx="${i}" min="0" step="0.25" placeholder="-marks" value="${sec.negative_marks ?? 0}" style="width:70px">
+          ${field('Marks (correct)', `<input type="number" class="admin-input tb-sec-pos" data-idx="${i}" min="0" step="0.25" value="${sec.positive_marks ?? 1}">`, '80px')}
+          ${field('Marks (wrong, −)', `<input type="number" class="admin-input tb-sec-neg" data-idx="${i}" min="0" step="0.25" value="${sec.negative_marks ?? 0}">`, '80px')}
         ` : ''}
-        <span class="tb-sec-count">${sec.question_ids.length} Q</span>
+        ${field('Selected', `<span class="tb-sec-count">${sec.question_ids.length} Q</span>`)}
         ${state.sections.length > 1
           ? `<button class="tb-sec-del" data-idx="${i}" title="Remove">✕</button>`
           : ''}
@@ -612,6 +624,21 @@ const TEST_BUILDER = (() => {
           <div class="tb-bulk">
             <p class="tb-sub-label">📋 Bulk Paste (Q&amp;A format)</p>
             <p class="tb-sub-hint">Supports MCQ, True/False, and Fill-in-the-Blank</p>
+            <div class="bulk-prompt-box">
+              <p class="tb-sub-hint">ChatGPT / Gemini ला खालील prompt द्या → output copy करा → खाली paste करा</p>
+              <pre id="tb-bulk-sample-prompt" class="bulk-prompt-text">Generate 10 multiple choice questions on [TOPIC] in this exact format:
+
+Q1. [Question text]
+A) [Option A]
+B) [Option B]
+C) [Option C]
+D) [Option D]
+Ans: A
+
+For True/False questions write "(True/False)" after the question and use Ans: True or Ans: False
+For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
+              <button type="button" class="admin-btn-secondary" id="tb-copy-prompt">📋 Copy Prompt</button>
+            </div>
             <textarea id="tb-bulk-text" class="admin-textarea" rows="5"
               placeholder="Q1. What is photosynthesis?&#10;A) Making food  B) Breathing  C) Digestion  D) Excretion&#10;Ans: A&#10;&#10;Q2. The sun is a star. (True/False)&#10;Ans: True&#10;&#10;Q3. Water formula is ___&#10;Ans: H2O"></textarea>
             <button class="admin-btn-secondary" id="tb-bulk-parse" style="margin-top:6px">
@@ -740,6 +767,7 @@ const TEST_BUILDER = (() => {
     // Auto-mix & bulk parse
     $('tb-do-automix').addEventListener('click', _doAutoMix);
     $('tb-bulk-parse').addEventListener('click', _doBulkParse);
+    $('tb-copy-prompt').addEventListener('click', _copyBulkPrompt);
 
     // Manual add — type toggle
     $('tb-manual-type').addEventListener('change', _updateManualTypeView);
@@ -1174,6 +1202,23 @@ const TEST_BUILDER = (() => {
   }
 
   // ── Bulk Paste Parser ──────────────────────
+
+  function _copyBulkPrompt() {
+    const text = $('tb-bulk-sample-prompt')?.textContent || '';
+    if (!text) return;
+    navigator.clipboard.writeText(text.trim())
+      .then(() => APP.toast('✅ Prompt copied! Paste it in ChatGPT/Gemini', 'success'))
+      .catch(() => {
+        // Fallback for older browsers / WebViews without Clipboard API
+        const ta = document.createElement('textarea');
+        ta.value = text.trim();
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        APP.toast('✅ Prompt copied!', 'success');
+      });
+  }
 
   /**
    * Thin wrapper: delegates to PARSER.parse() and returns the array of
