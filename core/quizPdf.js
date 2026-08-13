@@ -244,23 +244,46 @@ const QUIZ_PDF = (() => {
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    let heightLeft = imgHeight;
-    let position = 0;
-    const imgData = canvas.toDataURL('image/png');
+    // Real print margin on every side. The old code drew the image
+    // edge-to-edge (0,0 to pageWidth,pageHeight) — most printers have a
+    // physical unprintable border, so edge-to-edge content gets clipped or
+    // refused outright ("margin not set, can't print"). 12mm all round
+    // keeps every page inside a printer-safe area.
+    const MARGIN = 12;
+    const contentWidthMm  = pageWidth  - MARGIN * 2;
+    const contentHeightMm = pageHeight - MARGIN * 2;
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    _drawWatermark(pdf, pageWidth, pageHeight);
-    heightLeft -= pageHeight;
+    // Slice the tall rendered canvas into exact per-page pixel chunks sized
+    // to the content box, instead of drawing one huge image and letting it
+    // overflow past the margin into cropped-by-page-edge territory — this
+    // way every page (not just the physical paper edge) respects the
+    // margin on all four sides, top/bottom included.
+    const pxPerMm = canvas.width / contentWidthMm;
+    const pageSliceHeightPx = Math.floor(contentHeightMm * pxPerMm);
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    let renderedPx = 0;
+    let firstPage = true;
+    while (renderedPx < canvas.height) {
+      const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - renderedPx);
+
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width  = canvas.width;
+      pageCanvas.height = sliceHeightPx;
+      const ctx = pageCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+      const sliceHeightMm = sliceHeightPx / pxPerMm;
+      const imgData = pageCanvas.toDataURL('image/png');
+
+      if (!firstPage) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
       _drawWatermark(pdf, pageWidth, pageHeight);
-      heightLeft -= pageHeight;
+
+      renderedPx += sliceHeightPx;
+      firstPage = false;
     }
 
     return pdf.output('blob');
@@ -296,7 +319,7 @@ const QUIZ_PDF = (() => {
     return exportQuizPaper(quiz, opts);
   }
 
-  return { exportQuizPaper, exportById, _normalizeQuizForPdf };
+  return { exportQuizPaper, exportById, _normalizeQuizForPdf, _renderToBlob };
 })();
 
 window.QUIZ_PDF = QUIZ_PDF;
