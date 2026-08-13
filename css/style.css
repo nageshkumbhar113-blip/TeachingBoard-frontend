@@ -1900,7 +1900,7 @@ select {
   padding: 10px;
   font-size: 0.83rem;
   background: var(--bg2);
-  color: var(--text1);
+  color: var(--text);
   resize: vertical;
   margin-bottom: 10px;
 }
