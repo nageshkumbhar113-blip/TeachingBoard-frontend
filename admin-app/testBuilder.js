@@ -548,7 +548,14 @@ const TEST_BUILDER = (() => {
 
     if (!title)   { APP.toast('Quiz title is required', 'error');      return false; }
     if (!batch)   { APP.toast('Please select a class/batch', 'error'); return false; }
-    if (!subject) { APP.toast('Subject is required', 'error');         return false; }
+    // Subject is required everywhere except 'mixed' — a Paper Pattern test
+    // (e.g. NMMS-style: Maths + Science + Mental Ability combined) has each
+    // section pick its own subject independently, so one single top-level
+    // subject doesn't apply and would force an arbitrary choice.
+    if (!subject && state.paperMode !== 'mixed') {
+      APP.toast('Subject is required', 'error');
+      return false;
+    }
     // Chapter is required for 'manual' (Regular Test) and 'chapter_random'
     // (Whole Chapter Test) — both scope to one specific chapter. 'random'
     // (Whole Subject Test) and 'mixed' (Paper Pattern) are subject-wide by

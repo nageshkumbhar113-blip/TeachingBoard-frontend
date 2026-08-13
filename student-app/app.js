@@ -1416,12 +1416,14 @@ const APP = (() => {
       _homeBatch = batch;
       _homeSubject = null;
       _homeChapter = null;
+      await UI.renderMixedTestsSection(batch.name, quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'));
       await UI.renderSubjectGrid(batch.name, _bindSubjectFlow(batch.name));
     });
 
     if (!preserveSelection || !_homeBatch?.name) return;
 
     _activateHomeChoice('.batch-card', _homeBatch.name, '.batch-name');
+    await UI.renderMixedTestsSection(_homeBatch.name, quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'));
     await UI.renderSubjectGrid(_homeBatch.name, _bindSubjectFlow(_homeBatch.name));
 
     if (!_homeSubject) return;

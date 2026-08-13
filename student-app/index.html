@@ -315,6 +315,16 @@
           <div class="batch-grid" id="batch-grid" role="list"></div>
         </section>
 
+        <!-- Mixed / Paper Pattern tests (e.g. NMMS-style: Maths+Science+Mental
+             Ability combined in one paper) — these have no single subject, so
+             they can't live inside the normal Subject → Chapter drill-down.
+             Hidden by default; only shown when the selected batch actually
+             has at least one such test. -->
+        <section class="home-section hidden" id="mixed-tests-section" aria-label="Mixed Tests">
+          <h3 class="section-label">📐 Mixed / Paper Pattern Tests</h3>
+          <div class="mixed-tests-list" id="mixed-tests-list" role="list"></div>
+        </section>
+
         <section class="home-section hidden" id="subject-section" aria-label="Subjects">
           <h3 class="section-label" data-i18n="subjects">Subjects</h3>
           <div class="subject-grid" id="subject-grid" role="list"></div>

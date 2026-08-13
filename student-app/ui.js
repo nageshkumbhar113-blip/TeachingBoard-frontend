@@ -617,6 +617,56 @@ const UI = (() => {
     $('available-tests-section')?.classList.add('hidden');
   }
 
+  // Mixed / Paper Pattern tests (e.g. NMMS-style multi-subject papers) —
+  // these publish with quiz.subject === 'Mixed', so they never match the
+  // normal Subject → Chapter drill-down's exact-subject filter and would
+  // otherwise be unreachable. Shown as its own section right under the
+  // Batch grid, hidden entirely when the selected batch has none.
+  async function renderMixedTestsSection(batchName, onStart) {
+    const section = $('mixed-tests-section');
+    const list    = $('mixed-tests-list');
+    if (!section || !list) return;
+
+    const allowedBatches = await _getAllowedBatches();
+    const published = _filterByAllowedBatches(await DB.getQuizzesByStatus('published'), allowedBatches).filter(quiz =>
+      quiz.batch === batchName && quiz.subject === 'Mixed'
+    );
+
+    if (!published.length) {
+      section.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+
+    list.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    published.forEach(quiz => {
+      const totalQ = Array.isArray(quiz.questions) && quiz.questions.length
+        ? quiz.questions.length
+        : (quiz.sections || []).reduce((s, sec) => s + (sec.question_ids?.length || 0), 0);
+      const sectionCount = (quiz.sections || []).length;
+      const card = document.createElement('div');
+      card.className = 'quiz-portal-card';
+      card.innerHTML = `
+        <div class="quiz-portal-info">
+          <div class="quiz-portal-title">${_escHtml(quiz.title || 'Untitled Quiz')}</div>
+          <div class="quiz-portal-meta">
+            ${_escHtml(quiz.batch || '')} · ${sectionCount} section${sectionCount === 1 ? '' : 's'}
+            · ${totalQ} questions
+          </div>
+        </div>
+        <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
+      `;
+      card.querySelector('.quiz-portal-btn').addEventListener('click', () => {
+        if (onStart) onStart(quiz);
+      });
+      fragment.appendChild(card);
+    });
+    list.appendChild(fragment);
+
+    section.classList.remove('hidden');
+  }
+
   async function renderChapterList(batchName, subjectName, onChapterClick) {
     const section = $('chapter-section');
     const list    = $('chapter-list');
@@ -907,6 +957,7 @@ const UI = (() => {
     renderHomeStats,
     renderBatchGrid,
     renderSubjectGrid,
+    renderMixedTestsSection,
     renderChapterList,
     renderChapterHub,
     renderLessons,
