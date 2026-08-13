@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-07-01):** `7.0.1` · versionCode `71` · SW `v45`
+**सध्याची version (last updated 2026-08-13):** `7.4.0` · versionCode `97` · SW `v97`
 
 ---
 
@@ -68,3 +68,5 @@
 | 5.0.1 | 51 | v43 | 2026-06-29 | Login bug fixes |
 | 6.0.0 | 60 | v43 | — | (bat मध्ये set, build न करता) |
 | **7.0.0** | **70** | **v44** | **2026-06-30** | Razorpay subscriptions, self-registration, SLS fixes |
+| ... | ... | ... | ... | (history gap — table not kept current between 7.0.0 and 7.3.0) |
+| **7.4.0** | **97** | **v97** | **2026-08-13** | MCQ Mixed Test Paper Builder + Paper Pattern, YouTube Teacher Partner Portal, Android TV remote support, --text1 CSS contrast fix |
