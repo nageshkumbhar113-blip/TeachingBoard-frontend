@@ -51,6 +51,18 @@ const QUIZ_PDF = (() => {
 
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
+  // Same resolution order student-app/testPlayer.js uses for question/option
+  // images: local IDB-cached blob first (offline-safe, works in a native
+  // WebView with no network), falling back to the ref itself (a remote URL)
+  // when nothing is cached locally.
+  async function _resolveImageSrc(ref) {
+    const clean = String(ref || '').trim();
+    if (!clean) return null;
+    if (typeof DB === 'undefined') return clean;
+    const localSrc = await DB.getImage(clean).catch(() => null);
+    return localSrc || clean;
+  }
+
   function _toNumber(...values) {
     for (const value of values) {
       const number = Number(value);
@@ -118,6 +130,24 @@ const QUIZ_PDF = (() => {
       }];
     }
 
+    // Resolve question/option image refs to actual displayable src (blob
+    // URL or remote URL) up front — _buildHtml is synchronous string-
+    // building, so this can't happen lazily there. Stored on namespaced
+    // _pdf* keys rather than overwriting the original fields, since these
+    // question objects are shared references (from questionMap / the
+    // quiz's own embedded questions), not copies.
+    for (const section of sections) {
+      for (const question of section.questions) {
+        question._pdfImageSrc = await _resolveImageSrc(question.image);
+        if (question.option_images) {
+          question._pdfOptionImageSrc = {};
+          for (const [key, ref] of Object.entries(question.option_images)) {
+            question._pdfOptionImageSrc[key] = await _resolveImageSrc(ref);
+          }
+        }
+      }
+    }
+
     return {
       title: quiz.title || 'Untitled Quiz',
       batch: quiz.batch || '',
@@ -130,13 +160,18 @@ const QUIZ_PDF = (() => {
 
   function _getOptionEntries(question) {
     const rawOptions = question.options || {};
+    const rawOptionImages = question._pdfOptionImageSrc || {};
+    // An option can be image-only (no text) — include it if either side has
+    // content, not just text, or an image-only option silently disappears.
+    const hasContent = key => !!rawOptions[key] || !!rawOptionImages[key];
     const preferredOrder = ['A', 'B', 'C', 'D'];
     const entries = [];
     preferredOrder.forEach(key => {
-      if (rawOptions[key]) entries.push([key, rawOptions[key]]);
+      if (hasContent(key)) entries.push([key, rawOptions[key] || '']);
     });
-    Object.entries(rawOptions).forEach(([key, value]) => {
-      if (!preferredOrder.includes(key) && value) entries.push([key, value]);
+    const seen = new Set(preferredOrder);
+    [...Object.keys(rawOptions), ...Object.keys(rawOptionImages)].forEach(key => {
+      if (!seen.has(key) && hasContent(key)) { seen.add(key); entries.push([key, rawOptions[key] || '']); }
     });
     return entries;
   }
@@ -152,22 +187,32 @@ const QUIZ_PDF = (() => {
       const itemsHtml = section.questions.map(question => {
         qNum++;
         const options = _getOptionEntries(question);
+        const questionImageHtml = question._pdfImageSrc
+          ? `<div style="margin-top:6px"><img src="${_esc(question._pdfImageSrc)}" crossorigin="anonymous" style="max-width:100%;max-height:220px;display:block;border:1px solid #ddd;border-radius:4px"/></div>`
+          : '';
         const optionsHtml = options.length ? `
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-top:6px;font-size:13px">
-            ${options.map(([key, value]) => `
-              <div style="display:flex;gap:6px">
+            ${options.map(([key, value]) => {
+              const optImg = question._pdfOptionImageSrc?.[key];
+              return `
+              <div style="display:flex;gap:6px;align-items:flex-start">
                 <span style="font-weight:700;min-width:16px">${_esc(key)})</span>
-                <span>${_esc(value)}</span>
-              </div>`).join('')}
+                <span>
+                  ${value ? `<span>${_esc(value)}</span>` : ''}
+                  ${optImg ? `<img src="${_esc(optImg)}" crossorigin="anonymous" style="max-width:120px;max-height:90px;display:block;margin-top:${value ? '4px' : '0'};border:1px solid #ddd;border-radius:4px"/>` : ''}
+                </span>
+              </div>`;
+            }).join('')}
           </div>` : '';
         const answerHtml = withAnswers
           ? `<div style="margin-top:4px;padding:6px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:12px;color:#166534">
-               <b>Answer:</b> ${_esc(question.answer)}${options.find(([k]) => k === question.answer) ? ` — ${_esc(options.find(([k]) => k === question.answer)[1])}` : ''}
+               <b>Answer:</b> ${_esc(question.answer)}${options.find(([k]) => k === question.answer)?.[1] ? ` — ${_esc(options.find(([k]) => k === question.answer)[1])}` : ''}
              </div>`
           : '';
         return `
-          <div style="margin-bottom:14px;page-break-inside:avoid">
+          <div style="margin-bottom:14px;break-inside:avoid;page-break-inside:avoid">
             <div style="font-size:14px;line-height:1.5"><b>${qNum}.</b> ${_esc(question.question)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(section.marks)}]</span></div>
+            ${questionImageHtml}
             ${optionsHtml}
             ${answerHtml}
           </div>`;
@@ -180,7 +225,7 @@ const QUIZ_PDF = (() => {
             <span>${_esc(section.label)}</span>
             <span style="font-weight:600;font-size:11px;color:#555">${section.questions.length} questions | ${_formatMarks(section.marks)} each | ${_formatMarks(totalSectionMarks)} total</span>
           </div>
-          ${itemsHtml}
+          <div style="column-count:2;column-gap:28px">${itemsHtml}</div>
         </div>`;
     }).join('');
 
@@ -192,6 +237,12 @@ const QUIZ_PDF = (() => {
           ${subtitle ? `<div style="font-size:13px;color:#333">${_esc(subtitle)}</div>` : ''}
           ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">— Answer Key —</div>' : ''}
         </div>
+        ${!withAnswers ? `
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 16px;border:1px solid #999;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px">
+          <div>Name: <span style="display:inline-block;border-bottom:1px solid #333;min-width:180px">&nbsp;</span></div>
+          <div>Roll No: <span style="display:inline-block;border-bottom:1px solid #333;min-width:70px">&nbsp;</span></div>
+          <div>Seat No: <span style="display:inline-block;border-bottom:1px solid #333;min-width:70px">&nbsp;</span></div>
+        </div>` : ''}
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:18px;color:#333">
           <span>Date: ${dateStr}</span>
           <span>Questions: <b>${totalQuestions}</b></span>
@@ -319,7 +370,7 @@ const QUIZ_PDF = (() => {
     return exportQuizPaper(quiz, opts);
   }
 
-  return { exportQuizPaper, exportById, _normalizeQuizForPdf, _renderToBlob };
+  return { exportQuizPaper, exportById, _normalizeQuizForPdf, _renderToBlob, _buildHtml };
 })();
 
 window.QUIZ_PDF = QUIZ_PDF;
