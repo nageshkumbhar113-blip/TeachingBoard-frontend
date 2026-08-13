@@ -196,6 +196,10 @@ const EXERCISE_VIEWER = (() => {
     $('ev-questions-section').style.display = '';
     $('ev-questions-title').textContent = `Exercise ${no}`;
 
+    // YouTube Teacher Partner videos — additive, best-effort (see
+    // videoTeacherSelect.js). Never blocks the questions view below.
+    window.VIDEO_TEACHER_SELECT?.checkAndShowButton(_batch, _subject, _chapter, no);
+
     const qs = _exerciseGroups.get(no) || [];
     const list = $('ev-questions-list');
     list.innerHTML = qs.map((q, i) => {

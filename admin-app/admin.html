@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="concept-manager.css" />
   <link rel="stylesheet" href="paper-builder.css" />
   <link rel="stylesheet" href="batch-pricing.css" />
+  <link rel="stylesheet" href="youtube-teacher-admin.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
@@ -199,6 +200,10 @@
             <button class="atab" role="tab" data-tab="pricing" aria-controls="atab-pricing" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">💰</span>
               <span class="atab-label">Pricing</span>
+            </button>
+            <button class="atab" role="tab" data-tab="youtube-teachers" aria-controls="atab-youtube-teachers" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">🎬</span>
+              <span class="atab-label">YouTube Teachers</span>
             </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
@@ -1388,6 +1393,23 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <!-- ── YouTube Teachers Panel ───────────────── -->
+          <div class="atab-content hidden" id="atab-youtube-teachers" role="tabpanel" aria-labelledby="atab-btn-youtube-teachers">
+            <div id="ytt-container" class="bp-container">
+              <div class="bp-header">
+                <h2>🎬 YouTube Teacher Partners</h2>
+                <p class="import-hint">External YouTube-creator teachers — separate from the school Teachers tab. Approve their videos, verify channels, and track subscriptions.</p>
+              </div>
+              <div class="atabs-sub" style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+                <button class="atab-sub" data-ytt-sub="approvals">Approvals</button>
+                <button class="atab-sub" data-ytt-sub="directory">Directory</button>
+                <button class="atab-sub" data-ytt-sub="gaps">Video Gaps</button>
+                <button class="atab-sub" data-ytt-sub="subscriptions">Subscriptions</button>
+              </div>
+              <div id="ytt-body"></div>
+            </div>
+          </div>
+
         </main><!-- /.admin-main -->
       </div><!-- /.admin-layout -->
     </div><!-- /#admin-content -->
@@ -1713,6 +1735,7 @@ Marks: 1"></textarea>
   <script src="../core/math.js" defer></script>
   <script src="../core/i18n.js" defer></script>
   <script src="../core/pdf.js" defer></script>
+  <script src="../core/quizPdf.js" defer></script>
   <script src="../core/sync.js" defer></script>
   <script src="parser.js" defer></script>
   <script src="testBuilder.js" defer></script>
@@ -1722,6 +1745,7 @@ Marks: 1"></textarea>
   <script src="exerciseManager.js" defer></script>
   <script src="paperBuilder.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
+  <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>

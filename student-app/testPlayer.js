@@ -216,8 +216,11 @@ const TEST_PLAYER = (() => {
   // ════════════════════════
 
   function _decorateQuestionForPlay(question, quiz, section = {}, sectionIndex = 0) {
-    const posMarks = section.positive_marks ?? quiz.positive_marks ?? 1;
-    const negMarks = section.negative_marks ?? quiz.negative_marks ?? 0;
+    // Per-question marks (denormalized at publish time) win first — this is
+    // what makes a server-fetched quiz score correctly even if `sections`
+    // were ever lost, since marks ride on the question itself.
+    const posMarks = question.marks ?? section.positive_marks ?? quiz.positive_marks ?? 1;
+    const negMarks = question.negative_marks ?? section.negative_marks ?? quiz.negative_marks ?? 0;
     const secTimer = section.timer ?? quiz.timer_value ?? 30;
 
     return {

@@ -929,7 +929,7 @@ body.student-app.mode-board.theme-board-light::before {
   font-weight: 800;
   text-align: center;
   margin: 0;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
 }
 
 .onboarding-sub {
@@ -962,7 +962,7 @@ body.student-app.mode-board.theme-board-light::before {
   border: 1.5px solid var(--border, #30363d);
   border-radius: 10px;
   background: var(--bg2, #0d1117);
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   font-size: 1rem;
   font-family: inherit;
   transition: border-color 0.15s;
@@ -1038,7 +1038,7 @@ body.student-app.mode-board.theme-board-light::before {
   margin-top: -8px;
 }
 
-.onboarding-skip:hover { color: var(--text1, #e6edf3); }
+.onboarding-skip:hover { color: var(--text, #e6edf3); }
 
 .ob-change-link {
   background: none;
@@ -1197,7 +1197,7 @@ body.student-app.mode-board.theme-board-light::before {
 .admit-code-chip {
   display: inline-flex; align-items: center; gap: 8px; margin: 6px 0 2px;
   font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700;
-  letter-spacing: 1.2px; color: var(--text1, #e6edf3);
+  letter-spacing: 1.2px; color: var(--text, #e6edf3);
   background: var(--bg2, #0d1117);
   border: 1.5px dashed var(--gold-1); border-radius: 10px; padding: 7px 14px;
 }
@@ -1234,7 +1234,7 @@ body.student-app.mode-board.theme-board-light::before {
 }
 .admit-batch-slide .admit-slide-name {
   font-family: 'Work Sans', 'Baloo 2', sans-serif; font-weight: 700; font-size: 12px;
-  color: var(--text1, #e6edf3); line-height: 1.35;
+  color: var(--text, #e6edf3); line-height: 1.35;
 }
 .admit-batch-slide .admit-slide-dot {
   position: absolute; top: 9px; right: 9px; width: 17px; height: 17px; border-radius: 50%;
@@ -1259,7 +1259,7 @@ body.student-app.mode-board.theme-board-light::before {
 }
 .admit-ledger-row:last-child { border-bottom: none; }
 .admit-ledger-row .l { color: var(--text2, #8b949e); font-weight: 500; }
-.admit-ledger-row .v { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text1, #e6edf3); }
+.admit-ledger-row .v { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text, #e6edf3); }
 
 .admit-gold-rule { height: 2px; margin: 16px 0; border-radius: 2px; background: var(--gold-grad); }
 
@@ -1269,8 +1269,8 @@ body.student-app.mode-board.theme-board-light::before {
   background: var(--card, #161b22); cursor: pointer; margin-bottom: 9px;
   font-family: 'Work Sans', 'Baloo 2', sans-serif; text-align: left;
 }
-.admit-plan-btn .admit-plan-name { font-weight: 700; font-size: 13px; color: var(--text1, #e6edf3); display: flex; align-items: center; gap: 8px; }
-.admit-plan-btn .admit-plan-price { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13.5px; color: var(--text1, #e6edf3); }
+.admit-plan-btn .admit-plan-name { font-weight: 700; font-size: 13px; color: var(--text, #e6edf3); display: flex; align-items: center; gap: 8px; }
+.admit-plan-btn .admit-plan-price { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13.5px; color: var(--text, #e6edf3); }
 .admit-plan-btn.trial { border-color: var(--admit-emerald); background: rgba(42,174,130,0.08); }
 .admit-plan-btn.trial .admit-plan-price { color: var(--admit-emerald); }
 .admit-plan-btn.featured { border-color: var(--gold-1); box-shadow: 0 0 0 1px var(--gold-1); }
@@ -1833,14 +1833,14 @@ body.student-app.mode-board.theme-board-light::before {
 }
 .pin-lock-name {
   font-size: 1.2rem; font-weight: 700;
-  color: var(--text1, #111);
+  color: var(--text, #111);
 }
 .pin-lock-sub { font-size: 0.85rem; color: var(--text2, #666); }
 .pin-lock-input {
   width: 100%; padding: 14px 16px; font-size: 1.4rem;
   text-align: center; letter-spacing: 8px;
   border: 2px solid var(--border, #ddd); border-radius: 12px;
-  background: var(--bg, #fff); color: var(--text1, #111);
+  background: var(--bg, #fff); color: var(--text, #111);
   outline: none; transition: border-color 0.2s;
 }
 .pin-lock-input:focus { border-color: var(--accent, #e74c3c); }
@@ -2246,7 +2246,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .ds-summary-emoji { font-size: 4rem; line-height: 1; }
 .ds-summary-title {
   font-size: 1.25rem; font-weight: 800; text-align: center;
-  color: var(--text1); margin: 0; line-height: 1.4;
+  color: var(--text); margin: 0; line-height: 1.4;
 }
 .ds-summary-pct {
   font-size: 3rem; font-weight: 900;
@@ -2366,7 +2366,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   font-size: 1rem;
   font-weight: 700;
   margin: 0;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2426,7 +2426,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-student-name {
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
 }
 .td-student-code {
   font-size: 0.75rem;
@@ -2447,7 +2447,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   flex-direction: column;
   align-items: center;
   font-size: 0.8rem;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   min-width: 38px;
 }
 .td-stat strong { font-size: 1rem; line-height: 1.1; }
@@ -2480,7 +2480,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-attempt-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2541,7 +2541,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-analytics-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   margin: 0;
 }
 .td-analytics-sub {
@@ -2632,7 +2632,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-topic-name {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2655,7 +2655,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   font-weight: 700;
   min-width: 36px;
   text-align: right;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
 }
 
 /* Ranking list */
@@ -2684,7 +2684,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-rank-name {
   font-size: 0.88rem;
   font-weight: 700;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2750,7 +2750,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-notif-tag-batch      { background: rgba(99,102,241,0.18); color: #818cf8; }
 .td-notif-tag-individual { background: rgba(249,115,22,0.18); color: #fb923c; }
 .td-notif-date    { font-size: 0.68rem; color: var(--text2, #8b949e); }
-.td-notif-title   { font-size: 0.88rem; font-weight: 700; color: var(--text1, #e6edf3); margin-bottom: 2px; }
+.td-notif-title   { font-size: 0.88rem; font-weight: 700; color: var(--text, #e6edf3); margin-bottom: 2px; }
 .td-notif-body    { font-size: 0.82rem; color: var(--text2, #8b949e); margin-bottom: 6px; }
 .td-notif-recipients { font-size: 0.72rem; color: var(--text2, #8b949e); }
 
@@ -2809,7 +2809,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-modal-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   margin: 0 0 16px;
 }
 .td-modal-field { margin-bottom: 12px; }
@@ -2828,7 +2828,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   background: var(--card-bg, #161b22);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   font-size: 0.9rem;
   box-sizing: border-box;
 }
@@ -2836,7 +2836,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-modal-static {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   font-weight: 600;
 }
 .td-modal-error {
@@ -2943,7 +2943,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .update-sheet-title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   margin: 0 0 10px;
 }
 .update-version-row {
@@ -2975,7 +2975,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 }
 .update-notes {
   font-size: 0.9rem;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 10px;
@@ -3049,7 +3049,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   font-weight: 700;
   font-size: 0.92rem;
   margin-bottom: 10px;
-  color: var(--text1, #f1f5f9);
+  color: var(--text, #f1f5f9);
   letter-spacing: 0.02em;
 }
 .pd-sug-row {
@@ -3064,7 +3064,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   flex: 1;
   font-size: 0.84rem;
   font-weight: 500;
-  color: var(--text1, #e2e8f0);
+  color: var(--text, #e2e8f0);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3116,13 +3116,13 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .install-guide-title {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--text1, #f1f5f9);
+  color: var(--text, #f1f5f9);
   margin-bottom: 14px;
 }
 .install-guide-steps {
   padding-left: 20px;
   margin: 0 0 16px;
-  color: var(--text1, #e2e8f0);
+  color: var(--text, #e2e8f0);
   font-size: 0.88rem;
   line-height: 1.9;
 }
@@ -3556,7 +3556,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   border: 1.5px solid rgba(255,255,255,0.12);
   border-radius: 12px;
   background: rgba(255,255,255,0.06);
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   font-size: 0.9rem;
   outline: none;
   transition: border-color 0.18s;
@@ -3636,7 +3636,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .dict-word-text {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   margin-bottom: 5px;
   white-space: nowrap;
   overflow: hidden;
@@ -3723,7 +3723,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   border: 1.5px solid rgba(255,255,255,0.12);
   border-radius: 10px;
   background: rgba(255,255,255,0.06);
-  color: var(--text1, #e6edf3);
+  color: var(--text, #e6edf3);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -4135,7 +4135,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .fee-upi-missing    { font-size:0.75rem; color:var(--error,#ef4444); }
 .fee-upi-warn       { background:rgba(251,146,60,0.1); border:1px solid rgba(251,146,60,0.3); border-radius:8px; padding:8px 12px; font-size:0.82rem; color:#f97316; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
 .fee-upi-warn-btn   { background:transparent; border:1px solid #f97316; color:#f97316; border-radius:6px; padding:2px 10px; font-size:0.78rem; cursor:pointer; }
-.fee-save-installment-btn { background:var(--surface2,#eee); color:var(--text1); border:1px solid var(--border); border-radius:8px; padding:6px 10px; cursor:pointer; }
+.fee-save-installment-btn { background:var(--surface2,#eee); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 10px; cursor:pointer; }
 .td-fee-toolbar     { display:flex; gap:8px; flex-wrap:wrap; padding:6px 0 10px; }
 
 /* ── Parent Dashboard tabs + fee card ─────────────────────────── */
@@ -4182,7 +4182,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .np-note-card:hover, .np-note-card:focus { background:var(--card-hover,rgba(255,255,255,0.1)); outline:none; }
 .np-note-icon   { font-size:1.8rem; flex-shrink:0; }
 .np-note-info   { flex:1; min-width:0; }
-.np-note-title  { font-size:0.95rem; font-weight:600; color:var(--text1,#e6edf3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.np-note-title  { font-size:0.95rem; font-weight:600; color:var(--text,#e6edf3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .np-note-meta   { font-size:0.78rem; color:var(--text2,#8b949e); margin-top:2px; }
 .np-note-status { font-size:1.1rem; flex-shrink:0; }
 .np-list-msg    { text-align:center; color:var(--text2,#8b949e); padding:40px 0; font-size:0.9rem; }

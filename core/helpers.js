@@ -670,6 +670,47 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  // Admin-only — server-side random MCQ pick for the Mixed Test Paper
+  // Builder's "random" sections (testBuilder.js). Each call re-rolls a
+  // fresh $sample from the matching Question pool.
+  async function generateQuizQuestions(sections) {
+    const token = await ensureAdminSession();
+    const payload = await request('/quizzes/generate-questions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ sections }),
+    });
+    return payload?.data || [];
+  }
+
+  // Admin-only — reusable Paper Patterns (e.g. "NMMS Pattern") for the
+  // Mixed Test Paper Builder. save() upserts by pattern_id when present.
+  async function fetchQuizPatterns() {
+    const token = await ensureAdminSession();
+    const payload = await request('/quiz-patterns', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function saveQuizPattern(pattern) {
+    const token = await ensureAdminSession();
+    const payload = await request('/quiz-patterns', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(pattern),
+    });
+    return payload?.data || null;
+  }
+
+  async function deleteQuizPattern(patternId) {
+    const token = await ensureAdminSession();
+    return request(`/quiz-patterns/${encodeURIComponent(patternId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
   async function fetchLessons(limit = 50) {
     const profile = await getStudentProfile();
     const token   = profile?.student_code ? await ensureStudentSession() : '';
@@ -2137,6 +2178,28 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // YouTube Teacher Partner videos for an exercise — two-step: omit
+  // teacherId for the Step-1 card list (all approved+live teachers for this
+  // exercise), pass teacherId for Step-2 (that teacher's parts).
+  async function fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId }) {
+    const token = await ensureStudentSession();
+    const qs = new URLSearchParams({ batch, subject, chapter, exercise });
+    if (teacherId) qs.set('teacher_id', teacherId);
+    const payload = await request(`/youtube-teacher/videos-for-exercise?${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  // "Video Opens" counter — best-effort, never blocks playback if it fails.
+  async function recordYoutubeVideoOpen(videoId) {
+    const token = await ensureStudentSession();
+    return request(`/youtube-teacher/video-open/${encodeURIComponent(videoId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null);
+  }
+
   // ════════════════════════
 
   return {
@@ -2152,7 +2215,9 @@ const API = (() => {
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
-    fetchQuiz, fetchPublishedQuizzes, fetchQuizById, fetchLessons, fetchQuestions, fetchAttempts,
+    fetchQuiz, fetchPublishedQuizzes, fetchQuizById, generateQuizQuestions,
+    fetchQuizPatterns, saveQuizPattern, deleteQuizPattern,
+    fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
@@ -2204,6 +2269,7 @@ const API = (() => {
     fetchTeacherSlsQuestions, createTeacherSlsPaperManual,
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
     fetchStudentExerciseQuestions,
+    fetchYoutubeVideosForExercise, recordYoutubeVideoOpen,
   };
 })();
 

@@ -34,7 +34,7 @@ const PDF = (() => {
       ...embedded.map(q => [q.q_id, q]),
     ]);
 
-    const sections = (quiz.sections || [])
+    let sections = (quiz.sections || [])
       .map((section, index) => {
         const sectionQuestions = (section.question_ids || [])
           .map((questionId) => questionMap[questionId])
@@ -53,6 +53,20 @@ const PDF = (() => {
         };
       })
       .filter(Boolean);
+
+    // Defensive fallback: a quiz fetched fresh from the server (no local
+    // `sections` — e.g. IDB was cleared, or this is a legacy quiz) still has
+    // its flat `questions[]`. Synthesize one section from it instead of
+    // failing — this was the "No questions in this quiz" bug.
+    if (!sections.length && Array.isArray(quiz.questions) && quiz.questions.length) {
+      sections = [{
+        label: "Section A",
+        type: quiz.questions[0]?.type || "mcq",
+        marks: _toNumber(quiz.positive_marks, 1),
+        negativeMarks: _toNumber(quiz.negative_marks, 0),
+        questions: quiz.questions
+      }];
+    }
 
     if (!sections.length) {
       APP.toast("No questions in this quiz", "error");

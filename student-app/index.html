@@ -20,6 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="student-ui.css" />
   <link rel="stylesheet" href="notesViewer.css" />
+  <link rel="stylesheet" href="videoTeacherSelect.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
@@ -899,7 +900,30 @@
           <div id="ev-questions-section" style="display:none">
             <button type="button" id="ev-back-btn" class="back-btn">‹ मागे</button>
             <h3 class="ev-section-h" id="ev-questions-title">Exercise</h3>
+            <button type="button" id="ev-videos-btn" class="vts-videos-btn hidden"></button>
             <div id="ev-questions-list" class="ev-questions-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- YouTube Teacher Partner videos — Step 1 (teacher cards) / Step 2 (that teacher's parts) share this one screen -->
+      <section id="screen-video-teachers" class="screen hidden" aria-label="Teachers">
+        <header class="quiz-header">
+          <h2 class="quiz-title" id="vts-title">🎬 Videos</h2>
+        </header>
+        <div class="vts-container">
+          <div id="vts-list" class="vts-list"></div>
+        </div>
+      </section>
+
+      <!-- In-app embedded YouTube player — student never leaves the app -->
+      <section id="screen-video-player" class="screen hidden" aria-label="Video">
+        <header class="quiz-header">
+          <h2 class="quiz-title" id="vp-title">▶ Video</h2>
+        </header>
+        <div class="vp-container" id="vp-container">
+          <div class="vp-frame-wrap" id="vp-frame-wrap">
+            <iframe id="vp-iframe" class="vp-iframe" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen title="Video"></iframe>
           </div>
         </div>
       </section>
@@ -1214,6 +1238,7 @@
   <script src="teacherDashboard.js" defer></script>
   <script src="teacherPaperBuilder.js" defer></script>
   <script src="exerciseViewer.js" defer></script>
+  <script src="videoTeacherSelect.js" defer></script>
   <script src="parentDashboard.js" defer></script>
   <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>

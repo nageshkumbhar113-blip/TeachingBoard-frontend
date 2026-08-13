@@ -1421,7 +1421,7 @@ body.admin-app {
 .qe-preview-q {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text1);
+  color: var(--text);
   margin: 0 0 10px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -1438,7 +1438,7 @@ body.admin-app {
   align-items: baseline;
   gap: 8px;
   font-size: 0.88rem;
-  color: var(--text1);
+  color: var(--text);
   line-height: 1.5;
 }
 .qe-prev-key {
@@ -2046,7 +2046,7 @@ body.admin-app {
   align-items: center;
   gap: 6px;
   font-size: 0.88rem;
-  color: var(--text1);
+  color: var(--text);
   cursor: pointer;
   user-select: none;
 }
@@ -2128,7 +2128,7 @@ body.admin-app {
 }
 .tp-meaning {
   min-width: 90px;
-  color: var(--text1);
+  color: var(--text);
 }
 .tp-phonics {
   font-size: 0.78rem;
