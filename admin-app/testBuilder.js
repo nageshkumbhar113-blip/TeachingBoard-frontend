@@ -170,15 +170,19 @@ const TEST_BUILDER = (() => {
         <div class="tb-field-inline" style="gap:18px;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:6px">
             <input type="radio" name="tb-paper-mode" value="manual" ${state.paperMode === 'manual' ? 'checked' : ''}>
-            Chapter-wise (manual pick)
+            Regular Test (Chapter-wise, manual pick)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="radio" name="tb-paper-mode" value="chapter_random" ${state.paperMode === 'chapter_random' ? 'checked' : ''}>
+            🎲 Whole Chapter Test (random, from all tests in that chapter)
           </label>
           <label style="display:flex;align-items:center;gap:6px">
             <input type="radio" name="tb-paper-mode" value="random" ${state.paperMode === 'random' ? 'checked' : ''}>
-            Subject-wise (random)
+            🎲 Whole Subject Test (random, from all chapters/tests)
           </label>
           <label style="display:flex;align-items:center;gap:6px">
             <input type="radio" name="tb-paper-mode" value="mixed" ${state.paperMode === 'mixed' ? 'checked' : ''}>
-            Mixed / Paper Pattern
+            📐 Paper Pattern Test (Mixed sections)
           </label>
         </div>
 
@@ -205,7 +209,9 @@ const TEST_BUILDER = (() => {
           state.activeSection = 0;
         }
         state.sections.forEach(sec => {
-          sec.mode = state.paperMode === 'random' ? 'random' : (sec.mode || 'manual');
+          sec.mode = (state.paperMode === 'random' || state.paperMode === 'chapter_random')
+            ? 'random'
+            : (state.paperMode === 'manual' ? 'manual' : (sec.mode || 'manual'));
           if (state.paperMode === 'mixed') sec.type = 'mcq';
         });
         _renderSectionsList();
@@ -338,8 +344,7 @@ const TEST_BUILDER = (() => {
               ${batches.map(b => `<option value="${_esc(b.name)}" ${sec.source_batch === b.name ? 'selected' : ''}>${_esc(b.name)}</option>`).join('')}
             </select>
           `)}
-          ${field('Subject', `<select class="admin-select tb-sec-subject" data-idx="${i}"><option value="">Select Subject</option></select>`)}
-          ${field('Chapter (blank = all chapters)', `<select class="admin-select tb-sec-chapter" data-idx="${i}"><option value="">— All Chapters —</option></select>`)}
+          ${field('Subject (all chapters/tests)', `<select class="admin-select tb-sec-subject" data-idx="${i}"><option value="">Select Subject</option></select>`)}
           ${field('Question Source', `
             <select class="admin-select tb-sec-mode" data-idx="${i}">
               <option value="manual" ${sec.mode !== 'random' ? 'selected' : ''}>Manual (pick myself)</option>
@@ -361,17 +366,10 @@ const TEST_BUILDER = (() => {
 
       if (isMixed) {
         const subjectSel = row.querySelector('.tb-sec-subject');
-        const chapterSel = row.querySelector('.tb-sec-chapter');
         const subjects = sec.source_batch ? (await DB.getSubjectsByBatch(sec.source_batch)).map(s => s.name) : [];
         if (myToken !== _sectionsRenderToken) return;
         _setTopicSelectOptions(subjectSel, subjects, 'Subject');
         if (subjects.includes(sec.subject)) subjectSel.value = sec.subject;
-        const chapters = (sec.source_batch && subjectSel.value)
-          ? (await DB.getChaptersByBatchSubject(sec.source_batch, subjectSel.value)).map(c => c.name)
-          : [];
-        if (myToken !== _sectionsRenderToken) return;
-        _setTopicSelectOptions(chapterSel, chapters, 'Chapter');
-        if (chapters.includes(sec.chapter)) chapterSel.value = sec.chapter;
       }
     }
 
@@ -386,20 +384,13 @@ const TEST_BUILDER = (() => {
         const sec = state.sections[+e.target.dataset.idx];
         sec.source_batch = e.target.value;
         sec.subject = '';
-        sec.chapter = '';
         _renderSectionsList();
       })
     );
     list.querySelectorAll('.tb-sec-subject').forEach(sel =>
       sel.addEventListener('change', e => {
-        const sec = state.sections[+e.target.dataset.idx];
-        sec.subject = e.target.value;
-        sec.chapter = '';
-        _renderSectionsList();
+        state.sections[+e.target.dataset.idx].subject = e.target.value;
       })
-    );
-    list.querySelectorAll('.tb-sec-chapter').forEach(sel =>
-      sel.addEventListener('change', e => { state.sections[+e.target.dataset.idx].chapter = e.target.value; })
     );
     list.querySelectorAll('.tb-sec-mode').forEach(sel =>
       sel.addEventListener('change', e => {
@@ -434,9 +425,9 @@ const TEST_BUILDER = (() => {
     state.sections.push({
       id: `sec_${Date.now()}`, label, type: 'mcq',
       question_ids: [], timer: 30, positive_marks: 1, negative_marks: 0,
-      mode: state.paperMode === 'random' ? 'random' : 'manual',
+      mode: (state.paperMode === 'random' || state.paperMode === 'chapter_random') ? 'random' : 'manual',
       source_batch: $('tb-batch')?.value || '',
-      subject: '', chapter: '',
+      subject: '',
     });
     _renderSectionsList();
   }
@@ -463,10 +454,13 @@ const TEST_BUILDER = (() => {
           ${_patternCache.map(p => `<option value="${_esc(p.pattern_id)}">${_esc(p.name)} (${p.sections.length} sections)</option>`).join('')}
         </select>
         <button class="admin-btn-secondary" id="tb-pattern-load">📥 Load</button>
-        <button class="admin-btn-secondary" id="tb-pattern-save">💾 Save current as Pattern</button>
         <button class="admin-btn-secondary" id="tb-pattern-delete">🗑️ Delete</button>
       </div>
       <p class="tb-sub-hint">Load a pattern (e.g. "NMMS Pattern") to auto-fill the sections below — pick Batch, then Generate each section.</p>
+      <div class="tb-field-inline" style="gap:8px;margin-top:8px">
+        <input id="tb-pattern-name" class="admin-input" placeholder="Pattern name (e.g. &quot;NMMS Pattern&quot;)" style="flex:1;min-width:200px">
+        <button class="admin-btn-secondary" id="tb-pattern-save">💾 Save current sections as this Pattern</button>
+      </div>
     `;
 
     $('tb-pattern-load')?.addEventListener('click', _loadSelectedPattern);
@@ -493,18 +487,18 @@ const TEST_BUILDER = (() => {
       mode: ps.mode || 'random',
       source_batch: batch,
       subject: ps.subject || '',
-      chapter: '', // patterns are subject-wide by design
       ...(ps.count ? { count: ps.count } : {}),
     }));
     state.activeSection = 0;
     _renderSectionsList();
+    if ($('tb-pattern-name')) $('tb-pattern-name').value = pattern.name;
     APP.toast(`✅ "${pattern.name}" loaded — ${pattern.sections.length} sections`, 'success');
   }
 
   async function _saveCurrentAsPattern() {
     if (!state.sections.length) { APP.toast('No sections to save', 'error'); return; }
-    const name = await APP.promptAsync('Pattern name (e.g. "NMMS Pattern"):', 'text', '');
-    if (!name || !name.trim()) return;
+    const name = $('tb-pattern-name')?.value.trim();
+    if (!name) { APP.toast('Enter a name for this pattern first', 'error'); return; }
 
     const sections = state.sections.map(sec => ({
       label: sec.label || '',
@@ -519,10 +513,11 @@ const TEST_BUILDER = (() => {
     }));
 
     try {
-      await API.saveQuizPattern({ name: name.trim(), sections });
+      await API.saveQuizPattern({ name, sections });
       _patternCache = null; // force refresh
       await _renderPatternPanel();
-      APP.toast(`✅ Pattern "${name.trim()}" saved`, 'success');
+      if ($('tb-pattern-name')) $('tb-pattern-name').value = name;
+      APP.toast(`✅ Pattern "${name}" saved`, 'success');
     } catch (err) {
       APP.toast(err?.message || 'Failed to save pattern', 'error');
     }
@@ -554,21 +549,30 @@ const TEST_BUILDER = (() => {
     if (!title)   { APP.toast('Quiz title is required', 'error');      return false; }
     if (!batch)   { APP.toast('Please select a class/batch', 'error'); return false; }
     if (!subject) { APP.toast('Subject is required', 'error');         return false; }
-    // Chapter is only required for manual (chapter-wise) pick — random
-    // sections are subject-wide by design (scholarship/NMMS-style papers
-    // draw from a whole subject, not one chapter), and Mixed sections each
-    // set their own chapter (or leave it blank for subject-wide) anyway.
-    if (!chapter && state.paperMode === 'manual') {
-      APP.toast('Chapter is required for chapter-wise mode', 'error');
+    // Chapter is required for 'manual' (Regular Test) and 'chapter_random'
+    // (Whole Chapter Test) — both scope to one specific chapter. 'random'
+    // (Whole Subject Test) and 'mixed' (Paper Pattern) are subject-wide by
+    // design (scholarship/NMMS-style papers draw from a whole subject, not
+    // one chapter) and never use this Step 1 chapter value.
+    if (!chapter && (state.paperMode === 'manual' || state.paperMode === 'chapter_random')) {
+      APP.toast('Chapter is required for this mode', 'error');
       return false;
     }
+
+    // 'random' (Whole Subject) and 'mixed' (Paper Pattern) are always
+    // subject-wide — never carry a chapter through for those, even if one
+    // happens to be selected on the form, so scope resolution stays
+    // unambiguous.
+    const effectiveChapter = (state.paperMode === 'manual' || state.paperMode === 'chapter_random')
+      ? chapter
+      : '';
 
     state.quiz = {
       ...(state.quiz || {}),
       title,
       batch,
       subject,
-      chapter,
+      chapter: effectiveChapter,
       school_name   : $('tb-school')?.value.trim()        || '',
       timer_mode    : $('tb-timer-mode')?.value            || 'per_question',
       timer_value   : parseInt($('tb-timer-value')?.value) || 30,
@@ -843,7 +847,7 @@ For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
           // reset the bank filters to the new section's own scope.
           state.filters = {
             subject: sec.subject || '',
-            chapter: sec.chapter || '',
+            chapter: '',
             difficulty: '',
           };
           await _loadBankQuestions();
@@ -861,8 +865,12 @@ For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
   // ── Random Pick (server-side $sample, for 'random'/'mixed' sections) ──
 
   function _sectionScope(sec) {
+    // Mixed sections are always subject-wide (no chapter field at all —
+    // see _renderSectionsList). Non-mixed: chapter only carries through for
+    // 'manual'/'chapter_random' — _commitStep1 already clears it to '' for
+    // 'random' (Whole Subject), so this just reflects that.
     return state.paperMode === 'mixed'
-      ? { batch: sec?.source_batch || '', subject: sec?.subject || '', chapter: sec?.chapter || '' }
+      ? { batch: sec?.source_batch || '', subject: sec?.subject || '', chapter: '' }
       : { batch: state.quiz?.batch || '', subject: state.quiz?.subject || '', chapter: state.quiz?.chapter || '' };
   }
 
