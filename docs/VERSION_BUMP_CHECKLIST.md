@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-08-15):** `7.4.6` · versionCode `103` · SW `v103`
+**सध्याची version (last updated 2026-08-16):** `7.4.7` · versionCode `104` · SW `v104`
 
 ---
 
@@ -76,3 +76,4 @@
 | **7.4.4** | **101** | **v101** | **2026-08-15** | Notes Book fix: Revision-Box-only / Exam-Tags-only notes were silently dropped as "empty" (real bug found live testing 8th NMMS batch) |
 | **7.4.5** | **102** | **v102** | **2026-08-15** | Notes Book follow-up: a bare examTags tag alone no longer counts as "content" — was letting title-only stub notes through as a practically-blank PDF (real bug, found from an actual generated PDF) |
 | **7.4.6** | **103** | **v103** | **2026-08-15** | Books real root-cause fix: Notes Book was reading the concept LIST endpoint (title/tags only, backend deliberately strips content) instead of fetching each concept's full detail — real content was never being read at all. Also fixed silent 20-item pagination truncation on the Exercise questions endpoint (Books + Exercise Manager) |
+| **7.4.7** | **104** | **v104** | **2026-08-16** | Notes Book: fixed half-empty pages — dropped multi-column note-body layout (both CSS auto-balance and a fixed grid left visible empty space with real, unevenly-sized content); single column now, no gaps |
