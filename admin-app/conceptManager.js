@@ -408,6 +408,7 @@ const CONCEPT_MANAGER = (() => {
 
       <div class="editor-actions">
         <button type="button" id="cm-preview-btn" class="btn btn-secondary">👁 Preview</button>
+        <button type="button" id="cm-pdf-btn" class="btn btn-secondary">📄 Download PDF</button>
         <button type="button" id="cm-save-draft-btn" class="btn btn-secondary">Save Draft</button>
         <button type="button" id="cm-publish-btn-inline" class="btn btn-primary">Publish</button>
         <button type="button" id="cm-cancel-btn-inline" class="btn btn-tertiary">Cancel</button>
@@ -432,6 +433,7 @@ const CONCEPT_MANAGER = (() => {
     $('cm-publish-btn-inline')?.addEventListener('click', () => _saveConcept(true));
     $('cm-cancel-btn-inline')?.addEventListener('click', () => _cancelEdit());
     $('cm-preview-btn')?.addEventListener('click', () => _previewConcept());
+    $('cm-pdf-btn')?.addEventListener('click', () => _exportPdf());
     $('cm-add-para-btn')?.addEventListener('click', () => _addBlock('paragraph'));
     $('cm-add-image-btn')?.addEventListener('click', () => _addBlock('image'));
     $('cm-autofill-btn')?.addEventListener('click', () => _runAutoFill());
@@ -687,6 +689,24 @@ const CONCEPT_MANAGER = (() => {
     document.body.appendChild(overlay);
     overlay.querySelector('#cm-preview-close')?.addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  async function _exportPdf() {
+    // Uses the live editor fields (title + blocks), same source _saveConcept
+    // reads from, so the PDF matches what's on screen even before Save.
+    const concept = {
+      ..._currentConcept,
+      title: { english: _getValue('cm-title-en').trim() || _currentConcept?.title?.english || '', marathi: _getValue('cm-title-mr').trim() || _currentConcept?.title?.marathi || '' },
+      description: {
+        english: { blocks: _blocks() },
+        marathi: _currentConcept?.description?.marathi || { blocks: [] },
+      },
+    };
+    try {
+      await NOTES_PDF.exportNotePdf(concept, { batch: _batch, subject: _subject, chapter: _chapter });
+    } catch (err) {
+      APP.toast(err?.message || 'PDF export अयशस्वी', 'error');
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -1308,7 +1328,19 @@ Title (Marathi)
     _removeBlock,
     _updateBlockField,
     _updateBlockImageUrl,
-    _uploadBlockImage
+    _uploadBlockImage,
+    // Test-only hook — lets a harness set up _currentConcept/_batch/etc.
+    // directly and call the PDF export without a full DB-backed
+    // batch→subject→chapter→concept click-through. Not used in production.
+    __test: {
+      exportPdf: _exportPdf,
+      setState: (concept, meta = {}) => {
+        _currentConcept = concept;
+        if (meta.batch   !== undefined) _batch   = meta.batch;
+        if (meta.subject !== undefined) _subject = meta.subject;
+        if (meta.chapter !== undefined) _chapter = meta.chapter;
+      },
+    },
   };
 })();
 
