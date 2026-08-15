@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-08-15):** `7.4.3` · versionCode `100` · SW `v100`
+**सध्याची version (last updated 2026-08-15):** `7.4.4` · versionCode `101` · SW `v101`
 
 ---
 
@@ -73,3 +73,4 @@
 | **7.4.1** | **98** | **v98** | **2026-08-13** | Live-testing fixes: random-pick order shuffle, 4 explicit Paper Modes (Regular/Whole Chapter/Whole Subject/Paper Pattern), labeled section fields, AI bulk-paste prompt, visible Pattern Name field |
 | **7.4.2** | **99** | **v99** | **2026-08-13** | Mixed-test student visibility fix, Subject-optional for Paper Pattern, Exam Instructions gate + AI pattern import, PDF export margin fix + realistic layout (Roll No/Seat No box, 2-column, question/option images) |
 | **7.4.3** | **100** | **v100** | **2026-08-15** | Exercise Manager Preview/Publish/PDF + optional diagram upload, Notes PDF export, markdown table support, new 📚 Books tab (Notes/Exercise/Subject-wise/Chapter-wise/Paper Pattern Books with hard page-break-per-section + printed-workbook style) |
+| **7.4.4** | **101** | **v101** | **2026-08-15** | Notes Book fix: Revision-Box-only / Exam-Tags-only notes were silently dropped as "empty" (real bug found live testing 8th NMMS batch) |
