@@ -51,6 +51,21 @@ const QUIZ_PDF = (() => {
 
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
+  // Decorative chapter/paper banner — dark rounded bar, title + batch/
+  // subject subtitle, matching the printed workbook style referenced (real
+  // coaching-class book photo: dark banner, bold chapter/paper name, small
+  // caps context line underneath). Shared with notesPdf.js/exercisePdf.js.
+  function _bannerHtml(title, subtitle) {
+    return `
+      <div style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#1f2328,#3a3f47);border-radius:16px;padding:14px 22px;margin-bottom:18px">
+        <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#e16b13,#f0883e);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px">📐</div>
+        <div>
+          <div style="color:#fff;font-size:19px;font-weight:800;line-height:1.3">${_esc(title)}</div>
+          ${subtitle ? `<div style="color:#c9ccd1;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;margin-top:2px">${_esc(subtitle)}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
   // Same resolution order student-app/testPlayer.js uses for question/option
   // images: local IDB-cached blob first (offline-safe, works in a native
   // WebView with no network), falling back to the ref itself (a remote URL)
@@ -191,6 +206,64 @@ const QUIZ_PDF = (() => {
       </div>`;
   }
 
+  // One question item — extracted so both the single continuous _buildHtml
+  // and the per-section grouped book renderer below build identical markup.
+  function _questionItemHtml(question, qNum, section, withAnswers) {
+    const options = _getOptionEntries(question);
+    const questionImageHtml = question._pdfImageSrc
+      ? `<div style="margin-top:6px"><img src="${_esc(question._pdfImageSrc)}" crossorigin="anonymous" style="max-width:100%;max-height:220px;display:block;border:1px solid #ddd;border-radius:4px"/></div>`
+      : '';
+    const optionsHtml = options.length ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-top:6px;font-size:13px">
+        ${options.map(([key, value]) => {
+          const optImg = question._pdfOptionImageSrc?.[key];
+          return `
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <span style="font-weight:700;min-width:16px">${_esc(key)})</span>
+            <span>
+              ${value ? `<span>${_esc(value)}</span>` : ''}
+              ${optImg ? `<img src="${_esc(optImg)}" crossorigin="anonymous" style="max-width:120px;max-height:90px;display:block;margin-top:${value ? '4px' : '0'};border:1px solid #ddd;border-radius:4px"/>` : ''}
+            </span>
+          </div>`;
+        }).join('')}
+      </div>` : '';
+    const answerHtml = withAnswers
+      ? `<div style="margin-top:4px;padding:6px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:12px;color:#166534">
+           <b>Answer:</b> ${_esc(question.answer)}${options.find(([k]) => k === question.answer)?.[1] ? ` — ${_esc(options.find(([k]) => k === question.answer)[1])}` : ''}
+         </div>`
+      : '';
+    return `
+      <div style="margin-bottom:14px;break-inside:avoid;page-break-inside:avoid">
+        <div style="font-size:14px;line-height:1.5"><b>${qNum}.</b> ${_esc(question.question)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(section.marks)}]</span></div>
+        ${questionImageHtml}
+        ${optionsHtml}
+        ${answerHtml}
+      </div>`;
+  }
+
+  function _sectionBlockHtml(section, qNumStart, withAnswers) {
+    let qNum = qNumStart;
+    const flatAnswers = [];
+    const itemsHtml = section.questions.map(question => {
+      qNum++;
+      flatAnswers.push({ num: qNum, answer: question.answer });
+      return _questionItemHtml(question, qNum, section, withAnswers);
+    }).join('');
+    const totalSectionMarks = section.questions.length * section.marks;
+    const html = `
+      <div style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:4px;margin-bottom:10px">
+          <span>${_esc(section.label)}</span>
+          <span style="font-weight:600;font-size:11px;color:#555">${section.questions.length} questions | ${_formatMarks(section.marks)} each | ${_formatMarks(totalSectionMarks)} total</span>
+        </div>
+        <div style="column-count:2;column-gap:28px">${itemsHtml}</div>
+      </div>`;
+    return { html, qNumEnd: qNum, flatAnswers };
+  }
+
+  const _PAGE_WRAP_OPEN  = `<div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">`;
+  const _PAGE_WRAP_CLOSE = `</div>`;
+
   /**
    * @param {object} paper
    * @param {boolean} withAnswers — inline "Answer: ..." under every
@@ -208,54 +281,14 @@ const QUIZ_PDF = (() => {
     let qNum = 0;
     const flatAnswers = [];
     const sectionsHtml = paper.sections.map(section => {
-      const itemsHtml = section.questions.map(question => {
-        qNum++;
-        flatAnswers.push({ num: qNum, answer: question.answer });
-        const options = _getOptionEntries(question);
-        const questionImageHtml = question._pdfImageSrc
-          ? `<div style="margin-top:6px"><img src="${_esc(question._pdfImageSrc)}" crossorigin="anonymous" style="max-width:100%;max-height:220px;display:block;border:1px solid #ddd;border-radius:4px"/></div>`
-          : '';
-        const optionsHtml = options.length ? `
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-top:6px;font-size:13px">
-            ${options.map(([key, value]) => {
-              const optImg = question._pdfOptionImageSrc?.[key];
-              return `
-              <div style="display:flex;gap:6px;align-items:flex-start">
-                <span style="font-weight:700;min-width:16px">${_esc(key)})</span>
-                <span>
-                  ${value ? `<span>${_esc(value)}</span>` : ''}
-                  ${optImg ? `<img src="${_esc(optImg)}" crossorigin="anonymous" style="max-width:120px;max-height:90px;display:block;margin-top:${value ? '4px' : '0'};border:1px solid #ddd;border-radius:4px"/>` : ''}
-                </span>
-              </div>`;
-            }).join('')}
-          </div>` : '';
-        const answerHtml = withAnswers
-          ? `<div style="margin-top:4px;padding:6px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:12px;color:#166534">
-               <b>Answer:</b> ${_esc(question.answer)}${options.find(([k]) => k === question.answer)?.[1] ? ` — ${_esc(options.find(([k]) => k === question.answer)[1])}` : ''}
-             </div>`
-          : '';
-        return `
-          <div style="margin-bottom:14px;break-inside:avoid;page-break-inside:avoid">
-            <div style="font-size:14px;line-height:1.5"><b>${qNum}.</b> ${_esc(question.question)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(section.marks)}]</span></div>
-            ${questionImageHtml}
-            ${optionsHtml}
-            ${answerHtml}
-          </div>`;
-      }).join('');
-
-      const totalSectionMarks = section.questions.length * section.marks;
-      return `
-        <div style="margin-bottom:18px">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:4px;margin-bottom:10px">
-            <span>${_esc(section.label)}</span>
-            <span style="font-weight:600;font-size:11px;color:#555">${section.questions.length} questions | ${_formatMarks(section.marks)} each | ${_formatMarks(totalSectionMarks)} total</span>
-          </div>
-          <div style="column-count:2;column-gap:28px">${itemsHtml}</div>
-        </div>`;
+      const block = _sectionBlockHtml(section, qNum, withAnswers);
+      qNum = block.qNumEnd;
+      flatAnswers.push(...block.flatAnswers);
+      return block.html;
     }).join('');
 
     return `
-      <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
+      ${_PAGE_WRAP_OPEN}
         <div style="text-align:center;border-bottom:3px double #1e3a8a;padding-bottom:12px;margin-bottom:16px">
           <div style="font-size:11px;letter-spacing:1px;color:#666">NKS EDUORBIT</div>
           <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(paper.title)}</div>
@@ -283,7 +316,68 @@ const QUIZ_PDF = (() => {
         <div style="text-align:center;font-size:10px;color:#999;margin-top:24px;border-top:1px solid #ddd;padding-top:8px">
           Generated by Nks EduOrbit
         </div>
+      ${_PAGE_WRAP_CLOSE}`;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // BOOK GROUPS — Paper Pattern Book (#5), where sections span multiple
+  // subjects/chapters: each section after the first must start on a fresh
+  // page (user-confirmed: "प्रत्येक chapter नवीन page वर start होईल"), not
+  // just flow on wherever the previous one ended. Splits the document into
+  // independently-rendered "groups" (header+instructions+section 1, then
+  // section 2 alone, section 3 alone, ..., then the answer key alone) — see
+  // _renderGroupsToBlob, which forces a page break between groups while
+  // still letting a single long section flow across multiple pages
+  // internally exactly like before.
+  // ════════════════════════════════════════════════════════════════════════
+
+  function _buildBookGroups(paper, answersAtEnd) {
+    const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const totalQuestions = paper.sections.reduce((sum, s) => sum + s.questions.length, 0);
+    const totalMarks = paper.sections.reduce((sum, s) => sum + s.questions.length * s.marks, 0);
+    // Books' titles already read "<batch> — X Book" or the chapter name
+    // itself — skip a subtitle line that would just repeat the batch name
+    // with nothing new (subject/chapter only appear here when the title
+    // doesn't already carry them, e.g. this ever had per-section subjects).
+    const subtitle = [paper.subject, paper.chapter].filter(Boolean).join(' • ');
+
+    const headerHtml = `
+      ${_bannerHtml(paper.title, subtitle)}
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:18px;color:#333">
+        <span>Date: ${dateStr}</span>
+        <span>Questions: <b>${totalQuestions}</b></span>
+        <span>Total Marks: <b>${_formatMarks(totalMarks)}</b></span>
+      </div>
+      ${paper.instructions ? `
+      <div style="margin-bottom:20px;padding:12px 16px;border:1px solid #1e3a8a;border-radius:6px;background:#f8faff">
+        <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:8px">Instructions to Candidates</div>
+        <div style="font-size:12px;line-height:1.7;white-space:pre-line">${_esc(paper.instructions)}</div>
+      </div>` : ''}`;
+
+    const footerHtml = `
+      <div style="text-align:center;font-size:10px;color:#999;margin-top:24px;border-top:1px solid #ddd;padding-top:8px">
+        Generated by Nks EduOrbit
       </div>`;
+
+    const groups = [];
+    let qNum = 0;
+    const flatAnswers = [];
+    paper.sections.forEach((section, i) => {
+      const block = _sectionBlockHtml(section, qNum, false);
+      qNum = block.qNumEnd;
+      flatAnswers.push(...block.flatAnswers);
+      const isLast = i === paper.sections.length - 1;
+      const inner = i === 0
+        ? `${headerHtml}${block.html}${(isLast && !answersAtEnd) ? footerHtml : ''}`
+        : `${block.html}${(isLast && !answersAtEnd) ? footerHtml : ''}`;
+      groups.push(`${_PAGE_WRAP_OPEN}${inner}${_PAGE_WRAP_CLOSE}`);
+    });
+
+    if (answersAtEnd) {
+      groups.push(`${_PAGE_WRAP_OPEN}${_answerKeyGridHtml(flatAnswers)}${footerHtml}${_PAGE_WRAP_CLOSE}`);
+    }
+
+    return groups;
   }
 
   function _drawWatermark(pdf, pageWidth, pageHeight) {
@@ -297,6 +391,31 @@ const QUIZ_PDF = (() => {
       pdf.text(text, pageWidth / 2 - 40, pageHeight / 2, 35);
     }
     pdf.restoreGraphicsState?.();
+    pdf.setTextColor(0, 0, 0);
+  }
+
+  // Vertical side tab + "Batch / page-no" footer, drawn directly on every
+  // physical page (like the watermark) rather than baked into the flowing
+  // HTML content — a page-edge label has to repeat on every page, but the
+  // source HTML is one continuous flow rendered once, so it can only be
+  // positioned this way, per finished page. Shared pattern with
+  // notesPdf.js/exercisePdf.js.
+  function _drawPageChrome(pdf, pageWidth, pageHeight, pageNum, sideLabel, footerLabel) {
+    if (sideLabel) {
+      pdf.saveGraphicsState?.();
+      pdf.setFillColor(240, 136, 62);
+      pdf.rect(pageWidth - 7, 40, 7, 60, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(9);
+      try {
+        pdf.text(sideLabel, pageWidth - 3.5, 95, { angle: 90, align: 'left' });
+      } catch (e) { /* older jsPDF without object-form angle — skip silently */ }
+      pdf.restoreGraphicsState?.();
+      pdf.setTextColor(0, 0, 0);
+    }
+    pdf.setFontSize(9);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(`${footerLabel ? footerLabel + ' / ' : ''}${pageNum}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
     pdf.setTextColor(0, 0, 0);
   }
 
@@ -361,6 +480,72 @@ const QUIZ_PDF = (() => {
 
       renderedPx += sliceHeightPx;
       firstPage = false;
+    }
+
+    return pdf.output('blob');
+  }
+
+  // Renders each group (see _buildBookGroups) as its own independent
+  // canvas + page-slice run, forcing a page break BETWEEN groups while a
+  // single group spanning multiple pages still paginates internally exactly
+  // like _renderToBlob above (the per-group slicing loop is identical) —
+  // the only difference is a new page always starts at the first slice of
+  // every group after the first.
+  async function _renderGroupsToBlob(groups, chrome = {}) {
+    await _ensureLibs();
+    const { jsPDF } = window.jspdf;
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const MARGIN = 12;
+    const contentWidthMm  = pageWidth  - MARGIN * 2;
+    const contentHeightMm = pageHeight - MARGIN * 2;
+
+    let isVeryFirstSlice = true;
+    let pageNum = 0;
+    for (const html of groups) {
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-99999px';
+      container.style.top = '0';
+      container.innerHTML = html;
+      document.body.appendChild(container);
+
+      let canvas;
+      try {
+        canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      } finally {
+        container.remove();
+      }
+
+      const pxPerMm = canvas.width / contentWidthMm;
+      const pageSliceHeightPx = Math.floor(contentHeightMm * pxPerMm);
+      let renderedPx = 0;
+
+      while (renderedPx < canvas.height) {
+        const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - renderedPx);
+
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = canvas.width;
+        pageCanvas.height = sliceHeightPx;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+        const sliceHeightMm = sliceHeightPx / pxPerMm;
+        const imgData = pageCanvas.toDataURL('image/png');
+
+        if (!isVeryFirstSlice) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
+        _drawWatermark(pdf, pageWidth, pageHeight);
+        pageNum++;
+        _drawPageChrome(pdf, pageWidth, pageHeight, pageNum, chrome.sideLabel, chrome.footerLabel);
+
+        renderedPx += sliceHeightPx;
+        isVeryFirstSlice = false;
+      }
     }
 
     return pdf.output('blob');
@@ -469,11 +654,20 @@ const QUIZ_PDF = (() => {
       instructions: meta.instructions || '',
       sections,
     };
-    const blob = await _renderToBlob(paper, false, true);
-    await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, 'Book'));
+    // Multiple sections (Paper Pattern Book spanning several subjects/
+    // chapters) -> each section after the first starts on its own fresh
+    // page (user-confirmed). A single-section book (Chapter-wise) has
+    // nothing to break between, so the grouped renderer degenerates to the
+    // same output as before for that case.
+    const groups = _buildBookGroups(paper, true);
+    const blob = await _renderGroupsToBlob(groups, { sideLabel: meta.batch });
+    // Title already ends in "... Book" (Subject-wise/Chapter-wise/Pattern
+    // Book titles are built with that suffix) — no extra "_Book" needed.
+    const base = String(paper.title || 'Test Book').replace(/[^a-zA-Z0-9ऀ-ॿ ]/g, '').trim().replace(/\s+/g, '_');
+    await FILE_EXPORT.saveAndShare(blob, `${base || 'Test_Book'}.pdf`);
   }
 
-  return { exportQuizPaper, exportById, exportTestBookPdf, _normalizeQuizForPdf, _renderToBlob, _buildHtml };
+  return { exportQuizPaper, exportById, exportTestBookPdf, _normalizeQuizForPdf, _renderToBlob, _buildHtml, _buildBookGroups, _renderGroupsToBlob };
 })();
 
 window.QUIZ_PDF = QUIZ_PDF;

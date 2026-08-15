@@ -89,6 +89,21 @@ const EXERCISE_PDF = (() => {
     return html;
   }
 
+  // Decorative chapter banner — dark rounded bar, chapter name + batch/
+  // subject subtitle, matching the printed workbook style referenced (real
+  // coaching-class notes/exercise book photo: dark banner, bold chapter
+  // name, small caps context line underneath).
+  function _bannerHtml(title, subtitle) {
+    return `
+      <div style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#1f2328,#3a3f47);border-radius:16px;padding:14px 22px;margin-bottom:18px">
+        <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#e16b13,#f0883e);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px">📝</div>
+        <div>
+          <div style="color:#fff;font-size:19px;font-weight:800;line-height:1.3">${_esc(title)}</div>
+          ${subtitle ? `<div style="color:#c9ccd1;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;margin-top:2px">${_esc(subtitle)}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
   function _formatMarks(value) {
     const number = Number(value || 0);
     return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/\.00$/, '');
@@ -190,12 +205,8 @@ const EXERCISE_PDF = (() => {
 
     return `
       <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
-        <div style="text-align:center;border-bottom:3px double #1e3a8a;padding-bottom:12px;margin-bottom:16px">
-          <div style="font-size:11px;letter-spacing:1px;color:#666">NKS EDUORBIT</div>
-          <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(meta.chapter || 'Exercise')} — Exercise Book</div>
-          ${subtitle ? `<div style="font-size:13px;color:#333">${_esc(subtitle)}</div>` : ''}
-          ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">— Answer Key —</div>' : ''}
-        </div>
+        ${_bannerHtml(meta.chapter || 'Exercise', subtitle)}
+        ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-bottom:8px">— Answer Key —</div>' : ''}
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:18px;color:#333">
           <span>Date: ${dateStr}</span>
           <span>Exercises: <b>${groups.length}</b></span>
@@ -223,10 +234,34 @@ const EXERCISE_PDF = (() => {
     pdf.setTextColor(0, 0, 0);
   }
 
+  // Vertical chapter-name side tab + "Subject / page-no" footer, drawn
+  // directly on every physical page (like the watermark) rather than baked
+  // into the flowing HTML content — a page-edge label has to repeat on
+  // every page, but the source HTML is one continuous flow rendered once,
+  // so it can only be positioned this way, per finished page.
+  function _drawPageChrome(pdf, pageWidth, pageHeight, pageNum, sideLabel, footerLabel) {
+    if (sideLabel) {
+      pdf.saveGraphicsState?.();
+      pdf.setFillColor(240, 136, 62);
+      pdf.rect(pageWidth - 7, 40, 7, 60, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(9);
+      try {
+        pdf.text(sideLabel, pageWidth - 3.5, 95, { angle: 90, align: 'left' });
+      } catch (e) { /* older jsPDF without object-form angle — skip silently */ }
+      pdf.restoreGraphicsState?.();
+      pdf.setTextColor(0, 0, 0);
+    }
+    pdf.setFontSize(9);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(`${footerLabel ? footerLabel + ' / ' : ''}${pageNum}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+    pdf.setTextColor(0, 0, 0);
+  }
+
   // Takes a pre-built HTML string (from _buildHtml or _buildBookHtml) rather
   // than a paper object, so both the single-exercise export and the
   // multi-exercise Book export share one renderer.
-  async function _renderToBlob(html) {
+  async function _renderToBlob(html, chrome = {}) {
     await _ensureLibs();
     const { jsPDF } = window.jspdf;
 
@@ -260,6 +295,7 @@ const EXERCISE_PDF = (() => {
 
     let renderedPx = 0;
     let firstPage = true;
+    let pageNum = 0;
     while (renderedPx < canvas.height) {
       const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - renderedPx);
 
@@ -277,6 +313,8 @@ const EXERCISE_PDF = (() => {
       if (!firstPage) pdf.addPage();
       pdf.addImage(imgData, 'PNG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
       _drawWatermark(pdf, pageWidth, pageHeight);
+      pageNum++;
+      _drawPageChrome(pdf, pageWidth, pageHeight, pageNum, chrome.sideLabel, chrome.footerLabel);
 
       renderedPx += sliceHeightPx;
       firstPage = false;
@@ -309,7 +347,7 @@ const EXERCISE_PDF = (() => {
       exerciseNo: data.exerciseNo || '',
       questions,
     };
-    const blob = await _renderToBlob(_buildHtml(paper, withAnswers));
+    const blob = await _renderToBlob(_buildHtml(paper, withAnswers), { sideLabel: paper.chapter, footerLabel: paper.subject });
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, withAnswers ? 'Answer_Key' : 'Question_Sheet'));
   }
 
@@ -327,7 +365,7 @@ const EXERCISE_PDF = (() => {
     }
     const filename = [meta.chapter, 'Book', withAnswers ? 'Answer_Key' : 'Question_Sheet']
       .filter(Boolean).join('_').replace(/[^a-zA-Z0-9ऀ-ॿ_ ]/g, '').trim().replace(/\s+/g, '_') + '.pdf';
-    const blob = await _renderToBlob(_buildBookHtml(meta, nonEmpty, withAnswers));
+    const blob = await _renderToBlob(_buildBookHtml(meta, nonEmpty, withAnswers), { sideLabel: meta.chapter, footerLabel: meta.subject });
     await FILE_EXPORT.saveAndShare(blob, filename || 'Exercise_Book.pdf');
   }
 

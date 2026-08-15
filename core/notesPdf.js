@@ -103,6 +103,21 @@ const NOTES_PDF = (() => {
     }).join('');
   }
 
+  // Decorative chapter banner — dark rounded bar, Marathi title + English
+  // subtitle, matching the printed workbook style the user referenced
+  // (photo of a real coaching-class notes book: dark banner, bold chapter
+  // name, small caps English translation underneath).
+  function _bannerHtml(marathiTitle, englishSubtitle) {
+    return `
+      <div style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#1f2328,#3a3f47);border-radius:16px;padding:14px 22px;margin-bottom:18px">
+        <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#e16b13,#f0883e);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px">📘</div>
+        <div>
+          <div style="color:#fff;font-size:19px;font-weight:800;line-height:1.3">${_esc(marathiTitle)}</div>
+          ${englishSubtitle ? `<div style="color:#c9ccd1;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;margin-top:2px">(${_esc(englishSubtitle)})</div>` : ''}
+        </div>
+      </div>`;
+  }
+
   function _listSection(title, items) {
     if (!items || !items.length) return '';
     return `
@@ -166,10 +181,34 @@ const NOTES_PDF = (() => {
     pdf.setTextColor(0, 0, 0);
   }
 
+  // Vertical chapter-name side tab + "Subject / page-no" footer, drawn
+  // directly on every physical page (like the watermark) rather than baked
+  // into the flowing HTML content — a page-edge label has to repeat on
+  // every page, but the source HTML is one continuous flow rendered once,
+  // so it can only be positioned this way, per finished page.
+  function _drawPageChrome(pdf, pageWidth, pageHeight, pageNum, sideLabel, footerLabel) {
+    if (sideLabel) {
+      pdf.saveGraphicsState?.();
+      pdf.setFillColor(240, 136, 62);
+      pdf.rect(pageWidth - 7, 40, 7, 60, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(9);
+      try {
+        pdf.text(sideLabel, pageWidth - 3.5, 95, { angle: 90, align: 'left' });
+      } catch (e) { /* older jsPDF without object-form angle — skip silently */ }
+      pdf.restoreGraphicsState?.();
+      pdf.setTextColor(0, 0, 0);
+    }
+    pdf.setFontSize(9);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(`${footerLabel ? footerLabel + ' / ' : ''}${pageNum}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+    pdf.setTextColor(0, 0, 0);
+  }
+
   // Takes a pre-built HTML string (from _buildHtml or _buildBookHtml) rather
   // than a paper object, so both the single-note export and the multi-note
   // Book export share one renderer.
-  async function _renderToBlob(html) {
+  async function _renderToBlob(html, chrome = {}) {
     await _ensureLibs();
     const { jsPDF } = window.jspdf;
 
@@ -203,6 +242,7 @@ const NOTES_PDF = (() => {
 
     let renderedPx = 0;
     let firstPage = true;
+    let pageNum = 0;
     while (renderedPx < canvas.height) {
       const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - renderedPx);
 
@@ -220,6 +260,8 @@ const NOTES_PDF = (() => {
       if (!firstPage) pdf.addPage();
       pdf.addImage(imgData, 'PNG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
       _drawWatermark(pdf, pageWidth, pageHeight);
+      pageNum++;
+      _drawPageChrome(pdf, pageWidth, pageHeight, pageNum, chrome.sideLabel, chrome.footerLabel);
 
       renderedPx += sliceHeightPx;
       firstPage = false;
@@ -282,7 +324,7 @@ const NOTES_PDF = (() => {
       chapter: context.chapter || '',
       title, blocks, learningOutcomes, shortNotes, revisionBox, examTags,
     };
-    const blob = await _renderToBlob(_buildHtml(paper));
+    const blob = await _renderToBlob(_buildHtml(paper), { sideLabel: paper.chapter, footerLabel: paper.subject });
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper));
   }
 
@@ -309,27 +351,25 @@ const NOTES_PDF = (() => {
 
     return `
       <div style="margin-bottom:22px;break-inside:avoid;page-break-inside:avoid">
-        <div style="font-size:16px;font-weight:800;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:6px;margin-bottom:12px">${_esc(numberLabel)}. ${_esc(note.title)}</div>
-        ${_listSection('📚 Learning Outcomes', note.learningOutcomes)}
-        ${note.blocks.length ? `<div style="margin-bottom:12px">${_blocksHtml(note.blocks)}</div>` : ''}
-        ${_listSection('🔑 Key Points', note.shortNotes)}
-        ${revHtml ? `<div style="margin-bottom:6px"><div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">📦 Revision Box</div>${revHtml}</div>` : ''}
-        ${tagsHtml}
+        <div style="font-size:15px;font-weight:800;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:6px;margin-bottom:12px">${_esc(numberLabel)}. ${_esc(note.title)}</div>
+        <div style="column-count:2;column-gap:24px">
+          ${_listSection('📚 Learning Outcomes', note.learningOutcomes)}
+          ${note.blocks.length ? `<div style="margin-bottom:12px;break-inside:avoid">${_blocksHtml(note.blocks)}</div>` : ''}
+          ${_listSection('🔑 Key Points', note.shortNotes)}
+          ${revHtml ? `<div style="margin-bottom:6px;break-inside:avoid"><div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">📦 Revision Box</div>${revHtml}</div>` : ''}
+          ${tagsHtml}
+        </div>
       </div>`;
   }
 
   function _buildBookHtml(meta, notes) {
-    const subtitle = [meta.batch, meta.subject, meta.chapter].filter(Boolean).join(' • ');
+    const subtitle = [meta.batch, meta.subject].filter(Boolean).join(' • ');
     const notesHtml = notes.map((note, i) => _noteBodyHtml(note, i + 1)).join('');
 
     return `
       <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
-        <div style="text-align:center;border-bottom:3px double #1e3a8a;padding-bottom:12px;margin-bottom:20px">
-          <div style="font-size:11px;letter-spacing:1px;color:#666">NKS EDUORBIT</div>
-          <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(meta.chapter || 'Notes')} — Notes Book</div>
-          ${subtitle ? `<div style="font-size:13px;color:#333">${_esc(subtitle)}</div>` : ''}
-          <div style="font-size:12px;color:#555;margin-top:4px">${notes.length} ${notes.length === 1 ? 'Note' : 'Notes'}</div>
-        </div>
+        ${_bannerHtml(meta.chapter || 'Notes', subtitle)}
+        <div style="text-align:right;font-size:11px;color:#888;margin-bottom:14px">${notes.length} ${notes.length === 1 ? 'Note' : 'Notes'}</div>
         ${notesHtml}
         <div style="text-align:center;font-size:10px;color:#999;margin-top:24px;border-top:1px solid #ddd;padding-top:8px">
           Generated by Nks EduOrbit
@@ -361,7 +401,7 @@ const NOTES_PDF = (() => {
       return;
     }
     const filename = `${String(meta.chapter || 'Notes').replace(/[^a-zA-Z0-9ऀ-ॿ ]/g, '').trim().replace(/\s+/g, '_') || 'Notes'}_Book.pdf`;
-    const blob = await _renderToBlob(_buildBookHtml(meta, notes));
+    const blob = await _renderToBlob(_buildBookHtml(meta, notes), { sideLabel: meta.chapter, footerLabel: meta.subject });
     await FILE_EXPORT.saveAndShare(blob, filename);
   }
 

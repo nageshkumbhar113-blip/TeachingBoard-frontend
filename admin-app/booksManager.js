@@ -305,7 +305,7 @@ const BOOKS_MANAGER = (() => {
 
     try {
       await QUIZ_PDF.exportTestBookPdf(
-        { title: `${chapter} — Chapter Test Book`, batch },
+        { title: chapter, batch },
         [{ label: chapter, subject, chapter, count, marks: 1 }]
       );
     } catch (err) {
