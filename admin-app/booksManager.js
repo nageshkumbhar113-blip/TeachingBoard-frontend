@@ -135,9 +135,23 @@ const BOOKS_MANAGER = (() => {
     if (statusEl) statusEl.textContent = 'Notes आणत आहे...';
     try {
       const chapterId = _makeChapterId(batch, subject, chapter);
-      const concepts = await API.fetchAdminChapterConcepts(chapterId, 'published');
-      if (statusEl) statusEl.textContent = `Notes आढळले: ${concepts.length}`;
-      await NOTES_PDF.exportNotesBookPdf({ batch, subject, chapter }, concepts);
+      // fetchAdminChapterConcepts is the CHAPTER LIST endpoint — the
+      // backend deliberately projects only title/order/difficulty/
+      // examTags/status there (.select(...) on the Mongo query, for a
+      // fast-loading list), so description/learningOutcomes/shortNotes/
+      // revisionBox are never present on these. Real bug found live: a
+      // Notes Book generated from this list alone came out as titles +
+      // an "Exam Tags" line only, even though the actual Notes had real
+      // content — because that content was never in this response to
+      // begin with. Each concept's FULL content only comes from the
+      // single-concept detail endpoint (fetchAdminConcept), so fetch
+      // that per concept before handing off to the PDF.
+      const summaries = await API.fetchAdminChapterConcepts(chapterId, 'published');
+      if (statusEl) statusEl.textContent = `Notes आढळले: ${summaries.length} — content आणत आहे...`;
+      const concepts = await Promise.all(summaries.map(s => API.fetchAdminConcept(s._id)));
+      const validConcepts = concepts.filter(Boolean);
+      if (statusEl) statusEl.textContent = `Notes आढळले: ${validConcepts.length}`;
+      await NOTES_PDF.exportNotesBookPdf({ batch, subject, chapter }, validConcepts);
     } catch (err) {
       APP.toast(err?.message || 'Notes Book तयार करता आलं नाही', 'error');
       if (statusEl) statusEl.textContent = '';
@@ -165,7 +179,12 @@ const BOOKS_MANAGER = (() => {
     const chapterId = _makeChapterId(batch, subject, chapter);
     // No exerciseNo filter -> every Exercise No. under this chapter, same as
     // exerciseManager.js's _loadExerciseNos but grouped client-side here.
-    const all = await API.fetchAdminSlsQuestions({ chapterId, status: 'published' });
+    // limit:500 -- the backend defaults to limit=20 per page when omitted
+    // (a real bug found live: a chapter's several exercises together can
+    // easily exceed 20 questions, silently truncating the Book). 500 is
+    // exerciseManager.js's own existing safety margin for this same
+    // whole-chapter query, reused here for consistency.
+    const all = await API.fetchAdminSlsQuestions({ chapterId, status: 'published', limit: 500 });
     const byNo = new Map();
     all.forEach(q => {
       const no = q.exerciseNo || '(No.शिवाय)';

@@ -268,7 +268,11 @@ const EXERCISE_MANAGER = (() => {
   async function _loadExerciseQuestions() {
     if (!_chapterId || !_activeExerciseNo) { _exerciseQuestions = []; _renderExerciseList(); return; }
     try {
-      _exerciseQuestions = await API.fetchAdminSlsQuestions({ chapterId: _chapterId, exerciseNo: _activeExerciseNo, status: '' });
+      // limit:500 -- the backend defaults to limit=20 per page when
+      // omitted, which would silently truncate a large exercise's
+      // question list (same class of bug found live in booksManager.js's
+      // whole-chapter fetch — same endpoint, same default).
+      _exerciseQuestions = await API.fetchAdminSlsQuestions({ chapterId: _chapterId, exerciseNo: _activeExerciseNo, status: '', limit: 500 });
     } catch (err) {
       console.warn('load exercise questions failed', err);
       _exerciseQuestions = [];
