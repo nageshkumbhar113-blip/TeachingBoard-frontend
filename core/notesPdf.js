@@ -370,16 +370,25 @@ const NOTES_PDF = (() => {
         <div>${note.examTags.map(t => `<span style="display:inline-block;background:#eef1fb;color:#1e3a8a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin:2px 4px 2px 0">${_esc(t)}</span>`).join('')}</div>
       </div>` : '';
 
+    // Single column — tried a CSS column-count auto-balance layout, then a
+    // fixed left/right grid, and both left visibly uneven "half-empty"
+    // pages once real notes had mixed content lengths (a table on one
+    // side, a short/empty Revision Box on the other — real notes vary far
+    // more in per-section length than the reference photo's uniform prose
+    // did). Single column never has this problem: every section just
+    // stacks, so there's never an empty region next to shorter content.
+    const bodyHtml = `
+      ${_listSection('📚 Learning Outcomes', note.learningOutcomes)}
+      ${note.blocks.length ? `<div style="margin-bottom:12px">${_blocksHtml(note.blocks)}</div>` : ''}
+      ${_listSection('🔑 Key Points', note.shortNotes)}
+      ${revHtml ? `<div style="margin-bottom:6px"><div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">📦 Revision Box</div>${revHtml}</div>` : ''}
+      ${tagsHtml}
+    `;
+
     return `
       <div style="margin-bottom:22px;break-inside:avoid;page-break-inside:avoid">
         <div style="font-size:15px;font-weight:800;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:6px;margin-bottom:12px">${_esc(numberLabel)}. ${_esc(note.title)}</div>
-        <div style="column-count:2;column-gap:24px">
-          ${_listSection('📚 Learning Outcomes', note.learningOutcomes)}
-          ${note.blocks.length ? `<div style="margin-bottom:12px;break-inside:avoid">${_blocksHtml(note.blocks)}</div>` : ''}
-          ${_listSection('🔑 Key Points', note.shortNotes)}
-          ${revHtml ? `<div style="margin-bottom:6px;break-inside:avoid"><div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">📦 Revision Box</div>${revHtml}</div>` : ''}
-          ${tagsHtml}
-        </div>
+        ${bodyHtml}
       </div>`;
   }
 
