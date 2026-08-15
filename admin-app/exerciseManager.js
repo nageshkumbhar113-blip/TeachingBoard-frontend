@@ -4,7 +4,48 @@
 const EXERCISE_MANAGER = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  const _richText = s => _esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Escapes HTML, then applies light markdown: **bold** -> <strong>, and
+  // GitHub-style pipe tables (a header row + a |---|---| separator row,
+  // as ChatGPT/Claude commonly paste) -> a real <table>. Runs on the
+  // already-escaped string, since | and - are never touched by _esc.
+  function _richText(raw) {
+    const bolded = _esc(raw).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const lines = bolded.split('\n');
+    const out = [];
+    let textBuf = [];
+    const flushText = () => { if (textBuf.length) { out.push(textBuf.join('<br>')); textBuf = []; } };
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const isRow = /^\s*\|.*\|\s*$/.test(line);
+      const sepLine = lines[i + 1] || '';
+      const isSep = isRow && /^\s*\|?[\s:|-]+\|?\s*$/.test(sepLine) && sepLine.includes('-');
+      if (isRow && isSep) {
+        flushText();
+        const block = [line, sepLine];
+        let j = i + 2;
+        while (j < lines.length && /^\s*\|.*\|\s*$/.test(lines[j])) { block.push(lines[j]); j++; }
+        out.push(_mdTableToHtml(block));
+        i = j;
+      } else {
+        textBuf.push(line);
+        i++;
+      }
+    }
+    flushText();
+    return out.join('');
+  }
+
+  function _mdTableToHtml(lines) {
+    const parseRow = row => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const header = parseRow(lines[0]);
+    const bodyRows = lines.slice(2).map(parseRow);
+    let html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;font-size:0.95em">';
+    html += '<thead><tr>' + header.map(h => `<th style="border:1px solid #ccc;padding:6px 8px;background:rgba(30,58,138,0.08);text-align:left">${h}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>' + bodyRows.map(row => '<tr>' + row.map(cell => `<td style="border:1px solid #ddd;padding:6px 8px">${cell}</td>`).join('') + '</tr>').join('') + '</tbody>';
+    html += '</table>';
+    return html;
+  }
   const _norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -405,16 +446,47 @@ const EXERCISE_MANAGER = (() => {
     }
   }
 
+  // Question/answer diagram — each optional, one image apiece (the backend
+  // model supports arrays, but one-per-side is what the manual form needs;
+  // held here for the lifetime of the open form, cleared on save/cancel.
+  let _formQDiagram = null; // { url, caption } | null
+  let _formADiagram = null;
+
+  function _diagramFieldHtml(kind, diagram) {
+    const label = kind === 'question' ? 'Question Diagram (optional)' : 'Answer Diagram (optional)';
+    return `
+      <label class="form-label">${label}</label>
+      <div class="em-diagram-field" data-kind="${kind}">
+        ${diagram?.url ? `
+          <div class="em-diagram-preview">
+            <img src="${_esc(diagram.url)}" alt="">
+            <button type="button" class="btn-icon em-diagram-remove" data-kind="${kind}" title="Remove">✕</button>
+          </div>
+          <input type="text" class="form-input em-diagram-caption" data-kind="${kind}" placeholder="Caption (optional)" value="${_esc(diagram.caption || '')}">
+        ` : `
+          <input type="file" accept="image/*" class="em-diagram-upload" data-kind="${kind}">
+        `}
+      </div>`;
+  }
+
   function _showManualForm(editId = null) {
     const existing = editId ? _exerciseQuestions.find(q => q._id === editId) : null;
+    _formQDiagram = existing?.questionDiagrams?.[0] || null;
+    _formADiagram = existing?.answerDiagrams?.[0] || null;
+    _renderManualForm(editId, existing);
+  }
+
+  function _renderManualForm(editId, existing) {
     const host = $('em-exercise-manual-form');
     if (!host) return;
     host.innerHTML = `
       <div class="cm-qitem" style="margin-top:10px">
         <label class="form-label">Question ($...$ math OK)</label>
         <textarea id="em-ex-question" class="form-input" rows="2">${_esc(existing?.questionText?.marathi || existing?.questionText?.english || '')}</textarea>
+        ${_diagramFieldHtml('question', _formQDiagram)}
         <label class="form-label">Answer</label>
         <textarea id="em-ex-answer" class="form-input" rows="2">${_esc(existing?.answerText?.marathi || existing?.answerText?.english || '')}</textarea>
+        ${_diagramFieldHtml('answer', _formADiagram)}
         <label class="form-label">Marks</label>
         <select id="em-ex-marks" class="form-input">
           ${[1,2,3,4,5].map(m => `<option value="${m}" ${existing?.marks === m ? 'selected' : ''}>${m} ${m === 1 ? 'Mark' : 'Marks'}</option>`).join('')}
@@ -425,8 +497,40 @@ const EXERCISE_MANAGER = (() => {
         </div>
       </div>
     `;
+    host.querySelectorAll('.em-diagram-upload').forEach(input =>
+      input.addEventListener('change', () => _uploadDiagram(input.dataset.kind, input.files?.[0], editId, existing)));
+    host.querySelectorAll('.em-diagram-remove').forEach(btn =>
+      btn.addEventListener('click', () => {
+        if (btn.dataset.kind === 'question') _formQDiagram = null; else _formADiagram = null;
+        _renderManualForm(editId, existing);
+      }));
+    host.querySelectorAll('.em-diagram-caption').forEach(input =>
+      input.addEventListener('input', () => {
+        const target = input.dataset.kind === 'question' ? _formQDiagram : _formADiagram;
+        if (target) target.caption = input.value;
+      }));
     $('em-ex-save-btn')?.addEventListener('click', () => _saveManual(editId));
-    $('em-ex-cancel-btn')?.addEventListener('click', () => { host.innerHTML = ''; });
+    $('em-ex-cancel-btn')?.addEventListener('click', () => { _formQDiagram = null; _formADiagram = null; host.innerHTML = ''; });
+  }
+
+  async function _uploadDiagram(kind, file, editId, existing) {
+    if (!file) return;
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const result = await API.uploadWordImage(dataUrl);
+      const url = result?.url || result?.data?.url || '';
+      if (!url) throw new Error('Upload succeeded but no URL returned');
+      const diagram = { url, caption: '' };
+      if (kind === 'question') _formQDiagram = diagram; else _formADiagram = diagram;
+      _renderManualForm(editId, existing);
+    } catch (err) {
+      APP.toast(err?.message || 'Image upload अयशस्वी', 'error');
+    }
   }
 
   async function _saveManual(editId) {
@@ -451,6 +555,8 @@ const EXERCISE_MANAGER = (() => {
         questionText: { english: question, marathi: question },
         answerText: { english: answer, marathi: answer },
         marks,
+        questionDiagrams: _formQDiagram ? [_formQDiagram] : [],
+        answerDiagrams: _formADiagram ? [_formADiagram] : [],
       };
       if (editId) {
         await API.updateAdminSlsQuestion(editId, payload);
@@ -466,6 +572,8 @@ const EXERCISE_MANAGER = (() => {
           status: 'published',
         });
       }
+      _formQDiagram = null;
+      _formADiagram = null;
       $('em-exercise-manual-form').innerHTML = '';
       await _loadExerciseQuestions();
       APP.toast('✅ Saved', 'success');
@@ -528,6 +636,9 @@ Marks: [1 ते 5 मधला आकडा]
       exportPdf: _exportPdf,
       updateMarks: _updateMarksInline,
       getQuestions: () => _exerciseQuestions,
+      showManualForm: _showManualForm,
+      saveManual: _saveManual,
+      getFormDiagrams: () => ({ question: _formQDiagram, answer: _formADiagram }),
     },
   };
 })();

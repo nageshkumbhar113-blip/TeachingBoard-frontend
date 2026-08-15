@@ -8,7 +8,48 @@ const NOTES_VIEWER = (() => {
   // Escapes HTML, then turns **bold** (as pasted straight from ChatGPT) into
   // <strong> so admin-written emphasis actually shows up bold/colored for
   // students instead of the literal asterisks.
-  const _richText = s => _esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Escapes HTML, then applies light markdown: **bold** -> <strong>, and
+  // GitHub-style pipe tables (a header row + a |---|---| separator row,
+  // as ChatGPT/Claude commonly paste) -> a real <table>. Runs on the
+  // already-escaped string, since | and - are never touched by _esc.
+  function _richText(raw) {
+    const bolded = _esc(raw).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const lines = bolded.split('\n');
+    const out = [];
+    let textBuf = [];
+    const flushText = () => { if (textBuf.length) { out.push(textBuf.join('<br>')); textBuf = []; } };
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const isRow = /^\s*\|.*\|\s*$/.test(line);
+      const sepLine = lines[i + 1] || '';
+      const isSep = isRow && /^\s*\|?[\s:|-]+\|?\s*$/.test(sepLine) && sepLine.includes('-');
+      if (isRow && isSep) {
+        flushText();
+        const block = [line, sepLine];
+        let j = i + 2;
+        while (j < lines.length && /^\s*\|.*\|\s*$/.test(lines[j])) { block.push(lines[j]); j++; }
+        out.push(_mdTableToHtml(block));
+        i = j;
+      } else {
+        textBuf.push(line);
+        i++;
+      }
+    }
+    flushText();
+    return out.join('');
+  }
+
+  function _mdTableToHtml(lines) {
+    const parseRow = row => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const header = parseRow(lines[0]);
+    const bodyRows = lines.slice(2).map(parseRow);
+    let html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;font-size:0.95em">';
+    html += '<thead><tr>' + header.map(h => `<th style="border:1px solid #ccc;padding:6px 8px;background:rgba(30,58,138,0.08);text-align:left">${h}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>' + bodyRows.map(row => '<tr>' + row.map(cell => `<td style="border:1px solid #ddd;padding:6px 8px">${cell}</td>`).join('') + '</tr>').join('') + '</tbody>';
+    html += '</table>';
+    return html;
+  }
 
   // ════════════════════════════════════════════════════════════════════════════
   // STATE

@@ -284,6 +284,16 @@ select.cm-marks-chip.em-marks-select {
 }
 .em-status-chip.published { background: rgba(26,127,55,0.12); color: #1a7f37; }
 .em-status-chip.draft     { background: rgba(107,122,147,0.14); color: #6b7a93; }
+
+/* Exercise Manager — optional question/answer diagram upload field */
+.em-diagram-field { margin-bottom: 8px; }
+.em-diagram-preview {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px dashed var(--color-border, #ccc); border-radius: 6px;
+  padding: 6px; background: #fff; margin-bottom: 6px;
+}
+.em-diagram-preview img { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; }
+.em-diagram-remove { margin-left: auto; }
 .cm-qtext { font-size: 13.5px; color: var(--color-text, #1f2328); margin-bottom: 5px; line-height: 1.5; }
 .cm-atext {
   font-size: 12.5px; color: var(--color-text-secondary, #6b7a93); line-height: 1.5;

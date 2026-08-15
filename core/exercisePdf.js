@@ -46,6 +46,49 @@ const EXERCISE_PDF = (() => {
 
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
+  // Escapes HTML, then applies light markdown: **bold** -> <strong>, and
+  // GitHub-style pipe tables (a header row + a |---|---| separator row,
+  // as ChatGPT/Claude commonly paste) -> a real <table>. Runs on the
+  // already-escaped string, since | and - are never touched by _esc.
+  function _richText(raw) {
+    const bolded = _esc(raw).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const lines = bolded.split('\n');
+    const out = [];
+    let textBuf = [];
+    const flushText = () => { if (textBuf.length) { out.push(textBuf.join('<br>')); textBuf = []; } };
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const isRow = /^\s*\|.*\|\s*$/.test(line);
+      const sepLine = lines[i + 1] || '';
+      const isSep = isRow && /^\s*\|?[\s:|-]+\|?\s*$/.test(sepLine) && sepLine.includes('-');
+      if (isRow && isSep) {
+        flushText();
+        const block = [line, sepLine];
+        let j = i + 2;
+        while (j < lines.length && /^\s*\|.*\|\s*$/.test(lines[j])) { block.push(lines[j]); j++; }
+        out.push(_mdTableToHtml(block));
+        i = j;
+      } else {
+        textBuf.push(line);
+        i++;
+      }
+    }
+    flushText();
+    return out.join('');
+  }
+
+  function _mdTableToHtml(lines) {
+    const parseRow = row => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const header = parseRow(lines[0]);
+    const bodyRows = lines.slice(2).map(parseRow);
+    let html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;font-size:0.95em">';
+    html += '<thead><tr>' + header.map(h => `<th style="border:1px solid #ccc;padding:6px 8px;background:rgba(30,58,138,0.08);text-align:left">${h}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>' + bodyRows.map(row => '<tr>' + row.map(cell => `<td style="border:1px solid #ddd;padding:6px 8px">${cell}</td>`).join('') + '</tr>').join('') + '</tbody>';
+    html += '</table>';
+    return html;
+  }
+
   function _formatMarks(value) {
     const number = Number(value || 0);
     return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/\.00$/, '');
@@ -78,7 +121,7 @@ const EXERCISE_PDF = (() => {
       const answerHtml = withAnswers ? `
         <div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px">
           <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:2px">Answer</div>
-          <div style="font-size:13px;color:#166534;line-height:1.6;white-space:pre-line">${_esc(_answerText(q))}</div>
+          <div style="font-size:13px;color:#166534;line-height:1.6">${_richText(_answerText(q))}</div>
           ${(q.answerDiagrams || []).map(d => `
             <div style="margin-top:6px">
               <img src="${_esc(d.url)}" crossorigin="anonymous" style="max-width:100%;max-height:260px;display:block;border:1px solid #cde9d3;border-radius:4px"/>
@@ -88,7 +131,7 @@ const EXERCISE_PDF = (() => {
 
       return `
         <div style="margin-bottom:16px;break-inside:avoid;page-break-inside:avoid">
-          <div style="font-size:14px;line-height:1.6"><b>प्रश्न ${i + 1}.</b> ${_esc(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(q.marks)} ${q.marks === 1 ? 'mark' : 'marks'}]</span></div>
+          <div style="font-size:14px;line-height:1.6"><b>प्रश्न ${i + 1}.</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(q.marks)} ${q.marks === 1 ? 'mark' : 'marks'}]</span></div>
           ${qDiagramsHtml}
           ${answerHtml}
         </div>`;
