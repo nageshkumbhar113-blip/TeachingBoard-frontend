@@ -295,6 +295,21 @@ const NOTES_PDF = (() => {
     return Array.isArray(description?.english?.blocks) ? description.english.blocks : [];
   }
 
+  // A note counts as "has content" if ANY section has something — not just
+  // blocks/learningOutcomes/shortNotes. A real note can legitimately be
+  // Revision-Box-only (quick formulas/remember-points, editor blocks never
+  // touched) or tags-only — those were being silently treated as empty and
+  // dropped from Notes Books (real bug, found live: admin saw "8 Notes
+  // आढळले" from the fetch, then an immediate "no Notes" error because every
+  // one of those 8 had only revisionBox + examTags filled in).
+  function _hasNoteContent(note) {
+    return !!(
+      note.blocks.length || note.learningOutcomes.length || note.shortNotes.length ||
+      Object.values(note.revisionBox || {}).some(arr => Array.isArray(arr) && arr.length) ||
+      (note.examTags || []).length
+    );
+  }
+
   /**
    * @param {object} concept — full concept object (title/description/
    *   learningOutcomes/shortNotes/revisionBox/examTags), same shape
@@ -313,7 +328,7 @@ const NOTES_PDF = (() => {
     const revisionBox = _pickRevisionBox(concept.revisionBox);
     const examTags = concept.examTags || [];
 
-    if (!blocks.length && !learningOutcomes.length && !shortNotes.length) {
+    if (!_hasNoteContent({ blocks, learningOutcomes, shortNotes, revisionBox, examTags })) {
       APP.toast('या Note मध्ये अजून content नाही', 'error');
       return;
     }
@@ -394,8 +409,7 @@ const NOTES_PDF = (() => {
    *   (API.fetchAdminChapterConcepts), in the order they should appear.
    */
   async function exportNotesBookPdf(meta, concepts) {
-    const notes = (concepts || []).map(_extractNote)
-      .filter(n => n.blocks.length || n.learningOutcomes.length || n.shortNotes.length);
+    const notes = (concepts || []).map(_extractNote).filter(_hasNoteContent);
     if (!notes.length) {
       APP.toast('या Chapter मध्ये अजून Notes नाहीत', 'error');
       return;
