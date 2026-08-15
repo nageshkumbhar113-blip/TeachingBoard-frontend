@@ -104,38 +104,43 @@ const EXERCISE_PDF = (() => {
     return String(q?.answerText?.marathi || q?.answerText?.english || '').trim();
   }
 
+  // One question item — shared by the single-exercise export and the
+  // multi-exercise Book export. numLabel is the continuous question number
+  // across the whole document (book numbering doesn't restart per exercise).
+  function _itemHtml(q, numLabel, withAnswers) {
+    const qText = _questionText(q);
+    const qDiagramsHtml = (q.questionDiagrams || []).map(d => `
+      <div style="margin-top:6px">
+        <img src="${_esc(d.url)}" crossorigin="anonymous" style="max-width:100%;max-height:260px;display:block;border:1px solid #ddd;border-radius:4px"/>
+        ${d.caption ? `<div style="font-size:11px;color:#666;margin-top:2px">${_esc(d.caption)}</div>` : ''}
+      </div>`).join('');
+
+    const answerHtml = withAnswers ? `
+      <div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px">
+        <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:2px">Answer</div>
+        <div style="font-size:13px;color:#166534;line-height:1.6">${_richText(_answerText(q))}</div>
+        ${(q.answerDiagrams || []).map(d => `
+          <div style="margin-top:6px">
+            <img src="${_esc(d.url)}" crossorigin="anonymous" style="max-width:100%;max-height:260px;display:block;border:1px solid #cde9d3;border-radius:4px"/>
+            ${d.caption ? `<div style="font-size:11px;color:#166534;margin-top:2px">${_esc(d.caption)}</div>` : ''}
+          </div>`).join('')}
+      </div>` : '';
+
+    return `
+      <div style="margin-bottom:16px;break-inside:avoid;page-break-inside:avoid">
+        <div style="font-size:14px;line-height:1.6"><b>प्रश्न ${numLabel}.</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(q.marks)} ${q.marks === 1 ? 'mark' : 'marks'}]</span></div>
+        ${qDiagramsHtml}
+        ${answerHtml}
+      </div>`;
+  }
+
   function _buildHtml(paper, withAnswers) {
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     const totalQuestions = paper.questions.length;
     const totalMarks = paper.questions.reduce((sum, q) => sum + Number(q.marks || 0), 0);
     const subtitle = [paper.batch, paper.subject, paper.chapter].filter(Boolean).join(' • ');
 
-    const itemsHtml = paper.questions.map((q, i) => {
-      const qText = _questionText(q);
-      const qDiagramsHtml = (q.questionDiagrams || []).map(d => `
-        <div style="margin-top:6px">
-          <img src="${_esc(d.url)}" crossorigin="anonymous" style="max-width:100%;max-height:260px;display:block;border:1px solid #ddd;border-radius:4px"/>
-          ${d.caption ? `<div style="font-size:11px;color:#666;margin-top:2px">${_esc(d.caption)}</div>` : ''}
-        </div>`).join('');
-
-      const answerHtml = withAnswers ? `
-        <div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px">
-          <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:2px">Answer</div>
-          <div style="font-size:13px;color:#166534;line-height:1.6">${_richText(_answerText(q))}</div>
-          ${(q.answerDiagrams || []).map(d => `
-            <div style="margin-top:6px">
-              <img src="${_esc(d.url)}" crossorigin="anonymous" style="max-width:100%;max-height:260px;display:block;border:1px solid #cde9d3;border-radius:4px"/>
-              ${d.caption ? `<div style="font-size:11px;color:#166534;margin-top:2px">${_esc(d.caption)}</div>` : ''}
-            </div>`).join('')}
-        </div>` : '';
-
-      return `
-        <div style="margin-bottom:16px;break-inside:avoid;page-break-inside:avoid">
-          <div style="font-size:14px;line-height:1.6"><b>प्रश्न ${i + 1}.</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(q.marks)} ${q.marks === 1 ? 'mark' : 'marks'}]</span></div>
-          ${qDiagramsHtml}
-          ${answerHtml}
-        </div>`;
-    }).join('');
+    const itemsHtml = paper.questions.map((q, i) => _itemHtml(q, i + 1, withAnswers)).join('');
 
     return `
       <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
@@ -157,6 +162,53 @@ const EXERCISE_PDF = (() => {
       </div>`;
   }
 
+  // ════════════════════════════════════════════════════════════════════════
+  // EXERCISE BOOK — every Exercise No. under one Chapter, combined into a
+  // single continuously-numbered PDF (not restarting the question number at
+  // each Exercise), so the total marks add up to the whole chapter.
+  // ════════════════════════════════════════════════════════════════════════
+
+  function _buildBookHtml(meta, groups, withAnswers) {
+    const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const totalQuestions = groups.reduce((sum, g) => sum + g.questions.length, 0);
+    const totalMarks = groups.reduce((sum, g) => sum + g.questions.reduce((s, q) => s + Number(q.marks || 0), 0), 0);
+    const subtitle = [meta.batch, meta.subject, meta.chapter].filter(Boolean).join(' • ');
+
+    let qNum = 0;
+    const groupsHtml = groups.map(group => {
+      const groupMarks = group.questions.reduce((s, q) => s + Number(q.marks || 0), 0);
+      const itemsHtml = group.questions.map(q => { qNum++; return _itemHtml(q, qNum, withAnswers); }).join('');
+      return `
+        <div style="margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:4px;margin-bottom:10px">
+            <span>Exercise ${_esc(group.exerciseNo)}</span>
+            <span style="font-weight:600;font-size:11px;color:#555">${group.questions.length} questions | ${_formatMarks(groupMarks)} marks</span>
+          </div>
+          ${itemsHtml}
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
+        <div style="text-align:center;border-bottom:3px double #1e3a8a;padding-bottom:12px;margin-bottom:16px">
+          <div style="font-size:11px;letter-spacing:1px;color:#666">NKS EDUORBIT</div>
+          <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(meta.chapter || 'Exercise')} — Exercise Book</div>
+          ${subtitle ? `<div style="font-size:13px;color:#333">${_esc(subtitle)}</div>` : ''}
+          ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">— Answer Key —</div>' : ''}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:18px;color:#333">
+          <span>Date: ${dateStr}</span>
+          <span>Exercises: <b>${groups.length}</b></span>
+          <span>Questions: <b>${totalQuestions}</b></span>
+          <span>Total Marks: <b>${_formatMarks(totalMarks)}</b></span>
+        </div>
+        ${groupsHtml}
+        <div style="text-align:center;font-size:10px;color:#999;margin-top:24px;border-top:1px solid #ddd;padding-top:8px">
+          Generated by Nks EduOrbit
+        </div>
+      </div>`;
+  }
+
   function _drawWatermark(pdf, pageWidth, pageHeight) {
     pdf.saveGraphicsState?.();
     pdf.setTextColor(200, 200, 200);
@@ -171,7 +223,10 @@ const EXERCISE_PDF = (() => {
     pdf.setTextColor(0, 0, 0);
   }
 
-  async function _renderToBlob(paper, withAnswers) {
+  // Takes a pre-built HTML string (from _buildHtml or _buildBookHtml) rather
+  // than a paper object, so both the single-exercise export and the
+  // multi-exercise Book export share one renderer.
+  async function _renderToBlob(html) {
     await _ensureLibs();
     const { jsPDF } = window.jspdf;
 
@@ -179,7 +234,7 @@ const EXERCISE_PDF = (() => {
     container.style.position = 'fixed';
     container.style.left = '-99999px';
     container.style.top = '0';
-    container.innerHTML = _buildHtml(paper, withAnswers);
+    container.innerHTML = html;
     document.body.appendChild(container);
 
     let canvas;
@@ -254,11 +309,29 @@ const EXERCISE_PDF = (() => {
       exerciseNo: data.exerciseNo || '',
       questions,
     };
-    const blob = await _renderToBlob(paper, withAnswers);
+    const blob = await _renderToBlob(_buildHtml(paper, withAnswers));
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, withAnswers ? 'Answer_Key' : 'Question_Sheet'));
   }
 
-  return { exportExercisePdf, _buildHtml, _renderToBlob };
+  /**
+   * @param {{batch, subject, chapter}} meta
+   * @param {{exerciseNo, questions}[]} groups — every Exercise No. under
+   *   this chapter (API.fetchAdminSlsQuestions({chapterId}), grouped by
+   *   exerciseNo client-side), sorted in the order they should print.
+   */
+  async function exportExerciseBookPdf(meta, groups, { withAnswers = false } = {}) {
+    const nonEmpty = (groups || []).filter(g => g?.questions?.length);
+    if (!nonEmpty.length) {
+      APP.toast('या Chapter मध्ये अजून प्रश्न नाहीत', 'error');
+      return;
+    }
+    const filename = [meta.chapter, 'Book', withAnswers ? 'Answer_Key' : 'Question_Sheet']
+      .filter(Boolean).join('_').replace(/[^a-zA-Z0-9ऀ-ॿ_ ]/g, '').trim().replace(/\s+/g, '_') + '.pdf';
+    const blob = await _renderToBlob(_buildBookHtml(meta, nonEmpty, withAnswers));
+    await FILE_EXPORT.saveAndShare(blob, filename || 'Exercise_Book.pdf');
+  }
+
+  return { exportExercisePdf, exportExerciseBookPdf, _buildHtml, _buildBookHtml, _renderToBlob };
 })();
 
 window.EXERCISE_PDF = EXERCISE_PDF;

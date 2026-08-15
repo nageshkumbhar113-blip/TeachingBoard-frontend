@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="admin-ui.css" />
   <link rel="stylesheet" href="concept-manager.css" />
   <link rel="stylesheet" href="paper-builder.css" />
+  <link rel="stylesheet" href="books.css" />
   <link rel="stylesheet" href="batch-pricing.css" />
   <link rel="stylesheet" href="youtube-teacher-admin.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
@@ -196,6 +197,10 @@
             <button class="atab" role="tab" data-tab="papers" aria-controls="atab-papers" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📄</span>
               <span class="atab-label">Paper Builder</span>
+            </button>
+            <button class="atab" role="tab" data-tab="books" aria-controls="atab-books" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📚</span>
+              <span class="atab-label">Books</span>
             </button>
             <button class="atab" role="tab" data-tab="pricing" aria-controls="atab-pricing" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">💰</span>
@@ -1339,6 +1344,127 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <!-- ── Books Panel ──────────────────────────── -->
+          <div class="atab-content hidden" id="atab-books" role="tabpanel" aria-labelledby="atab-btn-books">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">📚 Books</h2>
+            </div>
+            <p class="cm-autofill-hint" style="margin-bottom:16px">Chapter/Subject मधलं सगळं content एकत्र करून एक PDF तयार करा — काहीही save होत नाही, प्रत्येक वेळी ताजं generate होतं.</p>
+
+            <div class="bk-crumb hidden" id="bk-crumb">← सर्व Books कडे परत</div>
+
+            <div id="bk-grid" class="bk-tiles">
+              <button type="button" class="bk-tile" data-wizard="notes">
+                <div class="bk-tile-icon">📓</div>
+                <div class="bk-tile-title">Notes Book</div>
+                <div class="bk-tile-desc">एका Chapter खालच्या सर्व Notes, क्रमांकित, images सकट — एका PDF मध्ये.</div>
+              </button>
+              <button type="button" class="bk-tile" data-wizard="exercise">
+                <div class="bk-tile-icon">📝</div>
+                <div class="bk-tile-title">Exercise Book</div>
+                <div class="bk-tile-desc">एका Chapter मधले सर्व Exercise No. आपोआप एकत्र, diagrams सकट.</div>
+              </button>
+              <button type="button" class="bk-tile" data-wizard="subject">
+                <div class="bk-tile-icon">📘</div>
+                <div class="bk-tile-title">Subject-wise Test Book</div>
+                <div class="bk-tile-desc">एका Batch मधून multiple Subjects, प्रत्येकाला वेगळा question-count — random MCQ.</div>
+              </button>
+              <button type="button" class="bk-tile" data-wizard="chapter">
+                <div class="bk-tile-icon">📗</div>
+                <div class="bk-tile-title">Chapter-wise Test Book</div>
+                <div class="bk-tile-desc">एका Chapter च्या tests मधून random MCQ.</div>
+              </button>
+              <button type="button" class="bk-tile" data-wizard="pattern">
+                <div class="bk-tile-icon">📐</div>
+                <div class="bk-tile-title">Paper Pattern Book</div>
+                <div class="bk-tile-desc">Subject + Chapter निवडून प्रत्येकाला marks/count assign — marks-नुसार random MCQ.</div>
+              </button>
+            </div>
+
+            <!-- 1. Notes Book -->
+            <div class="bk-wizard" id="bk-wizard-notes">
+              <h3>📓 Notes Book</h3>
+              <div class="pb-form-section admin-card">
+                <div class="bk-field-row">
+                  <select id="bk-notes-batch" class="form-select"><option value="">Select Batch</option></select>
+                  <select id="bk-notes-subject" class="form-select" disabled><option value="">Select Subject</option></select>
+                  <select id="bk-notes-chapter" class="form-select" disabled><option value="">Select Chapter</option></select>
+                </div>
+                <div class="bk-status" id="bk-notes-status"></div>
+                <button type="button" id="bk-notes-generate" class="admin-btn-primary" style="margin-top:10px">📄 Generate Notes Book PDF</button>
+              </div>
+            </div>
+
+            <!-- 2. Exercise Book -->
+            <div class="bk-wizard" id="bk-wizard-exercise">
+              <h3>📝 Exercise Book</h3>
+              <div class="pb-form-section admin-card">
+                <div class="bk-field-row">
+                  <select id="bk-ex-batch" class="form-select"><option value="">Select Batch</option></select>
+                  <select id="bk-ex-subject" class="form-select" disabled><option value="">Select Subject</option></select>
+                  <select id="bk-ex-chapter" class="form-select" disabled><option value="">Select Chapter</option></select>
+                </div>
+                <div class="bk-status" id="bk-ex-status"></div>
+                <div style="display:flex;gap:10px;margin-top:10px">
+                  <button type="button" id="bk-ex-generate-q" class="admin-btn-primary">📄 Question Sheet PDF</button>
+                  <button type="button" id="bk-ex-generate-a" class="admin-btn-secondary">🔑 Answer Key PDF</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Subject-wise Test Book -->
+            <div class="bk-wizard" id="bk-wizard-subject">
+              <h3>📘 Subject-wise Test Book</h3>
+              <div class="pb-form-section admin-card">
+                <h4>Batch</h4>
+                <select id="bk-subj-batch" class="form-select"><option value="">Select Batch</option></select>
+              </div>
+              <div class="pb-form-section admin-card">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <h4 style="margin:0">Subjects &amp; Question Count</h4>
+                  <button type="button" id="bk-subj-select-all" class="btn btn-small">☑️ सर्व Subjects निवडा</button>
+                </div>
+                <div class="bk-rows" id="bk-subj-rows"></div>
+                <button type="button" id="bk-subj-add-row" class="bk-add-row-btn">+ आणखी एक Subject</button>
+                <div class="bk-totals" id="bk-subj-totals"></div>
+                <div class="bk-answer-note">🔑 उत्तरं प्रश्नाखाली नाहीत — संपूर्ण Book च्या शेवटी एकत्र Answer Key.</div>
+                <button type="button" id="bk-subj-generate" class="admin-btn-primary" style="margin-top:10px">📄 Generate Test Book PDF</button>
+              </div>
+            </div>
+
+            <!-- 4. Chapter-wise Test Book -->
+            <div class="bk-wizard" id="bk-wizard-chapter">
+              <h3>📗 Chapter-wise Test Book</h3>
+              <div class="pb-form-section admin-card">
+                <div class="bk-field-row">
+                  <select id="bk-chap-batch" class="form-select"><option value="">Select Batch</option></select>
+                  <select id="bk-chap-subject" class="form-select" disabled><option value="">Select Subject</option></select>
+                  <select id="bk-chap-chapter" class="form-select" disabled><option value="">Select Chapter</option></select>
+                  <input type="number" id="bk-chap-count" class="admin-input" min="1" value="25" placeholder="Questions">
+                </div>
+                <div class="bk-answer-note">🔑 उत्तरं प्रश्नाखाली नाहीत — शेवटी एकत्र Answer Key.</div>
+                <button type="button" id="bk-chap-generate" class="admin-btn-primary" style="margin-top:10px">📄 Generate Test Book PDF</button>
+              </div>
+            </div>
+
+            <!-- 5. Paper Pattern Book -->
+            <div class="bk-wizard" id="bk-wizard-pattern">
+              <h3>📐 Paper Pattern Book</h3>
+              <div class="pb-form-section admin-card">
+                <h4>Batch</h4>
+                <select id="bk-pat-batch" class="form-select"><option value="">Select Batch</option></select>
+              </div>
+              <div class="pb-form-section admin-card">
+                <h4>Sections (Subject + Chapter + Marks + Count)</h4>
+                <div class="bk-rows" id="bk-pat-rows"></div>
+                <button type="button" id="bk-pat-add-row" class="bk-add-row-btn">+ आणखी एक Section</button>
+                <div class="bk-totals" id="bk-pat-totals"></div>
+                <div class="bk-answer-note">🔑 उत्तरं प्रश्नाखाली नाहीत — संपूर्ण Book च्या शेवटी एकत्र Answer Key.</div>
+                <button type="button" id="bk-pat-generate" class="admin-btn-primary" style="margin-top:10px">📄 Generate Pattern Book PDF</button>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Pricing Panel (Batch Pricing) ───────── -->
           <div class="atab-content hidden" id="atab-pricing" role="tabpanel" aria-labelledby="atab-btn-pricing">
             <div id="bp-container" class="bp-container">
@@ -1481,6 +1607,9 @@ Marks: 1"></textarea>
       </button>
       <button class="abn-drawer-item" data-tab="papers">
         <span>📄</span> Paper Builder
+      </button>
+      <button class="abn-drawer-item" data-tab="books">
+        <span>📚</span> Books
       </button>
       <button class="abn-drawer-item" data-tab="pricing">
         <span>💰</span> Pricing
@@ -1753,6 +1882,7 @@ Marks: 1"></textarea>
   <script src="notesManager.js" defer></script>
   <script src="conceptManager.js" defer></script>
   <script src="exerciseManager.js" defer></script>
+  <script src="booksManager.js" defer></script>
   <script src="paperBuilder.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
