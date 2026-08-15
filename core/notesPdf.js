@@ -295,18 +295,24 @@ const NOTES_PDF = (() => {
     return Array.isArray(description?.english?.blocks) ? description.english.blocks : [];
   }
 
-  // A note counts as "has content" if ANY section has something — not just
-  // blocks/learningOutcomes/shortNotes. A real note can legitimately be
-  // Revision-Box-only (quick formulas/remember-points, editor blocks never
-  // touched) or tags-only — those were being silently treated as empty and
-  // dropped from Notes Books (real bug, found live: admin saw "8 Notes
-  // आढळले" from the fetch, then an immediate "no Notes" error because every
-  // one of those 8 had only revisionBox + examTags filled in).
+  // A note counts as "has content" if ANY *substantive* section has
+  // something — blocks/learningOutcomes/shortNotes/revisionBox. A real note
+  // can legitimately be Revision-Box-only (quick formulas/remember-points,
+  // editor blocks never touched) — that was being silently treated as
+  // empty and dropped from Notes Books (real bug, found live: admin saw
+  // "8 Notes आढळले" from the fetch, then an immediate "no Notes" error
+  // because those had only revisionBox filled in).
+  //
+  // examTags deliberately does NOT count on its own — found live too: a
+  // batch of concepts had only a title + a leftover "mcq" tag with nothing
+  // actually written (no content/outcomes/notes/revision box at all), and
+  // counting the tag as "content" produced a technically-non-empty but
+  // practically blank PDF (just titles + an "Exam Tags: mcq" line). A tag
+  // is metadata, not something a student can read.
   function _hasNoteContent(note) {
     return !!(
       note.blocks.length || note.learningOutcomes.length || note.shortNotes.length ||
-      Object.values(note.revisionBox || {}).some(arr => Array.isArray(arr) && arr.length) ||
-      (note.examTags || []).length
+      Object.values(note.revisionBox || {}).some(arr => Array.isArray(arr) && arr.length)
     );
   }
 
