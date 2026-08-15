@@ -1268,9 +1268,11 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <div class="pb-form-section admin-card" id="em-work-section" style="display:none">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                   <h3 id="em-work-title" style="margin:0">Exercise चे प्रश्न</h3>
-                  <div style="display:flex;gap:8px">
+                  <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button type="button" id="em-preview-btn" class="btn btn-small">👁 Preview</button>
                     <button type="button" id="em-publish-btn" class="btn btn-small btn-primary">🚀 Publish All</button>
+                    <button type="button" id="em-pdf-btn" class="btn btn-small">📄 Question Sheet PDF</button>
+                    <button type="button" id="em-pdf-answers-btn" class="btn btn-small">📄 Answer Key PDF</button>
                   </div>
                 </div>
                 <p class="cm-autofill-hint">Question + Answer + Marks एकत्र paste करा, आपोआप वेगळे होतील — गणितीय सूत्रं $...$ किंवा $$...$$ मध्ये लिहिली तर आपोआप render होतील.</p>
@@ -1742,6 +1744,7 @@ Marks: 1"></textarea>
   <script src="../core/i18n.js" defer></script>
   <script src="../core/pdf.js" defer></script>
   <script src="../core/quizPdf.js" defer></script>
+  <script src="../core/exercisePdf.js" defer></script>
   <script src="../core/sync.js" defer></script>
   <script src="parser.js" defer></script>
   <script src="testBuilder.js" defer></script>

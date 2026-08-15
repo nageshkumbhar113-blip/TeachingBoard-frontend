@@ -49,6 +49,8 @@ const EXERCISE_MANAGER = (() => {
     $('em-copy-format-btn')?.addEventListener('click', () => _copyFormat());
     $('em-preview-btn')?.addEventListener('click', () => _previewExercise());
     $('em-publish-btn')?.addEventListener('click', () => _publishExercise());
+    $('em-pdf-btn')?.addEventListener('click', () => _exportPdf(false));
+    $('em-pdf-answers-btn')?.addEventListener('click', () => _exportPdf(true));
     $('em-preview-close')?.addEventListener('click', () => $('em-preview-overlay')?.classList.add('hidden'));
     $('em-preview-overlay')?.addEventListener('click', e => {
       if (e.target.id === 'em-preview-overlay') $('em-preview-overlay').classList.add('hidden');
@@ -310,6 +312,24 @@ const EXERCISE_MANAGER = (() => {
     MATH?.renderElement(body);
   }
 
+  async function _exportPdf(withAnswers) {
+    if (!_exerciseQuestions.length) {
+      APP.toast('या Exercise मध्ये अजून प्रश्न नाहीत', 'error');
+      return;
+    }
+    try {
+      await EXERCISE_PDF.exportExercisePdf({
+        batch: _batch,
+        subject: _subject,
+        chapter: _chapter,
+        exerciseNo: _activeExerciseNo,
+        questions: _exerciseQuestions,
+      }, { withAnswers });
+    } catch (err) {
+      APP.toast(err?.message || 'PDF export अयशस्वी', 'error');
+    }
+  }
+
   async function _publishExercise() {
     const drafts = _exerciseQuestions.filter(q => q.status !== 'published');
     if (!drafts.length) {
@@ -489,9 +509,12 @@ Marks: [1 ते 5 मधला आकडा]
   // publish internals so they can be exercised without a full DB-backed
   // batch→subject→chapter→exerciseNo click-through. Not used by any
   // production code path.
-  function _setTestState(exerciseNo, questions) {
+  function _setTestState(exerciseNo, questions, meta = {}) {
     _activeExerciseNo = exerciseNo;
     _exerciseQuestions = questions;
+    if (meta.batch   !== undefined) _batch   = meta.batch;
+    if (meta.subject !== undefined) _subject = meta.subject;
+    if (meta.chapter !== undefined) _chapter = meta.chapter;
     _renderExerciseList();
   }
 
@@ -502,6 +525,7 @@ Marks: [1 ते 5 मधला आकडा]
       renderList: _renderExerciseList,
       preview: _previewExercise,
       publish: _publishExercise,
+      exportPdf: _exportPdf,
       updateMarks: _updateMarksInline,
       getQuestions: () => _exerciseQuestions,
     },
