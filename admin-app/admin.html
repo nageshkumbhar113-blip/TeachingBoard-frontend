@@ -1266,7 +1266,13 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               </div>
 
               <div class="pb-form-section admin-card" id="em-work-section" style="display:none">
-                <h3 id="em-work-title">Exercise चे प्रश्न</h3>
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                  <h3 id="em-work-title" style="margin:0">Exercise चे प्रश्न</h3>
+                  <div style="display:flex;gap:8px">
+                    <button type="button" id="em-preview-btn" class="btn btn-small">👁 Preview</button>
+                    <button type="button" id="em-publish-btn" class="btn btn-small btn-primary">🚀 Publish All</button>
+                  </div>
+                </div>
                 <p class="cm-autofill-hint">Question + Answer + Marks एकत्र paste करा, आपोआप वेगळे होतील — गणितीय सूत्रं $...$ किंवा $$...$$ मध्ये लिहिली तर आपोआप render होतील.</p>
                 <textarea id="em-autofill-input" class="cm-autofill-textarea" placeholder="Q1. गुरुत्वाकर्षण बल म्हणजे काय?
 Ans: दोन वस्तूंमधील एकमेकांना आकर्षित करणारे बल. $F = \frac{Gm_1m_2}{r^2}$
@@ -1761,6 +1767,18 @@ Marks: 1"></textarea>
       <div id="test-preview-body" class="test-preview-body">
         <div class="test-preview-loading">Loading…</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Exercise Manager: read-only preview of the active Exercise No.'s
+       questions, exactly as they'd read to a student (no Edit/Delete). -->
+  <div id="em-preview-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="em-preview-title">
+    <div class="modal-panel test-preview-panel">
+      <div class="modal-header">
+        <h3 id="em-preview-title" class="modal-title">Exercise Preview</h3>
+        <button id="em-preview-close" class="modal-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div id="em-preview-body" class="test-preview-body"></div>
     </div>
   </div>
 

@@ -47,6 +47,12 @@ const EXERCISE_MANAGER = (() => {
     $('em-autofill-btn')?.addEventListener('click', () => _runAutoFill());
     $('em-manual-btn')?.addEventListener('click', () => _showManualForm());
     $('em-copy-format-btn')?.addEventListener('click', () => _copyFormat());
+    $('em-preview-btn')?.addEventListener('click', () => _previewExercise());
+    $('em-publish-btn')?.addEventListener('click', () => _publishExercise());
+    $('em-preview-close')?.addEventListener('click', () => $('em-preview-overlay')?.classList.add('hidden'));
+    $('em-preview-overlay')?.addEventListener('click', e => {
+      if (e.target.id === 'em-preview-overlay') $('em-preview-overlay').classList.add('hidden');
+    });
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -238,7 +244,12 @@ const EXERCISE_MANAGER = (() => {
       <div class="cm-qitem" data-id="${_esc(q._id)}">
         <div class="cm-qitem-top">
           <b>प्रश्न ${i + 1}</b>
-          <span class="cm-marks-chip">${q.marks} marks</span>
+          <span class="em-status-chip ${q.status === 'published' ? 'published' : 'draft'}">${q.status === 'published' ? '✅ Published' : '📝 Draft'}</span>
+          <!-- Inline marks edit — right where marks are shown, no need to
+               open the full Edit form just to bump 1→2 marks. -->
+          <select class="cm-marks-chip em-marks-select" data-id="${_esc(q._id)}">
+            ${[1,2,3,4,5].map(m => `<option value="${m}" ${q.marks === m ? 'selected' : ''}>${m} ${m === 1 ? 'mark' : 'marks'}</option>`).join('')}
+          </select>
         </div>
         <div class="cm-qtext">${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>
         <div class="cm-atext">${_richText(q.answerText?.marathi || q.answerText?.english || '')}</div>
@@ -252,8 +263,77 @@ const EXERCISE_MANAGER = (() => {
       btn.addEventListener('click', () => _showManualForm(btn.dataset.id)));
     list.querySelectorAll('.em-delete-btn').forEach(btn =>
       btn.addEventListener('click', () => _deleteQuestion(btn.dataset.id)));
+    list.querySelectorAll('.em-marks-select').forEach(sel =>
+      sel.addEventListener('change', () => _updateMarksInline(sel.dataset.id, parseInt(sel.value, 10))));
     // Math ($...$ / $$...$$) — same convention as the rest of the app.
     MATH?.renderElement(list);
+  }
+
+  async function _updateMarksInline(id, marks) {
+    try {
+      await API.updateAdminSlsQuestion(id, { marks });
+      const q = _exerciseQuestions.find(item => item._id === id);
+      if (q) q.marks = marks;
+      APP.toast('✅ Marks updated', 'success');
+    } catch (err) {
+      APP.toast(err?.message || 'Marks update अयशस्वी', 'error');
+      await _loadExerciseQuestions(); // revert the select to the real saved value
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // PREVIEW & PUBLISH — whole active Exercise No. at once
+  // ════════════════════════════════════════════════════════════════════════════
+
+  function _previewExercise() {
+    const body = $('em-preview-body');
+    const title = $('em-preview-title');
+    if (!body) return;
+    title.textContent = `Exercise ${_activeExerciseNo} — Preview (${_exerciseQuestions.length} प्रश्न)`;
+
+    if (!_exerciseQuestions.length) {
+      body.innerHTML = '<p class="empty-hint">अजून या Exercise No. साठी प्रश्न नाहीत.</p>';
+    } else {
+      body.innerHTML = _exerciseQuestions.map((q, i) => `
+        <div class="cm-qitem" style="margin-bottom:12px">
+          <div class="cm-qitem-top">
+            <b>प्रश्न ${i + 1}</b>
+            <span class="em-status-chip ${q.status === 'published' ? 'published' : 'draft'}">${q.status === 'published' ? '✅ Published' : '📝 Draft'}</span>
+            <span class="cm-marks-chip">${q.marks} ${q.marks === 1 ? 'mark' : 'marks'}</span>
+          </div>
+          <div class="cm-qtext">${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>
+          <div class="cm-atext">${_richText(q.answerText?.marathi || q.answerText?.english || '')}</div>
+        </div>
+      `).join('');
+    }
+    $('em-preview-overlay')?.classList.remove('hidden');
+    MATH?.renderElement(body);
+  }
+
+  async function _publishExercise() {
+    const drafts = _exerciseQuestions.filter(q => q.status !== 'published');
+    if (!drafts.length) {
+      APP.toast('सगळे प्रश्न आधीच Published आहेत', 'info');
+      return;
+    }
+    if (!await APP.confirmAsync(`${drafts.length} प्रश्न Publish करायचे? Publish केल्यावर ते students/teachers ला दिसू लागतील.`)) return;
+
+    let published = 0, failed = 0;
+    for (const q of drafts) {
+      try {
+        await API.publishAdminSlsQuestion(q._id);
+        published++;
+      } catch (err) {
+        console.warn('publish failed for', q._id, err);
+        failed++;
+      }
+    }
+    await _loadExerciseQuestions();
+    if (failed) {
+      APP.toast(`${published} प्रश्न published, ${failed} अयशस्वी`, 'error');
+    } else {
+      APP.toast(`🚀 ${published} प्रश्न published — आता students/teachers ला दिसतील`, 'success');
+    }
   }
 
   async function _runAutoFill() {
@@ -405,7 +485,27 @@ Marks: [1 ते 5 मधला आकडा]
       .catch(() => APP.toast('Copy करता आलं नाही', 'error'));
   }
 
-  return { init };
+  // Test-only hook — injects state directly and exposes the render/preview/
+  // publish internals so they can be exercised without a full DB-backed
+  // batch→subject→chapter→exerciseNo click-through. Not used by any
+  // production code path.
+  function _setTestState(exerciseNo, questions) {
+    _activeExerciseNo = exerciseNo;
+    _exerciseQuestions = questions;
+    _renderExerciseList();
+  }
+
+  return {
+    init,
+    __test: {
+      setState: _setTestState,
+      renderList: _renderExerciseList,
+      preview: _previewExercise,
+      publish: _publishExercise,
+      updateMarks: _updateMarksInline,
+      getQuestions: () => _exerciseQuestions,
+    },
+  };
 })();
 
 window.EXERCISE_MANAGER = EXERCISE_MANAGER;
