@@ -77,21 +77,30 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
           ${['pending', 'approved', 'rejected'].map(s =>
             `<button class="atab-sub ${s === status ? 'active' : ''}" data-ytt-status="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join('')}
         </div>
-        ${videos.length ? videos.map(v => `
-          <div class="ytt-row" data-id="${v.id}">
+        ${videos.length ? videos.map(v => {
+          // Whatever's actually pending review is what needs previewing —
+          // a resubmitted/edited video's new content lives in
+          // pending_video_id, not the old live_video_id, so this must
+          // never fall back to the live one (that would show admin the
+          // OLD approved video while approving a DIFFERENT new one).
+          const previewId = v.pending_video_id || (status !== 'pending' ? v.live_video_id : '');
+          return `
+          <div class="ytt-row" data-id="${v.id}" style="flex-direction:column;align-items:stretch;gap:8px">
             <div class="ytt-row-info">
               <strong>${_esc(v.chapter_name)} — ${_esc(v.exercise_no)}${v.part_label ? ' · ' + _esc(v.part_label) : ''}</strong>
               <small>${_esc(v.teacher_name)} · ${_esc(v.batch_name)} · ${_esc(v.subject_name)}</small>
-              ${v.pending_video_id ? `<small>▶ youtu.be/${_esc(v.pending_video_id)}</small>` : ''}
               ${v.status === 'rejected' && v.rejection_reason ? `<small style="color:#c82333;">Reason: ${_esc(v.rejection_reason)}</small>` : ''}
             </div>
+            ${previewId ? `
+              <iframe width="100%" height="220" style="border-radius:8px;border:1px solid #ddd" src="https://www.youtube-nocookie.com/embed/${_esc(previewId)}" title="Preview" frameborder="0" allowfullscreen></iframe>
+            ` : '<div style="font-size:0.85rem;color:#999">No video to preview.</div>'}
             ${status === 'pending' ? `
               <div class="ytt-row-actions">
                 <button class="btn-tiny btn-approve" data-approve="${v.id}">Approve</button>
                 <button class="btn-tiny btn-reject" data-reject="${v.id}">Reject</button>
               </div>` : ''}
           </div>
-        `).join('') : '<div style="text-align:center;padding:2rem;color:#999;">No videos here.</div>'}
+        `; }).join('') : '<div style="text-align:center;padding:2rem;color:#999;">No videos here.</div>'}
       `;
       body.querySelectorAll('[data-ytt-status]').forEach(b => b.addEventListener('click', () => _renderApprovals(b.dataset.yttStatus)));
       body.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', async () => {

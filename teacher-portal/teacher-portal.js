@@ -350,6 +350,7 @@ async function renderAddVideo(main) {
     <div class="field"><label>Exercise</label><select class="field-select" id="av-exercise" disabled><option>Select Chapter first</option></select></div>
     <div id="av-callout"></div>
     <div class="field"><label>YouTube URL</label><input id="av-url" placeholder="https://youtu.be/..."></div>
+    <div id="av-preview"></div>
     <div class="field"><label>Part Label (optional — for a long exercise split into parts)</label><input id="av-part" placeholder="e.g. Part 1 — Concepts"></div>
     <p class="field-error" id="av-error"></p>
     <button class="btn btn-primary btn-block" id="av-submit">Submit for Approval</button>
@@ -383,6 +384,23 @@ async function renderAddVideo(main) {
         : '<option value="">No exercises found for this chapter yet</option>';
       exerciseSel.disabled = false;
     } catch { exerciseSel.innerHTML = '<option>Failed to load</option>'; }
+  });
+
+  // Live preview — the teacher (and, on the admin side, whoever approves
+  // it) both need to actually SEE the video before submitting/approving,
+  // not just paste/read a URL. Debounced-by-nature since it only re-renders
+  // when the extracted 11-char id actually changes, so retyping mid-URL
+  // doesn't reload the iframe on every keystroke.
+  const urlInput = main.querySelector('#av-url');
+  const previewEl = main.querySelector('#av-preview');
+  let lastPreviewedId = '';
+  urlInput.addEventListener('input', () => {
+    const id = extractVideoIdClient(urlInput.value);
+    if (id === lastPreviewedId) return;
+    lastPreviewedId = id;
+    previewEl.innerHTML = id
+      ? `<iframe width="100%" height="220" style="border-radius:8px;border:1px solid var(--border,#ddd);margin-top:8px" src="https://www.youtube-nocookie.com/embed/${id}" title="Preview" frameborder="0" allowfullscreen></iframe>`
+      : '';
   });
 
   main.querySelector('#av-submit').addEventListener('click', async () => {
