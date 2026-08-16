@@ -11,6 +11,37 @@ let _selectedPlan = 'yearly';
 let _selectedPremium = false;
 let _cache = { profile: null, teachingAreas: null, videos: null, batchTree: null };
 
+// ── Plan pricing (admin-editable — Admin → YouTube Teachers → Plan Pricing) ──
+// Defaults below only matter until the public /plan-config fetch resolves —
+// they match the config's own server-side defaults so there's no flash of
+// wrong numbers on a slow connection.
+let _planConfig = { monthly_price: 499, yearly_price: 3999, premium_addon_monthly: 199, premium_addon_yearly: 2388, trial_days: 3 };
+
+async function _loadPlanConfig() {
+  try {
+    const res = await fetch(API_BASE + '/plan-config');
+    const data = await res.json();
+    if (data?.success && data.data) _planConfig = data.data;
+  } catch { /* keep defaults */ }
+  _applyPlanConfig();
+}
+
+function _applyPlanConfig() {
+  const c = _planConfig;
+  const set = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+  const inr = n => `₹${Number(n).toLocaleString('en-IN')}`;
+  set('lp-monthly-amt', inr(c.monthly_price));
+  set('lp-monthly-trial', `${c.trial_days}-day free trial`);
+  set('lp-yearly-amt', inr(c.yearly_price));
+  set('lp-yearly-trial', `${c.trial_days}-day free trial`);
+  set('pd-trial-days', `${c.trial_days} days, free`);
+  set('pd-monthly-amt', `${inr(c.monthly_price)}/mo`);
+  set('pd-yearly-amt', `${inr(c.yearly_price)}/yr`);
+  set('pd-premium-amt', `${inr(c.premium_addon_monthly)}/mo`);
+  set('plan-trial-sub', `Pick a plan to start adding exercise videos — or start with a free ${c.trial_days}-day trial.`);
+}
+_loadPlanConfig();
+
 // ── Token / API ──────────────────────────────────────────────────────────────
 
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
@@ -127,7 +158,7 @@ $('plan-submit').addEventListener('click', async () => {
   try {
     if (_selectedPlan === 'trial') {
       await api('POST', '/subscription/start-trial');
-      toast('3-day trial started!');
+      toast(`${_planConfig.trial_days}-day trial started!`);
       showScreen('dashboard');
       return;
     }

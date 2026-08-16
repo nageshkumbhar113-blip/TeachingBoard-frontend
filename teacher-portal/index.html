@@ -68,11 +68,11 @@
       <h2 class="section-h">Simple plans, unlimited videos</h2>
       <p class="section-sub">No video caps on any plan — the more you teach, the more students find you.</p>
       <div class="pricing-grid">
-        <div class="card price-card" data-plan="monthly"><h3 style="font-family:var(--font-ui);font-size:.95rem;">Monthly</h3><div class="amt">₹499</div><div class="per">per month</div>
-          <ul><li>Unlimited exercise videos</li><li>Full dashboard access</li><li>3-day free trial</li></ul>
+        <div class="card price-card" data-plan="monthly"><h3 style="font-family:var(--font-ui);font-size:.95rem;">Monthly</h3><div class="amt" id="lp-monthly-amt">₹499</div><div class="per">per month</div>
+          <ul><li>Unlimited exercise videos</li><li>Full dashboard access</li><li id="lp-monthly-trial">3-day free trial</li></ul>
           <a href="#" class="btn btn-ghost btn-block" data-nav="register" data-plan="monthly">Choose Monthly</a></div>
-        <div class="card price-card featured" data-plan="yearly"><h3 style="font-family:var(--font-ui);font-size:.95rem;">Yearly</h3><div class="amt">₹3,999</div><div class="per">per year · save 33%</div>
-          <ul><li>Unlimited exercise videos</li><li>Full dashboard access</li><li>3-day free trial</li></ul>
+        <div class="card price-card featured" data-plan="yearly"><h3 style="font-family:var(--font-ui);font-size:.95rem;">Yearly</h3><div class="amt" id="lp-yearly-amt">₹3,999</div><div class="per">per year · save 33%</div>
+          <ul><li>Unlimited exercise videos</li><li>Full dashboard access</li><li id="lp-yearly-trial">3-day free trial</li></ul>
           <a href="#" class="btn btn-primary btn-block" data-nav="register" data-plan="yearly">Choose Yearly</a></div>
       </div>
     </section>
@@ -167,14 +167,14 @@
     <div class="form-shell">
       <div class="card form-card">
         <h2>Choose your plan</h2>
-        <p class="sub">Pick a plan to start adding exercise videos — or start with a free 3-day trial.</p>
+        <p class="sub" id="plan-trial-sub">Pick a plan to start adding exercise videos — or start with a free 3-day trial.</p>
         <div class="plan-choice" id="plan-choice">
-          <div class="plan-opt" data-plan="trial"><div class="radio"></div><div class="pt"><strong>Trial</strong><small>3 days, free</small></div><div class="pp">₹0</div></div>
-          <div class="plan-opt" data-plan="monthly"><div class="radio"></div><div class="pt"><strong>Monthly</strong><small>Unlimited videos</small></div><div class="pp">₹499/mo</div></div>
-          <div class="plan-opt selected" data-plan="yearly"><div class="radio"></div><div class="pt"><strong>Yearly</strong><small>Unlimited videos · save 33%</small></div><div class="pp">₹3,999/yr</div></div>
+          <div class="plan-opt" data-plan="trial"><div class="radio"></div><div class="pt"><strong>Trial</strong><small id="pd-trial-days">3 days, free</small></div><div class="pp">₹0</div></div>
+          <div class="plan-opt" data-plan="monthly"><div class="radio"></div><div class="pt"><strong>Monthly</strong><small>Unlimited videos</small></div><div class="pp" id="pd-monthly-amt">₹499/mo</div></div>
+          <div class="plan-opt selected" data-plan="yearly"><div class="radio"></div><div class="pt"><strong>Yearly</strong><small>Unlimited videos · save 33%</small></div><div class="pp" id="pd-yearly-amt">₹3,999/yr</div></div>
         </div>
         <div class="field" id="premium-field">
-          <label style="display:flex;align-items:center;gap:8px;font-weight:400;"><input type="checkbox" id="plan-premium" style="width:auto;"> <span>⭐ Add Premium — ₹199/mo extra — my videos show first in student search</span></label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:400;"><input type="checkbox" id="plan-premium" style="width:auto;"> <span>⭐ Add Premium — <span id="pd-premium-amt">₹199/mo</span> extra — my videos show first in student search</span></label>
         </div>
         <p class="field-error" id="plan-error"></p>
         <button class="btn btn-primary btn-block" id="plan-submit">Continue →</button>

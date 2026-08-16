@@ -61,6 +61,7 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
     if (name === 'directory')     _renderDirectory();
     if (name === 'gaps')          _renderGaps();
     if (name === 'subscriptions') _renderSubscriptions();
+    if (name === 'plan')          _renderPlanConfig();
   }
 
   // ════════════════════════
@@ -227,6 +228,47 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
         </table>
         </div>
       ` : '<div style="text-align:center;padding:2rem;color:#999;">No subscriptions yet.</div>';
+    } catch (err) {
+      body.innerHTML = `<div style="text-align:center;padding:2rem;color:#c82333;">${_esc(err.message)}</div>`;
+    }
+  }
+
+  // ════════════════════════
+  // PLAN PRICING (singleton config)
+  // ════════════════════════
+
+  async function _renderPlanConfig() {
+    const body = $('ytt-body');
+    body.innerHTML = '<div style="text-align:center;padding:2rem;color:#999;">Loading…</div>';
+    try {
+      const { data: cfg } = await _req('/admin/youtube-teacher-plan-config');
+      body.innerHTML = `
+        <div class="ytt-row" style="flex-direction:column;align-items:stretch;gap:12px;max-width:480px;">
+          <p style="font-size:.85rem;color:#666;margin:0;">Prices in ₹ — only affects NEW orders/trials going forward; teachers already subscribed keep whatever they were charged.</p>
+          <label style="display:block;font-size:.82rem;font-weight:600;">Monthly Plan (₹/month)<input id="ytt-plan-monthly" class="ytt-input" style="display:block;width:100%;margin-top:4px;" type="number" min="0" value="${cfg.monthly_price}"></label>
+          <label style="display:block;font-size:.82rem;font-weight:600;">Yearly Plan (₹/year)<input id="ytt-plan-yearly" class="ytt-input" style="display:block;width:100%;margin-top:4px;" type="number" min="0" value="${cfg.yearly_price}"></label>
+          <label style="display:block;font-size:.82rem;font-weight:600;">⭐ Premium add-on — Monthly (₹/month)<input id="ytt-plan-premium-monthly" class="ytt-input" style="display:block;width:100%;margin-top:4px;" type="number" min="0" value="${cfg.premium_addon_monthly}"></label>
+          <label style="display:block;font-size:.82rem;font-weight:600;">⭐ Premium add-on — Yearly (₹/year)<input id="ytt-plan-premium-yearly" class="ytt-input" style="display:block;width:100%;margin-top:4px;" type="number" min="0" value="${cfg.premium_addon_yearly}"></label>
+          <label style="display:block;font-size:.82rem;font-weight:600;">Free Trial (days)<input id="ytt-plan-trial" class="ytt-input" style="display:block;width:100%;margin-top:4px;" type="number" min="0" value="${cfg.trial_days}"></label>
+          <button class="btn-tiny btn-approve" id="ytt-plan-save" style="align-self:flex-start;">Save Pricing</button>
+        </div>
+      `;
+      $('ytt-plan-save').addEventListener('click', async () => {
+        try {
+          await _req('/admin/youtube-teacher-plan-config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              monthly_price: $('ytt-plan-monthly').value,
+              yearly_price: $('ytt-plan-yearly').value,
+              premium_addon_monthly: $('ytt-plan-premium-monthly').value,
+              premium_addon_yearly: $('ytt-plan-premium-yearly').value,
+              trial_days: $('ytt-plan-trial').value,
+            }),
+          });
+          _toast('Plan pricing saved', 'success');
+        } catch (err) { _toast(err.message, 'error'); }
+      });
     } catch (err) {
       body.innerHTML = `<div style="text-align:center;padding:2rem;color:#c82333;">${_esc(err.message)}</div>`;
     }
