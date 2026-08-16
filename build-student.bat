@@ -47,7 +47,7 @@ if not exist android\app\src\main\java\com\nkseduorbit\student\ mkdir android\ap
 copy /Y android-student\MainActivity.java android\app\src\main\java\com\nkseduorbit\student\MainActivity.java >nul 2>&1
 
 echo [6/7] Capacitor sync...
-npx cap sync android
+call npx cap sync android
 if errorlevel 1 (
   echo ERROR: cap sync failed
   pause & exit /b 1

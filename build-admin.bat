@@ -38,7 +38,7 @@ copy /Y icons-admin\ic_launcher_background.xml android\app\src\main\res\values\i
 copy /Y icons-admin\strings.xml android\app\src\main\res\values\strings.xml >nul 2>&1
 
 echo [6/7] Capacitor sync...
-npx cap sync android
+call npx cap sync android
 if errorlevel 1 (
   echo ERROR: cap sync failed — restoring config
   copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
