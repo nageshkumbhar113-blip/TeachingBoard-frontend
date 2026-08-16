@@ -334,15 +334,16 @@ async function renderAreas(main) {
   });
 }
 
-async function renderAddVideo(main) {
+async function renderAddVideo(main, editVideo = null) {
   const [treeRes, areasRes] = await Promise.all([api('GET', '/batch-tree'), api('GET', '/teaching-areas')]);
   const tree = treeRes.data;
   const myAreaBatches = [...new Set(areasRes.data.map(a => a.batch_name))];
   const batchesForPicker = tree.filter(b => myAreaBatches.includes(b.name));
 
   main.innerHTML = `
-    <div class="dash-head"><div><h2>Add Exercise Video</h2><div class="sub">Add a Teaching Area first if the batch you need isn't listed.</div></div></div>
+    <div class="dash-head"><div><h2>${editVideo ? 'Edit Video' : 'Add Exercise Video'}</h2><div class="sub">${editVideo ? 'The Batch/Subject/Chapter/Exercise/Part can\'t be changed here — delete and re-add if that\'s wrong. Change the link below and resubmit.' : 'Add a Teaching Area first if the batch you need isn\'t listed.'}</div></div></div>
     ${batchesForPicker.length === 0 ? '<div class="empty-hint">Add a Teaching Area first (My Teaching Areas tab).</div>' : `
+    ${editVideo && editVideo.status === 'approved' ? '<div id="av-callout" class="empty-hint" style="margin-bottom:10px;">Saving will send this edit for re-approval — your current approved video stays visible to students until it\'s approved.</div>' : ''}
     <div class="field"><label>Batch</label><select class="field-select" id="av-batch"><option value="">Select…</option>
       ${batchesForPicker.map(b => `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('')}</select></div>
     <div class="field"><label>Subject</label><select class="field-select" id="av-subject" disabled><option>Select Batch first</option></select></div>
@@ -353,7 +354,7 @@ async function renderAddVideo(main) {
     <div id="av-preview"></div>
     <div class="field"><label>Part Label (optional — for a long exercise split into parts)</label><input id="av-part" placeholder="e.g. Part 1 — Concepts"></div>
     <p class="field-error" id="av-error"></p>
-    <button class="btn btn-primary btn-block" id="av-submit">Submit for Approval</button>
+    <button class="btn btn-primary btn-block" id="av-submit">${editVideo ? 'Save Edit — Send for Re-approval' : 'Submit for Approval'}</button>
     `}
   `;
   if (!batchesForPicker.length) return;
@@ -403,6 +404,35 @@ async function renderAddVideo(main) {
       : '';
   });
 
+  // Editing an existing video: prefill and lock the identity fields
+  // (Batch/Subject/Chapter/Exercise/Part) — upsertVideo matches on that
+  // exact combination, so changing any of them here would create a new
+  // video instead of editing this one. Only the URL is meant to change.
+  const partInput = main.querySelector('#av-part');
+  if (editVideo) {
+    batchSel.value = editVideo.batch_name;
+    batchSel.dispatchEvent(new Event('change'));
+    subjectSel.value = editVideo.subject_name;
+    subjectSel.dispatchEvent(new Event('change'));
+    chapterSel.value = editVideo.chapter_name;
+    exerciseSel.innerHTML = '<option>Loading…</option>'; exerciseSel.disabled = true;
+    try {
+      const res = await api('GET', `/exercises?batch=${encodeURIComponent(editVideo.batch_name)}&subject=${encodeURIComponent(editVideo.subject_name)}&chapter=${encodeURIComponent(editVideo.chapter_name)}`);
+      exerciseSel.innerHTML = res.data.length
+        ? '<option value="">Select…</option>' + res.data.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
+        : '<option value="">No exercises found for this chapter yet</option>';
+    } catch { exerciseSel.innerHTML = '<option>Failed to load</option>'; }
+    exerciseSel.value = editVideo.exercise_no;
+
+    batchSel.disabled = true; subjectSel.disabled = true; chapterSel.disabled = true; exerciseSel.disabled = true;
+    partInput.value = editVideo.part_label || '';
+    partInput.readOnly = true;
+
+    const currentId = editVideo.pending_video_id || editVideo.live_video_id || '';
+    if (currentId) urlInput.value = `https://youtu.be/${currentId}`;
+    urlInput.dispatchEvent(new Event('input'));
+  }
+
   main.querySelector('#av-submit').addEventListener('click', async () => {
     const errEl = main.querySelector('#av-error');
     errEl.classList.remove('show');
@@ -415,7 +445,7 @@ async function renderAddVideo(main) {
         batch_name: batchSel.value, subject_name: subjectSel.value, chapter_name: chapterSel.value, exercise_no: exerciseSel.value,
         youtube_url: url, part_label: main.querySelector('#av-part').value.trim(),
       });
-      toast('Submitted for approval!');
+      toast(editVideo ? 'Edit submitted for re-approval!' : 'Submitted for approval!');
       renderDashboardTab('videos');
     } catch (err) { errEl.textContent = err.message; errEl.classList.add('show'); }
   });
@@ -425,19 +455,32 @@ async function renderVideos(main) {
   const { data: videos } = await api('GET', '/videos');
   main.innerHTML = `
     <div class="dash-head"><div><h2>My Videos</h2><div class="sub">All ${videos.length} · Pending ${videos.filter(v=>v.status==='pending').length} · Approved ${videos.filter(v=>v.status==='approved').length} · Rejected ${videos.filter(v=>v.status==='rejected').length}</div></div></div>
-    ${videos.length ? videos.map(v => `
+    ${videos.length ? videos.map(v => {
+      const editPending = v.status === 'pending' && v.live_video_id;
+      return `
       <div class="list-card"><div class="thumb">▶</div><div class="info">
         <strong>${esc(v.chapter_name)} — ${esc(v.exercise_no)}${v.part_label ? ' · ' + esc(v.part_label) : ''}</strong>
-        <small>${esc(v.batch_name)} · ${esc(v.subject_name)}${v.status === 'rejected' && v.rejection_reason ? ' — ' + esc(v.rejection_reason) : ''}</small></div>
-        <span class="status-chip ${v.status}">${v.status[0].toUpperCase()+v.status.slice(1)}</span>
+        <small>${esc(v.batch_name)} · ${esc(v.subject_name)}${v.status === 'rejected' && v.rejection_reason ? ' — ' + esc(v.rejection_reason) : ''}</small>
+        ${editPending ? '<small style="display:block;color:var(--teal,#0a8);">✅ Your approved video is still visible to students while this edit is reviewed</small>' : ''}</div>
+        <span class="status-chip ${v.status}">${editPending ? 'Pending Re-approval' : v.status[0].toUpperCase()+v.status.slice(1)}</span>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:.76rem;" data-edit="${v.id}">Edit</button>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:.76rem;" data-delete="${v.id}">Delete</button>
-      </div>`).join('') : '<div class="empty-hint">No videos yet — add one from "Add Exercise Video".</div>'}
+      </div>`;
+    }).join('') : '<div class="empty-hint">No videos yet — add one from "Add Exercise Video".</div>'}
   `;
   main.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Delete this video permanently?')) return;
       try { await api('DELETE', `/videos/${btn.dataset.delete}`); toast('Deleted'); renderDashboardTab('videos'); }
       catch (err) { toast(err.message, true); }
+    });
+  });
+  main.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = videos.find(x => x.id === btn.dataset.edit);
+      if (!v) return;
+      document.querySelectorAll('#dash-sidebar .dash-nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === 'add-video'));
+      renderAddVideo(main, v);
     });
   });
 }
