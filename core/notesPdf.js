@@ -11,6 +11,14 @@
 const NOTES_PDF = (() => {
   const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   const H2C_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+  // Same KaTeX build core/math.js's MATH.renderElement() uses for the
+  // student-side note display (deepStudy.js) — note content is authored
+  // with $...$/$$...$$ LaTeX math. The PDF pipeline never ran this, so
+  // math printed as literal dollar-sign text (real bug, found live in the
+  // Exercise PDF; Notes go through the same authoring convention).
+  const KATEX_CSS  = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';
+  const KATEX_JS   = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';
+  const KATEX_AUTORENDER = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js';
   const _loaders = new Map();
 
   function _loadScript(src, checkGlobal) {
@@ -34,11 +42,45 @@ const NOTES_PDF = (() => {
     return p;
   }
 
+  function _loadStylesheet(href) {
+    if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error(`Failed to load ${href}`));
+      document.head.appendChild(link);
+    });
+  }
+
   async function _ensureLibs() {
     await _loadScript(JSPDF_CDN, () => window.jspdf?.jsPDF);
     await _loadScript(H2C_CDN, () => window.html2canvas);
     if (!window.jspdf?.jsPDF) throw new Error('jsPDF failed to load');
     if (!window.html2canvas) throw new Error('html2canvas failed to load');
+  }
+
+  async function _ensureKatex() {
+    await _loadStylesheet(KATEX_CSS);
+    await _loadScript(KATEX_JS, () => window.katex);
+    await _loadScript(KATEX_AUTORENDER, () => window.renderMathInElement);
+  }
+
+  function _renderMath(el) {
+    if (!window.renderMathInElement) return;
+    try {
+      window.renderMathInElement(el, {
+        delimiters: [
+          { left: '$$',  right: '$$',  display: true  },
+          { left: '\\[', right: '\\]', display: true  },
+          { left: '$',   right: '$',   display: false },
+          { left: '\\(', right: '\\)', display: false },
+        ],
+        throwOnError: false,
+        output: 'html',
+      });
+    } catch (e) { console.warn('KaTeX render error:', e.message); }
   }
 
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -221,6 +263,10 @@ const NOTES_PDF = (() => {
 
     let canvas;
     try {
+      // KaTeX must finish rendering ($...$ math -> real DOM markup) before
+      // the snapshot — html2canvas only ever captures what's already in
+      // the DOM at capture time.
+      try { await _ensureKatex(); _renderMath(container); } catch (e) { console.warn('KaTeX unavailable, math will show as raw text:', e.message); }
       canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       container.remove();
