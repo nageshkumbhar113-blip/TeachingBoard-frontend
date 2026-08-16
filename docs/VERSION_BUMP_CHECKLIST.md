@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-08-16):** `7.4.10` · versionCode `107` · SW `v107`
+**सध्याची version (last updated 2026-08-16):** `7.4.11` · versionCode `108` · SW `v108`
 
 ---
 
@@ -80,3 +80,4 @@
 | **7.4.8** | **105** | **v105** | **2026-08-16** | PDF exports (Exercise/Quiz/Notes) now render KaTeX math instead of printing raw $...$ LaTeX text — real bug found from an actual exported PDF ("acceleration of $2,m/s^2$" printed literally) |
 | **7.4.9** | **106** | **v106** | **2026-08-16** | YouTube Teacher Portal: real embedded video preview on both admin Approvals (was plain text link, admin couldn't see the video before approving) and teacher's Add Exercise Video screen (was no preview at all before submitting) |
 | **7.4.10** | **107** | **v107** | **2026-08-16** | YouTube Teacher Portal "My Videos": added Edit button (was missing entirely — approved videos couldn't be edited at all). Reuses existing backend live/pending-edit pattern — editing an approved video locks Batch/Subject/Chapter/Exercise/Part (identity), lets teacher change only the link, resubmits to pending, and the old approved video stays visible to students until the edit is re-approved |
+| **7.4.11** | **108** | **v108** | **2026-08-16** | Admin "YouTube Teachers → Video Gaps" Subject dropdown was rendering blank/empty options — real bug found live: it read subjects as `{name}` objects but `GET /batches` returns them as plain strings; fixed the mapping |

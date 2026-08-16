@@ -181,8 +181,10 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
       `;
       const batchSel = $('ytt-gap-batch'), subjectSel = $('ytt-gap-subject');
       batchSel.addEventListener('change', () => {
+        // GET /batches returns subjects as plain name strings (see
+        // batchController.getBatches), not {name} objects.
         const b = batches.find(x => x.name === batchSel.value);
-        subjectSel.innerHTML = '<option value="">Select…</option>' + (b?.subjects || []).map(s => `<option value="${_esc(s.name)}">${_esc(s.name)}</option>`).join('');
+        subjectSel.innerHTML = '<option value="">Select…</option>' + (b?.subjects || []).map(s => `<option value="${_esc(s)}">${_esc(s)}</option>`).join('');
         subjectSel.disabled = !b;
         $('ytt-gap-results').innerHTML = '';
       });
