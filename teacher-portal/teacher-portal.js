@@ -305,7 +305,10 @@ async function renderAreas(main) {
       ${tree.map(b => `<div class="batch-check"><div class="bname">${esc(b.name)}</div>
         ${b.subjects.map(s => {
           const on = activeSet.has(`${b.name}::${s.name}`);
-          return `<span class="subj-tag ${on ? 'on' : ''}" data-batch="${esc(b.name)}" data-subject="${esc(s.name)}">${on ? '✓ ' : ''}${esc(s.name)}</span>`;
+          return on
+            ? `<span class="subj-tag on" data-batch="${esc(b.name)}" data-subject="${esc(s.name)}">✓ ${esc(s.name)}</span>` +
+              `<button type="button" class="subj-view-btn" style="border:none;background:none;color:var(--teal,#0a8);font-size:.76rem;cursor:pointer;margin:0 10px 6px -3px;" data-view-batch="${esc(b.name)}" data-view-subject="${esc(s.name)}">📋 View Content</button>`
+            : `<span class="subj-tag" data-batch="${esc(b.name)}" data-subject="${esc(s.name)}">${esc(s.name)}</span>`;
         }).join('')}
       </div>`).join('')}
     </div>
@@ -332,27 +335,106 @@ async function renderAreas(main) {
       } catch (err) { toast(err.message, true); }
     });
   });
+  main.querySelectorAll('.subj-view-btn').forEach(btn => {
+    btn.addEventListener('click', () => renderContentOverview(main, btn.dataset.viewBatch, btn.dataset.viewSubject));
+  });
 }
 
-async function renderAddVideo(main, editVideo = null) {
+// "View Content" — every Exercise + Concept across a whole Subject, in one
+// place, so a teacher can see what to make a video for without hunting
+// chapter-by-chapter inside Add Video. ✅ marks what this teacher already
+// has a video for (any status). Clicking an item jumps into Add Video
+// pre-filled (renderAddVideo's presetTarget) — if a video already exists
+// there, submitting just becomes an edit automatically, same as always.
+async function renderContentOverview(main, batch, subject) {
+  main.innerHTML = '<div class="empty-hint">Loading…</div>';
+  try {
+    const [ovRes, myVideosRes] = await Promise.all([
+      api('GET', `/content-overview?batch=${encodeURIComponent(batch)}&subject=${encodeURIComponent(subject)}`),
+      api('GET', '/videos'),
+    ]);
+    const mine = myVideosRes.data.filter(v => v.batch_name === batch && v.subject_name === subject);
+    const haveExercise = new Set(mine.filter(v => v.content_type !== 'concept').map(v => `${v.chapter_name}::${v.exercise_no}`));
+    const haveConcept = new Set(mine.filter(v => v.content_type === 'concept').map(v => v.concept_id));
+
+    document.querySelectorAll('#dash-sidebar .dash-nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === 'areas'));
+    main.innerHTML = `
+      <div class="dash-head"><div><h2>${esc(subject)} — Content</h2><div class="sub">${esc(batch)} · tap anything to add/edit a video for it</div></div></div>
+      <button type="button" class="btn btn-ghost" id="co-back" style="margin-bottom:14px;">‹ Back to Teaching Areas</button>
+      ${ovRes.data.length ? ovRes.data.map(ch => `
+        <div class="card" style="padding:14px 18px;margin-bottom:12px;">
+          <strong style="display:block;margin-bottom:8px;">${esc(ch.chapter_name)}</strong>
+          <div style="font-size:.76rem;color:var(--ink3);margin-bottom:4px;">📝 Exercises</div>
+          <div style="margin-bottom:10px;">
+            ${ch.exercises.length ? ch.exercises.map(no => {
+              const has = haveExercise.has(`${ch.chapter_name}::${no}`);
+              return `<span class="subj-tag ${has ? 'on' : ''}" data-chapter="${esc(ch.chapter_name)}" data-content-type="exercise" data-exercise="${esc(no)}">${has ? '✅ ' : ''}Exercise ${esc(no)}</span>`;
+            }).join('') : '<span class="empty-hint" style="padding:4px 0;display:inline-block;">None yet</span>'}
+          </div>
+          <div style="font-size:.76rem;color:var(--ink3);margin-bottom:4px;">📓 Concepts</div>
+          <div>
+            ${ch.concepts.length ? ch.concepts.map(c => {
+              const has = haveConcept.has(c.id);
+              return `<span class="subj-tag ${has ? 'on' : ''}" data-chapter="${esc(ch.chapter_name)}" data-content-type="concept" data-concept-id="${esc(c.id)}" data-concept-title="${esc(c.title)}">${has ? '✅ ' : ''}${esc(c.title)}</span>`;
+            }).join('') : '<span class="empty-hint" style="padding:4px 0;display:inline-block;">None yet</span>'}
+          </div>
+        </div>
+      `).join('') : '<div class="empty-hint">No chapters found for this subject yet.</div>'}
+    `;
+    main.querySelector('#co-back').addEventListener('click', () => renderDashboardTab('areas'));
+    main.querySelectorAll('[data-content-type]').forEach(tag => {
+      tag.addEventListener('click', () => {
+        const presetTarget = {
+          batch_name: batch, subject_name: subject, chapter_name: tag.dataset.chapter,
+          content_type: tag.dataset.contentType,
+          exercise_no: tag.dataset.exercise || '',
+          concept_id: tag.dataset.conceptId || '', concept_title: tag.dataset.conceptTitle || '',
+        };
+        document.querySelectorAll('#dash-sidebar .dash-nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === 'add-video'));
+        renderAddVideo(main, null, presetTarget);
+      });
+    });
+  } catch (err) {
+    main.innerHTML = `<div class="empty-hint">${esc(err.message)}</div>`;
+  }
+}
+
+// editVideo: an existing video row (see renderVideos) — Edit mode, every
+// identity field locked, only the URL changes.
+// presetTarget: { batch_name, subject_name, chapter_name, content_type,
+//   exercise_no?, concept_id?, concept_title? } — a quick-pick from the
+// Teaching Areas "View Content" list (see renderContentOverview). Prefills
+// the same fields but leaves them EDITABLE and the URL blank — it's a
+// starting point for a fresh submission, not a lock. If a video already
+// exists for that exact combination, submitting just becomes an edit
+// automatically (upsertVideo's own matching logic), same as always.
+async function renderAddVideo(main, editVideo = null, presetTarget = null) {
   const [treeRes, areasRes] = await Promise.all([api('GET', '/batch-tree'), api('GET', '/teaching-areas')]);
   const tree = treeRes.data;
   const myAreaBatches = [...new Set(areasRes.data.map(a => a.batch_name))];
   const batchesForPicker = tree.filter(b => myAreaBatches.includes(b.name));
+  const preset = editVideo || presetTarget;
 
   main.innerHTML = `
-    <div class="dash-head"><div><h2>${editVideo ? 'Edit Video' : 'Add Exercise Video'}</h2><div class="sub">${editVideo ? 'The Batch/Subject/Chapter/Exercise/Part can\'t be changed here — delete and re-add if that\'s wrong. Change the link below and resubmit.' : 'Add a Teaching Area first if the batch you need isn\'t listed.'}</div></div></div>
+    <div class="dash-head"><div><h2>${editVideo ? 'Edit Video' : 'Add Exercise/Concept Video'}</h2><div class="sub">${editVideo ? 'The Batch/Subject/Chapter/Content/Part can\'t be changed here — delete and re-add if that\'s wrong. Change the link below and resubmit.' : 'Add a Teaching Area first if the batch you need isn\'t listed.'}</div></div></div>
     ${batchesForPicker.length === 0 ? '<div class="empty-hint">Add a Teaching Area first (My Teaching Areas tab).</div>' : `
     ${editVideo && editVideo.status === 'approved' ? '<div id="av-callout" class="empty-hint" style="margin-bottom:10px;">Saving will send this edit for re-approval — your current approved video stays visible to students until it\'s approved.</div>' : ''}
     <div class="field"><label>Batch</label><select class="field-select" id="av-batch"><option value="">Select…</option>
       ${batchesForPicker.map(b => `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('')}</select></div>
     <div class="field"><label>Subject</label><select class="field-select" id="av-subject" disabled><option>Select Batch first</option></select></div>
     <div class="field"><label>Chapter</label><select class="field-select" id="av-chapter" disabled><option>Select Subject first</option></select></div>
-    <div class="field"><label>Exercise</label><select class="field-select" id="av-exercise" disabled><option>Select Chapter first</option></select></div>
+
+    <div class="field"><label>Content Type</label><div>
+      <span class="subj-tag ct-tag" data-type="exercise" id="av-type-exercise">📝 Exercise</span>
+      <span class="subj-tag ct-tag" data-type="concept" id="av-type-concept">📓 Concept (Notes)</span>
+    </div></div>
+    <div class="field" id="av-exercise-field"><label>Exercise</label><select class="field-select" id="av-exercise" disabled><option>Select Chapter first</option></select></div>
+    <div class="field hidden" id="av-concept-field"><label>Concept</label><select class="field-select" id="av-concept" disabled><option>Select Chapter first</option></select></div>
+
     <div id="av-callout"></div>
     <div class="field"><label>YouTube URL</label><input id="av-url" placeholder="https://youtu.be/..."></div>
     <div id="av-preview"></div>
-    <div class="field"><label>Part Label (optional — for a long exercise split into parts)</label><input id="av-part" placeholder="e.g. Part 1 — Concepts"></div>
+    <div class="field"><label>Part Label (optional — for a long exercise/concept split into parts)</label><input id="av-part" placeholder="e.g. Part 1 — Concepts"></div>
     <p class="field-error" id="av-error"></p>
     <button class="btn btn-primary btn-block" id="av-submit">${editVideo ? 'Save Edit — Send for Re-approval' : 'Submit for Approval'}</button>
     `}
@@ -360,7 +442,23 @@ async function renderAddVideo(main, editVideo = null) {
   if (!batchesForPicker.length) return;
 
   const batchSel = main.querySelector('#av-batch'), subjectSel = main.querySelector('#av-subject'),
-        chapterSel = main.querySelector('#av-chapter'), exerciseSel = main.querySelector('#av-exercise');
+        chapterSel = main.querySelector('#av-chapter'), exerciseSel = main.querySelector('#av-exercise'),
+        conceptSel = main.querySelector('#av-concept');
+  const exerciseField = main.querySelector('#av-exercise-field'), conceptField = main.querySelector('#av-concept-field');
+  const typeExBtn = main.querySelector('#av-type-exercise'), typeCoBtn = main.querySelector('#av-type-concept');
+
+  let contentType = 'exercise';
+  let typeLocked = false;
+  function setContentType(t) {
+    contentType = t;
+    typeExBtn.classList.toggle('on', t === 'exercise');
+    typeCoBtn.classList.toggle('on', t === 'concept');
+    exerciseField.classList.toggle('hidden', t !== 'exercise');
+    conceptField.classList.toggle('hidden', t !== 'concept');
+  }
+  setContentType('exercise');
+  typeExBtn.addEventListener('click', () => { if (!typeLocked) setContentType('exercise'); });
+  typeCoBtn.addEventListener('click', () => { if (!typeLocked) setContentType('concept'); });
 
   batchSel.addEventListener('change', () => {
     const b = tree.find(x => x.name === batchSel.value);
@@ -368,6 +466,7 @@ async function renderAddVideo(main, editVideo = null) {
     subjectSel.disabled = !b;
     chapterSel.innerHTML = '<option>Select Subject first</option>'; chapterSel.disabled = true;
     exerciseSel.innerHTML = '<option>Select Chapter first</option>'; exerciseSel.disabled = true;
+    conceptSel.innerHTML = '<option>Select Chapter first</option>'; conceptSel.disabled = true;
   });
   subjectSel.addEventListener('change', () => {
     const b = tree.find(x => x.name === batchSel.value);
@@ -375,17 +474,27 @@ async function renderAddVideo(main, editVideo = null) {
     chapterSel.innerHTML = '<option value="">Select…</option>' + (s?.chapters || []).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
     chapterSel.disabled = !s;
     exerciseSel.innerHTML = '<option>Select Chapter first</option>'; exerciseSel.disabled = true;
+    conceptSel.innerHTML = '<option>Select Chapter first</option>'; conceptSel.disabled = true;
   });
-  chapterSel.addEventListener('change', async () => {
+  chapterSel.addEventListener('change', () => _loadExercisesAndConcepts());
+
+  async function _loadExercisesAndConcepts() {
     exerciseSel.innerHTML = '<option>Loading…</option>'; exerciseSel.disabled = true;
-    try {
-      const res = await api('GET', `/exercises?batch=${encodeURIComponent(batchSel.value)}&subject=${encodeURIComponent(subjectSel.value)}&chapter=${encodeURIComponent(chapterSel.value)}`);
-      exerciseSel.innerHTML = res.data.length
-        ? '<option value="">Select…</option>' + res.data.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
-        : '<option value="">No exercises found for this chapter yet</option>';
-      exerciseSel.disabled = false;
-    } catch { exerciseSel.innerHTML = '<option>Failed to load</option>'; }
-  });
+    conceptSel.innerHTML = '<option>Loading…</option>'; conceptSel.disabled = true;
+    const qs = `batch=${encodeURIComponent(batchSel.value)}&subject=${encodeURIComponent(subjectSel.value)}&chapter=${encodeURIComponent(chapterSel.value)}`;
+    const [exRes, coRes] = await Promise.all([
+      api('GET', `/exercises?${qs}`).catch(() => ({ data: [] })),
+      api('GET', `/concepts?${qs}`).catch(() => ({ data: [] })),
+    ]);
+    exerciseSel.innerHTML = exRes.data.length
+      ? '<option value="">Select…</option>' + exRes.data.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
+      : '<option value="">No exercises found for this chapter yet</option>';
+    exerciseSel.disabled = false;
+    conceptSel.innerHTML = coRes.data.length
+      ? '<option value="">Select…</option>' + coRes.data.map(c => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join('')
+      : '<option value="">No concepts found for this chapter yet</option>';
+    conceptSel.disabled = false;
+  }
 
   // Live preview — the teacher (and, on the admin side, whoever approves
   // it) both need to actually SEE the video before submitting/approving,
@@ -404,27 +513,29 @@ async function renderAddVideo(main, editVideo = null) {
       : '';
   });
 
-  // Editing an existing video: prefill and lock the identity fields
-  // (Batch/Subject/Chapter/Exercise/Part) — upsertVideo matches on that
-  // exact combination, so changing any of them here would create a new
-  // video instead of editing this one. Only the URL is meant to change.
   const partInput = main.querySelector('#av-part');
-  if (editVideo) {
-    batchSel.value = editVideo.batch_name;
-    batchSel.dispatchEvent(new Event('change'));
-    subjectSel.value = editVideo.subject_name;
-    subjectSel.dispatchEvent(new Event('change'));
-    chapterSel.value = editVideo.chapter_name;
-    exerciseSel.innerHTML = '<option>Loading…</option>'; exerciseSel.disabled = true;
-    try {
-      const res = await api('GET', `/exercises?batch=${encodeURIComponent(editVideo.batch_name)}&subject=${encodeURIComponent(editVideo.subject_name)}&chapter=${encodeURIComponent(editVideo.chapter_name)}`);
-      exerciseSel.innerHTML = res.data.length
-        ? '<option value="">Select…</option>' + res.data.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
-        : '<option value="">No exercises found for this chapter yet</option>';
-    } catch { exerciseSel.innerHTML = '<option>Failed to load</option>'; }
-    exerciseSel.value = editVideo.exercise_no;
 
-    batchSel.disabled = true; subjectSel.disabled = true; chapterSel.disabled = true; exerciseSel.disabled = true;
+  // Editing an existing video, or a quick-pick from the content list:
+  // prefill Batch/Subject/Chapter/Content-Type/Exercise-or-Concept. Edit
+  // mode additionally LOCKS all of it (+ Part) — upsertVideo matches on
+  // that exact combination, so changing any of it would create a new
+  // video instead of editing this one. A quick-pick leaves everything
+  // editable and the URL blank (it's a starting point, not a lock).
+  if (preset) {
+    batchSel.value = preset.batch_name;
+    batchSel.dispatchEvent(new Event('change'));
+    subjectSel.value = preset.subject_name;
+    subjectSel.dispatchEvent(new Event('change'));
+    chapterSel.value = preset.chapter_name;
+    setContentType(preset.content_type || 'exercise');
+    await _loadExercisesAndConcepts();
+    if (contentType === 'exercise') exerciseSel.value = preset.exercise_no || '';
+    else conceptSel.value = preset.concept_id || '';
+  }
+
+  if (editVideo) {
+    batchSel.disabled = true; subjectSel.disabled = true; chapterSel.disabled = true;
+    exerciseSel.disabled = true; conceptSel.disabled = true; typeLocked = true;
     partInput.value = editVideo.part_label || '';
     partInput.readOnly = true;
 
@@ -437,14 +548,19 @@ async function renderAddVideo(main, editVideo = null) {
     const errEl = main.querySelector('#av-error');
     errEl.classList.remove('show');
     const url = main.querySelector('#av-url').value.trim();
-    if (!batchSel.value || !subjectSel.value || !chapterSel.value || !exerciseSel.value || !url) {
-      errEl.textContent = 'Please fill Batch, Subject, Chapter, Exercise and YouTube URL.'; errEl.classList.add('show'); return;
+    const contentOk = contentType === 'exercise' ? !!exerciseSel.value : !!conceptSel.value;
+    if (!batchSel.value || !subjectSel.value || !chapterSel.value || !contentOk || !url) {
+      errEl.textContent = `Please fill Batch, Subject, Chapter, ${contentType === 'exercise' ? 'Exercise' : 'Concept'} and YouTube URL.`; errEl.classList.add('show'); return;
     }
     try {
-      await api('POST', '/videos', {
-        batch_name: batchSel.value, subject_name: subjectSel.value, chapter_name: chapterSel.value, exercise_no: exerciseSel.value,
-        youtube_url: url, part_label: main.querySelector('#av-part').value.trim(),
-      });
+      const payload = {
+        content_type: contentType,
+        batch_name: batchSel.value, subject_name: subjectSel.value, chapter_name: chapterSel.value,
+        youtube_url: url, part_label: partInput.value.trim(),
+      };
+      if (contentType === 'exercise') payload.exercise_no = exerciseSel.value;
+      else { payload.concept_id = conceptSel.value; payload.concept_title = conceptSel.selectedOptions[0]?.textContent || ''; }
+      await api('POST', '/videos', payload);
       toast(editVideo ? 'Edit submitted for re-approval!' : 'Submitted for approval!');
       renderDashboardTab('videos');
     } catch (err) { errEl.textContent = err.message; errEl.classList.add('show'); }
@@ -457,9 +573,10 @@ async function renderVideos(main) {
     <div class="dash-head"><div><h2>My Videos</h2><div class="sub">All ${videos.length} · Pending ${videos.filter(v=>v.status==='pending').length} · Approved ${videos.filter(v=>v.status==='approved').length} · Rejected ${videos.filter(v=>v.status==='rejected').length}</div></div></div>
     ${videos.length ? videos.map(v => {
       const editPending = v.status === 'pending' && v.live_video_id;
+      const contentLabel = v.content_type === 'concept' ? `📓 ${esc(v.concept_title)}` : `📝 Exercise ${esc(v.exercise_no)}`;
       return `
       <div class="list-card"><div class="thumb">▶</div><div class="info">
-        <strong>${esc(v.chapter_name)} — ${esc(v.exercise_no)}${v.part_label ? ' · ' + esc(v.part_label) : ''}</strong>
+        <strong>${esc(v.chapter_name)} — ${contentLabel}${v.part_label ? ' · ' + esc(v.part_label) : ''}</strong>
         <small>${esc(v.batch_name)} · ${esc(v.subject_name)}${v.status === 'rejected' && v.rejection_reason ? ' — ' + esc(v.rejection_reason) : ''}</small>
         ${editPending ? '<small style="display:block;color:var(--teal,#0a8);">✅ Your approved video is still visible to students while this edit is reviewed</small>' : ''}</div>
         <span class="status-chip ${v.status}">${editPending ? 'Pending Re-approval' : v.status[0].toUpperCase()+v.status.slice(1)}</span>

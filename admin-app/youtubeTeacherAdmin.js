@@ -84,10 +84,11 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
           // never fall back to the live one (that would show admin the
           // OLD approved video while approving a DIFFERENT new one).
           const previewId = v.pending_video_id || (status !== 'pending' ? v.live_video_id : '');
+          const contentLabel = v.content_type === 'concept' ? `📓 ${_esc(v.concept_title)}` : `📝 Exercise ${_esc(v.exercise_no)}`;
           return `
           <div class="ytt-row" data-id="${v.id}" style="flex-direction:column;align-items:stretch;gap:8px">
             <div class="ytt-row-info">
-              <strong>${_esc(v.chapter_name)} — ${_esc(v.exercise_no)}${v.part_label ? ' · ' + _esc(v.part_label) : ''}</strong>
+              <strong>${_esc(v.chapter_name)} — ${contentLabel}${v.part_label ? ' · ' + _esc(v.part_label) : ''}</strong>
               <small>${_esc(v.teacher_name)} · ${_esc(v.batch_name)} · ${_esc(v.subject_name)}</small>
               ${v.status === 'rejected' && v.rejection_reason ? `<small style="color:#c82333;">Reason: ${_esc(v.rejection_reason)}</small>` : ''}
             </div>

@@ -213,6 +213,8 @@ section.block{ padding:56px 0; border-top:1px solid var(--border); }
 .subj-tag{ display:inline-flex; align-items:center; gap:6px; font-size:.78rem; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:5px 11px; margin:0 6px 6px 0; cursor:pointer; }
 .subj-tag.on{ border-color:var(--teal); color:var(--teal); background:var(--teal-bg); }
 
+.hidden{ display:none !important; }
+
 .wizard-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
 .wizard-pill{ font-size:.78rem; padding:7px 13px; border-radius:20px; background:var(--bg3); color:var(--ink2); border:none; cursor:pointer; font-family:inherit; }
 .wizard-pill.active{ background:var(--accent); color:var(--accent-ink); font-weight:700; }

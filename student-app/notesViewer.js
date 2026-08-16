@@ -254,6 +254,7 @@ const NOTES_VIEWER = (() => {
           <button class="nv-btn-icon" id="nv-bookmark-btn" title="Bookmark">🔖</button>
         </div>
       </div>
+      <button type="button" id="nv-videos-btn" class="vts-videos-btn hidden"></button>
     `;
 
     // Content based on study mode
@@ -271,6 +272,10 @@ const NOTES_VIEWER = (() => {
     $('nv-lang-en-btn')?.addEventListener('click', () => _setLanguage('english'));
     $('nv-lang-mr-btn')?.addEventListener('click', () => _setLanguage('marathi'));
     $('nv-bookmark-btn')?.addEventListener('click', () => _toggleBookmark());
+
+    // YouTube Teacher Partner videos — additive, best-effort (see
+    // videoTeacherSelect.js). Never blocks the note content above.
+    window.VIDEO_TEACHER_SELECT?.checkAndShowButtonForConcept(concept._id, concept.title?.[lang] || concept.title?.english || '');
   }
 
   function _renderReadMode(concept, lang) {

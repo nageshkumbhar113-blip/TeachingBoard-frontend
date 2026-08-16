@@ -13,7 +13,7 @@ const VIDEO_TEACHER_SELECT = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-  let _ctx = null; // { batch, subject, chapter, exercise }
+  let _ctx = null; // { type:'exercise', batch, subject, chapter, exercise } | { type:'concept', conceptId }
   let _orientationMql = null;
   let _orientationHandler = null;
   let _playerObserver = null;
@@ -23,30 +23,55 @@ const VIDEO_TEACHER_SELECT = (() => {
   // Best-effort: any failure (offline, no videos) just hides the button —
   // never blocks the existing questions view.
   async function checkAndShowButton(batch, subject, chapter, exercise) {
-    const btn = $('ev-videos-btn');
+    return _checkAndShowButton('ev-videos-btn', { type: 'exercise', batch, subject, chapter, exercise },
+      cards => `🎬 ${cards.length} Video${cards.length > 1 ? 's' : ''} Available`);
+  }
+
+  // ── Notes-screen inline button (concept detail) ──────────────────────────
+  // Called by notesViewer.js right after rendering a concept. Same
+  // best-effort contract as checkAndShowButton — never blocks the note.
+  async function checkAndShowButtonForConcept(conceptId, conceptTitle) {
+    return _checkAndShowButton('nv-videos-btn', { type: 'concept', conceptId, conceptTitle },
+      cards => `🎬 ${cards.length} Video${cards.length > 1 ? 's' : ''} Available`);
+  }
+
+  async function _checkAndShowButton(btnId, ctx, labelFor) {
+    const btn = $(btnId);
     if (!btn) return;
     btn.classList.add('hidden');
     if (!navigator.onLine) return;
     try {
-      const cards = await API.fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise });
+      const cards = await _fetchCards(ctx);
       if (!cards.length) return;
-      btn.textContent = `🎬 ${cards.length} Video${cards.length > 1 ? 's' : ''} Available`;
+      btn.textContent = labelFor(cards);
       btn.classList.remove('hidden');
-      btn.onclick = () => open(batch, subject, chapter, exercise);
+      btn.onclick = () => open(ctx);
     } catch (err) {
       console.warn('VIDEO_TEACHER_SELECT: video-count check failed (non-critical)', err);
     }
   }
 
+  function _fetchCards(ctx, teacherId) {
+    return ctx.type === 'concept'
+      ? API.fetchYoutubeVideosForExercise({ contentType: 'concept', conceptId: ctx.conceptId, teacherId })
+      : API.fetchYoutubeVideosForExercise({ batch: ctx.batch, subject: ctx.subject, chapter: ctx.chapter, exercise: ctx.exercise, teacherId });
+  }
+
   // ── Step 1: teacher cards ────────────────────────────────────────────────
-  async function open(batch, subject, chapter, exercise) {
-    _ctx = { batch, subject, chapter, exercise };
+  // Accepts either the new ctx object ({type, ...}) or the old positional
+  // (batch, subject, chapter, exercise) form — exerciseViewer.js's existing
+  // callers keep working unchanged.
+  async function open(batchOrCtx, subject, chapter, exercise) {
+    const ctx = (typeof batchOrCtx === 'object' && batchOrCtx !== null)
+      ? batchOrCtx
+      : { type: 'exercise', batch: batchOrCtx, subject, chapter, exercise };
+    _ctx = ctx;
     APP?.navigate?.('video-teachers');
-    $('vts-title').textContent = `🎬 Exercise ${exercise} — Videos`;
+    $('vts-title').textContent = ctx.type === 'concept' ? `🎬 ${ctx.conceptTitle || 'Concept'} — Videos` : `🎬 Exercise ${ctx.exercise} — Videos`;
     const list = $('vts-list');
     list.innerHTML = '<p class="vts-empty">Loading…</p>';
     try {
-      const cards = await API.fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise });
+      const cards = await _fetchCards(ctx);
       if (!cards.length) {
         list.innerHTML = '<p class="vts-empty">या Exercise साठी सध्या कुठलाही video उपलब्ध नाही.</p>';
         return;
@@ -72,9 +97,8 @@ const VIDEO_TEACHER_SELECT = (() => {
   // ── Step 2: chosen teacher's parts (skip straight to player if just 1) ──
   async function _openParts(teacherId, teacherName) {
     if (!_ctx) return;
-    const { batch, subject, chapter, exercise } = _ctx;
     try {
-      const parts = await API.fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId });
+      const parts = await _fetchCards(_ctx, teacherId);
       if (!parts.length) return; // shouldn't happen (card implies ≥1), fail quiet
       if (parts.length === 1) {
         _openPlayer(parts[0].id, parts[0].video_id, parts[0].part_label || teacherName);
@@ -155,7 +179,7 @@ const VIDEO_TEACHER_SELECT = (() => {
     _playerObserver.observe(screenEl, { attributes: true, attributeFilter: ['class'] });
   }
 
-  return { checkAndShowButton, open };
+  return { checkAndShowButton, checkAndShowButtonForConcept, open };
 })();
 
 window.VIDEO_TEACHER_SELECT = VIDEO_TEACHER_SELECT;

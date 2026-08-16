@@ -2178,12 +2178,21 @@ const API = (() => {
     return payload?.data || [];
   }
 
-  // YouTube Teacher Partner videos for an exercise — two-step: omit
-  // teacherId for the Step-1 card list (all approved+live teachers for this
-  // exercise), pass teacherId for Step-2 (that teacher's parts).
-  async function fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId }) {
+  // YouTube Teacher Partner videos for an exercise (or a Notes concept) —
+  // two-step: omit teacherId for the Step-1 card list (all approved+live
+  // teachers for this content), pass teacherId for Step-2 (that teacher's
+  // parts). contentType defaults to 'exercise' (existing callers unchanged);
+  // pass contentType:'concept' + conceptId instead of batch/subject/chapter/
+  // exercise for a Notes concept — concept_id alone identifies it.
+  async function fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId, contentType, conceptId }) {
     const token = await ensureStudentSession();
-    const qs = new URLSearchParams({ batch, subject, chapter, exercise });
+    const qs = new URLSearchParams();
+    if (contentType === 'concept') {
+      qs.set('content_type', 'concept');
+      qs.set('concept_id', conceptId || '');
+    } else {
+      qs.set('batch', batch); qs.set('subject', subject); qs.set('chapter', chapter); qs.set('exercise', exercise);
+    }
     if (teacherId) qs.set('teacher_id', teacherId);
     const payload = await request(`/youtube-teacher/videos-for-exercise?${qs}`, {
       headers: { Authorization: `Bearer ${token}` },

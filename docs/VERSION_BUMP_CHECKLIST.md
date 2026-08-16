@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-08-16):** `7.4.11` · versionCode `108` · SW `v108`
+**सध्याची version (last updated 2026-08-16):** `7.4.12` · versionCode `109` · SW `v109`
 
 ---
 
@@ -81,3 +81,4 @@
 | **7.4.9** | **106** | **v106** | **2026-08-16** | YouTube Teacher Portal: real embedded video preview on both admin Approvals (was plain text link, admin couldn't see the video before approving) and teacher's Add Exercise Video screen (was no preview at all before submitting) |
 | **7.4.10** | **107** | **v107** | **2026-08-16** | YouTube Teacher Portal "My Videos": added Edit button (was missing entirely — approved videos couldn't be edited at all). Reuses existing backend live/pending-edit pattern — editing an approved video locks Batch/Subject/Chapter/Exercise/Part (identity), lets teacher change only the link, resubmits to pending, and the old approved video stays visible to students until the edit is re-approved |
 | **7.4.11** | **108** | **v108** | **2026-08-16** | Admin "YouTube Teachers → Video Gaps" Subject dropdown was rendering blank/empty options — real bug found live: it read subjects as `{name}` objects but `GET /batches` returns them as plain strings; fixed the mapping |
+| **7.4.12** | **109** | **v109** | **2026-08-16** | YouTube Teacher videos now support Notes Concepts, not just Exercises: Add Video form gets an Exercise/Concept toggle; My Teaching Areas gets a "View Content" list (every Exercise+Concept in a Subject, ✅ marks what you've covered, tap to add/edit); Notes concept screen gets the same "🎬 N Videos Available" button exercises already have; Admin Approvals shows Concept videos correctly |
