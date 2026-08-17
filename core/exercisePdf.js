@@ -165,6 +165,16 @@ const EXERCISE_PDF = (() => {
     return String(q?.answerText?.marathi || q?.answerText?.english || '').trim();
   }
 
+  // Label must match whichever language _questionText() actually picked —
+  // a Marathi "प्रश्न" label in front of English question text (falls back
+  // to English when questionText.marathi is empty) read as a mismatch.
+  function _questionLabel(q, num) {
+    return (q?.questionText?.marathi || '').trim() ? `प्रश्न ${num}.` : `Q${num}.`;
+  }
+  function _answerLabel(q) {
+    return (q?.answerText?.marathi || '').trim() ? 'उत्तर' : 'Answer';
+  }
+
   // One question item — shared by the single-exercise export and the
   // multi-exercise Book export. numLabel is the continuous question number
   // across the whole document (book numbering doesn't restart per exercise).
@@ -178,7 +188,7 @@ const EXERCISE_PDF = (() => {
 
     const answerHtml = withAnswers ? `
       <div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px">
-        <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:2px">Answer</div>
+        <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:2px">${_answerLabel(q)}</div>
         <div style="font-size:13px;color:#166534;line-height:1.6">${_richText(_answerText(q))}</div>
         ${(q.answerDiagrams || []).map(d => `
           <div style="margin-top:6px">
@@ -189,7 +199,7 @@ const EXERCISE_PDF = (() => {
 
     return `
       <div style="margin-bottom:16px;break-inside:avoid;page-break-inside:avoid">
-        <div style="font-size:14px;line-height:1.6"><b>प्रश्न ${numLabel}.</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(q.marks)} ${q.marks === 1 ? 'mark' : 'marks'}]</span></div>
+        <div style="font-size:14px;line-height:1.6"><b>${_questionLabel(q, numLabel)}</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(q.marks)} ${q.marks === 1 ? 'mark' : 'marks'}]</span></div>
         ${qDiagramsHtml}
         ${answerHtml}
       </div>`;

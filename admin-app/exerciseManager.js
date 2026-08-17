@@ -4,6 +4,10 @@
 const EXERCISE_MANAGER = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  // Label must match whichever language the question text actually falls
+  // back to (questionText.marathi || questionText.english) — a Marathi
+  // "प्रश्न" label in front of English-only question text read as a mismatch.
+  const _qLabel = (q, num) => (q?.questionText?.marathi || '').trim() ? `प्रश्न ${num}` : `Q${num}`;
   // Escapes HTML, then applies light markdown: **bold** -> <strong>, and
   // GitHub-style pipe tables (a header row + a |---|---| separator row,
   // as ChatGPT/Claude commonly paste) -> a real <table>. Runs on the
@@ -290,7 +294,7 @@ const EXERCISE_MANAGER = (() => {
     list.innerHTML = _exerciseQuestions.map((q, i) => `
       <div class="cm-qitem" data-id="${_esc(q._id)}">
         <div class="cm-qitem-top">
-          <b>प्रश्न ${i + 1}</b>
+          <b>${_qLabel(q, i + 1)}</b>
           <span class="em-status-chip ${q.status === 'published' ? 'published' : 'draft'}">${q.status === 'published' ? '✅ Published' : '📝 Draft'}</span>
           <!-- Inline marks edit — right where marks are shown, no need to
                open the full Edit form just to bump 1→2 marks. -->
@@ -344,7 +348,7 @@ const EXERCISE_MANAGER = (() => {
       body.innerHTML = _exerciseQuestions.map((q, i) => `
         <div class="cm-qitem" style="margin-bottom:12px">
           <div class="cm-qitem-top">
-            <b>प्रश्न ${i + 1}</b>
+            <b>${_qLabel(q, i + 1)}</b>
             <span class="em-status-chip ${q.status === 'published' ? 'published' : 'draft'}">${q.status === 'published' ? '✅ Published' : '📝 Draft'}</span>
             <span class="cm-marks-chip">${q.marks} ${q.marks === 1 ? 'mark' : 'marks'}</span>
           </div>
