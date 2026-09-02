@@ -1530,6 +1530,16 @@ const API = (() => {
     }).catch(() => {});
   }
 
+  async function renameCatalogSubject(batch, oldSubject, newSubject) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(oldSubject)}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: newSubject }),
+    });
+  }
+
   async function deleteCatalogSubject(batch, subject) {
     const token = await ensureAdminSession().catch(() => '');
     if (!token) return;
@@ -1547,6 +1557,16 @@ const API = (() => {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ chapter }),
     }).catch(() => {});
+  }
+
+  async function renameCatalogChapter(batch, subject, oldChapter, newChapter) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) return;
+    return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters/${encodeURIComponent(oldChapter)}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: newChapter }),
+    });
   }
 
   async function deleteCatalogChapter(batch, subject, chapter) {
@@ -2257,8 +2277,8 @@ const API = (() => {
     syncServerQuestions, syncStudentQuestions, syncServerLessons, syncServerBatches,
     fetchMyAttempts, syncMyAttempts,
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,
-    addCatalogSubject, deleteCatalogSubject,
-    addCatalogChapter, deleteCatalogChapter, reorderCatalogChapters,
+    addCatalogSubject, renameCatalogSubject, deleteCatalogSubject,
+    addCatalogChapter, renameCatalogChapter, deleteCatalogChapter, reorderCatalogChapters,
     fetchChapterOrder, getOrderedChapters,
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,
     // ─── Fee Management (Teacher) ─────────────────────────────────

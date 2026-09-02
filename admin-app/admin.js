@@ -397,6 +397,7 @@ const ADMIN = (() => {
         </div>
         <div class="batch-admin-actions">
           <button class="admin-btn-secondary" data-action="use">Use</button>
+          <button class="admin-btn-secondary" data-action="edit">Edit</button>
           <button class="admin-btn-danger" data-action="delete">Delete</button>
         </div>
       `;
@@ -409,6 +410,21 @@ const ADMIN = (() => {
         });
         if ($('class-chapter-subject')) $('class-chapter-subject').value = subject.name;
         await _loadChapterAdmin();
+      });
+      item.querySelector('[data-action="edit"]').addEventListener('click', async () => {
+        const newName = await APP.promptAsync(`"${subject.name}" चे नवीन नाव:`, 'text', subject.name);
+        if (!newName || newName.trim() === subject.name) return;
+        const trimmed = newName.trim();
+        await DB.saveBatchSubject({ ...subject, name: trimmed });
+        await Promise.all([_loadSubjectAdmin(), _loadChapterAdmin(), _loadBatchOptions()]);
+        if (navigator.onLine) {
+          try {
+            await API.renameCatalogSubject(batch, subject.name, trimmed);
+          } catch (err) {
+            APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+          }
+        }
+        APP.toast(`✅ "${subject.name}" → "${trimmed}" rename झाला`, 'success');
       });
       item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
         if (!await APP.confirmAsync(`Delete subject "${subject.name}" from "${batch}"?`)) return;
@@ -494,9 +510,25 @@ const ADMIN = (() => {
           <div class="chapter-admin-actions">
             <button class="chapter-arrow-btn" data-action="up" ${idx === 0 ? 'disabled' : ''} title="Move up">↑</button>
             <button class="chapter-arrow-btn" data-action="down" ${idx === chapters.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+            <button class="admin-btn-secondary" data-action="edit">Edit</button>
             <button class="admin-btn-danger" data-action="delete">Delete</button>
           </div>
         `;
+        item.querySelector('[data-action="edit"]').addEventListener('click', async () => {
+          const newName = await APP.promptAsync(`"${chapter.name}" चे नवीन नाव:`, 'text', chapter.name);
+          if (!newName || newName.trim() === chapter.name) return;
+          const trimmed = newName.trim();
+          await DB.saveSubjectChapter({ ...chapter, name: trimmed });
+          await Promise.all([_loadChapterAdmin(), _loadBatchOptions()]);
+          if (navigator.onLine) {
+            try {
+              await API.renameCatalogChapter(batch, subject, chapter.name, trimmed);
+            } catch (err) {
+              APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+            }
+          }
+          APP.toast(`✅ "${chapter.name}" → "${trimmed}" rename झाला`, 'success');
+        });
         item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
           if (!await APP.confirmAsync(`Delete chapter "${chapter.name}" from "${subject}"?`)) return;
           await DB.deleteSubjectChapter(chapter.id);
