@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-09-03):** `7.4.22` · versionCode `119` · SW `v119`
+**सध्याची version (last updated 2026-09-03):** `7.4.23` · versionCode `120` · SW `v120`
 
 ---
 
@@ -92,3 +92,4 @@
 | **7.4.20** | **117** | **v117** | **2026-09-03** | Admin Concepts (SLS): new "📚 Auto-fill Lesson (सगळे Concepts)" — paste a whole multi-concept lesson file (split on "# Concept N: Title" headings) and it creates every concept as a Draft in one go, reusing the existing single-concept parser per chunk + existing-title dedup. Existing single-concept "✨ Auto-fill करा" untouched |
 | **7.4.21** | **118** | **v118** | **2026-09-03** | Admin Concepts (SLS) editor had no way back to the list without scrolling to a buried "Cancel" button — added a "← Back to list" + "Next: <title> →" bar at the top of the editor (Next moves to the following concept in the current chapter's list — useful for reviewing/publishing a batch just created via Bulk Lesson Import one after another) |
 | **7.4.22** | **119** | **v119** | **2026-09-03** | Real bug found live right after 7.4.21 shipped: Publish/Save was force-closing the concept editor back to the list (it reused `_onChapterChange`, which was built for actual chapter-dropdown switches and unconditionally hides the editor), defeating the "Next" button added in 7.4.21. Extracted a non-disruptive `_refreshConceptsList()` so Publish/Save now reloads the list in the background but keeps the editor open — Next can now actually be used to review a batch of concepts one after another (e.g. after Bulk Lesson Import) |
+| **7.4.23** | **120** | **v120** | **2026-09-03** | Real bug found live: a newly-added Exercise (e.g. Mathematics I → Linear Equations in Two Variables) never showed up in the student app — "Select Subject" rendered completely empty. Root cause: the student app's local Subject/Chapter dropdowns were built only from `DB.syncHierarchyFromExisting()`, which reconstructs the hierarchy purely from locally-cached legacy MCQ Question/Quiz data — a subject/chapter with only Notes/Exercise content (no MCQ quiz ever cached) never made it in. `GET /batches` already has the real catalog but is teacher/admin-only and includes pricing. Added a new student-safe `GET /batches/student/hierarchy` (own assigned batches only, no pricing) + a matching client-side sync, called at Home load/refresh alongside the existing local repair pass |

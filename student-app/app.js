@@ -1447,6 +1447,10 @@ const APP = (() => {
     _screenHistory = [];   // clear back-stack when going to home
     showScreen('home', { addToHistory: false });
     await DB.syncHierarchyFromExisting?.();
+    // Real bug fix: subjects/chapters that only have Notes/Exercise content
+    // (no legacy MCQ quiz) never appeared in any Subject/Chapter dropdown —
+    // see syncServerBatchesForStudent's own doc-comment. Best-effort/offline-safe.
+    await API.syncServerBatchesForStudent?.().catch(() => {});
 
     // Hide drill-down sections immediately
     ['subject-section', 'chapter-section', 'lesson-section', 'available-tests-section']
@@ -1475,6 +1479,7 @@ const APP = (() => {
       _updateProfileButton(_latestProfile.name || _latestProfile.student_code);
     }
     await DB.syncHierarchyFromExisting?.();
+    await API.syncServerBatchesForStudent?.().catch(() => {});
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
     await _renderHomeHierarchy({ preserveSelection: true });

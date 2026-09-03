@@ -1451,18 +1451,11 @@ const API = (() => {
     return remote;
   }
 
-  async function syncServerBatches() {
-    // Admin sessions use their own cached token; a teacher (no admin login)
-    // falls back to their own session — GET /batches is read-only (no
-    // pricing) and now open to requireTeacherOrAdmin server-side.
-    const token = await ensureAdminSession().catch(() => '')
-      || await ensureTeacherSession().catch(() => '');
-    if (!token) return;
-    const payload = await request('/batches', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const batches = payload?.data || [];
-    // Merge into local IndexedDB hierarchy
+  // Shared by syncServerBatches (admin/teacher) and syncServerBatchesForStudent
+  // below — writes a server batch→subject→chapter list into the local
+  // IndexedDB hierarchy tables that DB.getSubjectsByBatch/getChaptersByBatchSubject
+  // read from.
+  async function _mergeBatchesIntoLocalHierarchy(batches) {
     for (const b of batches) {
       await DB.saveBatch({ name: b.name, icon: b.icon || '📚' }).catch(() => {});
       for (const subject of (b.subjects || [])) {
@@ -1475,6 +1468,44 @@ const API = (() => {
         }
       }
     }
+  }
+
+  async function syncServerBatches() {
+    // Admin sessions use their own cached token; a teacher (no admin login)
+    // falls back to their own session — GET /batches is read-only (no
+    // pricing) and now open to requireTeacherOrAdmin server-side.
+    const token = await ensureAdminSession().catch(() => '')
+      || await ensureTeacherSession().catch(() => '');
+    if (!token) return;
+    const payload = await request('/batches', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const batches = payload?.data || [];
+    await _mergeBatchesIntoLocalHierarchy(batches);
+    return batches;
+  }
+
+  // Real bug fix (found live): a subject/chapter that only has Notes/Exercise
+  // content (no legacy MCQ quiz question ever cached locally) never showed up
+  // in the student app's Subject/Chapter dropdowns — those were built only
+  // from DB.syncHierarchyFromExisting(), which infers the hierarchy from
+  // locally-cached Question/Quiz data, not from the live batch catalog.
+  // This pulls the real catalog (own assigned batches only, via the new
+  // student-safe /batches/student/hierarchy) and merges it in the same way
+  // syncServerBatches() does for admin/teacher. Session-cached like
+  // DB.syncHierarchyFromExisting() (same {force} escape hatch) — callers
+  // await it at home-load, so it must stay cheap on repeat calls.
+  let _studentHierarchySynced = false;
+  async function syncServerBatchesForStudent({ force = false } = {}) {
+    if (_studentHierarchySynced && !force) return;
+    const token = await ensureStudentSession().catch(() => '');
+    if (!token) return;
+    const payload = await request('/batches/student/hierarchy', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const batches = payload?.data || [];
+    await _mergeBatchesIntoLocalHierarchy(batches);
+    _studentHierarchySynced = true;
     return batches;
   }
 
@@ -2285,6 +2316,7 @@ const API = (() => {
     toFrontendQuestion, toBackendQuestion,
     cacheQuizQuestions, cacheLessons,
     syncServerQuestions, syncStudentQuestions, syncServerLessons, syncServerBatches,
+    syncServerBatchesForStudent,
     fetchMyAttempts, syncMyAttempts,
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,
     addCatalogSubject, renameCatalogSubject, deleteCatalogSubject,
