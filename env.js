@@ -1,2 +1,2 @@
 window.TEACHINGBOARD_API_URL = 'https://teachingboard-backend.onrender.com/api';
-window.APP_VERSION = '7.4.19';
+window.APP_VERSION = '7.4.20';

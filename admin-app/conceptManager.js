@@ -4,6 +4,8 @@
 const CONCEPT_MANAGER = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  // Same dedup-normalize convention as exerciseManager.js's own bulk-paste import.
+  const _norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
   // Escapes HTML, then turns **bold** (as pasted straight from ChatGPT) into
   // <strong> — the preview should render markdown emphasis, not literal asterisks.
   // Escapes HTML, then applies light markdown: **bold** -> <strong>, and
@@ -359,6 +361,12 @@ const CONCEPT_MANAGER = (() => {
           <button type="button" id="cm-autofill-btn" class="btn btn-primary">✨ Auto-fill करा</button>
           <button type="button" id="cm-copy-format-btn" class="btn btn-secondary">📋 Copy Format (ChatGPT साठी)</button>
         </div>
+        <hr class="cm-autofill-divider">
+        <p class="cm-autofill-hint">वरच्याच textarea मध्ये — <b>एका पूर्ण Lesson चे सगळे Concepts एकदम</b> paste करा (प्रत्येक Concept "# Concept 1: शीर्षक", "# Concept 2: शीर्षक" अशा heading ने वेगळा असावा) — प्रत्येक Concept वेगळा ओळखून Draft म्हणून save करेल.</p>
+        <div class="cm-autofill-actions">
+          <button type="button" id="cm-bulk-lesson-btn" class="btn btn-secondary">📚 Auto-fill Lesson (सगळे Concepts)</button>
+          <span id="cm-bulk-status" class="cm-bulk-status"></span>
+        </div>
       </div>
 
       <div class="editor-header">
@@ -479,6 +487,7 @@ const CONCEPT_MANAGER = (() => {
     $('cm-add-image-btn')?.addEventListener('click', () => _addBlock('image'));
     $('cm-autofill-btn')?.addEventListener('click', () => _runAutoFill());
     $('cm-copy-format-btn')?.addEventListener('click', () => _copyPromptFormat());
+    $('cm-bulk-lesson-btn')?.addEventListener('click', () => _runBulkLessonImport());
 
     // Title/language/difficulty aren't read until Save is pressed — wire a
     // blur/change autosave so these aren't lost either if the admin navigates
@@ -1122,6 +1131,123 @@ const CONCEPT_MANAGER = (() => {
     _applyAutoFillResult(_parseAutoFillText(input.value));
   }
 
+  // Splits a full-lesson paste into one chunk per "# Concept N: Title"
+  // heading (the natural boundary a multi-concept ChatGPT/textbook-style
+  // export uses — see the sample lesson file format). Each chunk's own
+  // body is handed to the EXISTING _parseAutoFillText() unchanged below —
+  // this only finds where one concept ends and the next begins, it doesn't
+  // duplicate any of the single-concept parsing logic.
+  const _CONCEPT_HEADING_RE = /^#\s*concept\s*\d+\s*[:.]?\s*(.*)$/im;
+  function _splitLessonIntoConceptChunks(raw) {
+    const text = String(raw || '').replace(/\r\n/g, '\n');
+    const lines = text.split('\n');
+    const chunks = [];
+    let current = null;
+
+    for (const line of lines) {
+      const m = line.match(new RegExp(_CONCEPT_HEADING_RE.source, 'i'));
+      if (m) {
+        if (current) chunks.push(current);
+        current = { headingTitle: m[1].trim(), bodyLines: [] };
+        continue;
+      }
+      if (current) current.bodyLines.push(line);
+    }
+    if (current) chunks.push(current);
+
+    return chunks.map(c => ({ headingTitle: c.headingTitle, body: c.bodyLines.join('\n') }));
+  }
+
+  async function _runBulkLessonImport() {
+    if (!_chapterId) {
+      APP.toast('आधी Chapter निवडा', 'info');
+      return;
+    }
+    const input = $('cm-autofill-input');
+    const statusEl = $('cm-bulk-status');
+    if (!input || !input.value.trim()) {
+      APP.toast('आधी संपूर्ण Lesson चा मजकूर paste करा', 'error');
+      return;
+    }
+
+    const chunks = _splitLessonIntoConceptChunks(input.value);
+    if (!chunks.length) {
+      APP.toast('"# Concept 1: ...", "# Concept 2: ..." असे heading सापडले नाहीत — format तपासा', 'error');
+      return;
+    }
+
+    const existingTitles = new Set(_concepts.map(c => _norm(c.title?.english || c.title?.marathi || '')));
+    const seenInBatch = new Set();
+    let created = 0, skipped = 0, failed = 0;
+    const bulkBtn = $('cm-bulk-lesson-btn');
+    if (bulkBtn) bulkBtn.disabled = true;
+
+    for (let i = 0; i < chunks.length; i++) {
+      const { headingTitle, body } = chunks[i];
+      if (statusEl) statusEl.textContent = `${i + 1} / ${chunks.length} — तयार करत आहे...`;
+
+      const parsed = _parseAutoFillText(body);
+      // Deliberately NOT using parsed.titleEnglish/titleMarathi here — real
+      // bug found in testing: _parseAutoFillText's title-capture is a
+      // fallback meant for the single-concept "Title (Marathi)"-labeled
+      // format; when fed a chunk whose first line is a repeated "## <Title>"
+      // sub-heading (this file's own structure — H1 "# Concept N: Title"
+      // followed by an H2 repeating the same title), it wrongly grabbed
+      // just the parenthetical part of that H2 line as the "title". The
+      // heading line captured by the splitter itself IS the real, complete
+      // title — always trust it here instead.
+      const titleEnglish = headingTitle || '';
+      if (!titleEnglish) { skipped++; continue; }
+
+      const key = _norm(titleEnglish);
+      if (existingTitles.has(key) || seenInBatch.has(key)) { skipped++; continue; }
+      seenInBatch.add(key);
+
+      const concept = {
+        chapterId: _chapterId,
+        language: 'english',
+        title: { english: titleEnglish, marathi: '' },
+        learningOutcomes: { english: parsed.outcomes, marathi: [] },
+        description: { english: { blocks: parsed.contentParagraphs.map(text => ({ type: 'paragraph', data: { text } })) }, marathi: { blocks: [] } },
+        shortNotes: { english: parsed.shortNotes, marathi: [] },
+        revisionBox: {
+          english: { remember: parsed.remember, mistakes: parsed.mistakes, formulas: parsed.formulas, examTips: parsed.examTips },
+          marathi: { remember: [], mistakes: [], formulas: [], examTips: [] }
+        },
+        attachments: [],
+        examTags: parsed.examTags,
+        difficulty: parsed.difficulty || 'easy',
+        status: 'draft',
+        aiContext: {
+          board: 'CBSE',
+          standard: _parseStandard(_batch),
+          medium: 'english',
+          subject: _subject,
+          chapter: _chapter
+        }
+      };
+
+      try {
+        await API.createAdminConcept({ ...concept, changesSummary: 'Bulk lesson import' });
+        created++;
+      } catch (err) {
+        console.warn('Bulk lesson import: failed to create concept', titleEnglish, err);
+        failed++;
+      }
+    }
+
+    if (bulkBtn) bulkBtn.disabled = false;
+    if (statusEl) statusEl.textContent = '';
+    input.value = '';
+
+    const parts = [`${created} तयार झाले`];
+    if (skipped) parts.push(`${skipped} आधीच existing म्हणून skip`);
+    if (failed) parts.push(`${failed} अयशस्वी`);
+    APP.toast(`Bulk Lesson Import — ${parts.join(', ')} (सगळे Draft — तपासून Publish करा)`, failed ? 'error' : 'success');
+
+    await _onChapterChange(_chapterId);
+  }
+
   const CHATGPT_FORMAT_PROMPT = `Ya format made mala note dya (Marathi madhe), exact hech section headings ani emoji vaparun, ekahi section skip na karta:
 
 Title (Marathi)
@@ -1377,10 +1503,15 @@ Title (Marathi)
       exportPdf: _exportPdf,
       setState: (concept, meta = {}) => {
         _currentConcept = concept;
-        if (meta.batch   !== undefined) _batch   = meta.batch;
-        if (meta.subject !== undefined) _subject = meta.subject;
-        if (meta.chapter !== undefined) _chapter = meta.chapter;
+        if (meta.batch     !== undefined) _batch     = meta.batch;
+        if (meta.subject   !== undefined) _subject   = meta.subject;
+        if (meta.chapter   !== undefined) _chapter   = meta.chapter;
+        if (meta.chapterId !== undefined) _chapterId = meta.chapterId;
+        if (meta.concepts  !== undefined) _concepts  = meta.concepts;
       },
+      splitLesson: _splitLessonIntoConceptChunks,
+      runBulkLessonImport: _runBulkLessonImport,
+      renderEditor: _renderEditor,
     },
   };
 })();
