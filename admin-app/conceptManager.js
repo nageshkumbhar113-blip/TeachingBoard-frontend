@@ -254,9 +254,20 @@ const CONCEPT_MANAGER = (() => {
       return;
     }
 
+    await _refreshConceptsList();
+  }
+
+  // Reloads _concepts + re-renders the sidebar list WITHOUT touching the
+  // editor (_currentConcept, _hideEditor) — unlike _onChapterChange (which
+  // is for an actual chapter-dropdown change, where closing the editor is
+  // correct). Used after Save/Publish so the editor stays open — real bug
+  // found live: reusing _onChapterChange there was forcing the admin back
+  // to the list on every Publish, defeating the point of the "Next" button
+  // (reviewing several bulk-imported drafts in a row).
+  async function _refreshConceptsList() {
+    if (!_chapterId) return;
     try {
-      // Empty status = no filter (admin sees draft + published + archived).
-      _concepts = await API.fetchAdminChapterConcepts(chapterId, '');
+      _concepts = await API.fetchAdminChapterConcepts(_chapterId, '');
       _renderConceptsList(_concepts);
     } catch (err) {
       console.error('Failed to load concepts:', err);
@@ -1412,7 +1423,15 @@ Title (Marathi)
       }
 
       APP.toast(publish ? 'Concept published!' : 'Concept saved!', 'success');
-      _onChapterChange(_chapterId);
+      // Refresh the sidebar list (updated status/order) WITHOUT closing the
+      // editor — _onChapterChange used to be (mis)used here, which forced
+      // the admin back to the list on every save, defeating "Next". Then
+      // re-render the editor itself off the fresh _currentConcept/_concepts
+      // — matters most right after a brand-new concept's first save, when
+      // it only just gets a real _id and so only now becomes findable in
+      // _concepts for the Next button to point past it.
+      await _refreshConceptsList();
+      _renderEditor();
     } catch (err) {
       console.error('Save failed:', err);
       APP.toast(`Error: ${err.message}`, 'error');

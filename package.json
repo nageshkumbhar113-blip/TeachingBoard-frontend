@@ -1,6 +1,6 @@
 {
   "name": "teachingboard-split-apps",
-  "version": "7.4.21",
+  "version": "7.4.22",
   "private": true,
   "type": "module",
   "scripts": {
