@@ -269,18 +269,35 @@ const EXERCISE_MANAGER = (() => {
     return parsed;
   }
 
+  // Real bug found live: deleting several questions in a row (each Delete
+  // click fires its own _deleteQuestion -> API call -> _loadExerciseQuestions
+  // refetch chain) could have an EARLIER click's refetch resolve AFTER a
+  // LATER click's refetch — classic out-of-order-response race. The stale,
+  // larger list would then silently overwrite the current (correct, smaller)
+  // one in _exerciseQuestions, making already-deleted questions look like
+  // they still exist — which then made Auto-fill's duplicate check wrongly
+  // skip re-adding them ("delete kele... parat add karatana... 15 आधीच होते"
+  // even though the server-side deletes had actually gone through). A
+  // monotonic token guard discards any fetch whose response comes back after
+  // a newer one has already started, so only the truly-latest state ever
+  // gets applied.
+  let _loadExerciseQuestionsToken = 0;
   async function _loadExerciseQuestions() {
     if (!_chapterId || !_activeExerciseNo) { _exerciseQuestions = []; _renderExerciseList(); return; }
+    const myToken = ++_loadExerciseQuestionsToken;
+    let result;
     try {
       // limit:500 -- the backend defaults to limit=20 per page when
       // omitted, which would silently truncate a large exercise's
       // question list (same class of bug found live in booksManager.js's
       // whole-chapter fetch — same endpoint, same default).
-      _exerciseQuestions = await API.fetchAdminSlsQuestions({ chapterId: _chapterId, exerciseNo: _activeExerciseNo, status: '', limit: 500 });
+      result = await API.fetchAdminSlsQuestions({ chapterId: _chapterId, exerciseNo: _activeExerciseNo, status: '', limit: 500 });
     } catch (err) {
       console.warn('load exercise questions failed', err);
-      _exerciseQuestions = [];
+      result = [];
     }
+    if (myToken !== _loadExerciseQuestionsToken) return; // a newer load has since started — this response is stale, discard it
+    _exerciseQuestions = result;
     _renderExerciseList();
   }
 
@@ -628,9 +645,10 @@ Marks: [1 ते 5 मधला आकडा]
   function _setTestState(exerciseNo, questions, meta = {}) {
     _activeExerciseNo = exerciseNo;
     _exerciseQuestions = questions;
-    if (meta.batch   !== undefined) _batch   = meta.batch;
-    if (meta.subject !== undefined) _subject = meta.subject;
-    if (meta.chapter !== undefined) _chapter = meta.chapter;
+    if (meta.batch     !== undefined) _batch     = meta.batch;
+    if (meta.subject   !== undefined) _subject   = meta.subject;
+    if (meta.chapter   !== undefined) _chapter   = meta.chapter;
+    if (meta.chapterId !== undefined) _chapterId = meta.chapterId;
     _renderExerciseList();
   }
 
@@ -647,6 +665,9 @@ Marks: [1 ते 5 मधला आकडा]
       showManualForm: _showManualForm,
       saveManual: _saveManual,
       getFormDiagrams: () => ({ question: _formQDiagram, answer: _formADiagram }),
+      deleteQuestion: _deleteQuestion,
+      runAutoFill: _runAutoFill,
+      loadExerciseQuestions: _loadExerciseQuestions,
     },
   };
 })();
