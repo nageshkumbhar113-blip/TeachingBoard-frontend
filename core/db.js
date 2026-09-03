@@ -551,28 +551,21 @@ const DB = (() => {
 
   const DEFAULT_BATCHES_SEEDED_KEY = 'teachingboard_default_batches_seeded';
 
+  // Real bug found live: admin deletes a demo "Std N" batch, it comes back
+  // later. Root cause — this used to seed 6 hardcoded demo batches (Std
+  // 5-10) on first run, guarded by a ONE-TIME flag stored in the SAME local
+  // IndexedDB it's seeding into. Any time that local storage gets cleared
+  // (reinstall, "clear app cache" troubleshooting, new device) the guard
+  // flag is wiped right along with everything else, so the next boot reads
+  // it as a genuinely fresh install and reseeds the demo batches again —
+  // "delete doesn't stick" was really "reseeded on every cache-clear".
+  // The app now has real, admin-managed batches synced from the server;
+  // demo placeholders serve no purpose and only cause this confusion, so
+  // this is now a permanent no-op. Kept as a function (not removed) since
+  // it's called from admin-shell.js/app.js/db.js's own init — no call sites
+  // need to change.
   async function initDefaultBatches() {
-    // Seed the demo classes (Std 5-10) at most ONCE per install — otherwise
-    // deleting all of them (e.g. to replace with real batches) makes them
-    // silently reappear on every app restart, since an empty `batches` store
-    // used to be treated as "never seeded" instead of "user deleted them all".
-    const alreadySeeded = await getSetting(DEFAULT_BATCHES_SEEDED_KEY, false);
-    if (alreadySeeded) return;
-    const existing = await getAllBatches();
-    if (existing.length) {
-      await setSetting(DEFAULT_BATCHES_SEEDED_KEY, true);
-      return;
-    }
-    const defaults = [
-      { id: 1, name: 'Std 5',  icon: '📚' },
-      { id: 2, name: 'Std 6',  icon: '🌱' },
-      { id: 3, name: 'Std 7',  icon: '🔬' },
-      { id: 4, name: 'Std 8',  icon: '🧮' },
-      { id: 5, name: 'Std 9',  icon: '🏛️' },
-      { id: 6, name: 'Std 10', icon: '🎯' },
-    ];
-    await Promise.all(defaults.map(b => _put('batches', b)));
-    await setSetting(DEFAULT_BATCHES_SEEDED_KEY, true);
+    return;
   }
 
   async function getAllBatchSubjects() {
