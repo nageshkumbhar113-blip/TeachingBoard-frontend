@@ -57,6 +57,12 @@ const NOTES_VIEWER = (() => {
 
   let state = {
     chapters: [],
+    // Composite "batchKey::subject" (see _applyChapters) of the Subject
+    // currently drilled into — null means the top-level Subjects grid is
+    // showing. Added so all-subjects'-chapters don't render mixed together
+    // (real UX bug: "Select Subject" step was missing entirely — see
+    // _renderSubjectsList()).
+    currentSubject: null,
     currentChapter: null,
     currentConcept: null,
     concepts: [],
@@ -121,8 +127,42 @@ const NOTES_VIEWER = (() => {
       name: ch.chapter || '',
       batch: [ch.standard ? `Std ${ch.standard}` : '', ch.subject].filter(Boolean).join(' · '),
       subject: ch.subject || '',
+      standard: ch.standard || '',
+      // chapterId = `${batch}::${subject}::${chapter}` (normalized) — the
+      // first segment is the only field that actually identifies which
+      // batch a chapter belongs to (see conceptController.js's own comment
+      // on this — `standard` is just a display number, and two different
+      // batches can share the same one). Used to key Subjects by batch+
+      // subject, not subject name alone, so a same-named subject in two
+      // different batches doesn't get merged into one bucket.
+      batchKey: String(ch.chapterId || '').split('::')[0] || '',
       conceptCount: ch.conceptCount || 0,
     }));
+  }
+
+  function _subjectKey(ch) {
+    return `${ch.batchKey}::${ch.subject || 'Other'}`;
+  }
+
+  // Groups state.chapters into distinct Subjects (batch+subject, see
+  // _subjectKey), sorted by standard then name — this is the new top-level
+  // screen (previously chapters from every subject rendered in one mixed
+  // grid with no way to narrow down first).
+  function _getSubjects() {
+    const map = new Map();
+    state.chapters.forEach(ch => {
+      const key = _subjectKey(ch);
+      if (!map.has(key)) {
+        map.set(key, { key, subject: ch.subject || 'Other', standard: ch.standard || '', count: 0 });
+      }
+      map.get(key).count++;
+    });
+    return [...map.values()].sort((a, b) => {
+      const sa = parseInt(a.standard, 10) || 0;
+      const sb = parseInt(b.standard, 10) || 0;
+      if (sa !== sb) return sa - sb;
+      return a.subject.localeCompare(b.subject);
+    });
   }
 
   // Cache-first, background-refresh, offline-clear-error — mirrors the
@@ -186,7 +226,11 @@ const NOTES_VIEWER = (() => {
 
   async function _searchConcepts(query) {
     if (!query || query.length < 2) {
-      _renderConceptsList(state.concepts);
+      // Restore whichever browse grid was showing (Subjects, or one
+      // Subject's Chapters) — not state.concepts, which belongs to a
+      // chapter's concept list and is unrelated/stale at this level (the
+      // search box only exists here, never inside a chapter).
+      _renderBrowseView();
       return;
     }
     // Search isn't cached (full-text search over the whole corpus isn't
@@ -489,9 +533,12 @@ const NOTES_VIEWER = (() => {
 
     const hasCurrentConcept = !!state.currentConcept;
     // Chapter picked but no concept open yet -> viewing that chapter's
-    // concept list, one level below the top chapters grid.
+    // concept list, one level below its Subject's chapters grid.
     const hasCurrentChapter = !hasCurrentConcept && !!state.currentChapter;
-    const showBack = hasCurrentConcept || hasCurrentChapter;
+    // Subject picked but no chapter open yet -> viewing that subject's
+    // chapters grid, one level below the top Subjects grid.
+    const hasCurrentSubject = !hasCurrentConcept && !hasCurrentChapter && !!state.currentSubject;
+    const showBack = hasCurrentConcept || hasCurrentChapter || hasCurrentSubject;
 
     // "Next" — only while a concept is open, and only if there's another
     // one after it in this chapter's list (state.concepts, same order as
@@ -508,7 +555,11 @@ const NOTES_VIEWER = (() => {
           ${hasNext ? `<button class="nv-btn-back" id="nv-next-btn">Next →</button>` : ''}
         </div>
         <div class="nv-toolbar-center">
-          <h1 class="nv-app-title">${state.currentChapter ? _esc(state.currentChapter.name) : '📚 Study Notes'}</h1>
+          <h1 class="nv-app-title">${
+            state.currentChapter
+              ? _esc(state.currentChapter.name)
+              : (hasCurrentSubject ? _esc(_subjectDisplayName(state.currentSubject)) : '📚 Study Notes')
+          }</h1>
         </div>
         <div class="nv-toolbar-right">
           ${hasCurrentConcept ? `
@@ -528,10 +579,15 @@ const NOTES_VIEWER = (() => {
         </div>
       ` : ''}
 
-      <!-- Main content area — concept/chapter views fill #nv-content themselves
-           right after this render (see viewConcept/selectChapter) -->
+      <!-- Main content area — concept/chapter/subject views fill #nv-content
+           themselves right after this render (see viewConcept/selectChapter/
+           selectSubject) -->
       <div id="nv-content" class="nv-content">
-        ${hasCurrentConcept || hasCurrentChapter ? '' : _renderChaptersList()}
+        ${
+          hasCurrentConcept || hasCurrentChapter
+            ? ''
+            : (state.currentSubject ? _renderChaptersList(state.currentSubject) : _renderSubjectsList())
+        }
       </div>
     `;
 
@@ -539,17 +595,57 @@ const NOTES_VIEWER = (() => {
     _setupEventListeners();
   }
 
-  function _renderChaptersList() {
-    if (!state.chapters?.length) {
+  function _subjectDisplayName(subjectKey) {
+    const ch = state.chapters.find(c => _subjectKey(c) === subjectKey);
+    return ch ? (ch.subject || 'Other') : '';
+  }
+
+  // Top-level screen — pick a Subject first (real UX bug fix: previously
+  // every subject's chapters rendered together in one mixed grid here).
+  function _renderSubjectsList() {
+    const subjects = _getSubjects();
+    if (!subjects.length) {
       return '<div class="nv-empty-state">No chapters available yet.</div>';
     }
 
     return `
       <div class="nv-chapters-grid">
-        ${state.chapters.map(ch => `
+        ${subjects.map(s => `
+          <div class="nv-chapter-card" onclick="NOTES_VIEWER.selectSubject('${s.key}')">
+            <div class="nv-chapter-name">${_esc(s.subject)}</div>
+            <div class="nv-chapter-batch">${[s.standard ? `Std ${s.standard}` : '', `${s.count} chapter${s.count === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function selectSubject(subjectKey) {
+    state.currentSubject = subjectKey;
+    _renderUI();
+  }
+
+  // Whichever browse grid should be showing right now, given state — used
+  // to restore #nv-content after a search is cleared (see _searchConcepts).
+  function _renderBrowseView() {
+    const container = $('nv-content');
+    if (!container) return;
+    container.innerHTML = state.currentSubject ? _renderChaptersList(state.currentSubject) : _renderSubjectsList();
+  }
+
+  // Second-level screen — one Subject's chapters only.
+  function _renderChaptersList(subjectKey) {
+    const chapters = state.chapters.filter(ch => _subjectKey(ch) === subjectKey);
+    if (!chapters.length) {
+      return '<div class="nv-empty-state">No chapters available yet.</div>';
+    }
+
+    return `
+      <div class="nv-chapters-grid">
+        ${chapters.map(ch => `
           <div class="nv-chapter-card" onclick="NOTES_VIEWER.selectChapter('${ch.chapter_id}')">
             <div class="nv-chapter-name">${_esc(ch.name)}</div>
-            <div class="nv-chapter-batch">${_esc(ch.batch)}</div>
+            <div class="nv-chapter-batch">${_esc(ch.standard ? `Std ${ch.standard}` : '')}</div>
           </div>
         `).join('')}
       </div>
@@ -572,9 +668,13 @@ const NOTES_VIEWER = (() => {
     await init();
     const match = state.chapters.find(c => c.subject === subject && c.name === chapter);
     if (match) {
+      // So Back from this chapter lands on its own Subject's chapters grid,
+      // not the top Subjects grid.
+      state.currentSubject = _subjectKey(match);
       await selectChapter(match.chapter_id);
       return;
     }
+    state.currentSubject = null;
     state.currentChapter = null;
     state.currentConcept = null;
     _renderUI();
@@ -623,9 +723,8 @@ const NOTES_VIEWER = (() => {
 
   // One level at a time: a note open -> back to this chapter's concept list
   // (student can tap the next concept); a chapter's concept list showing ->
-  // back to the top chapters grid. Previously this always cleared
-  // currentChapter too, so leaving a note skipped straight past the concept
-  // list to the chapters grid.
+  // back to that Subject's chapters grid; a Subject's chapters grid showing
+  // -> back to the top Subjects grid.
   function _goBack() {
     if (state.currentConcept) {
       state.currentConcept = null;
@@ -633,12 +732,12 @@ const NOTES_VIEWER = (() => {
       _showConceptsList();
       return;
     }
-    _showChapterList();
-  }
-
-  function _showChapterList() {
-    state.currentConcept = null;
-    state.currentChapter = null;
+    if (state.currentChapter) {
+      state.currentChapter = null;
+      _renderUI();
+      return;
+    }
+    state.currentSubject = null;
     _renderUI();
   }
 
@@ -721,6 +820,7 @@ const NOTES_VIEWER = (() => {
   return {
     init,
     viewConcept,
+    selectSubject,
     selectChapter,
     openChapter
   };
