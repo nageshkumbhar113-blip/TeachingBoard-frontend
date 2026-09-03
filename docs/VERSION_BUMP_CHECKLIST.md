@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-09-03):** `7.4.20` · versionCode `117` · SW `v117`
+**सध्याची version (last updated 2026-09-03):** `7.4.21` · versionCode `118` · SW `v118`
 
 ---
 
@@ -90,3 +90,4 @@
 | **7.4.18** | **115** | **v115** | **2026-09-02** | Home search (new): one search bar on Home finds both Notes concepts and Exercise questions together — new backend text-search endpoint for Exercise questions (Notes/concept search already existed), new homeSearch.js combining both, clicking a result jumps straight to that concept or scrolls to + highlights that exact question |
 | **7.4.19** | **116** | **v116** | **2026-09-03** | Real bug found live: deleted "Std N" demo batches kept coming back. `initDefaultBatches()` was reseeding 6 hardcoded demo batches (Std 5-10) on any fresh/cleared local storage, guarded by a flag stored in that SAME storage — cache-clear/reinstall wiped the guard too, so it looked like "never seeded" and reseeded. App has real admin-managed batches now; demo seeding permanently disabled (no-op) |
 | **7.4.20** | **117** | **v117** | **2026-09-03** | Admin Concepts (SLS): new "📚 Auto-fill Lesson (सगळे Concepts)" — paste a whole multi-concept lesson file (split on "# Concept N: Title" headings) and it creates every concept as a Draft in one go, reusing the existing single-concept parser per chunk + existing-title dedup. Existing single-concept "✨ Auto-fill करा" untouched |
+| **7.4.21** | **118** | **v118** | **2026-09-03** | Admin Concepts (SLS) editor had no way back to the list without scrolling to a buried "Cancel" button — added a "← Back to list" + "Next: <title> →" bar at the top of the editor (Next moves to the following concept in the current chapter's list — useful for reviewing/publishing a batch just created via Bulk Lesson Import one after another) |

@@ -232,6 +232,15 @@
   color: var(--color-text, #333);
 }
 
+.cm-editor-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
 .cm-autofill-section {
   background: rgba(240,136,62,0.06);
   border: 1px dashed rgba(240,136,62,0.35);

@@ -352,7 +352,21 @@ const CONCEPT_MANAGER = (() => {
     const editor = $('cm-editor-form');
     if (!editor) return;
 
+    // Next = the concept right after this one in the currently-loaded
+    // chapter list (_concepts) — only meaningful for an already-SAVED
+    // concept (a brand-new unsaved one has no position in that list yet).
+    // Lets an admin move straight through a chapter's concepts (e.g.
+    // reviewing/publishing a batch just created via Bulk Lesson Import)
+    // without going back to the list each time.
+    const curIdx = concept._id ? _concepts.findIndex(c => c._id === concept._id) : -1;
+    const nextConcept = curIdx > -1 && curIdx < _concepts.length - 1 ? _concepts[curIdx + 1] : null;
+
     editor.innerHTML = `
+      <div class="cm-editor-nav">
+        <button type="button" id="cm-editor-back-btn" class="btn btn-tertiary">← Back to list</button>
+        ${nextConcept ? `<button type="button" id="cm-editor-next-btn" class="btn btn-secondary">Next: ${_esc(nextConcept.title?.english || nextConcept.title?.marathi || '')} →</button>` : ''}
+      </div>
+
       <div class="editor-section cm-autofill-section">
         <h3>🤖 Auto-fill from ChatGPT</h3>
         <p class="cm-autofill-hint">ChatGPT चा संपूर्ण output इथे paste करा — Title, Learning Outcomes, Content, Short Notes, Revision Box, Formula, Exam Tips, Exam Tags, Difficulty सगळं आपोआप भरेल.</p>
@@ -488,6 +502,10 @@ const CONCEPT_MANAGER = (() => {
     $('cm-autofill-btn')?.addEventListener('click', () => _runAutoFill());
     $('cm-copy-format-btn')?.addEventListener('click', () => _copyPromptFormat());
     $('cm-bulk-lesson-btn')?.addEventListener('click', () => _runBulkLessonImport());
+    $('cm-editor-back-btn')?.addEventListener('click', () => _cancelEdit());
+    $('cm-editor-next-btn')?.addEventListener('click', () => {
+      if (nextConcept) editConcept(nextConcept._id);
+    });
 
     // Title/language/difficulty aren't read until Save is pressed — wire a
     // blur/change autosave so these aren't lost either if the admin navigates
