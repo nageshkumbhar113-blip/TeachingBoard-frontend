@@ -453,7 +453,11 @@ const EXERCISE_MANAGER = (() => {
           marks: item.marks,
           questionType: 'short_answer',
           difficulty: 'medium',
-          status: 'published',
+          // Draft, not published — matches the "Publish All" button's own
+          // implied workflow (user-confirmed fix: new questions were going
+          // live to students immediately on creation, before Publish was
+          // ever clicked; Concepts/Notes already creates as draft the same way).
+          status: 'draft',
         });
         existingNorm.add(_norm(item.question));
         created++;
@@ -594,7 +598,8 @@ const EXERCISE_MANAGER = (() => {
           batchId: _batch,
           questionType: 'short_answer',
           difficulty: 'medium',
-          status: 'published',
+          // Draft, not published — see the matching comment in _runAutoFill.
+          status: 'draft',
         });
       }
       _formQDiagram = null;
