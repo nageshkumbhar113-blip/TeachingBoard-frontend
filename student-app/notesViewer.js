@@ -729,3 +729,19 @@ const NOTES_VIEWER = (() => {
 // Expose globally so inline onclick handlers (NOTES_VIEWER.selectChapter / .viewConcept)
 // and the Notes tab wiring can reach it — top-level const is NOT visible to inline handlers.
 window.NOTES_VIEWER = NOTES_VIEWER;
+
+// Bottom-nav "Notes" tab — Notes used to be nested inside the Words screen's
+// own tab bar (vocab-tab-notes); moved to its own bnav-notes tab instead.
+// Kept as a lightweight top-level binding (not inside init()) since
+// NOTES_VIEWER.init() itself does real work (fetches profile + chapters,
+// renders) — it should only run when a student actually opens Notes, same
+// as it always has, not eagerly at app startup like this listener bind is.
+document.addEventListener('DOMContentLoaded', () => {
+  // NOTE: APP is a top-level `const` in app.js, not `window.APP` — the bare
+  // identifier is visible to other classic scripts on the same page (same
+  // convention as init()'s own APP.toast(...) call above).
+  document.getElementById('bnav-notes')?.addEventListener('click', () => {
+    window.NOTES_VIEWER?.init();
+    APP?.navigate?.('notes');
+  });
+});

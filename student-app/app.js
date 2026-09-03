@@ -1298,6 +1298,7 @@ const APP = (() => {
       home: 'Home', quiz: 'Practice', results: 'Results',
       'test-player': 'Test', analytics: 'Analytics', 'deep-study': 'Deep Study',
       exercise: 'Exercise', 'chapter-hub': 'Chapter', 'test-list': 'Tests',
+      notes: 'Notes',
     };
     UI.setBreadcrumb(labels[name] || name);
     _updateBottomNav(name);
@@ -1313,6 +1314,7 @@ const APP = (() => {
       'deep-study': 'bnav-home',
       vocab: 'bnav-vocab',
       exercise: 'bnav-exercise',
+      notes: 'bnav-notes',
     };
     document.querySelectorAll('.bnav-btn').forEach(btn => btn.classList.remove('bnav-active'));
     const activeId = tabMap[screen] ?? 'bnav-home';

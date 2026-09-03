@@ -1000,12 +1000,12 @@
             </select>
           </div>
 
-          <!-- Tab bar: Learn / Tests / Word Tests / Notes -->
+          <!-- Tab bar: Learn / Tests / Word Tests — Notes moved to its own
+               bottom-nav tab (bnav-notes), no longer nested under Words. -->
           <div class="vocab-tab-bar">
             <button class="vocab-tab-btn vocab-tab-active" id="vocab-tab-learn">📖 Learn</button>
             <button class="vocab-tab-btn" id="vocab-tab-tests">📝 Tests</button>
             <button class="vocab-tab-btn" id="vocab-tab-word-tests">🎯 Word Tests</button>
-            <button class="vocab-tab-btn" id="vocab-tab-notes">📄 Notes</button>
           </div>
 
           <!-- Dictionary / Learn view (default visible) -->
@@ -1219,6 +1219,10 @@
       <button class="bnav-btn" id="bnav-vocab" aria-label="Word Learning">
         <span class="bnav-icon">📚</span>
         <span class="bnav-label">Words</span>
+      </button>
+      <button class="bnav-btn" id="bnav-notes" aria-label="Study Notes">
+        <span class="bnav-icon">📄</span>
+        <span class="bnav-label">Notes</span>
       </button>
       <button class="bnav-btn" id="bnav-exercise" aria-label="Exercise">
         <span class="bnav-icon">📝</span>

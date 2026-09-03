@@ -686,7 +686,7 @@ const VOCAB = (() => {
     // When returning to test-list, restore the Learn tab as default
     if (name === 'test-list') {
       $id('vocab-dict-view')?.classList.remove('hidden');
-      ['vocab-tab-learn','vocab-tab-tests','vocab-tab-word-tests','vocab-tab-notes']
+      ['vocab-tab-learn','vocab-tab-tests','vocab-tab-word-tests']
         .forEach(id => $id(id)?.classList.toggle('vocab-tab-active', id === 'vocab-tab-learn'));
     }
     // FAB only on test-list view
@@ -761,7 +761,7 @@ const VOCAB = (() => {
 
     // Tab: Learn ↔ Tests
     function _setVocabTab(activeId) {
-      ['vocab-tab-learn','vocab-tab-tests','vocab-tab-word-tests','vocab-tab-notes']
+      ['vocab-tab-learn','vocab-tab-tests','vocab-tab-word-tests']
         .forEach(id => $id(id)?.classList.toggle('vocab-tab-active', id === activeId));
     }
 
@@ -785,14 +785,8 @@ const VOCAB = (() => {
       window.WORD_TEST_PLAYER?.openWordTestScreen(_batch, _subject);
     });
 
-    $id('vocab-tab-notes')?.addEventListener('click', () => {
-      // Notes now open the SLS concept viewer (full-screen). PDF notes removed.
-      // NOTE: APP is a top-level `const` in app.js, not `window.APP` — top-level
-      // const/let in classic scripts don't become window properties, but ARE
-      // visible as a bare identifier to other classic scripts on the same page.
-      window.NOTES_VIEWER?.init();
-      APP?.navigate?.('notes');
-    });
+    // Notes moved out of this Words tab bar to its own bottom-nav tab
+    // (bnav-notes, wired in notesViewer.js) — no longer nested here.
 
     // Bottom nav Words button — always fetch fresh profile from server so
     // batch is correct even if assigned after last login
