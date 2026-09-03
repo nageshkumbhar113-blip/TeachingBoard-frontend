@@ -97,6 +97,18 @@ const NOTES_VIEWER = (() => {
 
     $('nv-search-input')?.addEventListener('input', e => _searchConcepts(e.target.value));
     $('nv-back-btn')?.addEventListener('click', () => _goBack());
+    $('nv-next-btn')?.addEventListener('click', () => _goNext());
+  }
+
+  // Moves to the next concept in the current chapter's list (see the
+  // "Next" button next to "← Back" — only rendered when one exists).
+  // Reuses viewConcept() so caching/progress/render all stay identical
+  // to opening a concept from the list.
+  function _goNext() {
+    if (!state.currentConcept) return;
+    const idx = (state.concepts || []).findIndex(c => c._id === state.currentConcept._id);
+    if (idx === -1 || idx >= state.concepts.length - 1) return;
+    viewConcept(state.concepts[idx + 1]._id);
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -481,11 +493,19 @@ const NOTES_VIEWER = (() => {
     const hasCurrentChapter = !hasCurrentConcept && !!state.currentChapter;
     const showBack = hasCurrentConcept || hasCurrentChapter;
 
+    // "Next" — only while a concept is open, and only if there's another
+    // one after it in this chapter's list (state.concepts, same order as
+    // the concept-list screen). Lets a student move through a chapter's
+    // concepts without dropping back to the list each time.
+    const conceptIdx = hasCurrentConcept ? (state.concepts || []).findIndex(c => c._id === state.currentConcept._id) : -1;
+    const hasNext = conceptIdx > -1 && conceptIdx < (state.concepts.length - 1);
+
     container.innerHTML = `
       <!-- Header with controls -->
       <div class="nv-toolbar">
         <div class="nv-toolbar-left">
           ${showBack ? `<button class="nv-btn-back" id="nv-back-btn">← Back</button>` : ''}
+          ${hasNext ? `<button class="nv-btn-back" id="nv-next-btn">Next →</button>` : ''}
         </div>
         <div class="nv-toolbar-center">
           <h1 class="nv-app-title">${state.currentChapter ? _esc(state.currentChapter.name) : '📚 Study Notes'}</h1>

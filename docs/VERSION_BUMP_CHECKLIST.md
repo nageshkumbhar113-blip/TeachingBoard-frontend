@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-09-02):** `7.4.15` · versionCode `112` · SW `v112`
+**सध्याची version (last updated 2026-09-02):** `7.4.16` · versionCode `113` · SW `v113`
 
 ---
 
@@ -85,3 +85,4 @@
 | **7.4.13** | **110** | **v110** | **2026-08-16** | YouTube Teacher plan pricing is now admin-editable (Admin → YouTube Teachers → ⚙️ Plan Pricing) — was hardcoded in backend code with no admin UI at all; Teacher Portal landing page + plan-select screen now show the live admin-configured prices instead of static ₹499/₹3999/₹199/3-day text |
 | **7.4.14** | **111** | **v111** | **2026-08-17** | Exercise question/answer labels now match the actual content language instead of always Marathi — real bug found live: an English-only question printed with a Marathi "प्रश्न N." label; now "Q N."/"Answer" for English content, "प्रश्न N."/"उत्तर" for Marathi, in both the Exercise PDF export and admin Exercise Manager's question lists |
 | **7.4.15** | **112** | **v112** | **2026-09-02** | Admin Classes: Subject and Chapter names had no Edit button (only add/delete) — added Edit everywhere, backed by new rename endpoints that cascade the name into every collection that stores it, including the composite chapterId (SLSQuestion/Concept) so existing Notes/Exercises stay linked instead of orphaning |
+| **7.4.16** | **113** | **v113** | **2026-09-02** | Student Notes: added a "Next →" button beside "← Back" on a concept — moves to the next concept in the chapter's list directly (reuses viewConcept), only shown when one exists |
