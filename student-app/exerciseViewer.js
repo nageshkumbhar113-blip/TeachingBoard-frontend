@@ -184,6 +184,22 @@ const EXERCISE_VIEWER = (() => {
     await _onChapterChange(chapterId);
   }
 
+  // Opens the Exercise screen scrolled straight to one specific question —
+  // used by Home search results. Reuses openChapter() (above) +
+  // _showQuestions() (below) exactly as the manual click-through does,
+  // then scrolls to and briefly highlights the matching question card.
+  async function openQuestion(batch, subject, chapter, exerciseNo, questionId) {
+    await openChapter(batch, subject, chapter);
+    _showQuestions(exerciseNo);
+    requestAnimationFrame(() => {
+      const card = $('ev-questions-list')?.querySelector(`[data-id="${CSS.escape(questionId)}"]`);
+      if (!card) return;
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('ev-qcard-highlight');
+      setTimeout(() => card.classList.remove('ev-qcard-highlight'), 2000);
+    });
+  }
+
   function _resetBelowChapter() {
     _exerciseGroups = new Map();
     _activeExerciseNo = '';
@@ -273,7 +289,7 @@ const EXERCISE_VIEWER = (() => {
       const qText = q.questionText?.marathi || q.questionText?.english || '';
       const aText = q.answerText?.marathi || q.answerText?.english || '';
       return `
-        <div class="ev-qcard">
+        <div class="ev-qcard" data-id="${_esc(q._id)}">
           <div class="ev-qtop">
             <span class="ev-qnum">${i + 1}.</span>
             <span class="cm-marks-chip">${q.marks} marks</span>
@@ -302,7 +318,7 @@ const EXERCISE_VIEWER = (() => {
     $('ev-groups-section').style.display = '';
   }
 
-  return { init, openChapter };
+  return { init, openChapter, openQuestion };
 })();
 
 window.EXERCISE_VIEWER = EXERCISE_VIEWER;

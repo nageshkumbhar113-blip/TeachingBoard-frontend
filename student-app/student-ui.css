@@ -271,6 +271,8 @@ body.student-app.mode-board.theme-board-light::before {
 }
 
 .mode-board .home-hero,
+.mode-board .home-search-bar,
+.mode-board .home-search-results,
 .mode-board .stats-grid,
 .mode-board .home-section {
   max-width: 1480px;
@@ -1491,6 +1493,86 @@ body.student-app.mode-board.theme-board-light::before {
 .home-title {
   font-weight: 800 !important;
   letter-spacing: -0.02em !important;
+}
+
+/* Home search — Notes concepts + Exercise questions together (homeSearch.js) */
+.home-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: 0 12px;
+  height: 46px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+  transition: border-color var(--ease-std);
+}
+.home-search-bar:focus-within { border-color: var(--accent); }
+.home-search-icon { font-size: 1rem; flex-shrink: 0; color: var(--text2, #8b949e); }
+.home-search-input {
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text, #e6edf3);
+  font-size: 0.9rem;
+  outline: none;
+}
+.home-search-input::placeholder { color: var(--text2, #8b949e); }
+.home-search-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text2, #8b949e);
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.home-search-results {
+  margin: -8px var(--sp-4) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+  overflow: hidden;
+}
+.home-search-group-label {
+  padding: 8px 14px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text2, #8b949e);
+}
+.home-search-result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.home-search-group-label + .home-search-result { border-top: 0; }
+.home-search-result:active { background: rgba(var(--accent-rgb), 0.08); }
+.home-search-result-title { font-size: 0.86rem; color: var(--text, #e6edf3); line-height: 1.4; }
+.home-search-result-meta { font-size: 0.74rem; color: var(--text2, #8b949e); margin-top: 3px; }
+.home-search-loading,
+.home-search-empty {
+  padding: 16px 14px;
+  font-size: 0.84rem;
+  color: var(--text2, #8b949e);
+  text-align: center;
 }
 
 /* Stat cards â€” elevated */
@@ -4527,6 +4609,13 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   border-radius: 10px;
   padding: 12px;
   background: var(--surface1, #fff);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+/* Briefly marks the question a student arrived at via Home search
+   (exerciseViewer.js openQuestion()) — removed automatically after 2s. */
+.ev-qcard-highlight {
+  border-color: var(--accent, #f0883e);
+  box-shadow: 0 0 0 3px rgba(240, 136, 62, 0.35);
 }
 .ev-qtop {
   display: flex;

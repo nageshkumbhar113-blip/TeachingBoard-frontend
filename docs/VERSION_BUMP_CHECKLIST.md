@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-09-02):** `7.4.17` · versionCode `114` · SW `v114`
+**सध्याची version (last updated 2026-09-02):** `7.4.18` · versionCode `115` · SW `v115`
 
 ---
 
@@ -87,3 +87,4 @@
 | **7.4.15** | **112** | **v112** | **2026-09-02** | Admin Classes: Subject and Chapter names had no Edit button (only add/delete) — added Edit everywhere, backed by new rename endpoints that cascade the name into every collection that stores it, including the composite chapterId (SLSQuestion/Concept) so existing Notes/Exercises stay linked instead of orphaning |
 | **7.4.16** | **113** | **v113** | **2026-09-02** | Student Notes: added a "Next →" button beside "← Back" on a concept — moves to the next concept in the chapter's list directly (reuses viewConcept), only shown when one exists |
 | **7.4.17** | **114** | **v114** | **2026-09-02** | Student bottom nav: moved Notes out from under Words (was vocab-tab-notes, nested inside the Words screen's own tab bar) to its own "Notes" tab in the main bottom navigation, alongside Home/Stats/Board/Words/Exercise/Me |
+| **7.4.18** | **115** | **v115** | **2026-09-02** | Home search (new): one search bar on Home finds both Notes concepts and Exercise questions together — new backend text-search endpoint for Exercise questions (Notes/concept search already existed), new homeSearch.js combining both, clicking a result jumps straight to that concept or scrolls to + highlights that exact question |

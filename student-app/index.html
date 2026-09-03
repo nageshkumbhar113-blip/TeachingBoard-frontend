@@ -304,6 +304,16 @@
           <p class="home-sub" data-i18n="home.sub">Choose your batch to begin</p>
         </div>
 
+        <!-- Search — Notes concepts + Exercise questions together (homeSearch.js) -->
+        <div class="home-search-bar">
+          <span class="home-search-icon" aria-hidden="true">🔍</span>
+          <input type="search" id="home-search-input" class="home-search-input"
+            placeholder="Question किंवा Concept शोधा..."
+            autocomplete="off" autocorrect="off" spellcheck="false" />
+          <button id="home-search-clear" class="home-search-clear-btn" aria-label="Clear search" style="display:none">✕</button>
+        </div>
+        <div id="home-search-results" class="home-search-results hidden"></div>
+
         <div class="stats-grid" role="group" aria-label="Summary statistics">
           <div class="stat-card"><span class="stat-num" id="home-total-q">0</span><span class="stat-label">Questions</span></div>
           <div class="stat-card"><span class="stat-num" id="home-total-batch">0</span><span class="stat-label">Classes</span></div>
@@ -1291,6 +1301,7 @@
   <script src="vocabPlayer.js" defer></script>
   <script src="wordTestPlayer.js" defer></script>
   <script src="notesViewer.js" defer></script>
+  <script src="homeSearch.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="payment.js" defer></script>
   <script src="app.js" defer></script>

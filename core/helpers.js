@@ -2178,6 +2178,16 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // Home search — the Exercise-question half (Notes/concept half already
+  // has searchSlsConcepts above). Same base path as fetchStudentExerciseQuestions.
+  async function searchExerciseQuestions(query, limit = 20) {
+    const token = await ensureStudentSession();
+    const payload = await request(`/sls/student/search-exercise-questions?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
   async function fetchSlsConcept(conceptId) {
     const token = await ensureStudentSession();
     const payload = await request(`/sls/${encodeURIComponent(conceptId)}/view`, {
@@ -2288,7 +2298,7 @@ const API = (() => {
     uploadNote, fetchAdminNotes, updateNote, deleteNote,
     // ─── Notes (Student) ─────────────────────────────────────────
     fetchStudentNotes, fetchNoteView,
-    fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, fetchSlsConcept,
+    fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, searchExerciseQuestions, fetchSlsConcept,
     fetchAdminChapterConcepts, fetchAdminConcept, createAdminConcept, updateAdminConcept,
     deleteAdminConcept, publishAdminConcept, translateAdminConcept,
     fetchAdminSlsQuestions, createAdminSlsQuestion, updateAdminSlsQuestion,
