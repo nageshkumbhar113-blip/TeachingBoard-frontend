@@ -80,6 +80,7 @@ const APP = (() => {
       await DB.initDefaultBatches();
       DB.flushPendingWrites?.().catch(err => console.warn('pending write flush failed', err));
       _registerSW();
+      _requestPersistentStorage();
 
       // 2. Onboarding — reveal shell first so setup modal is visible on fresh installs
       await _runOnboardingIfNeeded({ beforePrompt: _revealAppShell });
@@ -124,6 +125,20 @@ const APP = (() => {
       window.SPLASH?.done();   // dismiss splash even on error
       _handleInitError(err);
     }
+  }
+
+  // Real gap found live: this app never told the browser/WebView its
+  // storage should be persistent, so Android could opportunistically evict
+  // IndexedDB (offline Notes/Exercise cache included) under storage
+  // pressure — reported as "cached content works once, then disappears
+  // after fully closing and reopening the app". Best-effort, fire-and-
+  // forget: navigator.storage.persist() may not exist (older WebView) or
+  // be denied; either way the app already degrades gracefully to "needs
+  // internet" when a cache entry is missing, so there's nothing to await here.
+  function _requestPersistentStorage() {
+    navigator.storage?.persist?.()
+      .then(granted => console.log(granted ? '💾 Persistent storage granted' : '💾 Persistent storage not granted (best-effort cache only)'))
+      .catch(() => {});
   }
 
   function _installGlobalGuards() {
