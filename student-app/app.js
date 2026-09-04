@@ -231,6 +231,83 @@ const APP = (() => {
     }
   }
 
+  // Runs the WHOLE post-PIN-unlock sequence (profile refresh + offline
+  // sync) under one continuous overlay — real gap found live: the overlay
+  // above only covered the offline-sync step, but the profile-refresh
+  // (API.fetchStudentMe()) right before it is the actual slow part on a
+  // cold Render free/starter-tier backend (the wake-up ping in init() fires
+  // early, but typing a PIN doesn't always give it enough time) — that gap
+  // showed nothing at all between PIN unlock and home appearing. Shown
+  // unconditionally the instant PIN unlock succeeds; on a warm server with
+  // already-synced content this whole thing resolves in well under a
+  // second, so it just reads as a quick flash, not a startling wait either way.
+  async function _completeStudentLogin(profile) {
+    const overlay = $('data-sync-overlay');
+    const dsub = $('dsync-sub');
+    if (dsub) dsub.textContent = 'माहिती update होत आहे…';
+    overlay?.classList.remove('hidden');
+    try {
+      _updateProfileButton(profile.name || profile.student_code);
+      let _serverConfirmedOk = false;
+      if (navigator.onLine && window.API?.fetchStudentMe) {
+        try {
+          const refreshed = await API.fetchStudentMe();
+          _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
+          _serverConfirmedOk = true;
+        } catch (err) {
+          const msg = String(err?.message || '').toLowerCase();
+          // Expired → markExpired() already fired teachingboard:expired, which
+          // drives the renewal flow. Don't also force a re-login here.
+          if (msg.includes('expired')) {
+            window.SYNC?.stopStudentAutoSync?.();
+            return;
+          }
+          const isAuthError = msg.includes('unauthorized') || msg.includes('blocked') || msg.includes('pending');
+          if (isAuthError) {
+            // खरोखर auth fail (401/403) — forced re-login mandatory. Hide
+            // this overlay first so it doesn't sit on top of the onboarding
+            // screen that's about to show.
+            window.SYNC?.stopStudentAutoSync?.();
+            await API.clearStudentProfile?.().catch(() => {});
+            overlay?.classList.add('hidden');
+            return new Promise(resolve => _showOnboarding(async () => {
+              await _refreshProfileAfterLogin();
+              resolve();
+            }, { force: true }));
+          }
+          // Network error / server sleeping / timeout — cached profile वापरत राहा
+          console.warn('fetchStudentMe failed (network/server), continuing with cached profile', err?.message);
+        }
+      }
+
+      // Real gap fixed: markExpired() only ever fired from an actual server
+      // response, so a student whose cached expiry_date has already passed
+      // could keep using a fully offline-cached app indefinitely just by
+      // staying offline. Only reached when we couldn't get a fresh,
+      // authoritative answer from the server above (offline, or the call
+      // itself failed for a network reason) — deliberately non-destructive
+      // (doesn't touch token/profile, unlike the real markExpired()) since a
+      // wrong device clock or a since-renewed-but-not-yet-synced student
+      // would otherwise get wrongly logged out; the server check above
+      // always wins the moment it's reachable again.
+      if (!_serverConfirmedOk && _isLocallyExpired(profile)) {
+        overlay?.classList.add('hidden'); // different screen next — don't stack
+        _showOfflineExpiredGate();
+        return;
+      }
+
+      if (await _needsFullOfflineSync().catch(() => false)) {
+        if (dsub) dsub.textContent = 'Notes आणि Exercises Offline साठी तयार होत आहेत';
+        await _runFullOfflineSyncIfNeeded();
+        // Brief pause so the final counts (set inside the sync function) are
+        // actually readable before the overlay disappears.
+        await new Promise(r => setTimeout(r, 600));
+      }
+    } finally {
+      overlay?.classList.add('hidden');
+    }
+  }
+
   function _installGlobalGuards() {
     if (_globalGuardsInstalled) return;
     _globalGuardsInstalled = true;
@@ -596,54 +673,9 @@ const APP = (() => {
       const unlocked = await _showPinLock(profile, 'student');
       if (!unlocked) return;  // switched account — _showPinLock handles the rest
 
-      // ── PIN correct: refresh profile from server ──
-      _updateProfileButton(profile.name || profile.student_code);
-      let _serverConfirmedOk = false;
-      if (navigator.onLine && window.API?.fetchStudentMe) {
-        try {
-          const refreshed = await API.fetchStudentMe();
-          _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
-          _serverConfirmedOk = true;
-        } catch (err) {
-          const msg = String(err?.message || '').toLowerCase();
-          // Expired → markExpired() already fired teachingboard:expired, which
-          // drives the renewal flow. Don't also force a re-login here.
-          if (msg.includes('expired')) {
-            window.SYNC?.stopStudentAutoSync?.();
-            return;
-          }
-          const isAuthError = msg.includes('unauthorized') || msg.includes('blocked') || msg.includes('pending');
-          if (isAuthError) {
-            // खरोखर auth fail (401/403) — forced re-login mandatory
-            window.SYNC?.stopStudentAutoSync?.();
-            await API.clearStudentProfile?.().catch(() => {});
-            return new Promise(resolve => _showOnboarding(async () => {
-              await _refreshProfileAfterLogin();
-              resolve();
-            }, { force: true }));
-          }
-          // Network error / server sleeping / timeout — cached profile वापरत राहा
-          console.warn('fetchStudentMe failed (network/server), continuing with cached profile', err?.message);
-        }
-      }
-
-      // Real gap fixed: markExpired() only ever fired from an actual server
-      // response, so a student whose cached expiry_date has already passed
-      // could keep using a fully offline-cached app indefinitely just by
-      // staying offline. Only reached when we couldn't get a fresh,
-      // authoritative answer from the server above (offline, or the call
-      // itself failed for a network reason) — deliberately non-destructive
-      // (doesn't touch token/profile, unlike the real markExpired()) since a
-      // wrong device clock or a since-renewed-but-not-yet-synced student
-      // would otherwise get wrongly logged out; the server check above
-      // always wins the moment it's reachable again.
-      if (!_serverConfirmedOk && _isLocallyExpired(profile)) {
-        _showOfflineExpiredGate();
-        return;
-      }
-      // Visible only the genuine first time (a no-op check otherwise) — see
-      // _syncOfflineContentWithOverlay's own doc-comment.
-      await _syncOfflineContentWithOverlay();
+      // ── PIN correct: refresh profile + sync — see _completeStudentLogin's
+      // own doc-comment for why the whole sequence runs under one overlay.
+      await _completeStudentLogin(profile);
       return;
     }
     beforePrompt?.();
@@ -1958,6 +1990,7 @@ const APP = (() => {
     __test: {
       runFullOfflineSyncIfNeeded: _runFullOfflineSyncIfNeeded,
       syncOfflineContentWithOverlay: _syncOfflineContentWithOverlay,
+      completeStudentLogin: _completeStudentLogin,
       isLocallyExpired: _isLocallyExpired,
       showOfflineExpiredGate: _showOfflineExpiredGate,
       retryOfflineExpiredCheck: _retryOfflineExpiredCheck,
