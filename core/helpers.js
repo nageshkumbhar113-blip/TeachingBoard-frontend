@@ -2201,6 +2201,18 @@ const API = (() => {
     return payload?.data?.concepts || [];
   }
 
+  // One-shot full offline sync — every published Concept (full content) +
+  // every published Exercise question for the student's own batch(es), in
+  // a single request. See runFullOfflineSyncIfNeeded (student-app/app.js)
+  // for how this gets cached locally and why it exists.
+  async function fetchStudentFullSync() {
+    const token = await ensureStudentSession();
+    const payload = await request('/sls/full-sync', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || { concepts: [], exerciseQuestions: [] };
+  }
+
   async function searchSlsConcepts(query, limit = 20) {
     const token = await ensureStudentSession();
     const payload = await request(`/sls/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
@@ -2331,6 +2343,7 @@ const API = (() => {
     // ─── Notes (Student) ─────────────────────────────────────────
     fetchStudentNotes, fetchNoteView,
     fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, searchExerciseQuestions, fetchSlsConcept,
+    fetchStudentFullSync,
     fetchAdminChapterConcepts, fetchAdminConcept, createAdminConcept, updateAdminConcept,
     deleteAdminConcept, publishAdminConcept, translateAdminConcept,
     fetchAdminSlsQuestions, createAdminSlsQuestion, updateAdminSlsQuestion,

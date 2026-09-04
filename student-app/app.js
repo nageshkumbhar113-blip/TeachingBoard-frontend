@@ -141,6 +141,62 @@ const APP = (() => {
       .catch(() => {});
   }
 
+  // Real feature request: previously every single Note/Exercise had to be
+  // opened individually while online before it worked offline — "open once
+  // online" in practice meant doing that separately for each one, and
+  // nothing primed the cache proactively. This syncs EVERYTHING for the
+  // student's own assigned batch(es) — every Note's full content, every
+  // Exercise question, and the chapter list — in one background pass, right
+  // after login/home-load, without blocking the student from using the app
+  // meanwhile (not awaited by its callers). Runs once per assigned-batch
+  // set (tracked via FULL_SYNC_FLAG_KEY) — not on every single app open —
+  // but safely re-attempts if a previous try never completed (e.g. no
+  // internet at the time) since the flag is only written on success.
+  const FULL_SYNC_FLAG_KEY = 'full_offline_sync_v1';
+  let _fullSyncInFlight = false;
+  async function _runFullOfflineSyncIfNeeded() {
+    if (_fullSyncInFlight || !navigator.onLine) return;
+
+    const assigned = await DB.getSetting('student_allowed_batches', []).catch(() => []);
+    const batchesKey = (Array.isArray(assigned) ? assigned : []).map(String).slice().sort().join('|');
+    if (!batchesKey) return; // no assigned batches yet (e.g. teacher/parent mode) — nothing to sync
+
+    const done = await DB.getSetting(FULL_SYNC_FLAG_KEY, null).catch(() => null);
+    if (done?.batchesKey === batchesKey) return; // already fully synced for this exact batch set
+
+    _fullSyncInFlight = true;
+    try {
+      const [chapters, sync] = await Promise.all([
+        API.fetchSlsChapters().catch(() => []),
+        API.fetchStudentFullSync(),
+      ]);
+      if (chapters.length) await DB.saveChaptersCache(chapters).catch(() => {});
+
+      // getCachedConcepts(chapterId) (the concept-LIST screen's cache read)
+      // just returns every sls_concepts row under that chapterId regardless
+      // of its `full` flag — so writing each concept here via
+      // saveConceptCache (full:true) is enough to serve both the list and
+      // the individual-note screens offline; no separate list-cache write needed.
+      await Promise.all((sync.concepts || []).map(c => DB.saveConceptCache(c).catch(() => {})));
+
+      const byChapter = new Map();
+      (sync.exerciseQuestions || []).forEach(q => {
+        if (!byChapter.has(q.chapterId)) byChapter.set(q.chapterId, []);
+        byChapter.get(q.chapterId).push(q);
+      });
+      await Promise.all([...byChapter.entries()].map(([chapterId, qs]) =>
+        DB.putExerciseQuestionsCache(chapterId, qs).catch(() => {})
+      ));
+
+      await DB.setSetting(FULL_SYNC_FLAG_KEY, { batchesKey, at: Date.now() }).catch(() => {});
+      console.log(`✅ Full offline sync done — ${(sync.concepts || []).length} notes, ${(sync.exerciseQuestions || []).length} exercise questions`);
+    } catch (err) {
+      console.warn('Full offline sync failed (will retry next home load):', err);
+    } finally {
+      _fullSyncInFlight = false;
+    }
+  }
+
   function _installGlobalGuards() {
     if (_globalGuardsInstalled) return;
     _globalGuardsInstalled = true;
@@ -1466,6 +1522,9 @@ const APP = (() => {
     // (no legacy MCQ quiz) never appeared in any Subject/Chapter dropdown —
     // see syncServerBatchesForStudent's own doc-comment. Best-effort/offline-safe.
     await API.syncServerBatchesForStudent?.().catch(() => {});
+    // Not awaited on purpose — see _runFullOfflineSyncIfNeeded's own
+    // doc-comment (student keeps using the app while this runs in the background).
+    _runFullOfflineSyncIfNeeded().catch(() => {});
 
     // Hide drill-down sections immediately
     ['subject-section', 'chapter-section', 'lesson-section', 'available-tests-section']
@@ -1495,6 +1554,7 @@ const APP = (() => {
     }
     await DB.syncHierarchyFromExisting?.();
     await API.syncServerBatchesForStudent?.().catch(() => {});
+    _runFullOfflineSyncIfNeeded().catch(() => {}); // not awaited — see its own doc-comment
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
     await _renderHomeHierarchy({ preserveSelection: true });
@@ -1788,6 +1848,10 @@ const APP = (() => {
     isTouchDevice,
     // Profile
     openProfileSettings: _openProfileSettings,
+    // Test-only — not used by any production code path.
+    __test: {
+      runFullOfflineSyncIfNeeded: _runFullOfflineSyncIfNeeded,
+    },
   };
 })();
 
