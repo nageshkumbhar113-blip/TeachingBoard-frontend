@@ -330,10 +330,32 @@ async function renderAreas(main) {
   const activeSet = new Set(areas.map(a => `${a.batch_name}::${a.subject_name}`));
   const idFor = (b, s) => areas.find(a => a.batch_name === b && a.subject_name === s)?.id;
 
+  // Board/Medium search filter — only shown when there's actually more than
+  // one distinct value to filter by (a batch missing this metadata just
+  // reports '' and is never hidden by a filter, only excluded when the
+  // filter is set to a specific value that doesn't match — see
+  // _applyAreasFilter below). Pure show/hide over the already-rendered
+  // cards, no re-render or re-binding of the existing click handlers below.
+  const boards  = [...new Set(tree.map(b => b.board).filter(Boolean))].sort();
+  const mediums = [...new Set(tree.map(b => b.medium).filter(Boolean))].sort();
+  const filterHtml = (boards.length > 1 || mediums.length > 1)
+    ? `<div class="areas-filter-row">
+         ${boards.length > 1 ? `<select id="areas-filter-board" class="field-select">
+           <option value="">All Boards</option>
+           ${boards.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+         </select>` : ''}
+         ${mediums.length > 1 ? `<select id="areas-filter-medium" class="field-select">
+           <option value="">All Mediums</option>
+           ${mediums.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+         </select>` : ''}
+       </div>`
+    : '';
+
   main.innerHTML = `
     <div class="dash-head"><div><h2>My Teaching Areas</h2><div class="sub">Pick the Batches &amp; Subjects you teach — same names students already see.</div></div></div>
+    ${filterHtml}
     <div class="batch-check-grid">
-      ${tree.map(b => `<div class="batch-check"><div class="bname">${esc(b.name)}</div>
+      ${tree.map(b => `<div class="batch-check" data-board="${esc(b.board || '')}" data-medium="${esc(b.medium || '')}"><div class="bname">${esc(b.name)}</div>
         ${b.subjects.map(s => {
           const on = activeSet.has(`${b.name}::${s.name}`);
           return on
@@ -348,6 +370,17 @@ async function renderAreas(main) {
       <p style="font-size:.82rem;color:var(--ink2);margin:6px 0 0;">Removing a Teaching Area permanently deletes every video (any status) you've added for that Batch + Subject. This can't be undone.</p>
     </div>
   `;
+  function _applyAreasFilter() {
+    const boardVal  = main.querySelector('#areas-filter-board')?.value  || '';
+    const mediumVal = main.querySelector('#areas-filter-medium')?.value || '';
+    main.querySelectorAll('.batch-check').forEach(card => {
+      const matches = (!boardVal || card.dataset.board === boardVal) && (!mediumVal || card.dataset.medium === mediumVal);
+      card.classList.toggle('hidden', !matches);
+    });
+  }
+  main.querySelector('#areas-filter-board')?.addEventListener('change', _applyAreasFilter);
+  main.querySelector('#areas-filter-medium')?.addEventListener('change', _applyAreasFilter);
+
   main.querySelectorAll('.subj-tag').forEach(tag => {
     tag.addEventListener('click', async () => {
       const batch = tag.dataset.batch, subject = tag.dataset.subject;

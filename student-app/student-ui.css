@@ -1225,6 +1225,22 @@ body.student-app.mode-board.theme-board-light::before {
   font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px;
   color: var(--text2, #8b949e); text-transform: uppercase; text-align: right; margin: 0 0 8px;
 }
+/* Board/Medium search filter above the batch carousel — see payment.js's
+   openPlanSelect. Only rendered when there's more than one distinct value
+   to filter by, so this stays invisible for a small/single-board catalog. */
+.admit-filter-row {
+  display: flex; gap: 8px; margin: 0 0 10px;
+}
+.admit-filter-select {
+  flex: 1 1 0; min-width: 0;
+  padding: 9px 10px;
+  border: 1.5px solid var(--border, #30363d);
+  border-radius: 9px;
+  background: var(--bg2, #0d1117);
+  color: var(--text, #e6edf3);
+  font-size: 0.82rem;
+  font-family: inherit;
+}
 .admit-batch-slides {
   display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory;
   padding: 4px 4px 12px; margin: 0 -4px 4px; -webkit-overflow-scrolling: touch;

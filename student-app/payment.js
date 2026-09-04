@@ -30,21 +30,38 @@ const PAYMENT = (() => {
     try { batches = await API.getBatchPlans(); } catch (e) { console.warn('plans load failed', e); }
     const paid = (batches || []).filter(b => (b.monthly_price > 0 || b.yearly_price > 0));
 
+    // Board/Medium search filter — only shown when there's actually more
+    // than one distinct value to filter by (batches missing this metadata,
+    // pre-dating it, just report '' and fall out of these lists — the
+    // carousel still shows everything, unfiltered, same as before this
+    // feature existed). A batch with no board/medium set is never hidden
+    // by a filter — only excluded when the filter is a specific value that
+    // doesn't match.
+    const boards  = [...new Set(paid.map(b => b.board).filter(Boolean))].sort();
+    const mediums = [...new Set(paid.map(b => b.medium).filter(Boolean))].sort();
+
     _overlay = document.createElement('div');
     _overlay.className = 'admit-theme';
     _overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto';
 
+    const filterHtml = (boards.length > 1 || mediums.length > 1)
+      ? `<div class="admit-filter-row">
+           ${boards.length > 1 ? `<select id="pay-filter-board" class="admit-filter-select" aria-label="Board">
+             <option value="">सर्व Boards</option>
+             ${boards.map(v => `<option value="${_esc(v)}">${_esc(v)}</option>`).join('')}
+           </select>` : ''}
+           ${mediums.length > 1 ? `<select id="pay-filter-medium" class="admit-filter-select" aria-label="Medium">
+             <option value="">सर्व Mediums</option>
+             ${mediums.map(v => `<option value="${_esc(v)}">${_esc(v)}</option>`).join('')}
+           </select>` : ''}
+         </div>`
+      : '';
+
     const bodyHtml = paid.length
-      ? `<p class="admit-slides-hint">← स्वाइप करा →</p>
-         <div id="pay-batch-slides" class="admit-batch-slides">
-           ${paid.map((b, i) => `
-             <div class="admit-batch-slide${i === 0 ? ' active' : ''}" data-name="${_esc(b.name)}">
-               <div class="admit-slide-dot"></div>
-               <div class="admit-slide-cover">${b.cover_image ? `<img src="${_esc(b.cover_image)}" alt="">` : _esc(b.icon || '📚')}</div>
-               <div class="admit-slide-name">${_esc(b.name)}</div>
-             </div>`).join('')}
-         </div>
-         <div class="admit-ledger-row"><span class="l">Batch</span><span class="v" id="pay-batch-label">${_esc(paid[0].name)}</span></div>
+      ? `${filterHtml}
+         <p class="admit-slides-hint">← स्वाइप करा →</p>
+         <div id="pay-batch-slides" class="admit-batch-slides"></div>
+         <div class="admit-ledger-row"><span class="l">Batch</span><span class="v" id="pay-batch-label"></span></div>
          <div class="admit-ledger-row"><span class="l">Student</span><span class="v">${_esc(student.name || '')} · ${_esc(student.student_code || '')}</span></div>
          <div class="admit-gold-rule"></div>
          <div id="pay-plans"></div>`
@@ -76,21 +93,63 @@ const PAYMENT = (() => {
     _overlay.querySelector('#pay-close')?.addEventListener('click', _close);
     _overlay.addEventListener('click', e => { if (e.target === _overlay) _close(); });
 
-    let currentBatch = paid[0];
+    let currentBatch = null;
     const renderPlans = () => _renderPlans(currentBatch, student, onActivated);
 
-    _overlay.querySelectorAll('.admit-batch-slide').forEach(slide => {
-      slide.addEventListener('click', () => {
-        _overlay.querySelectorAll('.admit-batch-slide').forEach(s => s.classList.remove('active'));
-        slide.classList.add('active');
-        currentBatch = paid.find(b => b.name === slide.dataset.name);
-        const label = _overlay.querySelector('#pay-batch-label');
-        if (label) label.textContent = currentBatch.name;
-        renderPlans();
-      });
-    });
+    // Renders the swipeable carousel for a given (possibly filtered) batch
+    // list, re-binding slide clicks each time — called once at open with
+    // the full `paid` list, and again whenever a Board/Medium filter changes.
+    function _renderCarousel(list) {
+      const slidesHost = _overlay.querySelector('#pay-batch-slides');
+      const label = _overlay.querySelector('#pay-batch-label');
+      const plansHost = _overlay.querySelector('#pay-plans');
+      if (!slidesHost) return;
 
-    if (currentBatch) renderPlans();
+      if (!list.length) {
+        slidesHost.innerHTML = `<p style="color:var(--text2,#8b949e);text-align:center;padding:12px 0">या Board/Medium साठी कोणतीही batch नाही.</p>`;
+        if (label) label.textContent = '';
+        if (plansHost) plansHost.innerHTML = '';
+        currentBatch = null;
+        return;
+      }
+
+      slidesHost.innerHTML = list.map((b, i) => `
+        <div class="admit-batch-slide${i === 0 ? ' active' : ''}" data-name="${_esc(b.name)}">
+          <div class="admit-slide-dot"></div>
+          <div class="admit-slide-cover">${b.cover_image ? `<img src="${_esc(b.cover_image)}" alt="">` : _esc(b.icon || '📚')}</div>
+          <div class="admit-slide-name">${_esc(b.name)}</div>
+        </div>`).join('');
+
+      currentBatch = list[0];
+      if (label) label.textContent = currentBatch.name;
+
+      slidesHost.querySelectorAll('.admit-batch-slide').forEach(slide => {
+        slide.addEventListener('click', () => {
+          slidesHost.querySelectorAll('.admit-batch-slide').forEach(s => s.classList.remove('active'));
+          slide.classList.add('active');
+          currentBatch = list.find(b => b.name === slide.dataset.name);
+          if (label) label.textContent = currentBatch.name;
+          renderPlans();
+        });
+      });
+
+      renderPlans();
+    }
+
+    function _applyFilters() {
+      const boardVal  = _overlay.querySelector('#pay-filter-board')?.value  || '';
+      const mediumVal = _overlay.querySelector('#pay-filter-medium')?.value || '';
+      const filtered = paid.filter(b =>
+        (!boardVal  || b.board  === boardVal) &&
+        (!mediumVal || b.medium === mediumVal)
+      );
+      _renderCarousel(filtered);
+    }
+
+    _overlay.querySelector('#pay-filter-board')?.addEventListener('change', _applyFilters);
+    _overlay.querySelector('#pay-filter-medium')?.addEventListener('change', _applyFilters);
+
+    _renderCarousel(paid);
   }
 
   function _renderPlans(batch, student, onActivated) {

@@ -206,6 +206,12 @@ section.block{ padding:56px 0; border-top:1px solid var(--border); }
 .status-chip.approved{ background:var(--teal-bg); color:var(--teal); }
 .status-chip.rejected{ background:var(--red-bg); color:var(--red); }
 
+/* Board/Medium search filter above the Teaching Areas grid — see
+   renderAreas's own comment. Only rendered when there's more than one
+   distinct value, so a small/single-board catalog stays uncluttered. */
+.areas-filter-row{ display:flex; gap:8px; margin-bottom:14px; }
+.areas-filter-row select.field-select{ flex:1 1 0; min-width:0; }
+
 .batch-check-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 @media (max-width:640px){ .batch-check-grid{ grid-template-columns:1fr; } }
 .batch-check{ padding:16px; border-radius:14px; background:var(--bg3); }
