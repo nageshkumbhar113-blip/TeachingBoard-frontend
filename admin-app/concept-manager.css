@@ -511,6 +511,20 @@ select.cm-marks-chip.em-marks-select {
   border-color: var(--color-border, #d0d0d0);
 }
 
+/* Used by "🗑 Delete Exercise" (whole-exercise delete, exerciseManager.js) —
+   same lightweight sizing as .btn/.btn-small, just a warning color, since it
+   sits inline with plain .btn.btn-small siblings (Preview/PDF buttons). */
+.btn-danger {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.btn-danger:hover {
+  background: rgba(220, 38, 38, 0.16);
+  border-color: #dc2626;
+}
+
 .btn-small {
   padding: 6px 12px;
   font-size: 12px;

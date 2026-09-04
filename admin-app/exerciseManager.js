@@ -96,6 +96,7 @@ const EXERCISE_MANAGER = (() => {
     $('em-publish-btn')?.addEventListener('click', () => _publishExercise());
     $('em-pdf-btn')?.addEventListener('click', () => _exportPdf(false));
     $('em-pdf-answers-btn')?.addEventListener('click', () => _exportPdf(true));
+    $('em-delete-exno-btn')?.addEventListener('click', () => _deleteExerciseNo());
     $('em-preview-close')?.addEventListener('click', () => $('em-preview-overlay')?.classList.add('hidden'));
     $('em-preview-overlay')?.addEventListener('click', e => {
       if (e.target.id === 'em-preview-overlay') $('em-preview-overlay').classList.add('hidden');
@@ -422,6 +423,52 @@ const EXERCISE_MANAGER = (() => {
     }
   }
 
+  // Deletes this whole Exercise No. — every question under it, not one at a
+  // time (individual delete already exists via each question's own 🗑
+  // button; this is for clearing out a whole mistaken/duplicate/test
+  // Exercise No. in one go). Loops the existing single-question delete
+  // endpoint sequentially (same pattern as _publishExercise above) rather
+  // than adding a new bulk-delete API. _exerciseQuestions is already fully
+  // scoped to this exact chapterId+exerciseNo, so no extra fetch needed
+  // before deleting.
+  async function _deleteExerciseNo() {
+    if (!_chapterId || !_activeExerciseNo) return;
+    const no = _activeExerciseNo;
+    const total = _exerciseQuestions.length;
+    if (!total) {
+      APP.toast('या Exercise No. मध्ये प्रश्नच नाहीत', 'info');
+      return;
+    }
+    if (!await APP.confirmAsync(`Exercise "${no}" चे सगळे ${total} प्रश्न कायमचे delete करायचे? Undo करता येणार नाही.`)) return;
+
+    let deleted = 0, failed = 0;
+    for (const q of _exerciseQuestions.slice()) {
+      try {
+        await API.deleteAdminSlsQuestion(q._id);
+        deleted++;
+      } catch (err) {
+        console.warn('delete failed for', q._id, err);
+        failed++;
+      }
+    }
+
+    _activeExerciseNo = '';
+    _exerciseQuestions = [];
+    $('em-work-section').style.display = 'none';
+    $('em-exercise-manual-form').innerHTML = '';
+    // Reloads the Exercise No. chip list from the server — this exerciseNo
+    // drops out on its own once no questions remain under it (same list
+    // _loadExerciseNos already builds by grouping live data, nothing
+    // exerciseNo-specific to clean up here).
+    await _loadExerciseNos();
+
+    if (failed) {
+      APP.toast(`${deleted} प्रश्न delete झाले, ${failed} अयशस्वी`, 'error');
+    } else {
+      APP.toast(`🗑 "${no}" — सगळे ${deleted} प्रश्न delete झाले`, 'success');
+    }
+  }
+
   async function _runAutoFill() {
     if (!_chapterId || !_activeExerciseNo) {
       APP.toast('आधी Exercise No. निवडा', 'error');
@@ -671,8 +718,10 @@ Marks: [1 ते 5 मधला आकडा]
       saveManual: _saveManual,
       getFormDiagrams: () => ({ question: _formQDiagram, answer: _formADiagram }),
       deleteQuestion: _deleteQuestion,
+      deleteExerciseNo: _deleteExerciseNo,
       runAutoFill: _runAutoFill,
       loadExerciseQuestions: _loadExerciseQuestions,
+      getExerciseNos: () => _exerciseNos,
     },
   };
 })();
