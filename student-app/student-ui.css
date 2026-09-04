@@ -1975,6 +1975,52 @@ body.student-app.mode-board.theme-board-light::before {
 .pin-lock-switch-btn:hover { background: var(--surface2, #f0f0f0); }
 
 /* ════════════════════════════════════════════════════
+   DATA SYNC OVERLAY — shown only while the one-time full
+   offline sync (_runFullOfflineSyncIfNeeded) is actually running;
+   a no-op/already-synced check never shows it at all.
+════════════════════════════════════════════════════ */
+.data-sync-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: var(--bg, #fff);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.data-sync-overlay.hidden { display: none; }
+.dsync-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 22px;
+  text-align: center;
+  animation: splashFadeIn 0.35s ease;
+}
+.dsync-ring {
+  position: relative;
+  width: 68px; height: 68px;
+}
+.dsync-ring::before,
+.dsync-ring::after {
+  content: ''; position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 5px solid transparent;
+}
+.dsync-ring::before {
+  border-top-color: var(--accent, #e74c3c);
+  border-right-color: var(--accent, #e74c3c);
+  animation: dsyncSpin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+.dsync-ring::after {
+  border-bottom-color: rgba(231, 76, 60, 0.35);
+  animation: dsyncSpin 1.6s linear infinite reverse;
+}
+@keyframes dsyncSpin { to { transform: rotate(360deg); } }
+.dsync-title {
+  font-size: 1.05rem; font-weight: 700; color: var(--text, #111);
+  animation: dsyncPulse 1.8s ease-in-out infinite;
+}
+@keyframes dsyncPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.dsync-sub {
+  font-size: 0.85rem; color: var(--text2, #666); max-width: 280px; line-height: 1.4;
+}
+
+/* ════════════════════════════════════════════════════
    MOBILE: Board Mode button moved to bottom nav
 ════════════════════════════════════════════════════ */
 @media (max-width: 768px) {

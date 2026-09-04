@@ -56,6 +56,16 @@
     </div>
   </div>
 
+  <!-- ── DATA SYNC OVERLAY (one-time full offline sync — see
+       _runFullOfflineSyncIfNeeded in app.js) ────────────────────── -->
+  <div id="data-sync-overlay" class="data-sync-overlay hidden" role="status" aria-live="polite">
+    <div class="dsync-inner">
+      <div class="dsync-ring"></div>
+      <div class="dsync-title" id="dsync-title">नवीन माहिती Update होत आहे…</div>
+      <div class="dsync-sub" id="dsync-sub">Notes आणि Exercises Offline साठी तयार होत आहेत</div>
+    </div>
+  </div>
+
   <!-- ── PIN LOCK SCREEN ──────────────────────────────────── -->
   <div id="pin-lock-screen" class="pin-lock-screen hidden" role="dialog" aria-modal="true" aria-label="PIN Lock">
     <div class="pin-lock-card">
@@ -72,6 +82,17 @@
       <button id="pin-lock-submit" class="pin-lock-btn">Unlock →</button>
       <p class="pin-lock-admin-note">PIN विसरलात? Admin ला सांगा.</p>
       <button id="pin-lock-switch" class="pin-lock-switch-btn">↔ Switch Account</button>
+    </div>
+  </div>
+
+  <!-- ── OFFLINE EXPIRY GATE (non-destructive local block — see
+       _isLocallyExpired/_showOfflineExpiredGate in app.js) ─────────── -->
+  <div id="offline-expired-gate" class="pin-lock-screen hidden" role="dialog" aria-modal="true" aria-label="Subscription Expired">
+    <div class="pin-lock-card">
+      <div class="pin-lock-avatar">⏰</div>
+      <div class="pin-lock-name">Subscription संपली आहे</div>
+      <div class="pin-lock-sub">तुमची Subscription संपल्याचं दिसतंय. खात्री करण्यासाठी Internet सुरू करा.</div>
+      <button id="offline-expired-retry" class="pin-lock-btn">🔄 पुन्हा तपासा</button>
     </div>
   </div>
 

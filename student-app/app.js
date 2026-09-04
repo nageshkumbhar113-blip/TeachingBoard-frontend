@@ -154,15 +154,25 @@ const APP = (() => {
   // internet at the time) since the flag is only written on success.
   const FULL_SYNC_FLAG_KEY = 'full_offline_sync_v1';
   let _fullSyncInFlight = false;
+
+  // Pure check, no side effects — used both by the background runner below
+  // and by _syncOfflineContentWithOverlay (login-time, visible) to decide
+  // whether there's actually anything to do before showing that overlay at all.
+  async function _needsFullOfflineSync() {
+    if (!navigator.onLine) return false;
+    const assigned = await DB.getSetting('student_allowed_batches', []).catch(() => []);
+    const batchesKey = (Array.isArray(assigned) ? assigned : []).map(String).slice().sort().join('|');
+    if (!batchesKey) return false; // no assigned batches yet (e.g. teacher/parent mode)
+    const done = await DB.getSetting(FULL_SYNC_FLAG_KEY, null).catch(() => null);
+    return done?.batchesKey !== batchesKey;
+  }
+
   async function _runFullOfflineSyncIfNeeded() {
-    if (_fullSyncInFlight || !navigator.onLine) return;
+    if (_fullSyncInFlight) return;
+    if (!await _needsFullOfflineSync().catch(() => false)) return;
 
     const assigned = await DB.getSetting('student_allowed_batches', []).catch(() => []);
     const batchesKey = (Array.isArray(assigned) ? assigned : []).map(String).slice().sort().join('|');
-    if (!batchesKey) return; // no assigned batches yet (e.g. teacher/parent mode) — nothing to sync
-
-    const done = await DB.getSetting(FULL_SYNC_FLAG_KEY, null).catch(() => null);
-    if (done?.batchesKey === batchesKey) return; // already fully synced for this exact batch set
 
     _fullSyncInFlight = true;
     try {
@@ -189,11 +199,35 @@ const APP = (() => {
       ));
 
       await DB.setSetting(FULL_SYNC_FLAG_KEY, { batchesKey, at: Date.now() }).catch(() => {});
+      const dsub = $('dsync-sub');
+      if (dsub) dsub.textContent = `${(sync.concepts || []).length} Notes आणि ${(sync.exerciseQuestions || []).length} Exercise प्रश्न तयार झाले ✅`;
       console.log(`✅ Full offline sync done — ${(sync.concepts || []).length} notes, ${(sync.exerciseQuestions || []).length} exercise questions`);
     } catch (err) {
       console.warn('Full offline sync failed (will retry next home load):', err);
     } finally {
       _fullSyncInFlight = false;
+    }
+  }
+
+  // Login-time, VISIBLE variant — only shows the sync overlay when there's
+  // actually something to sync (a returning student whose content was
+  // already synced last time sees nothing at all, no flash). Awaited by its
+  // caller (unlike the silent background version loadHome()/refreshHome()
+  // use), so the student sees the update animation only for the genuine
+  // one-time first sync, then lands straight in a fully offline-ready app.
+  async function _syncOfflineContentWithOverlay() {
+    if (!await _needsFullOfflineSync().catch(() => false)) return;
+    const overlay = $('data-sync-overlay');
+    const dsub = $('dsync-sub');
+    if (dsub) dsub.textContent = 'Notes आणि Exercises Offline साठी तयार होत आहेत';
+    overlay?.classList.remove('hidden');
+    try {
+      await _runFullOfflineSyncIfNeeded();
+      // Brief pause so the "✅ done" sub-text (set above, inside the sync
+      // function) is actually readable before the overlay disappears.
+      await new Promise(r => setTimeout(r, 600));
+    } finally {
+      overlay?.classList.add('hidden');
     }
   }
 
@@ -400,6 +434,57 @@ const APP = (() => {
     } catch (e) { console.warn('expiry sheet check failed', e); }
   }
 
+  // Same date-boundary semantics as the backend's isExpiredDate() (utils/
+  // accountStatus.js) — normalize to a plain YYYY-MM-DD (UTC) string and
+  // compare lexically, so expiry_date stays valid through the END of that
+  // day, matching the server exactly.
+  function _isLocallyExpired(profile) {
+    const raw = profile?.expiry_date;
+    if (!raw) return false;
+    const normalized = String(raw).slice(0, 10);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return normalized < todayIso;
+  }
+
+  let _offlineExpiredGateBound = false;
+  function _showOfflineExpiredGate() {
+    const screen = $('offline-expired-gate');
+    if (!screen) return;
+    screen.classList.remove('hidden');
+    if (_offlineExpiredGateBound) return;
+    _offlineExpiredGateBound = true;
+    $('offline-expired-retry')?.addEventListener('click', () => _retryOfflineExpiredCheck().catch(console.error));
+    window.addEventListener('online', () => _retryOfflineExpiredCheck().catch(console.error));
+  }
+
+  async function _retryOfflineExpiredCheck() {
+    if (!navigator.onLine) {
+      toast('अजूनही Internet नाही', 'error');
+      return;
+    }
+    try {
+      const refreshed = await API.fetchStudentMe();
+      // Server reachable and didn't reject us — genuinely not expired
+      // (renewed, or the local check was a false positive from a wrong
+      // device clock). Server is authoritative; unlock and proceed in.
+      $('offline-expired-gate')?.classList.add('hidden');
+      _updateProfileButton(refreshed?.name || refreshed?.student_code || '');
+      await loadHome();
+    } catch (err) {
+      const msg = String(err?.message || '').toLowerCase();
+      if (msg.includes('expired')) {
+        // Server confirmed it — the real markExpired() already fired
+        // (teachingboard:expired -> _offerRenewal()) and takes over from
+        // here; drop our own local gate so the two don't stack.
+        $('offline-expired-gate')?.classList.add('hidden');
+        return;
+      }
+      // Still couldn't really reach the server (network hiccup, server
+      // sleeping) — stay on the local gate, let them retry again.
+      toast('Server शी संपर्क होत नाही, परत प्रयत्न करा', 'error');
+    }
+  }
+
   function _showInstallGuide() {
     const existing = $('install-guide');
     if (existing) existing.remove();
@@ -513,10 +598,12 @@ const APP = (() => {
 
       // ── PIN correct: refresh profile from server ──
       _updateProfileButton(profile.name || profile.student_code);
+      let _serverConfirmedOk = false;
       if (navigator.onLine && window.API?.fetchStudentMe) {
         try {
           const refreshed = await API.fetchStudentMe();
           _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
+          _serverConfirmedOk = true;
         } catch (err) {
           const msg = String(err?.message || '').toLowerCase();
           // Expired → markExpired() already fired teachingboard:expired, which
@@ -539,11 +626,30 @@ const APP = (() => {
           console.warn('fetchStudentMe failed (network/server), continuing with cached profile', err?.message);
         }
       }
+
+      // Real gap fixed: markExpired() only ever fired from an actual server
+      // response, so a student whose cached expiry_date has already passed
+      // could keep using a fully offline-cached app indefinitely just by
+      // staying offline. Only reached when we couldn't get a fresh,
+      // authoritative answer from the server above (offline, or the call
+      // itself failed for a network reason) — deliberately non-destructive
+      // (doesn't touch token/profile, unlike the real markExpired()) since a
+      // wrong device clock or a since-renewed-but-not-yet-synced student
+      // would otherwise get wrongly logged out; the server check above
+      // always wins the moment it's reachable again.
+      if (!_serverConfirmedOk && _isLocallyExpired(profile)) {
+        _showOfflineExpiredGate();
+        return;
+      }
+      // Visible only the genuine first time (a no-op check otherwise) — see
+      // _syncOfflineContentWithOverlay's own doc-comment.
+      await _syncOfflineContentWithOverlay();
       return;
     }
     beforePrompt?.();
     return new Promise(resolve => _showOnboarding(async () => {
       await _refreshProfileAfterLogin();
+      await _syncOfflineContentWithOverlay();
       resolve();
     }));
   }
@@ -1851,6 +1957,10 @@ const APP = (() => {
     // Test-only — not used by any production code path.
     __test: {
       runFullOfflineSyncIfNeeded: _runFullOfflineSyncIfNeeded,
+      syncOfflineContentWithOverlay: _syncOfflineContentWithOverlay,
+      isLocallyExpired: _isLocallyExpired,
+      showOfflineExpiredGate: _showOfflineExpiredGate,
+      retryOfflineExpiredCheck: _retryOfflineExpiredCheck,
     },
   };
 })();
