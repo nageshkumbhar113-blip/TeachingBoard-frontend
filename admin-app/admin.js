@@ -1458,9 +1458,10 @@ const ADMIN = (() => {
         </div>
         <div>
           <div class="batch-admin-name">${b.icon || '📚'} ${_esc(b.name)}</div>
-          <div class="batch-admin-meta">${qs.length} questions</div>
+          <div class="batch-admin-meta">${qs.length} questions${(b.board || b.medium || b.standard) ? ' · ' + _esc([b.standard, b.medium, b.board].filter(Boolean).join(' · ')) : ''}</div>
         </div>
         <div class="batch-admin-actions">
+          <button class="admin-btn-secondary btn-details-batch" data-name="${_esc(b.name)}">🏷️ Details</button>
           <button class="admin-btn-secondary btn-cover-batch" data-name="${_esc(b.name)}" title="शिफारस: 1280×720 (16:9) size मध्ये डिझाईन करा">🖼️ Cover</button>
           <input type="file" class="batch-cover-upload" accept="image/*" style="display:none">
           <button class="admin-btn-secondary btn-share-batch" data-name="${_esc(b.name)}">🔗 Share</button>
@@ -1468,6 +1469,7 @@ const ADMIN = (() => {
           <button class="admin-btn-danger btn-delete-batch" data-id="${b.id}" data-name="${_esc(b.name)}">🗑️ Delete</button>
         </div>
       `;
+      item.querySelector('.btn-details-batch').addEventListener('click', () => _openBatchDetailsModal('edit', b));
       item.querySelector('.btn-cover-batch').addEventListener('click', () => {
         APP.toast('शिफारस: 1280×720 (16:9) size मध्ये डिझाईन करून upload करा', 'info');
         item.querySelector('.batch-cover-upload').click();
@@ -1554,22 +1556,154 @@ const ADMIN = (() => {
     }
   }
 
-  async function _addBatch() {
-    const name = await APP.promptAsync('Class/Batch name (e.g. Std 8):');
-    if (!name) return;
-    const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
-    const icon  = icons[Math.floor(Math.random() * icons.length)];
-    await DB.saveBatch({ name: name.trim(), icon });
-    await Promise.all([
-      _loadBatchAdmin(),
-      _loadSubjectAdmin(),
-      _loadChapterAdmin(),
-      _loadBatchOptions(),
-    ]);
-    // Sync to backend (silent fail if offline)
-    if (navigator.onLine) API.createBatchCatalog(name.trim(), icon).catch(() => {});
-    APP.refreshHome();
-    APP.toast(`✅ Class "${name}" added`, 'success');
+  // ════════════════════════════════════════════════════════════════════════
+  // BATCH DETAILS MODAL — Board → Medium → Class
+  // Real fix: batch creation used to be a single free-text prompt with no
+  // structure at all — the direct root cause of the inconsistent/typo'd
+  // batch names found live this session ("eglish", double spaces, mixed
+  // casing). Also used to backfill board/medium/standard on an EXISTING
+  // batch — in that mode the name field is locked read-only, so this modal
+  // can never trigger a rename (which cascades chapterId across every
+  // Note/Exercise) — renaming stays the separate, already-existing
+  // "✏️ Rename" flow.
+  // ════════════════════════════════════════════════════════════════════════
+
+  const _BD_STANDARD_OPTIONS = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th'];
+  let _bdPreviewUserEdited = false;
+
+  function _bdSelectedValue(selectId, customInputId) {
+    const sel = $(selectId);
+    if (!sel) return '';
+    if (sel.value === '__custom__') return String($(customInputId)?.value || '').trim();
+    return sel.value;
+  }
+
+  function _bdBuildNamePreview() {
+    const medium   = _bdSelectedValue('bd-medium', 'bd-medium-custom');
+    const standard = _bdSelectedValue('bd-standard', 'bd-standard-custom');
+    if (!standard || !medium) return '';
+    // Board deliberately left OUT of the generated name (today there's only
+    // one in real use, and existing batch names never included it either)
+    // — it's still saved/searchable via the board field itself, just not
+    // part of the display name. Admin can freely edit this preview anyway.
+    return `${standard} - ${medium} Medium`;
+  }
+
+  function _bdRefreshPreview() {
+    if (_bdPreviewUserEdited) return;
+    const preview = $('bd-name-preview');
+    if (preview) preview.value = _bdBuildNamePreview();
+  }
+
+  function _bdSetSelectOrCustom(selectId, customId, value) {
+    const sel = $(selectId), custom = $(customId);
+    if (!sel) return;
+    const has = Array.from(sel.options).some(o => o.value === value);
+    if (has) {
+      sel.value = value;
+      custom?.classList.add('hidden');
+    } else {
+      sel.value = '__custom__';
+      if (custom) { custom.value = value; custom.classList.remove('hidden'); }
+    }
+  }
+
+  function _populateStandardOptions() {
+    const sel = $('bd-standard');
+    if (!sel || sel.dataset.populated) return;
+    sel.dataset.populated = '1';
+    const customOpt = sel.querySelector('option[value="__custom__"]');
+    _BD_STANDARD_OPTIONS.forEach(std => {
+      const opt = document.createElement('option');
+      opt.value = std;
+      opt.textContent = std + ' Std';
+      sel.insertBefore(opt, customOpt);
+    });
+  }
+
+  function _openBatchDetailsModal(mode, batch = null) {
+    _populateStandardOptions();
+    _bdPreviewUserEdited = false;
+    const modal      = $('batch-details-modal');
+    const title       = $('bd-modal-title');
+    const nameInput   = $('bd-name-preview');
+    const editNameEl  = $('bd-edit-name');
+    if (!modal || !nameInput || !editNameEl) return;
+
+    ['bd-board', 'bd-medium', 'bd-standard'].forEach(id => {
+      const s = $(id);
+      if (s) s.value = s.options[0]?.value || '';
+    });
+    ['bd-board-custom', 'bd-medium-custom', 'bd-standard-custom'].forEach(id => $(id)?.classList.add('hidden'));
+
+    if (mode === 'edit' && batch) {
+      title.textContent = `✏️ "${batch.name}" — Details`;
+      editNameEl.value = batch.name;
+      nameInput.value = batch.name;
+      nameInput.readOnly = true;
+      nameInput.title = 'नाव बदलण्यासाठी वेगळं "✏️ Rename" बटण वापरा — इथे फक्त Board/Medium/Class जोडलं जाईल.';
+      _bdPreviewUserEdited = true; // never auto-overwrite an existing name
+      if (batch.board)    _bdSetSelectOrCustom('bd-board', 'bd-board-custom', batch.board);
+      if (batch.medium)   _bdSetSelectOrCustom('bd-medium', 'bd-medium-custom', batch.medium);
+      if (batch.standard) _bdSetSelectOrCustom('bd-standard', 'bd-standard-custom', batch.standard);
+    } else {
+      title.textContent = '🏫 नवीन Class/Batch';
+      editNameEl.value = '';
+      nameInput.value = '';
+      nameInput.readOnly = false;
+      nameInput.title = '';
+      _bdRefreshPreview();
+    }
+
+    modal.classList.remove('hidden');
+  }
+
+  function _closeBatchDetailsModal() {
+    $('batch-details-modal')?.classList.add('hidden');
+  }
+
+  function _wireBatchDetailsCustomToggle(selectId, customInputId) {
+    const sel = $(selectId), custom = $(customInputId);
+    sel?.addEventListener('change', () => {
+      custom?.classList.toggle('hidden', sel.value !== '__custom__');
+      if (sel.value === '__custom__') custom?.focus();
+      _bdRefreshPreview();
+    });
+    custom?.addEventListener('input', _bdRefreshPreview);
+  }
+
+  async function _saveBatchDetails() {
+    const board       = _bdSelectedValue('bd-board', 'bd-board-custom');
+    const medium      = _bdSelectedValue('bd-medium', 'bd-medium-custom');
+    const standard    = _bdSelectedValue('bd-standard', 'bd-standard-custom');
+    const name        = String($('bd-name-preview')?.value || '').trim();
+    const editingName = String($('bd-edit-name')?.value || '').trim();
+
+    if (!name) { APP.toast('Batch नाव रिकामं ठेवू नका', 'error'); return; }
+
+    try {
+      if (editingName) {
+        // EDIT mode — name field was locked, so this can never rename;
+        // renameBatchCatalog(oldName === newName) skips the whole cascade
+        // server-side, purely a metadata update.
+        await DB.saveBatch({ name: editingName, board, medium, standard });
+        if (navigator.onLine) {
+          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard });
+        }
+        APP.toast(`✅ "${editingName}" चे Board/Medium/Class अपडेट झाले`, 'success');
+      } else {
+        const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
+        const icon  = icons[Math.floor(Math.random() * icons.length)];
+        await DB.saveBatch({ name, icon, board, medium, standard });
+        if (navigator.onLine) await API.createBatchCatalog(name, icon, { board, medium, standard });
+        APP.toast(`✅ Class "${name}" added`, 'success');
+      }
+      _closeBatchDetailsModal();
+      await Promise.all([_loadBatchAdmin(), _loadSubjectAdmin(), _loadChapterAdmin(), _loadBatchOptions()]);
+      APP.refreshHome();
+    } catch (err) {
+      APP.toast(err?.message || 'Save अयशस्वी', 'error');
+    }
   }
 
   // ════════════════════════
@@ -3178,7 +3312,12 @@ const ADMIN = (() => {
     $('quiz-status-filter')?.addEventListener('change',  () => loadQuizList());
 
     // Batch
-    $('btn-add-batch')?.addEventListener('click', _addBatch);
+    $('btn-add-batch')?.addEventListener('click', () => _openBatchDetailsModal('create'));
+    $('btn-save-batch-details')?.addEventListener('click', _saveBatchDetails);
+    $('btn-close-batch-details')?.addEventListener('click', _closeBatchDetailsModal);
+    _wireBatchDetailsCustomToggle('bd-board', 'bd-board-custom');
+    _wireBatchDetailsCustomToggle('bd-medium', 'bd-medium-custom');
+    _wireBatchDetailsCustomToggle('bd-standard', 'bd-standard-custom');
     $('btn-add-class-subject')?.addEventListener('click', _addBatchSubject);
     $('btn-add-subject-chapter')?.addEventListener('click', _addSubjectChapter);
     $('class-subject-batch')?.addEventListener('change', _loadSubjectAdmin);
@@ -4256,7 +4395,17 @@ const ADMIN = (() => {
   // ════════════════════════
 
   window.ADMIN_UTILS = { compressImage: _compressImage };
-  return { init, open, close, loadQuestionBank, loadQuizList, loadWordBank: _loadWordBank, loadDashboard: _loadDashboard };
+  return {
+    init, open, close, loadQuestionBank, loadQuizList, loadWordBank: _loadWordBank, loadDashboard: _loadDashboard,
+    // Test-only — not used by any production code path.
+    __test: {
+      openBatchDetailsModal: _openBatchDetailsModal,
+      closeBatchDetailsModal: _closeBatchDetailsModal,
+      saveBatchDetails: _saveBatchDetails,
+      wireBatchDetailsCustomToggle: _wireBatchDetailsCustomToggle,
+      buildNamePreview: _bdBuildNamePreview,
+    },
+  };
 })();
 
 window.ADMIN = ADMIN;

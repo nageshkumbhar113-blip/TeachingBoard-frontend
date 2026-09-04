@@ -478,6 +478,53 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </section>
           </div>
 
+          <!-- ── Batch Details Modal (Board → Medium → Class) ──────────
+               Used both for creating a new Batch and for backfilling
+               board/medium/standard on an existing one. In edit mode the
+               name field is LOCKED (readonly) — deliberate: this modal must
+               never be the thing that renames a batch, since a rename
+               cascades chapterId across every Note/Exercise for it. Actual
+               renaming stays the separate, already-existing "✏️ Rename" flow. -->
+          <div id="batch-details-modal" class="creds-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Batch Details">
+            <div class="creds-modal-card">
+              <h3 class="creds-modal-title" id="bd-modal-title">🏫 नवीन Class/Batch</h3>
+              <p class="import-hint">Board → Medium → Class निवडा — नाव आपोआप तयार होईल (हवं तर बदलू शकता).</p>
+              <input type="hidden" id="bd-edit-name" />
+              <div class="import-target">
+                <select id="bd-board" class="admin-select" aria-label="Board">
+                  <option value="Maharashtra State Board">Maharashtra State Board</option>
+                  <option value="__custom__">+ इतर Board (टाइप करा)</option>
+                </select>
+                <input id="bd-board-custom" class="admin-input hidden" placeholder="Board चं नाव" aria-label="Custom board name" />
+              </div>
+              <div class="import-target">
+                <select id="bd-medium" class="admin-select" aria-label="Medium">
+                  <option value="English">English</option>
+                  <option value="Semi-English">Semi-English</option>
+                  <option value="Marathi">Marathi</option>
+                  <option value="Hindi">Hindi</option>
+                  <option value="Urdu">Urdu</option>
+                  <option value="__custom__">+ इतर Medium (टाइप करा)</option>
+                </select>
+                <input id="bd-medium-custom" class="admin-input hidden" placeholder="Medium चं नाव" aria-label="Custom medium" />
+              </div>
+              <div class="import-target">
+                <select id="bd-standard" class="admin-select" aria-label="Class/Standard">
+                  <!-- 1st-12th options populated by admin.js at modal-open time -->
+                  <option value="__custom__">+ इतर (उदा. NMMS Exam Batch)</option>
+                </select>
+                <input id="bd-standard-custom" class="admin-input hidden" placeholder="उदा. NMMS Exam Batch" aria-label="Custom standard" />
+              </div>
+              <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+              <label class="import-hint" for="bd-name-preview">अंतिम Batch नाव (हवं तर edit करा):</label>
+              <input id="bd-name-preview" class="admin-input" placeholder="Batch नाव" aria-label="Final batch name" />
+              <div class="admin-toolbar" style="margin-top:12px">
+                <button id="btn-save-batch-details" class="admin-btn-primary" type="button">✅ Save</button>
+                <button id="btn-close-batch-details" class="admin-btn-secondary" type="button">Cancel</button>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Students Panel ─────────────────────── -->
           <div class="atab-content hidden" id="atab-students" role="tabpanel" aria-labelledby="atab-btn-students">
             <div class="admin-page-header">

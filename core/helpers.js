@@ -1457,7 +1457,10 @@ const API = (() => {
   // read from.
   async function _mergeBatchesIntoLocalHierarchy(batches) {
     for (const b of batches) {
-      await DB.saveBatch({ name: b.name, icon: b.icon || '📚' }).catch(() => {});
+      // board/medium/standard: descriptive-only metadata (see Batch.js on
+      // the backend) — carried through so the admin's local batch list can
+      // pre-fill them when editing, even offline.
+      await DB.saveBatch({ name: b.name, icon: b.icon || '📚', board: b.board || '', medium: b.medium || '', standard: b.standard || '' }).catch(() => {});
       for (const subject of (b.subjects || [])) {
         await DB.saveBatchSubject({ batch: b.name, name: subject }, { queueOnFailure: false }).catch(() => {});
         const chapters = (b.chapters || []).filter(c => c.subject === subject);
@@ -1513,13 +1516,15 @@ const API = (() => {
   // BATCH CATALOG CRUD
   // ════════════════════════
 
-  async function createBatchCatalog(name, icon = '📚') {
+  // `extra` — optional { board, medium, standard } (see Batch.js's own
+  // comment); purely descriptive, never affects the batch's identity.
+  async function createBatchCatalog(name, icon = '📚', extra = {}) {
     const token = await ensureAdminSession().catch(() => '');
     if (!token) return;
     return request('/batches', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name, icon }),
+      body: JSON.stringify({ name, icon, ...extra }),
     }).catch(() => {});
   }
 
@@ -1532,13 +1537,17 @@ const API = (() => {
     }).catch(() => {});
   }
 
-  async function renameBatchCatalog(oldName, newName, icon) {
+  // `extra` — optional { board, medium, standard }. Passing newName ===
+  // oldName updates only icon/extra and skips the whole rename cascade
+  // server-side (see renameBatch's own doc-comment) — the deliberately
+  // safe path for backfilling these fields on an existing batch.
+  async function renameBatchCatalog(oldName, newName, icon, extra = {}) {
     const token = await ensureAdminSession().catch(() => '');
     if (!token) return;
     return request(`/batches/${encodeURIComponent(oldName)}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name: newName, ...(icon !== undefined ? { icon } : {}) }),
+      body: JSON.stringify({ name: newName, ...(icon !== undefined ? { icon } : {}), ...extra }),
     });
   }
 
