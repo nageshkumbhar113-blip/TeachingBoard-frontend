@@ -271,6 +271,7 @@ body.student-app.mode-board.theme-board-light::before {
 }
 
 .mode-board .home-hero,
+.mode-board .home-share-btn,
 .mode-board .home-search-bar,
 .mode-board .home-search-results,
 .mode-board .stats-grid,
@@ -1509,6 +1510,32 @@ body.student-app.mode-board.theme-board-light::before {
 .home-title {
   font-weight: 800 !important;
   letter-spacing: -0.02em !important;
+}
+
+/* Share App — see app.js's _shareApp(). A student-growth feature: lets a
+   student invite friends via the phone's own native Share sheet. */
+.home-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - var(--sp-4) * 2);
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: 12px;
+  border: 1.5px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: var(--r-lg);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.home-share-btn:hover,
+.home-share-btn:focus-visible {
+  background: rgba(var(--accent-rgb), 0.16);
+  border-color: var(--accent);
 }
 
 /* Home search — Notes concepts + Exercise questions together (homeSearch.js) */

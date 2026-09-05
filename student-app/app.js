@@ -1225,14 +1225,26 @@ const APP = (() => {
     codeInput?.focus();
   }
 
+  // #btn-home/#btn-profile (topbar) duplicate bottom-nav's Home/Me tabs —
+  // hidden by default (index.html) in normal student mode. Bottom-nav is
+  // hidden in exactly 3 places (Teacher dashboard, Parent dashboard, and
+  // quiz/test-player screens in _updateBottomNav) — whenever it's hidden,
+  // the topbar buttons become the only nav, so reveal them then. Centralized
+  // here so all 3 sites stay in sync.
+  function _setBottomNavVisible(visible) {
+    const bnav = $('bottom-nav');
+    if (bnav) bnav.style.display = visible ? '' : 'none';
+    $('btn-home')?.classList.toggle('hidden', visible);
+    $('btn-profile')?.classList.toggle('hidden', visible);
+  }
+
   function _showTeacherDashboard() {
     _isTeacherOrParentMode = true;
     _dashboardRole = 'teacher';
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-teacher-dashboard');
     if (screen) screen.classList.remove('hidden');
-    const bnav = $('bottom-nav');
-    if (bnav) bnav.style.display = 'none';
+    _setBottomNavVisible(false);
     if (window.TEACHER_DASHBOARD?.loadDashboard) {
       TEACHER_DASHBOARD.loadDashboard().catch(err => console.warn('teacher dashboard load failed', err));
     }
@@ -1245,8 +1257,7 @@ const APP = (() => {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-parent-dashboard');
     if (screen) screen.classList.remove('hidden');
-    const bnav = $('bottom-nav');
-    if (bnav) bnav.style.display = 'none';
+    _setBottomNavVisible(false);
     if (window.PARENT_DASHBOARD?.loadDashboard) {
       PARENT_DASHBOARD.loadDashboard().catch(err => console.warn('parent dashboard load failed', err));
     }
@@ -1377,6 +1388,45 @@ const APP = (() => {
   }
 
   // ════════════════════════
+  // SHARE APP
+  // ════════════════════════
+
+  // Real feature request: let a student invite friends. Uses the phone's
+  // own native Share sheet — same @capacitor/share plugin already proven
+  // working for exported PDFs (core/fileExport.js's saveAndShare) — so the
+  // student can pick WhatsApp/SMS/anything themselves, rather than us
+  // hardcoding one specific app. Shares the existing public download page
+  // (get-app.html, already live) instead of a Play Store link — once the
+  // Play Store listing is actually published, swapping APP_SHARE_URL to
+  // that is a one-line change, not a rebuild of this feature.
+  const APP_SHARE_URL = 'https://teachingboard-frontend.vercel.app/get-app.html';
+
+  async function _shareApp() {
+    const text = '📚 Nks EduOrbit — मोफत अभ्यास App! Notes, Exercises, Tests सगळं एका ठिकाणी.';
+    try {
+      const Share = window.Capacitor?.Plugins?.Share;
+      if (Share) {
+        await Share.share({ title: 'Nks EduOrbit', text, url: APP_SHARE_URL, dialogTitle: 'Share करा' });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title: 'Nks EduOrbit', text, url: APP_SHARE_URL });
+        return;
+      }
+      // No native share available (e.g. testing in a desktop browser) —
+      // fall back to copying the message + link.
+      await navigator.clipboard?.writeText(`${text}\n${APP_SHARE_URL}`);
+      toast('Link copy झाली — कुठेही paste करा', 'success');
+    } catch (err) {
+      // Student just closed the share sheet without picking anything —
+      // not a real failure, no error toast for it.
+      if (err?.name === 'AbortError') return;
+      console.warn('Share failed:', err);
+      toast('Share करता आलं नाही', 'error');
+    }
+  }
+
+  // ════════════════════════
   // NAV BINDINGS
   // ════════════════════════
 
@@ -1394,6 +1444,8 @@ const APP = (() => {
     }
 
     $('btn-home')?.addEventListener('click', () => _goHomeRoleAware());
+
+    $('home-share-app-btn')?.addEventListener('click', () => _shareApp());
 
     $('btn-theme')?.addEventListener('click', async () => {
       const cur  = _activeTheme();
@@ -1529,8 +1581,7 @@ const APP = (() => {
     const activeId = tabMap[screen] ?? 'bnav-home';
     if (activeId) $(activeId)?.classList.add('bnav-active');
 
-    const navEl = $('bottom-nav');
-    if (navEl) navEl.style.display = ['quiz', 'test-player'].includes(screen) ? 'none' : '';
+    _setBottomNavVisible(!['quiz', 'test-player'].includes(screen));
   }
 
   function goBack() {
@@ -1994,6 +2045,10 @@ const APP = (() => {
       isLocallyExpired: _isLocallyExpired,
       showOfflineExpiredGate: _showOfflineExpiredGate,
       retryOfflineExpiredCheck: _retryOfflineExpiredCheck,
+      shareApp: _shareApp,
+      setBottomNavVisible: _setBottomNavVisible,
+      showTeacherDashboard: _showTeacherDashboard,
+      showParentDashboard: _showParentDashboard,
     },
   };
 })();

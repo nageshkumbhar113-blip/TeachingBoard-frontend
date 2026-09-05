@@ -255,7 +255,11 @@
       <div id="app" class="app-shell hidden">
     <header class="top-nav" role="banner">
       <div class="nav-left">
-          <button id="btn-home" class="nav-btn" aria-label="Go to Home">
+          <!-- Hidden by default — duplicates bottom-nav's Home tab in normal
+               student mode. app.js's _setBottomNavVisible() reveals this as
+               a fallback only when bottom-nav itself is hidden (Teacher/
+               Parent dashboard, or quiz/test-player screens). -->
+          <button id="btn-home" class="nav-btn hidden" aria-label="Go to Home">
             <span class="nav-btn-icon" aria-hidden="true">🏠</span>
             <span class="nav-btn-label">Home</span>
           </button>
@@ -279,7 +283,8 @@
       </div>
 
       <nav class="nav-right" role="navigation" aria-label="App controls">
-        <button id="btn-profile" class="nav-btn" aria-label="Profile Settings" title="नाव / Server बदला">
+        <!-- Hidden by default — duplicates bottom-nav's Me tab. See #btn-home comment above. -->
+        <button id="btn-profile" class="nav-btn hidden" aria-label="Profile Settings" title="नाव / Server बदला">
           <span class="nav-btn-icon" aria-hidden="true">👤</span>
           <span class="nav-btn-label" id="nav-student-name">Profile</span>
         </button>
@@ -324,6 +329,8 @@
           <h2 class="home-title" data-i18n="home.title">Select Class &amp; Subject</h2>
           <p class="home-sub" data-i18n="home.sub">Choose your batch to begin</p>
         </div>
+
+        <button type="button" id="home-share-app-btn" class="home-share-btn">📤 मित्रांना App Share करा</button>
 
         <!-- Search — Notes concepts + Exercise questions together (homeSearch.js) -->
         <div class="home-search-bar">
