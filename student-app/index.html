@@ -325,15 +325,13 @@
 
     <main class="screens-wrap" id="screens-wrap">
       <section id="screen-home" class="screen hidden" aria-label="Home">
-        <div class="home-hero">
-          <h2 class="home-title" data-i18n="home.title">Select Class &amp; Subject</h2>
-          <p class="home-sub" data-i18n="home.sub">Choose your batch to begin</p>
-        </div>
-
         <!-- Home Banners — admin-managed promo carousel (per-batch or all-batches
-             scoped, see bannerController.js). Hidden entirely (see app.js's
-             _renderHomeBanners) when there are nothing to show — a batch with
-             zero banners looks exactly like today, no empty box. -->
+             scoped, see bannerController.js), or a rotating set of built-in
+             study-motivation quotes when this student has no admin banners
+             yet (see app.js's _loadHomeBanners/_buildDefaultBanners) — never
+             an empty box. Replaces the old static "Select Class & Subject /
+             Choose your batch to begin" hero text, which is now redundant
+             (this carousel occupies that same space, taller). -->
         <div id="home-banners" class="home-banners hidden" aria-label="जाहिराती / सूचना">
           <div class="home-banners-track" id="home-banners-track"></div>
           <div class="home-banners-dots" id="home-banners-dots"></div>

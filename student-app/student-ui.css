@@ -270,7 +270,6 @@ body.student-app.mode-board.theme-board-light::before {
   max-width: 1480px;
 }
 
-.mode-board .home-hero,
 .mode-board .home-banners,
 .mode-board .home-share-btn,
 .mode-board .home-search-bar,
@@ -280,17 +279,6 @@ body.student-app.mode-board.theme-board-light::before {
   max-width: 1480px;
   margin-left: auto;
   margin-right: auto;
-}
-
-.mode-board .home-title {
-  font-size: clamp(2.8rem, 4vw, 4.1rem);
-  line-height: 1.02;
-  text-wrap: balance;
-}
-
-.mode-board .home-sub {
-  font-size: 1.25rem;
-  color: rgba(255, 255, 255, 0.72);
 }
 
 .mode-board .stats-grid {
@@ -1495,34 +1483,20 @@ body.student-app.mode-board.theme-board-light::before {
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    HOME SCREEN â€” Premium cards & layout
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-.home-hero {
-  padding: var(--sp-8) var(--sp-4) var(--sp-5) !important;
-  position: relative;
-  overflow: hidden;
-}
-.home-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(var(--accent-rgb),0.08), transparent);
-  pointer-events: none;
-}
-
-.home-title {
-  font-weight: 800 !important;
-  letter-spacing: -0.02em !important;
-}
-
 /* Home Banners — admin-managed promo carousel (per-batch or all-batches,
    see bannerController.js). Auto ping-pong scroll (app.js's
    _renderHomeBanners/_startBannerAutoplay): advances forward, reverses at
    the last slide, loops — student can also swipe/drag either direction,
    which pauses autoplay briefly. Entirely hidden (.hidden, see css/style.css)
-   when the student has zero banners — no empty box left behind. */
+   when the student has zero banners (see app.js's _buildDefaultBanners —
+   a rotating set of built-in study-quotes fills that gap instead, so this
+   is now effectively always visible). Now the first thing on Home (replaces
+   the old static "Select Class & Subject" hero text) — taller + bigger
+   title than its original promo-strip size, so it still reads as a header. */
 .home-banners {
   position: relative;
-  height: 120px;
-  margin: 0 var(--sp-4) var(--sp-4);
+  height: 170px;
+  margin: var(--sp-4) var(--sp-4) var(--sp-4);
   border-radius: var(--r-lg);
   overflow: hidden;
   box-shadow: var(--elev-1);
@@ -1540,7 +1514,7 @@ body.student-app.mode-board.theme-board-light::before {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 16px 20px;
+  padding: 22px 26px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -1565,12 +1539,14 @@ body.student-app.mode-board.theme-board-light::before {
 .home-banner-title {
   font-family: var(--font-display, inherit);
   font-weight: 800;
-  font-size: 1.05rem;
-  margin-bottom: 3px;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  text-wrap: balance;
+  margin-bottom: 5px;
   text-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 .home-banner-subtitle {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: rgba(255,255,255,0.9);
   text-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }

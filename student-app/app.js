@@ -1394,10 +1394,37 @@ const APP = (() => {
   // scoped per-batch or 'all'). Auto ping-pong scroll: advances forward,
   // reverses at the last slide, loops back — student can also swipe/drag
   // either direction (pauses autoplay briefly). Tapping navigates per the
-  // banner's linkType. Entirely hidden when there are zero banners for this
-  // student — see _renderHomeBanners's early-return.
+  // banner's linkType. Replaces the old static "Select Class & Subject"
+  // hero text — now the first thing on Home, so it's never left empty:
+  // a student with zero admin banners sees a rotating set of built-in
+  // study-motivation quotes instead (_buildDefaultBanners), tap-inert and
+  // never counted in the openCount engagement metric (see _openBanner's
+  // isDefault guard) — purely decorative until a real banner exists.
 
   const _BANNER_GRADIENT_CLASSES = ['hb-g0', 'hb-g1', 'hb-g2', 'hb-g3'];
+
+  const _DEFAULT_BANNER_QUOTES = [
+    '📚 रोज थोडं शिकलं की मोठं यश आपोआप येतं!',
+    '🎯 सराव करा, आत्मविश्वास वाढवा — Practice makes progress!',
+    '💡 प्रश्न विचारणं ही हुशारीची पहिली पायरी आहे.',
+    '🌟 आजचा अभ्यास, उद्याचं यश घडवतो.',
+    '🚀 प्रत्येक Chapter एक नवीन संधी — शिकत राहा!',
+    '🔥 कठीण वाटतं तेच शिकण्यासारखं असतं.',
+    '🏆 सातत्य हाच यशाचा खरा फॉर्म्युला.',
+    '🌱 लहान पावलं, मोठा प्रवास — रोज एक Concept शिका.',
+  ];
+
+  // Rotates to a random starting quote each call (so it's not always the
+  // same first line) while keeping the curated relative order — a light
+  // shuffle, not a full randomize.
+  function _buildDefaultBanners() {
+    const n = _DEFAULT_BANNER_QUOTES.length;
+    const start = Math.floor(Math.random() * n);
+    return Array.from({ length: n }, (_, i) => {
+      const title = _DEFAULT_BANNER_QUOTES[(start + i) % n];
+      return { banner_id: `default-${i}`, title, subtitle: '', linkType: 'none', linkValue: '', isDefault: true };
+    });
+  }
   let _bannerList = [];
   let _bannerIndex = 0;
   let _bannerDir = 1;
@@ -1476,7 +1503,7 @@ const APP = (() => {
   }
 
   function _openBanner(banner) {
-    if (!banner) return;
+    if (!banner || banner.isDefault) return; // built-in quotes are decorative only — no navigation, no engagement tracking
     API.recordBannerOpen?.(banner.banner_id); // fire-and-forget, never blocks navigation
     switch (banner.linkType) {
       case 'batch':
@@ -1548,14 +1575,20 @@ const APP = (() => {
   // shape as the rest of Home's own load pattern. Never blocks/throws into
   // loadHome/refreshHome; a banner fetch failure just leaves Home exactly
   // as it looks today.
+  // Real admin banners always win; built-in quotes only fill the gap when
+  // this student genuinely has none (yet) — never mixed together.
+  function _withDefaultBannerFallback(list) {
+    return Array.isArray(list) && list.length > 0 ? list : _buildDefaultBanners();
+  }
+
   async function _loadHomeBanners() {
     const cached = await DB.getSetting?.('home_banners_cache', []).catch(() => []);
-    _renderHomeBanners(cached || []);
+    _renderHomeBanners(_withDefaultBannerFallback(cached));
     if (!navigator.onLine) return;
     try {
       const fresh = await API.fetchHomeBanners();
       await DB.setSetting?.('home_banners_cache', fresh).catch(() => {});
-      _renderHomeBanners(fresh);
+      _renderHomeBanners(_withDefaultBannerFallback(fresh));
     } catch (_) {
       // Offline/expired/etc. — cached render above already stands.
     }
@@ -2234,6 +2267,8 @@ const APP = (() => {
       jumpToBanneredBatch: _jumpToBanneredBatch,
       stepBannerAutoplay: _stepBannerAutoplay,
       getBannerState: () => ({ index: _bannerIndex, dir: _bannerDir, list: _bannerList, paused: _bannerPaused }),
+      buildDefaultBanners: _buildDefaultBanners,
+      withDefaultBannerFallback: _withDefaultBannerFallback,
       showTeacherDashboard: _showTeacherDashboard,
       showParentDashboard: _showParentDashboard,
     },
