@@ -271,6 +271,7 @@ body.student-app.mode-board.theme-board-light::before {
 }
 
 .mode-board .home-hero,
+.mode-board .home-banners,
 .mode-board .home-share-btn,
 .mode-board .home-search-bar,
 .mode-board .home-search-results,
@@ -1510,6 +1511,94 @@ body.student-app.mode-board.theme-board-light::before {
 .home-title {
   font-weight: 800 !important;
   letter-spacing: -0.02em !important;
+}
+
+/* Home Banners — admin-managed promo carousel (per-batch or all-batches,
+   see bannerController.js). Auto ping-pong scroll (app.js's
+   _renderHomeBanners/_startBannerAutoplay): advances forward, reverses at
+   the last slide, loops — student can also swipe/drag either direction,
+   which pauses autoplay briefly. Entirely hidden (.hidden, see css/style.css)
+   when the student has zero banners — no empty box left behind. */
+.home-banners {
+  position: relative;
+  height: 120px;
+  margin: 0 var(--sp-4) var(--sp-4);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--elev-1);
+  touch-action: pan-y;
+}
+.home-banners-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(.65,0,.35,1);
+  will-change: transform;
+}
+.home-banner {
+  min-width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 16px 20px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  color: #fff;
+  background-size: cover;
+  background-position: center;
+}
+.home-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,0.18), transparent 55%);
+  pointer-events: none;
+}
+/* Cyclic fallback gradients (assigned by index in app.js) — used as the base
+   `background`; a banner with an imageUrl gets an inline background-image on
+   top, which the browser prioritizes over this shorthand automatically. */
+.home-banner.hb-g0 { background: linear-gradient(120deg, #1473ff, #16b8ff); }
+.home-banner.hb-g1 { background: linear-gradient(120deg, #ff7a45, #ffb020); }
+.home-banner.hb-g2 { background: linear-gradient(120deg, #7c4dff, #c04dff); }
+.home-banner.hb-g3 { background: linear-gradient(120deg, #0fae7a, #39d98a); }
+.home-banner-title {
+  font-family: var(--font-display, inherit);
+  font-weight: 800;
+  font-size: 1.05rem;
+  margin-bottom: 3px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.home-banner-subtitle {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.home-banners-dots {
+  position: absolute;
+  bottom: 9px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+}
+.home-banner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  transition: all 0.35s;
+}
+.home-banner-dot.active {
+  width: 16px;
+  border-radius: 3px;
+  background: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-banners-track { transition: none; }
 }
 
 /* Share App — see app.js's _shareApp(). A student-growth feature: lets a

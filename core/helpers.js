@@ -2222,6 +2222,28 @@ const API = (() => {
     return payload?.data || { concepts: [], exerciseQuestions: [] };
   }
 
+  // Home screen promo carousel — own assigned batch(es) + every 'all'-scope
+  // banner (server-side gated, see bannerController.getBannersForStudent).
+  async function fetchHomeBanners() {
+    const token = await ensureStudentSession();
+    const payload = await request('/banners/for-student', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.banners || [];
+  }
+
+  // Fire-and-forget engagement counter — caller should never await/block on
+  // this or surface its errors (a failed count-bump is never worth bothering
+  // the student about).
+  async function recordBannerOpen(bannerId) {
+    const token = await ensureStudentSession().catch(() => '');
+    if (!token || !bannerId) return;
+    return request(`/banners/${encodeURIComponent(bannerId)}/open`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }
+
   async function searchSlsConcepts(query, limit = 20) {
     const token = await ensureStudentSession();
     const payload = await request(`/sls/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
@@ -2353,6 +2375,7 @@ const API = (() => {
     fetchStudentNotes, fetchNoteView,
     fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, searchExerciseQuestions, fetchSlsConcept,
     fetchStudentFullSync,
+    fetchHomeBanners, recordBannerOpen,
     fetchAdminChapterConcepts, fetchAdminConcept, createAdminConcept, updateAdminConcept,
     deleteAdminConcept, publishAdminConcept, translateAdminConcept,
     fetchAdminSlsQuestions, createAdminSlsQuestion, updateAdminSlsQuestion,

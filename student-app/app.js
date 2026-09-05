@@ -1388,6 +1388,180 @@ const APP = (() => {
   }
 
   // ════════════════════════
+  // HOME BANNERS
+  // ════════════════════════
+  // Admin-managed promo carousel above the search bar (bannerController.js —
+  // scoped per-batch or 'all'). Auto ping-pong scroll: advances forward,
+  // reverses at the last slide, loops back — student can also swipe/drag
+  // either direction (pauses autoplay briefly). Tapping navigates per the
+  // banner's linkType. Entirely hidden when there are zero banners for this
+  // student — see _renderHomeBanners's early-return.
+
+  const _BANNER_GRADIENT_CLASSES = ['hb-g0', 'hb-g1', 'hb-g2', 'hb-g3'];
+  let _bannerList = [];
+  let _bannerIndex = 0;
+  let _bannerDir = 1;
+  let _bannerTimer = null;
+  let _bannerPaused = false;
+  let _bannerPauseTimer = null;
+  let _bannerSwipeBound = false;
+
+  function _escBanner(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function _renderBannerFrame() {
+    const track = $('home-banners-track');
+    if (track) track.style.transform = `translateX(${-_bannerIndex * 100}%)`;
+    $('home-banners-dots')?.querySelectorAll('.home-banner-dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === _bannerIndex);
+    });
+  }
+
+  function _stepBannerAutoplay() {
+    if (_bannerPaused || _bannerList.length < 2) return;
+    if (_bannerIndex === _bannerList.length - 1) _bannerDir = -1;
+    else if (_bannerIndex === 0) _bannerDir = 1;
+    _bannerIndex += _bannerDir;
+    _renderBannerFrame();
+  }
+
+  function _startBannerAutoplay() {
+    clearInterval(_bannerTimer);
+    _bannerTimer = setInterval(_stepBannerAutoplay, 3500);
+  }
+
+  function _pauseBannerAutoplayBriefly() {
+    _bannerPaused = true;
+    clearTimeout(_bannerPauseTimer);
+    _bannerPauseTimer = setTimeout(() => { _bannerPaused = false; }, 4000);
+  }
+
+  // Bound once (survives re-renders — the container element itself is never
+  // replaced, only its children), so repeated Home refreshes never stack
+  // duplicate listeners.
+  function _bindBannerSwipe() {
+    if (_bannerSwipeBound) return;
+    _bannerSwipeBound = true;
+    const surface = $('home-banners');
+    if (!surface) return;
+    let startX = 0, dragging = false;
+    surface.addEventListener('pointerdown', e => {
+      dragging = true;
+      startX = e.clientX;
+      _pauseBannerAutoplayBriefly();
+    });
+    window.addEventListener('pointerup', e => {
+      if (!dragging) return;
+      dragging = false;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) < 30 || _bannerList.length < 2) return;
+      if (dx < 0 && _bannerIndex < _bannerList.length - 1) { _bannerIndex++; _bannerDir = 1; }
+      else if (dx > 0 && _bannerIndex > 0) { _bannerIndex--; _bannerDir = -1; }
+      _renderBannerFrame();
+    });
+  }
+
+  // Tries the batch-card the same way a real tap would — reuses whatever
+  // click handler UI.renderBatchGrid already bound, no home-hierarchy logic
+  // duplicated here. If that batch card isn't on screen (e.g. filtered out),
+  // this is simply a no-op.
+  function _jumpToBanneredBatch(batchName) {
+    const target = String(batchName || '').trim();
+    if (!target) return;
+    const card = [...document.querySelectorAll('.batch-card')].find(
+      el => (el.querySelector('.batch-name')?.textContent || '').trim() === target
+    );
+    card?.click();
+  }
+
+  function _openBanner(banner) {
+    if (!banner) return;
+    API.recordBannerOpen?.(banner.banner_id); // fire-and-forget, never blocks navigation
+    switch (banner.linkType) {
+      case 'batch':
+        _jumpToBanneredBatch(banner.linkValue);
+        break;
+      case 'url': {
+        if (!banner.linkValue) break;
+        const BrowserPlugin = window.Capacitor?.Plugins?.Browser;
+        if (BrowserPlugin) BrowserPlugin.open({ url: banner.linkValue });
+        else window.open(banner.linkValue, '_blank', 'noopener,noreferrer');
+        break;
+      }
+      // 'subject' and 'none' — no admin UI to configure a subject target yet
+      // (needs both a batch + subject, not just one linkValue); an
+      // information-only banner (linkType 'none') is tap-inert by design.
+      default:
+        break;
+    }
+  }
+
+  function _renderHomeBanners(banners) {
+    const wrap  = $('home-banners');
+    const track = $('home-banners-track');
+    const dots  = $('home-banners-dots');
+    if (!wrap || !track || !dots) return;
+
+    clearInterval(_bannerTimer);
+    _bannerTimer = null;
+    _bannerList  = Array.isArray(banners) ? banners : [];
+    _bannerIndex = 0;
+    _bannerDir   = 1;
+
+    if (_bannerList.length === 0) {
+      wrap.classList.add('hidden');
+      track.innerHTML = '';
+      dots.innerHTML  = '';
+      return;
+    }
+
+    track.innerHTML = _bannerList.map((b, i) => {
+      const gradClass = _BANNER_GRADIENT_CLASSES[i % _BANNER_GRADIENT_CLASSES.length];
+      const bgAttr = b.imageUrl ? ` style="background-image:url('${_escBanner(b.imageUrl)}')"` : '';
+      return `<div class="home-banner ${gradClass}" data-idx="${i}"${bgAttr} role="button" tabindex="0">
+        <div class="home-banner-title">${_escBanner(b.title)}</div>
+        ${b.subtitle ? `<div class="home-banner-subtitle">${_escBanner(b.subtitle)}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    dots.innerHTML = _bannerList.length > 1
+      ? _bannerList.map((_, i) => `<span class="home-banner-dot${i === 0 ? ' active' : ''}"></span>`).join('')
+      : '';
+
+    wrap.classList.remove('hidden');
+
+    track.querySelectorAll('.home-banner').forEach(el => {
+      const openThis = () => _openBanner(_bannerList[Number(el.dataset.idx)]);
+      el.addEventListener('click', openThis);
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openThis(); }
+      });
+    });
+
+    _renderBannerFrame();
+    if (_bannerList.length > 1) _startBannerAutoplay();
+    _bindBannerSwipe();
+  }
+
+  // Cache-first (instant, offline-safe) then network refresh — same
+  // shape as the rest of Home's own load pattern. Never blocks/throws into
+  // loadHome/refreshHome; a banner fetch failure just leaves Home exactly
+  // as it looks today.
+  async function _loadHomeBanners() {
+    const cached = await DB.getSetting?.('home_banners_cache', []).catch(() => []);
+    _renderHomeBanners(cached || []);
+    if (!navigator.onLine) return;
+    try {
+      const fresh = await API.fetchHomeBanners();
+      await DB.setSetting?.('home_banners_cache', fresh).catch(() => {});
+      _renderHomeBanners(fresh);
+    } catch (_) {
+      // Offline/expired/etc. — cached render above already stands.
+    }
+  }
+
+  // ════════════════════════
   // SHARE APP
   // ════════════════════════
 
@@ -1714,6 +1888,9 @@ const APP = (() => {
     // Not awaited on purpose — see _runFullOfflineSyncIfNeeded's own
     // doc-comment (student keeps using the app while this runs in the background).
     _runFullOfflineSyncIfNeeded().catch(() => {});
+    // Cache renders instantly; network refresh happens in the background —
+    // see _loadHomeBanners's own doc-comment.
+    _loadHomeBanners().catch(() => {});
 
     // Hide drill-down sections immediately
     ['subject-section', 'chapter-section', 'lesson-section', 'available-tests-section']
@@ -1744,6 +1921,7 @@ const APP = (() => {
     await DB.syncHierarchyFromExisting?.();
     await API.syncServerBatchesForStudent?.().catch(() => {});
     _runFullOfflineSyncIfNeeded().catch(() => {}); // not awaited — see its own doc-comment
+    _loadHomeBanners().catch(() => {}); // not awaited — see its own doc-comment
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
     await _renderHomeHierarchy({ preserveSelection: true });
@@ -2047,6 +2225,12 @@ const APP = (() => {
       retryOfflineExpiredCheck: _retryOfflineExpiredCheck,
       shareApp: _shareApp,
       setBottomNavVisible: _setBottomNavVisible,
+      renderHomeBanners: _renderHomeBanners,
+      loadHomeBanners: _loadHomeBanners,
+      openBanner: _openBanner,
+      jumpToBanneredBatch: _jumpToBanneredBatch,
+      stepBannerAutoplay: _stepBannerAutoplay,
+      getBannerState: () => ({ index: _bannerIndex, dir: _bannerDir, list: _bannerList, paused: _bannerPaused }),
       showTeacherDashboard: _showTeacherDashboard,
       showParentDashboard: _showParentDashboard,
     },

@@ -330,6 +330,15 @@
           <p class="home-sub" data-i18n="home.sub">Choose your batch to begin</p>
         </div>
 
+        <!-- Home Banners — admin-managed promo carousel (per-batch or all-batches
+             scoped, see bannerController.js). Hidden entirely (see app.js's
+             _renderHomeBanners) when there are nothing to show — a batch with
+             zero banners looks exactly like today, no empty box. -->
+        <div id="home-banners" class="home-banners hidden" aria-label="जाहिराती / सूचना">
+          <div class="home-banners-track" id="home-banners-track"></div>
+          <div class="home-banners-dots" id="home-banners-dots"></div>
+        </div>
+
         <button type="button" id="home-share-app-btn" class="home-share-btn">📤 मित्रांना App Share करा</button>
 
         <!-- Search — Notes concepts + Exercise questions together (homeSearch.js) -->
