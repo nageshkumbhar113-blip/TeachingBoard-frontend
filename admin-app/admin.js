@@ -415,15 +415,27 @@ const ADMIN = (() => {
         const newName = await APP.promptAsync(`"${subject.name}" चे नवीन नाव:`, 'text', subject.name);
         if (!newName || newName.trim() === subject.name) return;
         const trimmed = newName.trim();
-        await DB.saveBatchSubject({ ...subject, name: trimmed });
-        await Promise.all([_loadSubjectAdmin(), _loadChapterAdmin(), _loadBatchOptions()]);
+        // Real bug found live: local rename used to happen BEFORE the
+        // (slow, awaited-elsewhere) server call finished. Any background
+        // batch-sync (syncServerBatches, e.g. from just switching tabs)
+        // landing in that window would still see the server's not-yet-
+        // renamed data, and since the local record had already moved to
+        // the new name, that stale fetch found no local match for the OLD
+        // name and created a brand-new duplicate entry for it — "editing a
+        // subject leaves the old one behind AND creates a new one". Doing
+        // the server call FIRST (and only touching local state once it's
+        // confirmed done) closes that window — a concurrent sync can only
+        // ever see the same, already-consistent state.
         if (navigator.onLine) {
           try {
             await API.renameCatalogSubject(batch, subject.name, trimmed);
           } catch (err) {
             APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+            return;
           }
         }
+        await DB.saveBatchSubject({ ...subject, batch, name: trimmed });
+        await Promise.all([_loadSubjectAdmin(), _loadChapterAdmin(), _loadBatchOptions()]);
         APP.toast(`✅ "${subject.name}" → "${trimmed}" rename झाला`, 'success');
       });
       item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
@@ -518,15 +530,21 @@ const ADMIN = (() => {
           const newName = await APP.promptAsync(`"${chapter.name}" चे नवीन नाव:`, 'text', chapter.name);
           if (!newName || newName.trim() === chapter.name) return;
           const trimmed = newName.trim();
-          await DB.saveSubjectChapter({ ...chapter, name: trimmed });
-          await Promise.all([_loadChapterAdmin(), _loadBatchOptions()]);
+          // Server first, local after — same race-condition fix as the
+          // Subject edit handler above (see its own comment for the
+          // exact mechanism: a background sync landing between an
+          // optimistic local rename and the still-in-flight server call
+          // could resurrect the old name as a duplicate).
           if (navigator.onLine) {
             try {
               await API.renameCatalogChapter(batch, subject, chapter.name, trimmed);
             } catch (err) {
               APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+              return;
             }
           }
+          await DB.saveSubjectChapter({ ...chapter, batch, subject, name: trimmed });
+          await Promise.all([_loadChapterAdmin(), _loadBatchOptions()]);
           APP.toast(`✅ "${chapter.name}" → "${trimmed}" rename झाला`, 'success');
         });
         item.querySelector('[data-action="delete"]').addEventListener('click', async () => {
@@ -1507,13 +1525,22 @@ const ADMIN = (() => {
         const newName = await APP.promptAsync(`"${name}" चे नवीन नाव:`, 'text', name);
         if (!newName || newName.trim() === name) return;
         const trimmed = newName.trim();
+        // Server first, local after — same race-condition fix as the
+        // Subject/Chapter edit handlers (see Subject's own comment for the
+        // exact mechanism). Batch rename's own server-side cascade touches
+        // ~20 collections, so it's slower and this race window was even
+        // more likely here — and it was previously fire-and-forget
+        // (un-awaited), leaving essentially no protection at all.
+        if (navigator.onLine) {
+          try {
+            await API.renameBatchCatalog(name, trimmed, icon);
+          } catch (err) {
+            APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+            return;
+          }
+        }
         await DB.saveBatch({ id: parseInt(id), name: trimmed, icon });
         await Promise.all([_loadBatchAdmin(), _loadSubjectAdmin(), _loadChapterAdmin(), _loadBatchOptions()]);
-        if (navigator.onLine) {
-          API.renameBatchCatalog(name, trimmed, icon).catch(err =>
-            APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error')
-          );
-        }
         APP.refreshHome();
         APP.toast(`✅ "${name}" → "${trimmed}" rename झाला`, 'success');
       });
@@ -4404,6 +4431,7 @@ const ADMIN = (() => {
       saveBatchDetails: _saveBatchDetails,
       wireBatchDetailsCustomToggle: _wireBatchDetailsCustomToggle,
       buildNamePreview: _bdBuildNamePreview,
+      loadSubjectAdmin: _loadSubjectAdmin,
     },
   };
 })();

@@ -1093,6 +1093,22 @@ const DB = (() => {
   async function saveConceptsCache(chapterId, concepts = []) {
     if (!concepts.length) return [];
     await Promise.all(concepts.map(async c => {
+      // Real bug found live: this list endpoint's shape has no actual
+      // content (title/order/difficulty/examTags only) — writing it always
+      // silently downgraded an already-fully-cached concept (full:true,
+      // real content — from viewConcept() or the full offline sync) back
+      // to this stripped shape, since both write the same sls_concepts row
+      // keyed by _id. That made "Note works offline once, then stops"
+      // trivially reproducible: this runs as a background refresh every
+      // single time a chapter's concept list is opened while online (see
+      // notesViewer.js's _loadConcepts + SYNC.refreshSlsConcepts), which
+      // kept clobbering the full content the offline sync had just built.
+      // Skip the write entirely when a full version is already cached —
+      // never downgrade richer data with a lighter one.
+      const existing = await _get('sls_concepts', c._id).catch(() => null);
+      const existingDecrypted = existing ? await CRYPTO.decrypt(existing).catch(() => null) : null;
+      if (existingDecrypted?.full) return;
+
       const payload = { ...c, chapterId, cached_at: Date.now(), full: c.full ?? false };
       const packed = await CRYPTO.encrypt(payload);
       return _put('sls_concepts', { _id: c._id, chapterId, ...packed });

@@ -329,6 +329,12 @@ const NOTES_VIEWER = (() => {
     $('nv-lang-mr-btn')?.addEventListener('click', () => _setLanguage('marathi'));
     $('nv-bookmark-btn')?.addEventListener('click', () => _toggleBookmark());
 
+    // Math ($...$ / $$...$$) — real bug found live: this was never called
+    // here, so a Note's own $$\dfrac{...}{...}$$-style formulas showed as
+    // raw LaTeX source text instead of a rendered formula. Same convention
+    // already used by Exercise/Word Tests (exerciseViewer.js etc.).
+    window.MATH?.renderElement(container);
+
     // YouTube Teacher Partner videos — additive, best-effort (see
     // videoTeacherSelect.js). Never blocks the note content above.
     window.VIDEO_TEACHER_SELECT?.checkAndShowButtonForConcept(concept._id, concept.title?.[lang] || concept.title?.english || '');
