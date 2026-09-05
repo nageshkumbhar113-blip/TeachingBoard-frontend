@@ -210,6 +210,10 @@
               <span class="atab-icon" aria-hidden="true">🎬</span>
               <span class="atab-label">YouTube Teachers</span>
             </button>
+            <button class="atab" role="tab" data-tab="banners" aria-controls="atab-banners" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">🎯</span>
+              <span class="atab-label">Banners</span>
+            </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
               <span class="atab-label">Settings</span>
@@ -1593,6 +1597,94 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <!-- ── Home Banners Panel ───────────────── -->
+          <div class="atab-content hidden" id="atab-banners" role="tabpanel" aria-labelledby="atab-btn-banners">
+            <div id="banner-container" class="bp-container">
+              <div class="bp-header">
+                <h2>🎯 Home Banners</h2>
+                <p class="import-hint">Student Home screen वरचा auto-scroll banner carousel — ठराविक Batch(es) साठी किंवा सगळ्यांसाठी.</p>
+              </div>
+              <button id="banner-new-btn" class="bp-btn bp-btn-primary" style="margin-bottom:16px;">➕ नवीन Banner</button>
+              <div id="banner-list" class="bp-batches-list">
+                <div style="text-align:center;padding:2rem;color:#999;"><p>Loading banners...</p></div>
+              </div>
+            </div>
+
+            <!-- Banner Form Modal -->
+            <div id="banner-modal" class="bp-modal hidden" role="dialog" aria-labelledby="banner-modal-title" aria-modal="true">
+              <div class="bp-modal-content">
+                <div class="bp-modal-header">
+                  <h3 id="banner-modal-title">नवीन Banner</h3>
+                  <button id="banner-close-btn" class="bp-modal-close" aria-label="Close banner form">✕</button>
+                </div>
+
+                <form id="banner-form" class="bp-form">
+                  <div class="bp-form-group">
+                    <label for="banner-title">📝 Title *</label>
+                    <input id="banner-title" type="text" placeholder="उदा. 🎉 नवीन Batch सुरू!" required />
+                  </div>
+                  <div class="bp-form-group">
+                    <label for="banner-subtitle">Subtitle (Optional)</label>
+                    <input id="banner-subtitle" type="text" placeholder="उदा. आजच Enroll करा" />
+                  </div>
+                  <div class="bp-form-group">
+                    <label for="banner-image-url">🖼️ Image URL (Optional)</label>
+                    <input id="banner-image-url" type="url" placeholder="https://... (रिकामं ठेवल्यास रंगीत gradient दिसेल)" />
+                  </div>
+
+                  <div class="bp-form-group">
+                    <label>Tap केल्यावर काय होईल?</label>
+                    <select id="banner-link-type">
+                      <option value="none">काहीच नाही (फक्त माहितीसाठी)</option>
+                      <option value="batch">एका Batch वर घेऊन जा</option>
+                      <option value="url">बाहेरचं Link उघड (उदा. YouTube)</option>
+                    </select>
+                  </div>
+                  <div class="bp-form-group hidden" id="banner-link-batch-group">
+                    <label for="banner-link-batch">कुठला Batch?</label>
+                    <select id="banner-link-batch"></select>
+                  </div>
+                  <div class="bp-form-group hidden" id="banner-link-url-group">
+                    <label for="banner-link-url">Link (URL)</label>
+                    <input id="banner-link-url" type="url" placeholder="https://..." />
+                  </div>
+
+                  <div class="bp-form-group">
+                    <label>कुणाला दिसेल?</label>
+                    <div style="display:flex;gap:16px;margin:6px 0;">
+                      <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+                        <input type="radio" name="banner-scope" value="all" checked /> 🌐 All Batches
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+                        <input type="radio" name="banner-scope" value="batches" /> 🎯 ठराविक Batch(es)
+                      </label>
+                    </div>
+                  </div>
+                  <div class="bp-form-group hidden" id="banner-scope-batches-group">
+                    <div id="banner-batch-checklist" class="student-batch-list"></div>
+                  </div>
+
+                  <div class="bp-form-group">
+                    <label for="banner-order">क्रम (Order)</label>
+                    <input id="banner-order" type="number" step="1" value="0" />
+                  </div>
+                  <div class="bp-form-group">
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:400;">
+                      <input type="checkbox" id="banner-active" checked /> ✅ सध्या Active (चालू)
+                    </label>
+                  </div>
+
+                  <div id="banner-error-msg" class="hidden" style="color:#c82333;font-size:0.9rem;margin-bottom:1rem;" role="alert"></div>
+
+                  <div class="bp-form-actions">
+                    <button type="submit" id="banner-submit-btn" class="bp-btn bp-btn-primary">💾 Save Banner</button>
+                    <button type="button" id="banner-cancel-btn" class="bp-btn bp-btn-secondary">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
         </main><!-- /.admin-main -->
       </div><!-- /.admin-layout -->
     </div><!-- /#admin-content -->
@@ -1662,6 +1754,9 @@ Marks: 1"></textarea>
       </button>
       <button class="abn-drawer-item" data-tab="pricing">
         <span>💰</span> Pricing
+      </button>
+      <button class="abn-drawer-item" data-tab="banners">
+        <span>🎯</span> Banners
       </button>
       <button class="abn-drawer-item" data-tab="settings">
         <span>⚙️</span> Settings
@@ -1935,6 +2030,7 @@ Marks: 1"></textarea>
   <script src="paperBuilder.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
+  <script src="bannerAdmin.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>
