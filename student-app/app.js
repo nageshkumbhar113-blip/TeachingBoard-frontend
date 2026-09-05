@@ -1576,7 +1576,10 @@ const APP = (() => {
   const APP_SHARE_URL = 'https://teachingboard-frontend.vercel.app/get-app.html';
 
   async function _shareApp() {
-    const text = '📚 Nks EduOrbit — मोफत अभ्यास App! Notes, Exercises, Tests सगळं एका ठिकाणी.';
+    // Real correction: the app itself is paid (subscription after a free
+    // trial, see get-app.html's own accurate "Free Trial" framing) — the
+    // share text must never claim the study content is free.
+    const text = '📚 Nks EduOrbit — अभ्यासाचं Smart App! Notes, Exercises, Tests सगळं एका ठिकाणी.';
     try {
       const Share = window.Capacitor?.Plugins?.Share;
       if (Share) {
