@@ -2244,6 +2244,16 @@ const API = (() => {
     }).catch(() => {});
   }
 
+  // Admin-editable fallback text for when a student has zero real banners
+  // (see bannerController.getDefaultQuotesForStudent) — plain string array.
+  async function fetchDefaultBannerQuotes() {
+    const token = await ensureStudentSession();
+    const payload = await request('/banners/default-quotes', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.quotes || [];
+  }
+
   async function searchSlsConcepts(query, limit = 20) {
     const token = await ensureStudentSession();
     const payload = await request(`/sls/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
@@ -2375,7 +2385,7 @@ const API = (() => {
     fetchStudentNotes, fetchNoteView,
     fetchSlsChapters, fetchSlsConcepts, searchSlsConcepts, searchExerciseQuestions, fetchSlsConcept,
     fetchStudentFullSync,
-    fetchHomeBanners, recordBannerOpen,
+    fetchHomeBanners, recordBannerOpen, fetchDefaultBannerQuotes,
     fetchAdminChapterConcepts, fetchAdminConcept, createAdminConcept, updateAdminConcept,
     deleteAdminConcept, publishAdminConcept, translateAdminConcept,
     fetchAdminSlsQuestions, createAdminSlsQuestion, updateAdminSlsQuestion,

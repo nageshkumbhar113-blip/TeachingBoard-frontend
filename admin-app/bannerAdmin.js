@@ -16,6 +16,7 @@ const BANNER_ADMIN = (() => {
   let _editingId = null;
   let _listenersBound = false;
   let _submitting = false;
+  let _quotes = [];
 
   function _apiBase() {
     return (window.API?.getApiUrl?.() || window.TEACHINGBOARD_API_URL || '').replace(/\/+$/, '');
@@ -43,6 +44,7 @@ const BANNER_ADMIN = (() => {
     }
     await _populateBatchOptions();
     await loadBanners();
+    await loadQuotes();
   }
 
   function _setupEventListeners() {
@@ -50,6 +52,7 @@ const BANNER_ADMIN = (() => {
     $('banner-form')?.addEventListener('submit', e => { e.preventDefault(); _submitForm(); });
     $('banner-cancel-btn')?.addEventListener('click', () => _hideForm());
     $('banner-close-btn')?.addEventListener('click', () => _hideForm());
+    $('quote-new-btn')?.addEventListener('click', () => _newQuote());
 
     $('banner-link-type')?.addEventListener('change', _syncLinkFieldsVisibility);
     document.querySelectorAll('input[name="banner-scope"]').forEach(r => {
@@ -339,10 +342,136 @@ const BANNER_ADMIN = (() => {
   }
 
   // ════════════════════════
+  // DEFAULT QUOTES — admin-editable fallback text shown on the student
+  // Home carousel only when that student has zero active Banners (see
+  // this file's own comment header + bannerController.js).
+  // ════════════════════════
+
+  async function loadQuotes() {
+    try {
+      const response = await fetch(`${_apiBase()}/admin/banners/default-quotes`, { headers: await _authHeaders() });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+      _quotes = result.quotes || [];
+      _renderQuotesList();
+    } catch (err) {
+      console.error('❌ Failed to load default quotes:', err);
+      APP.toast('Quotes load करता आले नाहीत', 'error');
+    }
+  }
+
+  function _renderQuotesList() {
+    const container = $('quote-list');
+    if (!container) return;
+
+    if (_quotes.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:2rem;color:#666;">
+          <p>💬 अजून custom quote नाही — Banner नसेल तेव्हा app मधलं built-in वाक्य दिसेल.</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = _quotes.map(q => {
+      const statusBadge = q.active ? '✅ Active' : '⏸️ Off';
+      const statusClass = q.active ? 'bp-paid' : 'bp-warning';
+      return `
+        <div class="bp-batch-card" data-quote-id="${_esc(q.quote_id)}">
+          <div class="bp-batch-header">
+            <span class="bp-batch-icon">💬</span>
+            <span class="bp-batch-name">${_esc(q.text)}</span>
+            <span class="bp-badge ${statusClass}">${statusBadge}</span>
+          </div>
+          <div class="bp-batch-details">
+            <div class="bp-detail-row"><span class="bp-label">क्रम:</span><span class="bp-value">${Number(q.order) || 0}</span></div>
+          </div>
+          <div class="bp-batch-actions">
+            <button class="bp-btn bp-btn-edit" onclick="BANNER_ADMIN.editQuote('${_esc(q.quote_id)}')">✏️ Edit</button>
+            <button class="bp-btn" onclick="BANNER_ADMIN.toggleQuoteActive('${_esc(q.quote_id)}')">${q.active ? '⏸️ Off करा' : '▶️ Active करा'}</button>
+            <button class="bp-btn bp-btn-delete" onclick="BANNER_ADMIN.deleteQuote('${_esc(q.quote_id)}')">🗑️ Delete</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function _newQuote() {
+    const text = await APP.promptAsync('नवीन Quote (वाक्य):', 'text', '');
+    if (!text || !text.trim()) return;
+    try {
+      const response = await fetch(`${_apiBase()}/admin/banners/default-quotes`, {
+        method: 'POST',
+        headers: await _authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ text: text.trim() }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      APP.toast('Quote तयार झाला! 🎉', 'success');
+      await loadQuotes();
+    } catch (err) {
+      console.error('❌ Failed to create quote:', err);
+      APP.toast('Quote save करता आला नाही', 'error');
+    }
+  }
+
+  async function editQuote(quoteId) {
+    const quote = _quotes.find(q => q.quote_id === quoteId);
+    if (!quote) return APP.toast('Quote सापडला नाही', 'error');
+    const text = await APP.promptAsync('Quote edit करा:', 'text', quote.text);
+    if (!text || !text.trim() || text.trim() === quote.text) return;
+    try {
+      const response = await fetch(`${_apiBase()}/admin/banners/default-quotes/${encodeURIComponent(quoteId)}`, {
+        method: 'PUT',
+        headers: await _authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ text: text.trim() }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      APP.toast('Quote update झाला ✅', 'success');
+      await loadQuotes();
+    } catch (err) {
+      console.error('❌ Failed to update quote:', err);
+      APP.toast('Quote update करता आला नाही', 'error');
+    }
+  }
+
+  async function toggleQuoteActive(quoteId) {
+    const quote = _quotes.find(q => q.quote_id === quoteId);
+    if (!quote) return APP.toast('Quote सापडला नाही', 'error');
+    try {
+      const response = await fetch(`${_apiBase()}/admin/banners/default-quotes/${encodeURIComponent(quoteId)}`, {
+        method: 'PUT',
+        headers: await _authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ active: !quote.active }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await loadQuotes();
+    } catch (err) {
+      console.error('❌ Failed to toggle quote:', err);
+      APP.toast('Quote update करता आला नाही', 'error');
+    }
+  }
+
+  async function deleteQuote(quoteId) {
+    const quote = _quotes.find(q => q.quote_id === quoteId);
+    const confirmed = await APP.confirmAsync(`"${quote?.text || 'हा quote'}" कायमचं delete करायचं?`);
+    if (!confirmed) return;
+    try {
+      const response = await fetch(`${_apiBase()}/admin/banners/default-quotes/${encodeURIComponent(quoteId)}`, {
+        method: 'DELETE',
+        headers: await _authHeaders(),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      APP.toast('Quote delete झाला 🗑️', 'success');
+      await loadQuotes();
+    } catch (err) {
+      console.error('❌ Failed to delete quote:', err);
+      APP.toast('Quote delete करता आला नाही', 'error');
+    }
+  }
+
+  // ════════════════════════
   // PUBLIC API
   // ════════════════════════
 
-  return { init, loadBanners, editBanner, deleteBanner };
+  return { init, loadBanners, editBanner, deleteBanner, loadQuotes, editQuote, toggleQuoteActive, deleteQuote };
 })();
 
 window.BANNER_ADMIN = BANNER_ADMIN;

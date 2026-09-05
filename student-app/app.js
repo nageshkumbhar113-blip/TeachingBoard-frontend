@@ -1396,14 +1396,19 @@ const APP = (() => {
   // either direction (pauses autoplay briefly). Tapping navigates per the
   // banner's linkType. Replaces the old static "Select Class & Subject"
   // hero text — now the first thing on Home, so it's never left empty:
-  // a student with zero admin banners sees a rotating set of built-in
-  // study-motivation quotes instead (_buildDefaultBanners), tap-inert and
-  // never counted in the openCount engagement metric (see _openBanner's
-  // isDefault guard) — purely decorative until a real banner exists.
+  // a student with zero admin banners sees a rotating set of quotes
+  // instead (_buildDefaultBanners), tap-inert and never counted in the
+  // openCount engagement metric (see _openBanner's isDefault guard) —
+  // purely decorative until a real banner exists.
+  //
+  // Quote source priority (see _loadHomeBanners): admin-configured
+  // (GET /banners/default-quotes, Admin → 🎯 Banners → Default Quotes) if
+  // any exist, else this hardcoded list — an offline-safe last resort so
+  // Home is never empty even before the very first sync ever completes.
 
   const _BANNER_GRADIENT_CLASSES = ['hb-g0', 'hb-g1', 'hb-g2', 'hb-g3'];
 
-  const _DEFAULT_BANNER_QUOTES = [
+  const _FALLBACK_BANNER_QUOTES = [
     '📚 रोज थोडं शिकलं की मोठं यश आपोआप येतं!',
     '🎯 सराव करा, आत्मविश्वास वाढवा — Practice makes progress!',
     '💡 प्रश्न विचारणं ही हुशारीची पहिली पायरी आहे.',
@@ -1416,12 +1421,14 @@ const APP = (() => {
 
   // Rotates to a random starting quote each call (so it's not always the
   // same first line) while keeping the curated relative order — a light
-  // shuffle, not a full randomize.
-  function _buildDefaultBanners() {
-    const n = _DEFAULT_BANNER_QUOTES.length;
+  // shuffle, not a full randomize. `quotes` defaults to the hardcoded list
+  // when omitted/empty (e.g. admin hasn't configured any yet).
+  function _buildDefaultBanners(quotes) {
+    const source = Array.isArray(quotes) && quotes.length > 0 ? quotes : _FALLBACK_BANNER_QUOTES;
+    const n = source.length;
     const start = Math.floor(Math.random() * n);
     return Array.from({ length: n }, (_, i) => {
-      const title = _DEFAULT_BANNER_QUOTES[(start + i) % n];
+      const title = source[(start + i) % n];
       return { banner_id: `default-${i}`, title, subtitle: '', linkType: 'none', linkValue: '', isDefault: true };
     });
   }
@@ -1577,18 +1584,27 @@ const APP = (() => {
   // as it looks today.
   // Real admin banners always win; built-in quotes only fill the gap when
   // this student genuinely has none (yet) — never mixed together.
-  function _withDefaultBannerFallback(list) {
-    return Array.isArray(list) && list.length > 0 ? list : _buildDefaultBanners();
+  function _withDefaultBannerFallback(list, quotes) {
+    return Array.isArray(list) && list.length > 0 ? list : _buildDefaultBanners(quotes);
   }
 
   async function _loadHomeBanners() {
-    const cached = await DB.getSetting?.('home_banners_cache', []).catch(() => []);
-    _renderHomeBanners(_withDefaultBannerFallback(cached));
+    const [cachedBanners, cachedQuotes] = await Promise.all([
+      DB.getSetting?.('home_banners_cache', []).catch(() => []),
+      DB.getSetting?.('default_quotes_cache', []).catch(() => []),
+    ]);
+    _renderHomeBanners(_withDefaultBannerFallback(cachedBanners, cachedQuotes));
     if (!navigator.onLine) return;
     try {
-      const fresh = await API.fetchHomeBanners();
-      await DB.setSetting?.('home_banners_cache', fresh).catch(() => {});
-      _renderHomeBanners(_withDefaultBannerFallback(fresh));
+      const [freshBanners, freshQuotes] = await Promise.all([
+        API.fetchHomeBanners(),
+        API.fetchDefaultBannerQuotes(),
+      ]);
+      await Promise.all([
+        DB.setSetting?.('home_banners_cache', freshBanners).catch(() => {}),
+        DB.setSetting?.('default_quotes_cache', freshQuotes).catch(() => {}),
+      ]);
+      _renderHomeBanners(_withDefaultBannerFallback(freshBanners, freshQuotes));
     } catch (_) {
       // Offline/expired/etc. — cached render above already stands.
     }
