@@ -417,12 +417,23 @@ const PAPER_BUILDER = (() => {
   // PDF EXPORT (Phase 4 — jsPDF + html2canvas, see core/paperPdf.js)
   // ════════════════════════════════════════════════════════════════════════════
 
-  function _showPdfExportPanel(paper) {
+  // Institution-name customization (user-requested) — persisted locally so
+  // a teacher/admin who builds many papers doesn't retype it every time.
+  // Purely a download-time branding choice, never sent to the server or
+  // saved on the paper document itself.
+  const INSTITUTION_NAME_KEY = 'paper_builder_institution_name';
+
+  async function _showPdfExportPanel(paper) {
     const panel = $('pb-pdf-section');
     if (!panel) return;
+    const savedName = await DB.getSetting?.(INSTITUTION_NAME_KEY, '').catch(() => '') || '';
     panel.style.display = '';
     panel.innerHTML = `
       <h3>📄 "${_esc(paper.paperTitle)}" तयार झाला</h3>
+      <div class="pb-form-section">
+        <label class="pb-multi-label" for="pb-institution-name">Institution Name (PDF वर दिसेल — रिकामं ठेवल्यास "Nks EduOrbit" दिसेल)</label>
+        <input id="pb-institution-name" class="admin-input" type="text" placeholder="उदा. तुमच्या Coaching Class चं नाव" value="${_esc(savedName)}" />
+      </div>
       <div class="pb-pdf-actions">
         <button type="button" class="btn btn-secondary" id="pb-pdf-qp-btn">📄 Question Paper PDF</button>
         <button type="button" class="btn btn-secondary" id="pb-pdf-ans-btn">📝 Answer Sheet PDF</button>
@@ -436,15 +447,17 @@ const PAPER_BUILDER = (() => {
   async function _exportPdf(paper, withAnswers, btn) {
     const status = $('pb-pdf-status');
     const original = btn.textContent;
+    const institutionName = $('pb-institution-name')?.value?.trim() || '';
     btn.disabled = true;
     btn.textContent = '⏳ तयार करत आहे...';
     if (status) status.textContent = '';
     try {
+      await DB.setSetting?.(INSTITUTION_NAME_KEY, institutionName).catch(() => {});
       // Paper object from create response doesn't have hydrated question
       // text (only questionId) — fetch the full paper with question details.
       const full = await API.fetchAdminSlsPaper(paper._id);
-      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full);
-      else await PAPER_PDF.exportQuestionPaper(full);
+      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName });
+      else await PAPER_PDF.exportQuestionPaper(full, { institutionName });
       if (status) status.textContent = '✅ PDF तयार झाला — share sheet उघडलं आहे.';
     } catch (err) {
       console.error('PDF export failed:', err);
@@ -474,6 +487,8 @@ const PAPER_BUILDER = (() => {
       runAutoFill: _runAutoFill,
       savePaper: _savePaper,
       addSelectedQuestion: _addSelectedQuestion,
+      showPdfExportPanel: _showPdfExportPanel,
+      exportPdf: _exportPdf,
     },
   };
 })();

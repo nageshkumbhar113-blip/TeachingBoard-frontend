@@ -2,7 +2,9 @@
    teacherPaperBuilder.js — Teacher Dashboard, Paper Builder tab
    Cut-down version of admin-app/paperBuilder.js: teachers can only
    build/save papers from the existing (admin-curated) question bank —
-   no question create/edit/delete here.
+   no question create/edit/delete here. Supports the same multi-Subject/
+   multi-Chapter selection as the admin version (the backend already
+   treats teacher and admin identically for these routes — requireTeacherOrAdmin).
    Global: TEACHER_PAPER_BUILDER
 ════════════════════════════════════════ */
 
@@ -11,16 +13,36 @@ const TEACHER_PAPER_BUILDER = (() => {
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
   let _batch = '';
-  let _subject = '';
-  let _chapter = '';
-  let _chapterId = '';
+  // Multi-select: a single paper can span multiple Subjects/Chapters.
+  // _subjects is a plain array of subject names (checked boxes); _chapters
+  // is an array of { chapterId, chapter, subject } for every CHECKED
+  // chapter, combined across all checked subjects.
+  let _subjects = [];
+  let _chapters = [];
   let _initialized = false;
   let _selectedQuestions = [];
   let _searchDebounce = null;
 
+  const INSTITUTION_NAME_KEY = 'paper_builder_institution_name';
+
   function _makeChapterId(batch, subject, chapter) {
     const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '-');
     return `${norm(batch)}::${norm(subject)}::${norm(chapter)}`;
+  }
+
+  // Comma-joined chapterId list for the question-search/auto-fill API (see
+  // slsController.js's getQuestions — a single chapterId still behaves
+  // exactly as before; more than one uses $in server-side).
+  function _chapterIdsParam() {
+    return _chapters.map(c => c.chapterId).join(',');
+  }
+
+  // Chapter/subject label for a question, shown only once multiple chapters
+  // are selected (a single-chapter selection stays exactly as clean as before).
+  function _chapterLabelFor(chapterId) {
+    if (_chapters.length < 2) return '';
+    const ch = _chapters.find(c => c.chapterId === chapterId);
+    return ch ? ` · ${ch.subject} — ${ch.chapter}` : '';
   }
 
   async function init() {
@@ -35,8 +57,8 @@ const TEACHER_PAPER_BUILDER = (() => {
 
   function _setupEventListeners() {
     $('tpb-batch-sel')?.addEventListener('change', e => _onBatchChange(e.target.value));
-    $('tpb-subject-sel')?.addEventListener('change', e => _onSubjectChange(e.target.value));
-    $('tpb-chapter-sel')?.addEventListener('change', e => _onChapterChange(e.target.value));
+    // Subject/Chapter checklists re-bind their own change listeners each
+    // time they're re-rendered (see _renderSubjectChecklist/_renderChapterChecklist).
 
     document.querySelectorAll('.tpb-mark-btn').forEach(btn => {
       btn.addEventListener('click', () => _openMarkPicker(parseInt(btn.dataset.marks, 10)));
@@ -65,62 +87,91 @@ const TEACHER_PAPER_BUILDER = (() => {
 
   async function _onBatchChange(batch) {
     _batch = batch;
-    _subject = ''; _chapter = ''; _chapterId = '';
+    _subjects = [];
+    _chapters = [];
     _resetPaperState();
 
-    const subjectSel = $('tpb-subject-sel');
-    subjectSel.innerHTML = '<option value="">Select Subject</option>';
-    subjectSel.disabled = true;
-    $('tpb-chapter-sel').innerHTML = '<option value="">Select Chapter</option>';
-    $('tpb-chapter-sel').disabled = true;
+    const subjectList = $('tpb-subject-list');
+    const chapterList = $('tpb-chapter-list');
+    if (subjectList) subjectList.innerHTML = '<p class="td-hint td-hint-sm">आधी Batch निवडा.</p>';
+    if (chapterList) chapterList.innerHTML = '<p class="td-hint td-hint-sm">आधी Subject निवडा.</p>';
 
     if (!batch) return;
     try {
       const subs = await DB.getSubjectsByBatch(batch);
-      subs.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.name;
-        opt.textContent = s.name;
-        subjectSel.appendChild(opt);
-      });
-      subjectSel.disabled = false;
+      _renderSubjectChecklist(subs.map(s => s.name));
     } catch (err) {
       console.error('Failed to load subjects:', err);
     }
   }
 
-  async function _onSubjectChange(subject) {
-    _subject = subject;
-    _chapter = ''; _chapterId = '';
+  function _renderSubjectChecklist(subjectNames) {
+    const list = $('tpb-subject-list');
+    if (!list) return;
+    if (!subjectNames.length) {
+      list.innerHTML = '<p class="td-hint td-hint-sm">या Batch मध्ये अजून Subject नाही.</p>';
+      return;
+    }
+    list.innerHTML = subjectNames.map(name => `
+      <label class="student-batch-item">
+        <input type="checkbox" class="tpb-subject-cb" value="${_esc(name)}" />
+        <span>${_esc(name)}</span>
+      </label>`).join('');
+    list.querySelectorAll('.tpb-subject-cb').forEach(cb => {
+      cb.addEventListener('change', _onSubjectsChanged);
+    });
+  }
+
+  async function _onSubjectsChanged() {
+    _subjects = [...document.querySelectorAll('#tpb-subject-list input.tpb-subject-cb:checked')].map(cb => cb.value);
+    _chapters = [];
     _resetPaperState();
 
-    const chapterSel = $('tpb-chapter-sel');
-    chapterSel.innerHTML = '<option value="">Select Chapter</option>';
-    chapterSel.disabled = true;
-
-    if (!_batch || !subject) return;
+    const chapterList = $('tpb-chapter-list');
+    if (!_subjects.length) {
+      if (chapterList) chapterList.innerHTML = '<p class="td-hint td-hint-sm">आधी Subject निवडा.</p>';
+      return;
+    }
+    if (chapterList) chapterList.innerHTML = '<p class="td-hint td-hint-sm">Loading…</p>';
     try {
-      const chapters = await DB.getChaptersByBatchSubject(_batch, subject);
-      chapters.forEach(ch => {
-        const opt = document.createElement('option');
-        opt.value = _makeChapterId(_batch, subject, ch.name);
-        opt.textContent = ch.name;
-        opt.dataset.name = ch.name;
-        chapterSel.appendChild(opt);
-      });
-      chapterSel.disabled = false;
+      const perSubject = await Promise.all(
+        _subjects.map(async subject => {
+          const chapters = await DB.getChaptersByBatchSubject(_batch, subject);
+          return chapters.map(ch => ({ subject, chapter: ch.name, chapterId: _makeChapterId(_batch, subject, ch.name) }));
+        })
+      );
+      _renderChapterChecklist(perSubject.flat());
     } catch (err) {
       console.error('Failed to load chapters:', err);
     }
   }
 
-  function _onChapterChange(chapterId) {
-    _chapterId = chapterId;
-    const sel = $('tpb-chapter-sel');
-    _chapter = sel.options[sel.selectedIndex]?.dataset.name || '';
+  function _renderChapterChecklist(items) {
+    const list = $('tpb-chapter-list');
+    if (!list) return;
+    if (!items.length) {
+      list.innerHTML = '<p class="td-hint td-hint-sm">या Subject(s) मध्ये अजून Chapter नाही.</p>';
+      return;
+    }
+    list.innerHTML = items.map(it => `
+      <label class="student-batch-item">
+        <input type="checkbox" class="tpb-chapter-cb" value="${_esc(it.chapterId)}" data-subject="${_esc(it.subject)}" data-chapter="${_esc(it.chapter)}" />
+        <span>${_esc(it.chapter)}<span class="pb-chapter-subject-tag">(${_esc(it.subject)})</span></span>
+      </label>`).join('');
+    list.querySelectorAll('.tpb-chapter-cb').forEach(cb => {
+      cb.addEventListener('change', _onChaptersChanged);
+    });
+  }
+
+  function _onChaptersChanged() {
+    _chapters = [...document.querySelectorAll('#tpb-chapter-list input.tpb-chapter-cb:checked')].map(cb => ({
+      chapterId: cb.value,
+      chapter: cb.dataset.chapter,
+      subject: cb.dataset.subject,
+    }));
     _resetPaperState();
 
-    const hasChapter = !!chapterId;
+    const hasChapter = _chapters.length > 0;
     $('tpb-marks-section').style.display = hasChapter ? '' : 'none';
     $('tpb-selected-section').style.display = hasChapter ? '' : 'none';
   }
@@ -136,7 +187,7 @@ const TEACHER_PAPER_BUILDER = (() => {
   }
 
   async function _openMarkPicker(marks) {
-    if (!_chapterId) return;
+    if (!_chapters.length) return;
     const picker = $('tpb-mark-picker');
     picker.classList.remove('hidden');
     picker.innerHTML = `
@@ -161,7 +212,7 @@ const TEACHER_PAPER_BUILDER = (() => {
     list.innerHTML = '<p class="td-hint td-hint-sm">Loading…</p>';
     try {
       const questions = await API.fetchTeacherSlsQuestions({
-        chapterId: _chapterId, marks, status: 'published', q, sort: 'usageCount', limit: 50
+        chapterId: _chapterIdsParam(), marks, status: 'published', q, sort: 'usageCount', limit: 50
       });
       if (!questions.length) {
         list.innerHTML = '<p class="td-hint td-hint-sm">या chapter/marks साठी published प्रश्न नाहीत.</p>';
@@ -173,7 +224,7 @@ const TEACHER_PAPER_BUILDER = (() => {
         return `
         <div class="tpb-picker-item">
           <div class="tpb-picker-qtext">${_esc(text)}</div>
-          <div class="tpb-picker-meta">वापर: ${qq.usageCount || 0}x</div>
+          <div class="tpb-picker-meta">वापर: ${qq.usageCount || 0}x${_esc(_chapterLabelFor(qq.chapterId))}</div>
           <button type="button" class="td-send-notif-btn tpb-picker-add-btn" data-id="${qq._id}" ${already ? 'disabled' : ''}>
             ${already ? '✓ जोडलं' : '+ जोडा'}
           </button>
@@ -195,7 +246,7 @@ const TEACHER_PAPER_BUILDER = (() => {
 
   function _addSelectedQuestion(qq) {
     if (_selectedQuestions.some(s => s._id === qq._id)) return;
-    _selectedQuestions.push({ _id: qq._id, marks: qq.marks, questionText: qq.questionText });
+    _selectedQuestions.push({ _id: qq._id, marks: qq.marks, questionText: qq.questionText, chapterId: qq.chapterId });
     _renderSelectedList();
   }
 
@@ -221,7 +272,7 @@ const TEACHER_PAPER_BUILDER = (() => {
       return `
       <div class="tpb-selected-item" data-id="${q._id}">
         <span class="tpb-marks-chip">${q.marks} marks</span>
-        <span class="tpb-selected-text">${i + 1}. ${_esc(text)}</span>
+        <span class="tpb-selected-text">${i + 1}. ${_esc(text)}${_esc(_chapterLabelFor(q.chapterId))}</span>
         <button type="button" class="btn-icon tpb-remove-btn" data-id="${q._id}" title="काढा">🗑</button>
       </div>`;
     }).join('');
@@ -255,7 +306,7 @@ const TEACHER_PAPER_BUILDER = (() => {
         let picked = null;
         for (let m = tryMarks; m >= 1 && !picked; m--) {
           const candidates = await API.fetchTeacherSlsQuestions({
-            chapterId: _chapterId, marks: m, status: 'published', sort: 'usageCount', limit: 20
+            chapterId: _chapterIdsParam(), marks: m, status: 'published', sort: 'usageCount', limit: 20
           });
           picked = candidates.find(c => !_selectedQuestions.some(s => s._id === c._id));
           if (picked) {
@@ -281,7 +332,7 @@ const TEACHER_PAPER_BUILDER = (() => {
   }
 
   async function _savePaper() {
-    if (!_batch || !_subject || !_chapterId) {
+    if (!_batch || !_subjects.length || !_chapters.length) {
       APP?.toast?.('आधी Batch/Subject/Chapter निवडा', 'error');
       return;
     }
@@ -295,10 +346,16 @@ const TEACHER_PAPER_BUILDER = (() => {
     btn.disabled = true;
     btn.textContent = '⏳ Saving...';
     try {
+      const chapterIds = _chapters.map(c => c.chapterId);
       const paper = await API.createTeacherSlsPaperManual({
         batchId: _batch,
-        chapterId: _chapterId,
-        subjectId: _subject,
+        // Singular fields = first selected one, for any older reader that
+        // still expects a single chapterId/subjectId. chapterIds/subjectIds
+        // carry the FULL selection.
+        chapterId: chapterIds[0],
+        subjectId: _subjects[0],
+        chapterIds,
+        subjectIds: _subjects,
         paperTitle: title || undefined,
         questions: _selectedQuestions.map(q => ({ questionId: q._id, marks: q.marks }))
       });
@@ -320,12 +377,17 @@ const TEACHER_PAPER_BUILDER = (() => {
   // PDF EXPORT (Phase 4 — core/paperPdf.js, shared with admin paperBuilder.js)
   // ════════════════════════════════════════════════════════════════════════════
 
-  function _showPdfExportPanel(paper) {
+  async function _showPdfExportPanel(paper) {
     const panel = $('tpb-pdf-section');
     if (!panel) return;
+    const savedName = await DB.getSetting?.(INSTITUTION_NAME_KEY, '').catch(() => '') || '';
     panel.style.display = '';
     panel.innerHTML = `
       <h4>📄 "${_esc(paper.paperTitle)}" तयार झाला</h4>
+      <div class="tpb-form-section">
+        <label class="pb-multi-label" for="tpb-institution-name">Institution Name (PDF वर दिसेल — रिकामं ठेवल्यास "Nks EduOrbit" दिसेल)</label>
+        <input id="tpb-institution-name" class="td-modal-select" type="text" placeholder="उदा. तुमच्या Coaching Class चं नाव" value="${_esc(savedName)}" />
+      </div>
       <div class="tpb-pdf-actions">
         <button type="button" class="td-send-notif-btn" id="tpb-pdf-qp-btn">📄 Question Paper PDF</button>
         <button type="button" class="td-send-notif-btn" id="tpb-pdf-ans-btn">📝 Answer Sheet PDF</button>
@@ -339,13 +401,15 @@ const TEACHER_PAPER_BUILDER = (() => {
   async function _exportPdf(paper, withAnswers, btn) {
     const status = $('tpb-pdf-status');
     const original = btn.textContent;
+    const institutionName = $('tpb-institution-name')?.value?.trim() || '';
     btn.disabled = true;
     btn.textContent = '⏳ तयार करत आहे...';
     if (status) status.textContent = '';
     try {
+      await DB.setSetting?.(INSTITUTION_NAME_KEY, institutionName).catch(() => {});
       const full = await API.fetchTeacherSlsPaper(paper._id);
-      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full);
-      else await PAPER_PDF.exportQuestionPaper(full);
+      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName });
+      else await PAPER_PDF.exportQuestionPaper(full, { institutionName });
       if (status) status.textContent = '✅ PDF तयार झाला — share sheet उघडलं आहे.';
     } catch (err) {
       console.error('PDF export failed:', err);
@@ -357,7 +421,28 @@ const TEACHER_PAPER_BUILDER = (() => {
     }
   }
 
-  return { init };
+  return {
+    init,
+    __test: {
+      setState: ({ batch, subjects, chapters } = {}) => {
+        if (batch !== undefined) _batch = batch;
+        if (subjects !== undefined) _subjects = subjects;
+        if (chapters !== undefined) _chapters = chapters;
+      },
+      getState: () => ({ batch: _batch, subjects: _subjects, chapters: _chapters, selectedQuestions: _selectedQuestions }),
+      onBatchChange: _onBatchChange,
+      onSubjectsChanged: _onSubjectsChanged,
+      onChaptersChanged: _onChaptersChanged,
+      chapterIdsParam: _chapterIdsParam,
+      chapterLabelFor: _chapterLabelFor,
+      openMarkPicker: _openMarkPicker,
+      runAutoFill: _runAutoFill,
+      savePaper: _savePaper,
+      addSelectedQuestion: _addSelectedQuestion,
+      showPdfExportPanel: _showPdfExportPanel,
+      exportPdf: _exportPdf,
+    },
+  };
 })();
 
 window.TEACHER_PAPER_BUILDER = TEACHER_PAPER_BUILDER;

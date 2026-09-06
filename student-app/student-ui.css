@@ -4798,3 +4798,45 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   color: #166534;
 }
 .ev-atext.hidden { display: none; }
+
+/* Teacher Paper Builder — Subject/Chapter multi-select checklist (matches
+   admin-app/paperBuilder.js's .student-batch-item pattern, reimplemented
+   here since admin-ui.css's tokens aren't loaded in the student-app build). */
+.form-group { margin-bottom: 14px; }
+.pb-multi-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dim, var(--text));
+  margin-bottom: 6px;
+}
+.pb-multi-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.student-batch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.student-batch-item:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.student-batch-item input { margin: 0; accent-color: var(--accent); }
+.pb-chapter-subject-tag {
+  font-size: 0.72rem;
+  color: var(--text-dim, var(--text));
+  opacity: 0.7;
+  margin-left: 4px;
+}

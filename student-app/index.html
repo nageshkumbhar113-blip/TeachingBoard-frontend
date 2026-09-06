@@ -865,8 +865,25 @@
             <div class="tpb-form-section">
               <h4>Paper Details</h4>
               <select id="tpb-batch-sel" class="td-modal-select"><option value="">Select Batch</option></select>
-              <select id="tpb-subject-sel" class="td-modal-select" disabled><option value="">Select Subject</option></select>
-              <select id="tpb-chapter-sel" class="td-modal-select" disabled><option value="">Select Chapter</option></select>
+
+              <!-- Multi-select: a single paper can span multiple Subjects
+                   (checkbox list — matches admin-app/paperBuilder.js). -->
+              <div class="form-group">
+                <label class="pb-multi-label">Subject(s) निवडा</label>
+                <div id="tpb-subject-list" class="student-batch-list pb-multi-list">
+                  <p class="td-hint td-hint-sm">आधी Batch निवडा.</p>
+                </div>
+              </div>
+
+              <!-- Multi-select: Chapters from ALL checked Subjects, combined
+                   into one list, each tagged with its own Subject. -->
+              <div class="form-group">
+                <label class="pb-multi-label">Chapter(s) निवडा</label>
+                <div id="tpb-chapter-list" class="student-batch-list pb-multi-list">
+                  <p class="td-hint td-hint-sm">आधी Subject निवडा.</p>
+                </div>
+              </div>
+
               <input id="tpb-title" class="td-modal-select" type="text" placeholder="Paper Title (उदा. Unit Test 1)" />
             </div>
 

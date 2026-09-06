@@ -153,8 +153,13 @@ const PAPER_PDF = (() => {
       </div>`).join('');
   }
 
-  function _buildHtml(paper, withAnswers) {
+  function _buildHtml(paper, withAnswers, institutionName) {
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    // User-requested: a teacher downloading their own paper can put their
+    // institute's name here instead of the app's own branding. Optional —
+    // defaults to the original "Nks EduOrbit" when left blank, so nothing
+    // changes for anyone who doesn't fill it in.
+    const brandName = String(institutionName || '').trim() || 'Nks EduOrbit';
     // Multi-subject papers (Paper Builder's multi-select) carry the full
     // set in subjectIds — join them; an ordinary single-subject paper has
     // subjectIds empty, so this falls back to subjectId unchanged.
@@ -197,7 +202,7 @@ const PAPER_PDF = (() => {
     return `
       <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
         <div style="text-align:center;border-bottom:3px double #1e3a8a;padding-bottom:12px;margin-bottom:16px">
-          <div style="font-size:11px;letter-spacing:1px;color:#666">NKS EDUORBIT</div>
+          <div style="font-size:11px;letter-spacing:1px;color:#666;text-transform:uppercase">${_esc(brandName)}</div>
           <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(paper.paperTitle || 'Practice Paper')}</div>
           <div style="font-size:13px;color:#333">${_esc(subjectLabel)} • ${_esc(paper.batchId || '')}</div>
           ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">— उत्तरपत्रिका (Answer Sheet) —</div>' : ''}
@@ -214,11 +219,11 @@ const PAPER_PDF = (() => {
       </div>`;
   }
 
-  function _drawWatermark(pdf, pageWidth, pageHeight) {
+  function _drawWatermark(pdf, pageWidth, pageHeight, institutionName) {
     pdf.saveGraphicsState?.();
     pdf.setTextColor(200, 200, 200);
     pdf.setFontSize(48);
-    const text = 'Nks EduOrbit';
+    const text = String(institutionName || '').trim() || 'Nks EduOrbit';
     // jsPDF text() rotation angle is in degrees, counter-clockwise
     try {
       pdf.text(text, pageWidth / 2, pageHeight / 2, { angle: 35, align: 'center' });
@@ -230,7 +235,7 @@ const PAPER_PDF = (() => {
     pdf.setTextColor(0, 0, 0);
   }
 
-  async function _renderToBlob(paper, withAnswers) {
+  async function _renderToBlob(paper, withAnswers, institutionName) {
     await _ensureLibs();
     const { jsPDF } = window.jspdf;
 
@@ -238,7 +243,7 @@ const PAPER_PDF = (() => {
     container.style.position = 'fixed';
     container.style.left = '-99999px';
     container.style.top = '0';
-    container.innerHTML = _buildHtml(paper, withAnswers);
+    container.innerHTML = _buildHtml(paper, withAnswers, institutionName);
     document.body.appendChild(container);
 
     let canvas;
@@ -281,14 +286,14 @@ const PAPER_PDF = (() => {
     const imgData = canvas.toDataURL('image/png');
 
     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    _drawWatermark(pdf, pageWidth, pageHeight);
+    _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
     heightLeft -= pageHeight;
 
     while (heightLeft > 0) {
       position = heightLeft - imgHeight;
       pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      _drawWatermark(pdf, pageWidth, pageHeight);
+      _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
       heightLeft -= pageHeight;
     }
 
@@ -300,13 +305,15 @@ const PAPER_PDF = (() => {
     return `${base || 'Paper'}_${suffix}.pdf`;
   }
 
-  async function exportQuestionPaper(paper) {
-    const blob = await _renderToBlob(paper, false);
+  // opts.institutionName — optional, shown instead of "Nks EduOrbit" in the
+  // page header + diagonal watermark (see _buildHtml/_drawWatermark).
+  async function exportQuestionPaper(paper, opts = {}) {
+    const blob = await _renderToBlob(paper, false, opts.institutionName);
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, 'Question_Paper'));
   }
 
-  async function exportAnswerSheet(paper) {
-    const blob = await _renderToBlob(paper, true);
+  async function exportAnswerSheet(paper, opts = {}) {
+    const blob = await _renderToBlob(paper, true, opts.institutionName);
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, 'Answer_Sheet'));
   }
 
