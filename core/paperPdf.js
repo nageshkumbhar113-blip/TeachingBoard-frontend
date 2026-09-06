@@ -191,16 +191,15 @@ const PAPER_PDF = (() => {
       // wait for them.
       void container.offsetHeight;
       try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
-      // foreignObjectRendering:true delegates the actual pixel rendering to
-      // the browser's own native (SVG <foreignObject>) engine instead of
-      // html2canvas's manual DOM-to-canvas re-implementation — needed
-      // because that manual path still mis-positions KaTeX's fraction-bar
-      // vlist structure even once fonts are loaded (real bug, found live:
-      // the fraction bar rendered as a strikethrough THROUGH the numerator
-      // instead of a line below it). The browser's real engine renders
-      // KaTeX correctly since it's the same engine that displays it
-      // correctly on-screen.
-      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true });
+      // NOTE: foreignObjectRendering:true was tried here as an extra fix
+      // for KaTeX fraction mis-rendering, but caused a worse regression —
+      // it silently produces a BLANK canvas for content positioned this
+      // far off-screen (left:-99999px, as this container is, a few lines
+      // up). Confirmed via a direct reproduction using real chapter
+      // content: the font-ready wait above is sufficient on its own —
+      // do not re-add foreignObjectRendering without first re-testing
+      // against real off-screen content, not just an on-screen sample.
+      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       container.remove();
     }

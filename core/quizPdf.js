@@ -488,14 +488,15 @@ const QUIZ_PDF = (() => {
       // just-rendered markup needs, then wait for them.
       void container.offsetHeight;
       try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
-      // Even with fonts loaded, html2canvas's manual DOM-to-canvas
-      // re-implementation still mis-positions KaTeX's fraction-bar vlist
-      // structure (real bug, found live: the fraction bar rendered as a
-      // strikethrough THROUGH the numerator instead of a line below it).
-      // foreignObjectRendering:true delegates to the browser's own native
-      // (SVG <foreignObject>) rendering engine instead — the same engine
-      // that already displays KaTeX correctly on-screen.
-      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true });
+      // NOTE: foreignObjectRendering:true was tried here as an extra fix
+      // for KaTeX fraction mis-rendering, but caused a worse regression —
+      // it silently produces a BLANK canvas for content positioned this
+      // far off-screen (left:-99999px, as this container is, a few lines
+      // up). Confirmed via a direct reproduction using real chapter
+      // content: the font-ready wait above is sufficient on its own —
+      // do not re-add foreignObjectRendering without first re-testing
+      // against real off-screen content, not just an on-screen sample.
+      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       container.remove();
     }
@@ -585,7 +586,10 @@ const QUIZ_PDF = (() => {
         // _renderMath ran correctly. Force a reflow, then wait for fonts.
         void container.offsetHeight;
         try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
-        canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true });
+        // See _renderToBlob's own NOTE: foreignObjectRendering:true was
+        // tried and reverted — it blanks the canvas for content this far
+        // off-screen. Do not re-add it here either.
+        canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
       } finally {
         container.remove();
       }
