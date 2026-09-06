@@ -1361,8 +1361,27 @@ Marks: 1"></textarea>
               <div class="pb-form-section admin-card">
                 <h3>Paper Details</h3>
                 <select id="pb-batch-sel" class="form-select"><option value="">Select Batch</option></select>
-                <select id="pb-subject-sel" class="form-select" disabled><option value="">Select Subject</option></select>
-                <select id="pb-chapter-sel" class="form-select" disabled><option value="">Select Chapter</option></select>
+
+                <!-- Multi-select: a single paper can now span multiple
+                     Subjects (checked at once, checkbox list — matches the
+                     .student-batch-item pattern used elsewhere in Admin). -->
+                <div class="form-group">
+                  <label class="pb-multi-label">Subject(s) निवडा</label>
+                  <div id="pb-subject-list" class="student-batch-list pb-multi-list">
+                    <p class="empty-hint">आधी Batch निवडा.</p>
+                  </div>
+                </div>
+
+                <!-- Multi-select: Chapters from ALL checked Subjects above,
+                     combined into one list (each item labeled with its own
+                     Subject so a mixed selection stays unambiguous). -->
+                <div class="form-group">
+                  <label class="pb-multi-label">Chapter(s) निवडा</label>
+                  <div id="pb-chapter-list" class="student-batch-list pb-multi-list">
+                    <p class="empty-hint">आधी Subject निवडा.</p>
+                  </div>
+                </div>
+
                 <input id="pb-title" class="admin-input" type="text" placeholder="Paper Title (उदा. Unit Test 1)" />
               </div>
 

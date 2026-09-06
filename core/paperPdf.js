@@ -98,6 +98,12 @@ const PAPER_PDF = (() => {
 
   function _buildHtml(paper, withAnswers) {
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    // Multi-subject papers (Paper Builder's multi-select) carry the full
+    // set in subjectIds — join them; an ordinary single-subject paper has
+    // subjectIds empty, so this falls back to subjectId unchanged.
+    const subjectLabel = Array.isArray(paper.subjectIds) && paper.subjectIds.length
+      ? paper.subjectIds.join(', ')
+      : (paper.subjectId || '');
     const byMarks = new Map();
     for (const q of paper.questions || []) {
       const m = q.marks;
@@ -133,7 +139,7 @@ const PAPER_PDF = (() => {
         <div style="text-align:center;border-bottom:3px double #1e3a8a;padding-bottom:12px;margin-bottom:16px">
           <div style="font-size:11px;letter-spacing:1px;color:#666">NKS EDUORBIT</div>
           <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(paper.paperTitle || 'Practice Paper')}</div>
-          <div style="font-size:13px;color:#333">${_esc(paper.subjectId || '')} • ${_esc(paper.batchId || '')}</div>
+          <div style="font-size:13px;color:#333">${_esc(subjectLabel)} • ${_esc(paper.batchId || '')}</div>
           ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">— उत्तरपत्रिका (Answer Sheet) —</div>' : ''}
         </div>
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:18px;color:#333">

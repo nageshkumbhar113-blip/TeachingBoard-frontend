@@ -19,6 +19,30 @@
   margin-bottom: 10px;
 }
 
+/* Multi-select Subject/Chapter (reuses .student-batch-list/.student-batch-item
+   from admin-ui.css — same checkbox-list look as Student Access/Banners). */
+.pb-form-section .form-group {
+  margin-bottom: 14px;
+}
+.pb-multi-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted, #666);
+  margin-bottom: 6px;
+}
+.pb-multi-list.student-batch-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+/* Each chapter item also shows which Subject it belongs to (needed once a
+   mixed Subject selection makes that ambiguous). */
+.pb-chapter-subject-tag {
+  font-size: 0.72rem;
+  color: var(--text-muted, #888);
+  margin-left: 4px;
+}
+
 .pb-marks-btns {
   display: flex;
   gap: 8px;
