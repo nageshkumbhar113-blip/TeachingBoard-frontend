@@ -488,7 +488,14 @@ const QUIZ_PDF = (() => {
       // just-rendered markup needs, then wait for them.
       void container.offsetHeight;
       try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
-      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      // Even with fonts loaded, html2canvas's manual DOM-to-canvas
+      // re-implementation still mis-positions KaTeX's fraction-bar vlist
+      // structure (real bug, found live: the fraction bar rendered as a
+      // strikethrough THROUGH the numerator instead of a line below it).
+      // foreignObjectRendering:true delegates to the browser's own native
+      // (SVG <foreignObject>) rendering engine instead — the same engine
+      // that already displays KaTeX correctly on-screen.
+      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true });
     } finally {
       container.remove();
     }
@@ -578,7 +585,7 @@ const QUIZ_PDF = (() => {
         // _renderMath ran correctly. Force a reflow, then wait for fonts.
         void container.offsetHeight;
         try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
-        canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true });
       } finally {
         container.remove();
       }

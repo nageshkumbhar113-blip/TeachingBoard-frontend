@@ -344,7 +344,16 @@ const EXERCISE_PDF = (() => {
       // just-rendered markup needs, then wait for them.
       void container.offsetHeight;
       try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
-      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      // foreignObjectRendering:true delegates the actual pixel rendering to
+      // the browser's own native (SVG <foreignObject>) engine instead of
+      // html2canvas's manual DOM-to-canvas re-implementation — needed
+      // because that manual path still mis-positions KaTeX's fraction-bar
+      // vlist structure even once fonts are loaded (real bug, found live:
+      // the fraction bar rendered as a strikethrough THROUGH the numerator
+      // instead of a line below it). The browser's real engine renders
+      // KaTeX correctly since it's the same engine that displays it
+      // correctly on-screen.
+      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true });
     } finally {
       container.remove();
     }
