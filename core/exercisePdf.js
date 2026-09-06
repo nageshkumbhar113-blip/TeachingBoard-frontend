@@ -335,6 +335,15 @@ const EXERCISE_PDF = (() => {
       // and html2canvas only ever captures whatever's already in the DOM
       // at the moment it's called.
       try { await _ensureKatex(); _renderMath(container); } catch (e) { console.warn('KaTeX unavailable, math will show as raw text:', e.message); }
+      // A second, subtler bug even when KaTeX DOES run: html2canvas can
+      // still snapshot before KaTeX's own @font-face web fonts have
+      // actually finished loading/painting, which badly mis-measures
+      // fractions/exponents — numerator and denominator collapse onto one
+      // line, looking "struck through" (real bug, found live). Force a
+      // reflow so the browser actually starts loading whatever fonts the
+      // just-rendered markup needs, then wait for them.
+      void container.offsetHeight;
+      try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
       canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       container.remove();

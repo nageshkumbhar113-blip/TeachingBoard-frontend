@@ -106,6 +106,16 @@ const PDF = (() => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${_esc(paperTitle)}</title>
+  <!-- Question text is free-form and can contain the same $...$/$$...$$
+       LaTeX convention used elsewhere (SLS content) — this print window
+       had no math rendering at all (would print literal "$...$" text).
+       Real browser print (not a canvas snapshot) handles fonts natively,
+       so unlike the html2canvas-based PDF exports there's no load-race to
+       guard against here — just load KaTeX and render before printing
+       (see _openPrintWindow's printNow). -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
   <style>
     * { box-sizing: border-box; }
     :root {
@@ -706,6 +716,22 @@ const PDF = (() => {
 
     const printNow = () => {
       win.focus();
+      // Render any $...$/$$...$$ math before printing — see the KaTeX
+      // <script> tags added in _buildPrintHtml. Best-effort: if the CDN
+      // failed to load (offline, blocked), math just prints as raw text,
+      // same as before this fix.
+      try {
+        win.renderMathInElement?.(win.document.body, {
+          delimiters: [
+            { left: '$$',  right: '$$',  display: true  },
+            { left: '\\[', right: '\\]', display: true  },
+            { left: '$',   right: '$',   display: false },
+            { left: '\\(', right: '\\)', display: false },
+          ],
+          throwOnError: false,
+          output: 'html',
+        });
+      } catch (e) { console.warn('KaTeX render error in print window:', e.message); }
       win.print();
     };
 

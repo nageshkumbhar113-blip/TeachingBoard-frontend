@@ -23,6 +23,13 @@
 const PAPER_PDF = (() => {
   const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   const H2C_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+  // Same KaTeX build core/notesPdf.js / core/exercisePdf.js / core/quizPdf.js
+  // use — question/answer text here is authored with the same $...$/$$...$$
+  // LaTeX convention (SLSQuestion), but this file never rendered it (real
+  // bug found live: Paper Builder PDFs showed literal "$...$" text).
+  const KATEX_CSS  = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css';
+  const KATEX_JS   = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';
+  const KATEX_AUTORENDER = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js';
   const _loaders = new Map();
 
   function _loadScript(src, checkGlobal) {
@@ -51,6 +58,40 @@ const PAPER_PDF = (() => {
     await _loadScript(H2C_CDN, () => window.html2canvas);
     if (!window.jspdf?.jsPDF) throw new Error('jsPDF failed to load');
     if (!window.html2canvas) throw new Error('html2canvas failed to load');
+  }
+
+  function _loadStylesheet(href) {
+    if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error(`Failed to load ${href}`));
+      document.head.appendChild(link);
+    });
+  }
+
+  async function _ensureKatex() {
+    await _loadStylesheet(KATEX_CSS);
+    await _loadScript(KATEX_JS, () => window.katex);
+    await _loadScript(KATEX_AUTORENDER, () => window.renderMathInElement);
+  }
+
+  function _renderMath(el) {
+    if (!window.renderMathInElement) return;
+    try {
+      window.renderMathInElement(el, {
+        delimiters: [
+          { left: '$$',  right: '$$',  display: true  },
+          { left: '\\[', right: '\\]', display: true  },
+          { left: '$',   right: '$',   display: false },
+          { left: '\\(', right: '\\)', display: false },
+        ],
+        throwOnError: false,
+        output: 'html',
+      });
+    } catch (e) { console.warn('KaTeX render error:', e.message); }
   }
 
   const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -136,6 +177,20 @@ const PAPER_PDF = (() => {
 
     let canvas;
     try {
+      // KaTeX must finish rendering ($...$ math -> real DOM markup) before
+      // the snapshot — html2canvas only ever captures what's already in
+      // the DOM at capture time.
+      try { await _ensureKatex(); _renderMath(container); } catch (e) { console.warn('KaTeX unavailable, math will show as raw text:', e.message); }
+      // A second, subtler bug even when KaTeX DOES run: html2canvas can
+      // still snapshot before KaTeX's own @font-face web fonts have
+      // actually finished loading/painting, which badly mis-measures
+      // fractions/exponents — numerator and denominator collapse onto one
+      // line, looking "struck through" (real bug, found live in Notes/
+      // Exercise/Test Book PDFs). Force a reflow so the browser actually
+      // starts loading whatever fonts the just-rendered markup needs, then
+      // wait for them.
+      void container.offsetHeight;
+      try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
       canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       container.remove();

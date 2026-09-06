@@ -479,6 +479,15 @@ const QUIZ_PDF = (() => {
       // the snapshot — html2canvas only ever captures what's already in
       // the DOM at capture time.
       try { await _ensureKatex(); _renderMath(container); } catch (e) { console.warn('KaTeX unavailable, math will show as raw text:', e.message); }
+      // A second, subtler bug even when KaTeX DOES run: html2canvas can
+      // still snapshot before KaTeX's own @font-face web fonts have
+      // actually finished loading/painting, which badly mis-measures
+      // fractions/exponents — numerator and denominator collapse onto one
+      // line, looking "struck through" (real bug, found live). Force a
+      // reflow so the browser actually starts loading whatever fonts the
+      // just-rendered markup needs, then wait for them.
+      void container.offsetHeight;
+      try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
       canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       container.remove();
@@ -563,6 +572,12 @@ const QUIZ_PDF = (() => {
       let canvas;
       try {
         _renderMath(container);
+        // See _renderToBlob's own comment: html2canvas can snapshot before
+        // KaTeX's web fonts actually finish loading/painting, mis-measuring
+        // fractions/exponents into a "struck through" look even though
+        // _renderMath ran correctly. Force a reflow, then wait for fonts.
+        void container.offsetHeight;
+        try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
         canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
       } finally {
         container.remove();
