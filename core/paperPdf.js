@@ -153,7 +153,31 @@ const PAPER_PDF = (() => {
       </div>`).join('');
   }
 
-  function _buildHtml(paper, withAnswers, institutionName) {
+  // User-requested: the surrounding chrome text (Date/Total Marks/Section
+  // headers/Answer labels) was always Marathi regardless of the batch's
+  // medium — an English/Semi-English medium batch needs English chrome.
+  // The actual question/answer TEXT is untouched by this — that's already
+  // separately bilingual per question (questionText.marathi/english).
+  const _CHROME_TEXT = {
+    marathi: {
+      dateLabel: 'दिनांक', totalMarksLabel: 'एकूण गुण',
+      sectionLabel: (m) => `विभाग — ${m} गुणांचे प्रश्न (प्रत्येकी ${m} गुण)`,
+      marksTag: (m) => `[${m} गुण]`,
+      answerLabel: 'उत्तर', answerSheetLabel: '— उत्तरपत्रिका (Answer Sheet) —',
+    },
+    english: {
+      dateLabel: 'Date', totalMarksLabel: 'Total Marks',
+      sectionLabel: (m) => `Section — ${m} Marks Questions (${m} marks each)`,
+      marksTag: (m) => `[${m} Marks]`,
+      answerLabel: 'Answer', answerSheetLabel: '— Answer Sheet —',
+    },
+  };
+  function _chromeText(language) {
+    return _CHROME_TEXT[language] || _CHROME_TEXT.marathi;
+  }
+
+  function _buildHtml(paper, withAnswers, institutionName, language) {
+    const t = _chromeText(language);
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     // User-requested: a teacher downloading their own paper can put their
     // institute's name here instead of the app's own branding. Optional —
@@ -185,15 +209,15 @@ const PAPER_PDF = (() => {
         const aDiagramsHtml = _diagramsHtml(q.answerDiagrams, '#cde9d3');
         return `
           <div style="margin-bottom:14px;page-break-inside:avoid">
-            <div style="font-size:14px;line-height:1.5"><b>${qNum}.</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${marks} ${marks === 1 ? 'गुण' : 'गुण'}]</span></div>
+            <div style="font-size:14px;line-height:1.5"><b>${qNum}.</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">${t.marksTag(marks)}</span></div>
             ${qDiagramsHtml}
-            ${withAnswers ? `<div style="margin-top:4px;padding:8px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:13px;color:#166534"><b>उत्तर:</b> ${_richText(aText)}${aDiagramsHtml}</div>` : ''}
+            ${withAnswers ? `<div style="margin-top:4px;padding:8px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:13px;color:#166534"><b>${t.answerLabel}:</b> ${_richText(aText)}${aDiagramsHtml}</div>` : ''}
           </div>`;
       }).join('');
       return `
         <div style="margin-bottom:18px">
           <div style="font-weight:700;font-size:13px;color:#1e3a8a;border-bottom:2px solid #1e3a8a;padding-bottom:4px;margin-bottom:10px">
-            विभाग — ${marks} गुणांचे प्रश्न (प्रत्येकी ${marks} गुण)
+            ${t.sectionLabel(marks)}
           </div>
           ${items}
         </div>`;
@@ -205,11 +229,11 @@ const PAPER_PDF = (() => {
           <div style="font-size:11px;letter-spacing:1px;color:#666;text-transform:uppercase">${_esc(brandName)}</div>
           <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(paper.paperTitle || 'Practice Paper')}</div>
           <div style="font-size:13px;color:#333">${_esc(subjectLabel)} • ${_esc(paper.batchId || '')}</div>
-          ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">— उत्तरपत्रिका (Answer Sheet) —</div>' : ''}
+          ${withAnswers ? `<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">${t.answerSheetLabel}</div>` : ''}
         </div>
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:18px;color:#333">
-          <span>दिनांक: ${dateStr}</span>
-          <span>एकूण गुण: <b>${paper.totalMarks || 0}</b></span>
+          <span>${t.dateLabel}: ${dateStr}</span>
+          <span>${t.totalMarksLabel}: <b>${paper.totalMarks || 0}</b></span>
           <span>Paper #${paper.paperNumber || ''}</span>
         </div>
         ${sections}
@@ -235,7 +259,7 @@ const PAPER_PDF = (() => {
     pdf.setTextColor(0, 0, 0);
   }
 
-  async function _renderToBlob(paper, withAnswers, institutionName) {
+  async function _renderToBlob(paper, withAnswers, institutionName, language) {
     await _ensureLibs();
     const { jsPDF } = window.jspdf;
 
@@ -243,7 +267,7 @@ const PAPER_PDF = (() => {
     container.style.position = 'fixed';
     container.style.left = '-99999px';
     container.style.top = '0';
-    container.innerHTML = _buildHtml(paper, withAnswers, institutionName);
+    container.innerHTML = _buildHtml(paper, withAnswers, institutionName, language);
     document.body.appendChild(container);
 
     let canvas;
@@ -307,13 +331,16 @@ const PAPER_PDF = (() => {
 
   // opts.institutionName — optional, shown instead of "Nks EduOrbit" in the
   // page header + diagonal watermark (see _buildHtml/_drawWatermark).
+  // opts.language — 'marathi' (default, unchanged) or 'english' — only
+  // switches the surrounding chrome text (Date/Total Marks/Section/Answer
+  // labels), never the question/answer content itself (see _chromeText).
   async function exportQuestionPaper(paper, opts = {}) {
-    const blob = await _renderToBlob(paper, false, opts.institutionName);
+    const blob = await _renderToBlob(paper, false, opts.institutionName, opts.language);
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, 'Question_Paper'));
   }
 
   async function exportAnswerSheet(paper, opts = {}) {
-    const blob = await _renderToBlob(paper, true, opts.institutionName);
+    const blob = await _renderToBlob(paper, true, opts.institutionName, opts.language);
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, 'Answer_Sheet'));
   }
 

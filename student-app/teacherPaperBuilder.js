@@ -24,6 +24,11 @@ const TEACHER_PAPER_BUILDER = (() => {
   let _searchDebounce = null;
 
   const INSTITUTION_NAME_KEY = 'paper_builder_institution_name';
+  // Same key as admin-app/paperBuilder.js — DB.getSetting/setSetting is a
+  // per-device local store, shared between the Admin and Student(Teacher)
+  // apps only in the sense that both apps' users each have their own copy;
+  // this constant just needs to match its own app's usage.
+  const PDF_LANGUAGE_KEY = 'paper_builder_pdf_language';
 
   function _makeChapterId(batch, subject, chapter) {
     const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '-');
@@ -381,12 +386,18 @@ const TEACHER_PAPER_BUILDER = (() => {
     const panel = $('tpb-pdf-section');
     if (!panel) return;
     const savedName = await DB.getSetting?.(INSTITUTION_NAME_KEY, '').catch(() => '') || '';
+    const savedLang = await DB.getSetting?.(PDF_LANGUAGE_KEY, 'marathi').catch(() => 'marathi') || 'marathi';
     panel.style.display = '';
     panel.innerHTML = `
       <h4>📄 "${_esc(paper.paperTitle)}" तयार झाला</h4>
       <div class="tpb-form-section">
         <label class="pb-multi-label" for="tpb-institution-name">Institution Name (PDF वर दिसेल — रिकामं ठेवल्यास "Nks EduOrbit" दिसेल)</label>
         <input id="tpb-institution-name" class="td-modal-select" type="text" placeholder="उदा. तुमच्या Coaching Class चं नाव" value="${_esc(savedName)}" />
+        <label class="pb-multi-label" for="tpb-pdf-language">PDF Language (फक्त Date/Total Marks/Section सारखे लेबल्स बदलतात)</label>
+        <select id="tpb-pdf-language" class="td-modal-select">
+          <option value="marathi" ${savedLang === 'marathi' ? 'selected' : ''}>🇮🇳 मराठी</option>
+          <option value="english" ${savedLang === 'english' ? 'selected' : ''}>🇬🇧 English</option>
+        </select>
       </div>
       <div class="tpb-pdf-actions">
         <button type="button" class="td-send-notif-btn" id="tpb-pdf-qp-btn">📄 Question Paper PDF</button>
@@ -402,14 +413,16 @@ const TEACHER_PAPER_BUILDER = (() => {
     const status = $('tpb-pdf-status');
     const original = btn.textContent;
     const institutionName = $('tpb-institution-name')?.value?.trim() || '';
+    const language = $('tpb-pdf-language')?.value || 'marathi';
     btn.disabled = true;
     btn.textContent = '⏳ तयार करत आहे...';
     if (status) status.textContent = '';
     try {
       await DB.setSetting?.(INSTITUTION_NAME_KEY, institutionName).catch(() => {});
+      await DB.setSetting?.(PDF_LANGUAGE_KEY, language).catch(() => {});
       const full = await API.fetchTeacherSlsPaper(paper._id);
-      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName });
-      else await PAPER_PDF.exportQuestionPaper(full, { institutionName });
+      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName, language });
+      else await PAPER_PDF.exportQuestionPaper(full, { institutionName, language });
       if (status) status.textContent = '✅ PDF तयार झाला — share sheet उघडलं आहे.';
     } catch (err) {
       console.error('PDF export failed:', err);

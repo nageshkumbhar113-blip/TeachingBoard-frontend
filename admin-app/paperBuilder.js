@@ -422,17 +422,29 @@ const PAPER_BUILDER = (() => {
   // Purely a download-time branding choice, never sent to the server or
   // saved on the paper document itself.
   const INSTITUTION_NAME_KEY = 'paper_builder_institution_name';
+  // User-requested: an English/Semi-English medium batch's paper shouldn't
+  // be forced into Marathi chrome text (Date/Total Marks/Section/Answer
+  // labels) — see core/paperPdf.js's _chromeText for what this switches
+  // (never the actual question/answer text, which is already bilingual
+  // per question). Same local-persistence pattern as Institution Name.
+  const PDF_LANGUAGE_KEY = 'paper_builder_pdf_language';
 
   async function _showPdfExportPanel(paper) {
     const panel = $('pb-pdf-section');
     if (!panel) return;
     const savedName = await DB.getSetting?.(INSTITUTION_NAME_KEY, '').catch(() => '') || '';
+    const savedLang = await DB.getSetting?.(PDF_LANGUAGE_KEY, 'marathi').catch(() => 'marathi') || 'marathi';
     panel.style.display = '';
     panel.innerHTML = `
       <h3>📄 "${_esc(paper.paperTitle)}" तयार झाला</h3>
       <div class="pb-form-section">
         <label class="pb-multi-label" for="pb-institution-name">Institution Name (PDF वर दिसेल — रिकामं ठेवल्यास "Nks EduOrbit" दिसेल)</label>
         <input id="pb-institution-name" class="admin-input" type="text" placeholder="उदा. तुमच्या Coaching Class चं नाव" value="${_esc(savedName)}" />
+        <label class="pb-multi-label" for="pb-pdf-language">PDF Language (फक्त Date/Total Marks/Section सारखे लेबल्स बदलतात — प्रश्न मजकूर तसाच राहतो)</label>
+        <select id="pb-pdf-language" class="form-select">
+          <option value="marathi" ${savedLang === 'marathi' ? 'selected' : ''}>🇮🇳 मराठी</option>
+          <option value="english" ${savedLang === 'english' ? 'selected' : ''}>🇬🇧 English</option>
+        </select>
       </div>
       <div class="pb-pdf-actions">
         <button type="button" class="btn btn-secondary" id="pb-pdf-qp-btn">📄 Question Paper PDF</button>
@@ -448,16 +460,18 @@ const PAPER_BUILDER = (() => {
     const status = $('pb-pdf-status');
     const original = btn.textContent;
     const institutionName = $('pb-institution-name')?.value?.trim() || '';
+    const language = $('pb-pdf-language')?.value || 'marathi';
     btn.disabled = true;
     btn.textContent = '⏳ तयार करत आहे...';
     if (status) status.textContent = '';
     try {
       await DB.setSetting?.(INSTITUTION_NAME_KEY, institutionName).catch(() => {});
+      await DB.setSetting?.(PDF_LANGUAGE_KEY, language).catch(() => {});
       // Paper object from create response doesn't have hydrated question
       // text (only questionId) — fetch the full paper with question details.
       const full = await API.fetchAdminSlsPaper(paper._id);
-      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName });
-      else await PAPER_PDF.exportQuestionPaper(full, { institutionName });
+      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName, language });
+      else await PAPER_PDF.exportQuestionPaper(full, { institutionName, language });
       if (status) status.textContent = '✅ PDF तयार झाला — share sheet उघडलं आहे.';
     } catch (err) {
       console.error('PDF export failed:', err);
