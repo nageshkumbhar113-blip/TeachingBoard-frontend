@@ -160,6 +160,34 @@ const NOTES_PDF = (() => {
       </div>`;
   }
 
+  // User-requested: these section headers were always hardcoded English
+  // regardless of the note's own language/medium (unlike exercisePdf.js,
+  // which already auto-detects प्रश्न/Q and उत्तर/Answer per question).
+  // Deliberately an explicit toggle rather than auto-detection here —
+  // learningOutcomes/shortNotes/revisionBox are picked independently
+  // (_pickList/_pickRevisionBox), so a single note could in principle mix
+  // languages across fields; an explicit, predictable choice avoids
+  // section headers flip-flopping within the same book.
+  const _NOTES_CHROME_TEXT = {
+    english: {
+      learningOutcomes: '📚 Learning Outcomes', content: '📚 Content',
+      keyPoints: '🔑 Key Points', revisionBox: '📦 Revision Box',
+      remember: '🧠 Remember', mistakes: '❌ Mistakes to Avoid',
+      formulas: '📐 Formulas', examTips: '⭐ Exam Tips', examTags: '🏷️ Exam Tags',
+      noContentYet: 'No content yet.',
+    },
+    marathi: {
+      learningOutcomes: '📚 शिकण्याची उद्दिष्टे', content: '📚 आशय',
+      keyPoints: '🔑 महत्त्वाचे मुद्दे', revisionBox: '📦 उजळणी',
+      remember: '🧠 लक्षात ठेवा', mistakes: '❌ टाळण्याच्या चुका',
+      formulas: '📐 सूत्रे', examTips: '⭐ परीक्षा टिप्स', examTags: '🏷️ परीक्षा टॅग्स',
+      noContentYet: 'अजून आशय नाही.',
+    },
+  };
+  function _notesChromeText(language) {
+    return _NOTES_CHROME_TEXT[language] || _NOTES_CHROME_TEXT.english;
+  }
+
   function _listSection(title, items) {
     if (!items || !items.length) return '';
     return `
@@ -171,22 +199,31 @@ const NOTES_PDF = (() => {
       </div>`;
   }
 
-  function _buildHtml(paper) {
-    const subtitle = [paper.batch, paper.subject, paper.chapter].filter(Boolean).join(' • ');
-
+  function _revisionBoxHtml(revisionBox, t) {
     const revSections = [
-      { key: 'remember',  icon: '🧠', label: 'Remember' },
-      { key: 'mistakes',  icon: '❌', label: 'Mistakes to Avoid' },
-      { key: 'formulas',  icon: '📐', label: 'Formulas' },
-      { key: 'examTips',  icon: '⭐', label: 'Exam Tips' },
+      { key: 'remember',  label: t.remember },
+      { key: 'mistakes',  label: t.mistakes },
+      { key: 'formulas',  label: t.formulas },
+      { key: 'examTips',  label: t.examTips },
     ];
-    const revHtml = revSections.map(({ key, icon, label }) => _listSection(`${icon} ${label}`, paper.revisionBox?.[key])).join('');
+    const revHtml = revSections.map(({ key, label }) => _listSection(label, revisionBox?.[key])).join('');
+    return revHtml ? `<div style="margin-bottom:6px"><div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">${_esc(t.revisionBox)}</div>${revHtml}</div>` : '';
+  }
 
-    const tagsHtml = (paper.examTags || []).length ? `
+  function _examTagsHtml(examTags, t) {
+    if (!examTags || !examTags.length) return '';
+    return `
       <div style="margin-bottom:14px">
-        <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">🏷️ Exam Tags</div>
-        <div>${paper.examTags.map(t => `<span style="display:inline-block;background:#eef1fb;color:#1e3a8a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin:2px 4px 2px 0">${_esc(t)}</span>`).join('')}</div>
-      </div>` : '';
+        <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">${_esc(t.examTags)}</div>
+        <div>${examTags.map(tag => `<span style="display:inline-block;background:#eef1fb;color:#1e3a8a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin:2px 4px 2px 0">${_esc(tag)}</span>`).join('')}</div>
+      </div>`;
+  }
+
+  function _buildHtml(paper, language) {
+    const t = _notesChromeText(language);
+    const subtitle = [paper.batch, paper.subject, paper.chapter].filter(Boolean).join(' • ');
+    const revHtml = _revisionBoxHtml(paper.revisionBox, t);
+    const tagsHtml = _examTagsHtml(paper.examTags, t);
 
     return `
       <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
@@ -195,13 +232,13 @@ const NOTES_PDF = (() => {
           <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(paper.title)}</div>
           ${subtitle ? `<div style="font-size:13px;color:#333">${_esc(subtitle)}</div>` : ''}
         </div>
-        ${_listSection('📚 Learning Outcomes', paper.learningOutcomes)}
+        ${_listSection(t.learningOutcomes, paper.learningOutcomes)}
         <div style="margin-bottom:16px">
-          <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:8px">📚 Content</div>
-          ${paper.blocks.length ? _blocksHtml(paper.blocks) : '<p style="font-size:13px;color:#888">No content yet.</p>'}
+          <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:8px">${_esc(t.content)}</div>
+          ${paper.blocks.length ? _blocksHtml(paper.blocks) : `<p style="font-size:13px;color:#888">${_esc(t.noContentYet)}</p>`}
         </div>
-        ${_listSection('🔑 Key Points', paper.shortNotes)}
-        ${revHtml ? `<div style="margin-bottom:6px"><div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">📦 Revision Box</div>${revHtml}</div>` : ''}
+        ${_listSection(t.keyPoints, paper.shortNotes)}
+        ${revHtml}
         ${tagsHtml}
         <div style="text-align:center;font-size:10px;color:#999;margin-top:24px;border-top:1px solid #ddd;padding-top:8px">
           Generated by Nks EduOrbit
@@ -408,7 +445,7 @@ const NOTES_PDF = (() => {
       chapter: context.chapter || '',
       title, blocks, learningOutcomes, shortNotes, revisionBox, examTags,
     };
-    const blob = await _renderToBlob(_buildHtml(paper), { sideLabel: paper.chapter, footerLabel: paper.subject });
+    const blob = await _renderToBlob(_buildHtml(paper, context.language), { sideLabel: paper.chapter, footerLabel: paper.subject });
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper));
   }
 
@@ -419,19 +456,9 @@ const NOTES_PDF = (() => {
   // repeated per note with a numbered heading and a rule between notes.
   // ════════════════════════════════════════════════════════════════════════
 
-  function _noteBodyHtml(note, numberLabel) {
-    const revSections = [
-      { key: 'remember',  icon: '🧠', label: 'Remember' },
-      { key: 'mistakes',  icon: '❌', label: 'Mistakes to Avoid' },
-      { key: 'formulas',  icon: '📐', label: 'Formulas' },
-      { key: 'examTips',  icon: '⭐', label: 'Exam Tips' },
-    ];
-    const revHtml = revSections.map(({ key, icon, label }) => _listSection(`${icon} ${label}`, note.revisionBox?.[key])).join('');
-    const tagsHtml = (note.examTags || []).length ? `
-      <div style="margin-bottom:14px">
-        <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">🏷️ Exam Tags</div>
-        <div>${note.examTags.map(t => `<span style="display:inline-block;background:#eef1fb;color:#1e3a8a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin:2px 4px 2px 0">${_esc(t)}</span>`).join('')}</div>
-      </div>` : '';
+  function _noteBodyHtml(note, numberLabel, t) {
+    const revHtml = _revisionBoxHtml(note.revisionBox, t);
+    const tagsHtml = _examTagsHtml(note.examTags, t);
 
     // Single column — tried a CSS column-count auto-balance layout, then a
     // fixed left/right grid, and both left visibly uneven "half-empty"
@@ -441,10 +468,10 @@ const NOTES_PDF = (() => {
     // did). Single column never has this problem: every section just
     // stacks, so there's never an empty region next to shorter content.
     const bodyHtml = `
-      ${_listSection('📚 Learning Outcomes', note.learningOutcomes)}
+      ${_listSection(t.learningOutcomes, note.learningOutcomes)}
       ${note.blocks.length ? `<div style="margin-bottom:12px">${_blocksHtml(note.blocks)}</div>` : ''}
-      ${_listSection('🔑 Key Points', note.shortNotes)}
-      ${revHtml ? `<div style="margin-bottom:6px"><div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:6px">📦 Revision Box</div>${revHtml}</div>` : ''}
+      ${_listSection(t.keyPoints, note.shortNotes)}
+      ${revHtml}
       ${tagsHtml}
     `;
 
@@ -455,9 +482,10 @@ const NOTES_PDF = (() => {
       </div>`;
   }
 
-  function _buildBookHtml(meta, notes) {
+  function _buildBookHtml(meta, notes, language) {
+    const t = _notesChromeText(language);
     const subtitle = [meta.batch, meta.subject].filter(Boolean).join(' • ');
-    const notesHtml = notes.map((note, i) => _noteBodyHtml(note, i + 1)).join('');
+    const notesHtml = notes.map((note, i) => _noteBodyHtml(note, i + 1, t)).join('');
 
     return `
       <div style="font-family:'Noto Sans Devanagari','Mangal',Arial,sans-serif;width:754px;padding:36px;color:#111;background:#fff">
@@ -482,7 +510,10 @@ const NOTES_PDF = (() => {
   }
 
   /**
-   * @param {{batch,subject,chapter}} meta
+   * @param {{batch,subject,chapter,language?}} meta — language: 'english'
+   *   (default, unchanged) or 'marathi' — switches only the section headers
+   *   (Learning Outcomes/Key Points/Revision Box/etc, see _notesChromeText),
+   *   never the actual note content.
    * @param {object[]} concepts — every Concept fetched for that chapterId
    *   (API.fetchAdminChapterConcepts), in the order they should appear.
    */
@@ -493,7 +524,7 @@ const NOTES_PDF = (() => {
       return;
     }
     const filename = `${String(meta.chapter || 'Notes').replace(/[^a-zA-Z0-9ऀ-ॿ ]/g, '').trim().replace(/\s+/g, '_') || 'Notes'}_Book.pdf`;
-    const blob = await _renderToBlob(_buildBookHtml(meta, notes), { sideLabel: meta.chapter, footerLabel: meta.subject });
+    const blob = await _renderToBlob(_buildBookHtml(meta, notes, meta.language), { sideLabel: meta.chapter, footerLabel: meta.subject });
     await FILE_EXPORT.saveAndShare(blob, filename);
   }
 

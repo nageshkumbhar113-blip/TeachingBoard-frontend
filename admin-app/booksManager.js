@@ -111,7 +111,13 @@ const BOOKS_MANAGER = (() => {
   // 1. NOTES BOOK
   // ════════════════════════════════════════════════════════════════════════
 
-  function _setupNotesWizard() {
+  // User-requested: Notes Book's section headers (Learning Outcomes/Key
+  // Points/etc, see core/notesPdf.js's _notesChromeText) were always
+  // hardcoded English regardless of the batch's medium. Same local-
+  // persistence pattern as Paper Builder's institution-name/PDF-language.
+  const NOTES_LANGUAGE_KEY = 'notes_pdf_language';
+
+  async function _setupNotesWizard() {
     $('bk-notes-batch')?.addEventListener('change', async e => {
       await _populateSubjectSelect(e.target.value, $('bk-notes-subject'));
       $('bk-notes-chapter').innerHTML = '<option value="">Select Chapter</option>';
@@ -121,16 +127,20 @@ const BOOKS_MANAGER = (() => {
       _populateChapterSelect($('bk-notes-batch').value, $('bk-notes-subject').value, $('bk-notes-chapter'));
     });
     $('bk-notes-generate')?.addEventListener('click', _generateNotesBook);
+    const savedLang = await DB.getSetting?.(NOTES_LANGUAGE_KEY, 'english').catch(() => 'english') || 'english';
+    if ($('bk-notes-language')) $('bk-notes-language').value = savedLang;
   }
 
   async function _generateNotesBook() {
     const batch = $('bk-notes-batch')?.value;
     const subject = $('bk-notes-subject')?.value;
     const chapter = $('bk-notes-chapter')?.value;
+    const language = $('bk-notes-language')?.value || 'english';
     if (!batch || !subject || !chapter) {
       APP.toast('Batch, Subject आणि Chapter तिन्ही निवडा', 'error');
       return;
     }
+    await DB.setSetting?.(NOTES_LANGUAGE_KEY, language).catch(() => {});
     const statusEl = $('bk-notes-status');
     if (statusEl) statusEl.textContent = 'Notes आणत आहे...';
     try {
@@ -151,7 +161,7 @@ const BOOKS_MANAGER = (() => {
       const concepts = await Promise.all(summaries.map(s => API.fetchAdminConcept(s._id)));
       const validConcepts = concepts.filter(Boolean);
       if (statusEl) statusEl.textContent = `Notes आढळले: ${validConcepts.length}`;
-      await NOTES_PDF.exportNotesBookPdf({ batch, subject, chapter }, validConcepts);
+      await NOTES_PDF.exportNotesBookPdf({ batch, subject, chapter, language }, validConcepts);
     } catch (err) {
       APP.toast(err?.message || 'Notes Book तयार करता आलं नाही', 'error');
       if (statusEl) statusEl.textContent = '';
