@@ -286,6 +286,16 @@ const PAPER_PDF = (() => {
       // wait for them.
       void container.offsetHeight;
       try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
+      // Real bug found live (core/exercisePdf.js — this file's diagrams were
+      // ported from there): question/answer diagram <img>s (Cloudinary-
+      // hosted, real network latency) can still be mid-download when
+      // html2canvas snapshots the container — the font-ready wait above
+      // only covers KaTeX's web fonts, never <img> loads. Wait for every
+      // image to finish (load OR error, so one bad URL can't hang the
+      // whole export) before capturing.
+      await Promise.all(Array.from(container.querySelectorAll('img')).map(img => img.complete
+        ? Promise.resolve()
+        : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }); })));
       // NOTE: foreignObjectRendering:true was tried here as an extra fix
       // for KaTeX fraction mis-rendering, but caused a worse regression —
       // it silently produces a BLANK canvas for content positioned this

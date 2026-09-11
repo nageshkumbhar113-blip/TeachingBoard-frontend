@@ -302,6 +302,29 @@ const EXERCISE_MANAGER = (() => {
     _renderExerciseList();
   }
 
+  // Small read-only thumbnail strip for the list view — the actual
+  // upload/remove/caption controls stay inside the Edit form (below);
+  // this just lets the admin see an already-attached figure at a glance.
+  function _diagramThumbsHtml(diagrams) {
+    if (!diagrams || !diagrams.length) return '';
+    return `<div class="em-diagram-thumbs">${diagrams.map(d => `
+      <img src="${_esc(d.url)}" alt="${_esc(d.caption || '')}" class="em-diagram-thumb">
+    `).join('')}</div>`;
+  }
+
+  // Full-size version for the "Preview" modal — real bug found live: this
+  // modal never rendered questionDiagrams/answerDiagrams at all (matching
+  // exercisePdf.js's own image sizing/style, just without crossorigin since
+  // this is on-screen, not html2canvas-captured).
+  function _diagramsPreviewHtml(diagrams) {
+    if (!diagrams || !diagrams.length) return '';
+    return diagrams.map(d => `
+      <div style="margin-top:6px">
+        <img src="${_esc(d.url)}" style="max-width:100%;max-height:260px;display:block;border:1px solid #ddd;border-radius:4px">
+        ${d.caption ? `<div style="font-size:11px;color:#666;margin-top:2px">${_esc(d.caption)}</div>` : ''}
+      </div>`).join('');
+  }
+
   function _renderExerciseList() {
     const list = $('em-exercise-list');
     if (!list) return;
@@ -309,11 +332,18 @@ const EXERCISE_MANAGER = (() => {
       list.innerHTML = '<p class="empty-hint">अजून या Exercise No. साठी प्रश्न नाहीत.</p>';
       return;
     }
-    list.innerHTML = _exerciseQuestions.map((q, i) => `
+    list.innerHTML = _exerciseQuestions.map((q, i) => {
+      const hasDiagram = (q.questionDiagrams?.length || q.answerDiagrams?.length);
+      return `
       <div class="cm-qitem" data-id="${_esc(q._id)}">
         <div class="cm-qitem-top">
           <b>${_qLabel(q, i + 1)}</b>
           <span class="em-status-chip ${q.status === 'published' ? 'published' : 'draft'}">${q.status === 'published' ? '✅ Published' : '📝 Draft'}</span>
+          <!-- Discoverability: image upload already lives inside the Edit
+               form (Question/Answer Diagram fields) — this chip just makes
+               it visible from the list itself whether one's attached,
+               without needing to open Edit to check. -->
+          <span class="em-status-chip ${hasDiagram ? 'published' : 'draft'}">${hasDiagram ? '🖼️ चित्र आहे' : '🖼️ चित्र नाही'}</span>
           <!-- Inline marks edit — right where marks are shown, no need to
                open the full Edit form just to bump 1→2 marks. -->
           <select class="cm-marks-chip em-marks-select" data-id="${_esc(q._id)}">
@@ -321,13 +351,16 @@ const EXERCISE_MANAGER = (() => {
           </select>
         </div>
         <div class="cm-qtext">${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>
+        ${_diagramThumbsHtml(q.questionDiagrams)}
         <div class="cm-atext">${_richText(q.answerText?.marathi || q.answerText?.english || '')}</div>
+        ${_diagramThumbsHtml(q.answerDiagrams)}
         <div class="cm-qactions">
-          <button type="button" class="btn btn-small em-edit-btn" data-id="${_esc(q._id)}">✏️ Edit</button>
+          <button type="button" class="btn btn-small em-edit-btn" data-id="${_esc(q._id)}">✏️ Edit${hasDiagram ? ' / चित्र बदला' : ' / चित्र जोडा'}</button>
           <button type="button" class="btn btn-small em-delete-btn" data-id="${_esc(q._id)}">🗑 Delete</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
     list.querySelectorAll('.em-edit-btn').forEach(btn =>
       btn.addEventListener('click', () => _showManualForm(btn.dataset.id)));
     list.querySelectorAll('.em-delete-btn').forEach(btn =>
@@ -371,7 +404,9 @@ const EXERCISE_MANAGER = (() => {
             <span class="cm-marks-chip">${q.marks} ${q.marks === 1 ? 'mark' : 'marks'}</span>
           </div>
           <div class="cm-qtext">${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>
+          ${_diagramsPreviewHtml(q.questionDiagrams)}
           <div class="cm-atext">${_richText(q.answerText?.marathi || q.answerText?.english || '')}</div>
+          ${_diagramsPreviewHtml(q.answerDiagrams)}
         </div>
       `).join('');
     }

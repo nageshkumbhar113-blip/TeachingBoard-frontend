@@ -51,6 +51,21 @@ const EXERCISE_VIEWER = (() => {
     return html;
   }
 
+  // Question/answer diagrams (questionDiagrams[]/answerDiagrams[] — each
+  // {url, caption}, absolute backend-hosted URLs) were already saved by
+  // Exercise Manager's upload form and already render in the Exercise PDF
+  // (core/exercisePdf.js), but this on-screen viewer never rendered them at
+  // all — a real bug reported live (histogram images uploaded for 6.4 Q1
+  // never appeared here, neither with the question nor after "उत्तर दाखवा").
+  function _diagramsHtml(diagrams) {
+    if (!diagrams || !diagrams.length) return '';
+    return diagrams.map(d => `
+      <div class="ev-diagram">
+        <img src="${_esc(d.url)}" alt="${_esc(d.caption || '')}">
+        ${d.caption ? `<div class="ev-diagram-caption">${_esc(d.caption)}</div>` : ''}
+      </div>`).join('');
+  }
+
   let _batch = '';
   let _subject = '';
   let _chapter = '';
@@ -295,8 +310,12 @@ const EXERCISE_VIEWER = (() => {
             <span class="cm-marks-chip">${q.marks} marks</span>
           </div>
           <div class="ev-qtext">${_richText(qText)}</div>
+          ${_diagramsHtml(q.questionDiagrams)}
           <button type="button" class="ev-reveal-btn" data-idx="${i}">उत्तर दाखवा</button>
-          <div class="ev-atext hidden" id="ev-atext-${i}">${_richText(aText)}</div>
+          <div class="ev-atext hidden" id="ev-atext-${i}">
+            ${_richText(aText)}
+            ${_diagramsHtml(q.answerDiagrams)}
+          </div>
         </div>`;
     }).join('');
 
@@ -318,7 +337,17 @@ const EXERCISE_VIEWER = (() => {
     $('ev-groups-section').style.display = '';
   }
 
-  return { init, openChapter, openQuestion };
+  // Test-only hook — injects a group of questions directly and renders the
+  // questions view, without a full DB-backed batch→subject→chapter click
+  // path. Not used by any production code path.
+  function _setTestGroups(no, questions) {
+    _exerciseGroups = new Map([[no, questions]]);
+    $('ev-groups-section').style.display = 'none';
+    $('ev-questions-section').style.display = '';
+    _showQuestions(no);
+  }
+
+  return { init, openChapter, openQuestion, __test: { setGroups: _setTestGroups } };
 })();
 
 window.EXERCISE_VIEWER = EXERCISE_VIEWER;

@@ -488,6 +488,14 @@ const QUIZ_PDF = (() => {
       // just-rendered markup needs, then wait for them.
       void container.offsetHeight;
       try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
+      // Real bug found live (core/exercisePdf.js): question/option <img>s
+      // can still be mid-load when html2canvas snapshots the container —
+      // the font-ready wait above only covers KaTeX's web fonts, never
+      // <img> loads. Wait for every image to finish (load OR error, so one
+      // bad source can't hang the whole export) before capturing.
+      await Promise.all(Array.from(container.querySelectorAll('img')).map(img => img.complete
+        ? Promise.resolve()
+        : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }); })));
       // NOTE: foreignObjectRendering:true was tried here as an extra fix
       // for KaTeX fraction mis-rendering, but caused a worse regression —
       // it silently produces a BLANK canvas for content positioned this
@@ -586,6 +594,12 @@ const QUIZ_PDF = (() => {
         // _renderMath ran correctly. Force a reflow, then wait for fonts.
         void container.offsetHeight;
         try { await document.fonts.ready; } catch (e) { /* older WebView without Font Loading API — best effort */ }
+        // See _renderToBlob's own comment: <img>s can still be mid-load
+        // when the snapshot fires — wait for every image (load OR error)
+        // before capturing.
+        await Promise.all(Array.from(container.querySelectorAll('img')).map(img => img.complete
+          ? Promise.resolve()
+          : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }); })));
         // See _renderToBlob's own NOTE: foreignObjectRendering:true was
         // tried and reverted — it blanks the canvas for content this far
         // off-screen. Do not re-add it here either.

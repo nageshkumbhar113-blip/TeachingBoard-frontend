@@ -4798,6 +4798,9 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   color: #166534;
 }
 .ev-atext.hidden { display: none; }
+.ev-diagram { margin-top: 8px; }
+.ev-diagram img { max-width: 100%; max-height: 320px; display: block; border: 1px solid var(--border, #ddd); border-radius: 6px; }
+.ev-diagram-caption { font-size: 0.75rem; color: var(--text-secondary, #6b7a93); margin-top: 4px; }
 
 /* Teacher Paper Builder — Subject/Chapter multi-select checklist (matches
    admin-app/paperBuilder.js's .student-batch-item pattern, reimplemented
