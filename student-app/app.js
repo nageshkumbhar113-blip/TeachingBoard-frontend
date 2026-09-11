@@ -1937,7 +1937,16 @@ const APP = (() => {
   async function loadHome() {
     _screenHistory = [];   // clear back-stack when going to home
     showScreen('home', { addToHistory: false });
-    _setupPushNotifications('student');
+    // Delayed on purpose — a real crash was traced to this running on an
+    // auto-resumed session (app cold-started already logged in, straight to
+    // loadHome with no user interaction yet): requesting the runtime
+    // notification permission this early, before the Activity has settled
+    // into a fully resumed foreground state, crashed the process on at
+    // least one real device. A fresh interactive login never hit it — only
+    // the auto-resume path did. Giving the Activity a couple seconds to
+    // stabilize first is the standard fix for this class of Android
+    // permission-timing crash.
+    setTimeout(() => _setupPushNotifications('student'), 2000);
     await DB.syncHierarchyFromExisting?.();
     // Real bug fix: subjects/chapters that only have Notes/Exercise content
     // (no legacy MCQ quiz) never appeared in any Subject/Chapter dropdown —
