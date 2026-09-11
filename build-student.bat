@@ -46,6 +46,13 @@ copy /Y icons-student\strings.xml android\app\src\main\res\values\strings.xml >n
 if not exist android\app\src\main\java\com\nkseduorbit\student\ mkdir android\app\src\main\java\com\nkseduorbit\student\ >nul 2>&1
 copy /Y android-student\MainActivity.java android\app\src\main\java\com\nkseduorbit\student\MainActivity.java >nul 2>&1
 
+:: AndroidManifest.xml customizations (TV/leanback support, FileProvider,
+:: UPI package-visibility queries, Firebase auto-init disabled so cold start
+:: doesn't crash on devices without Google Play Services e.g. smart boards)
+:: — same gitignored-android/ problem as MainActivity.java above, so
+:: android-student/AndroidManifest.xml is the tracked source of truth.
+copy /Y android-student\AndroidManifest.xml android\app\src\main\AndroidManifest.xml >nul 2>&1
+
 echo [6/7] Capacitor sync...
 call npx cap sync android
 if errorlevel 1 (
