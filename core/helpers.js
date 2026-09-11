@@ -988,6 +988,15 @@ const API = (() => {
     });
   }
 
+  async function updateStudentDeviceToken(deviceToken) {
+    const token = await ensureStudentSession();
+    return request('/student/device-token', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ device_token: deviceToken }),
+    });
+  }
+
   // ── Vocabulary: Student ───────────────────────────────────────────────────────
 
   async function autoFillWordForStudent(word) {
@@ -2358,6 +2367,7 @@ const API = (() => {
     // ─── Word Tests (Student) ─────────────────────────────────────
     fetchStudentWordTests, fetchStudentWordTest, submitWordTestAttempt,
     fetchWordTestAnalytics, fetchClassWordTestAnalytics,
+    updateStudentDeviceToken,
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabDictionary, addStudentWord,
     fetchVocabTestList, fetchVocabTest, submitVocabAttempt,
     fetchTeacherVocabScores,

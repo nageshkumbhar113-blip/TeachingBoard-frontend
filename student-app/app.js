@@ -1291,6 +1291,7 @@ const APP = (() => {
         try {
           if (role === 'teacher') await API.updateTeacherDeviceToken(deviceToken);
           else if (role === 'parent') await API.updateParentDeviceToken(deviceToken);
+          else if (role === 'student') await API.updateStudentDeviceToken(deviceToken);
         } catch (e) { console.warn('FCM token register failed', e); }
       });
 
@@ -1307,6 +1308,10 @@ const APP = (() => {
           if (data.type === 'fee_reminder' && data.upi_link) {
             setTimeout(() => window.open(data.upi_link, '_system'), 400);
           }
+        } else if (role === 'student') {
+          // New Notes/Exercise/Test, inactivity reminder, daily motivation —
+          // all safely land on Home; none of them need a specific deep link.
+          _goHomeRoleAware();
         }
       });
     } catch (e) {
@@ -1932,6 +1937,7 @@ const APP = (() => {
   async function loadHome() {
     _screenHistory = [];   // clear back-stack when going to home
     showScreen('home', { addToHistory: false });
+    _setupPushNotifications('student');
     await DB.syncHierarchyFromExisting?.();
     // Real bug fix: subjects/chapters that only have Notes/Exercise content
     // (no legacy MCQ quiz) never appeared in any Subject/Chapter dropdown —
