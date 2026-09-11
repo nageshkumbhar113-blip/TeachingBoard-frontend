@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Android TV: declare leanback support as optional and don't require a
          touchscreen, so this same APK can install/launch on Android TV devices
@@ -18,18 +19,28 @@
         android:banner="@drawable/tv_banner">
 
         <!-- Devices without Google Play Services (many smart boards / IFPDs)
-             can crash on cold start because Firebase auto-initializes itself
-             via FirebaseInitProvider before any Activity or JS runs. These
-             flags stop that automatic init; Firebase still initializes fine,
-             lazily, the moment student-app/app.js's _setupPushNotifications()
-             calls Push.register() (already try/catch-guarded there) — so
-             push notifications on real phones are unaffected. -->
+             crash on cold start — confirmed still crashing pre-splash even
+             after the auto-init meta-data flags below, so this goes further:
+             FirebaseInitProvider itself (a ContentProvider Android instantiates
+             for every app process, before Application.onCreate, let alone any
+             Activity or JS) is removed from the merged manifest entirely.
+             Nothing Firebase-related now runs at process start on ANY device.
+             MainActivity.java calls FirebaseApp.initializeApp() itself instead
+             — early in onCreate, try/catch-guarded, and touches no Play
+             Services API (that part of Firebase doesn't need it) — which is
+             enough for student-app/app.js's later Push.register() call
+             (already try/catch-guarded there too) to keep working on real
+             phones. Keeping these two flags anyway as defense in depth. -->
         <meta-data
             android:name="firebase_messaging_auto_init_enabled"
             android:value="false" />
         <meta-data
             android:name="firebase_analytics_collection_enabled"
             android:value="false" />
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"

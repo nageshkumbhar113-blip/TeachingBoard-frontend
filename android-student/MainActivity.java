@@ -1,6 +1,7 @@
 package com.nkseduorbit.student;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebChromeClient;
@@ -9,10 +10,28 @@ import android.widget.FrameLayout;
 import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebChromeClient;
+import com.google.firebase.FirebaseApp;
 
 public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    // AndroidManifest.xml removes FirebaseInitProvider (see its own
+    // doc-comment) so nothing Firebase-related runs automatically at process
+    // start — devices without Google Play Services (many smart boards/IFPDs)
+    // were crashing before the splash screen even showed because of that
+    // automatic init. Doing it here instead, explicitly: FirebaseApp's own
+    // init doesn't touch Play Services at all (only the later FCM token
+    // fetch in student-app/app.js's Push.register() does, and that already
+    // fails gracefully — see @capacitor/push-notifications'
+    // PushNotificationsPlugin.java, which reports a task failure rather than
+    // throwing), so this is safe on every device; the try/catch is only for
+    // the truly-never-expected case.
+    try {
+      FirebaseApp.initializeApp(this);
+    } catch (Exception e) {
+      Log.w("MainActivity", "FirebaseApp.initializeApp failed — push notifications won't work this session", e);
+    }
+
     super.onCreate(savedInstanceState);
     // Enables chrome://inspect remote debugging even on release builds —
     // used for automated QA/testing. Only exploitable with physical/adb

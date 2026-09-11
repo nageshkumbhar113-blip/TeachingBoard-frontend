@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-09-12):** `8.0.0` · versionCode `147` · SW `v147`
+**सध्याची version (last updated 2026-09-12):** `8.0.1` · versionCode `148` · SW `v148`
 
 ---
 

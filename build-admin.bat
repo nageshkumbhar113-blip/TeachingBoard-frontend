@@ -50,9 +50,9 @@ pushd android
 :: Android Studio auto-generates gradle-daemon-jvm.properties pinning vendor=jetbrains,
 :: which breaks CLI builds (no JBR on PATH). Remove it so Gradle uses JAVA_HOME (Temurin 21).
 if exist gradle\gradle-daemon-jvm.properties del gradle\gradle-daemon-jvm.properties >nul 2>&1
-call gradlew.bat clean
+call .\gradlew.bat clean
 if errorlevel 1 ( popd & echo ERROR: Gradle clean failed & copy /Y ..\capacitor-student.config.ts ..\capacitor.config.ts >nul 2>&1 & pause & exit /b 1 )
-call gradlew.bat assembleRelease
+call .\gradlew.bat assembleRelease
 set BUILD_ERR=%errorlevel%
 popd
 if %BUILD_ERR% neq 0 (
