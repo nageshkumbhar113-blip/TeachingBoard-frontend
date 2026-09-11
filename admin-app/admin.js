@@ -1924,6 +1924,49 @@ const ADMIN = (() => {
   // QR CODE
   // ════════════════════════
 
+  function _renderQuickLinks() {
+    const list = $('quick-links-list');
+    if (!list) return;
+
+    const SITE = 'https://teachingboard-frontend.vercel.app';
+    const links = [
+      { icon: '🖥️', label: 'Web Admin',                   url: `${SITE}/admin` },
+      { icon: '🎓', label: 'Web Student',                  url: `${SITE}/student` },
+      { icon: '▶️', label: 'YouTube Partner Portal',       url: `${SITE}/teachers` },
+      { icon: '📲', label: 'App Download',                 url: `${SITE}/get-app` },
+      { icon: '🏠', label: 'Website / Home',                url: `${SITE}/` },
+      { icon: '📞', label: 'Contact Us',                    url: `${SITE}/contact-us.html` },
+      { icon: '🔒', label: 'Privacy Policy',                url: `${SITE}/privacy-policy.html` },
+      { icon: '💳', label: 'Refund & Cancellation Policy',  url: `${SITE}/refund-policy.html` },
+      { icon: '📜', label: 'Terms & Conditions',            url: `${SITE}/terms-and-conditions.html` },
+    ];
+
+    list.innerHTML = '';
+    links.forEach(l => {
+      const item = document.createElement('div');
+      item.className = 'batch-admin-item';
+      item.innerHTML = `
+        <div>
+          <div class="batch-admin-name">${l.icon} ${_esc(l.label)}</div>
+          <div class="batch-admin-meta" style="word-break:break-all">${_esc(l.url)}</div>
+        </div>
+        <div class="batch-admin-actions">
+          <button class="admin-btn-secondary btn-copy-link" type="button">📋 Copy</button>
+          <button class="admin-btn-primary btn-wa-link" type="button">📱 WhatsApp</button>
+        </div>
+      `;
+      item.querySelector('.btn-copy-link').addEventListener('click', () => {
+        navigator.clipboard?.writeText(l.url).catch(() => {});
+        APP.toast('Copied!', 'success');
+      });
+      item.querySelector('.btn-wa-link').addEventListener('click', () => {
+        const msg = `${l.label}:\n${l.url}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+      });
+      list.appendChild(item);
+    });
+  }
+
   async function _generateServerUrlQR() {
     const serverUrl = API.getApiUrl() || API.DEFAULT_API_URL;
     const out = document.getElementById('url-qr-output');
@@ -3443,6 +3486,7 @@ const ADMIN = (() => {
     $('btn-fetch-github')?.addEventListener('click', _fetchFromGitHub);
 
     // Sync
+    _renderQuickLinks();
     $('btn-share-url-qr')?.addEventListener('click', _generateServerUrlQR);
     $('btn-gen-qr')?.addEventListener('click', _generateQR);
     $('btn-api-sync')?.addEventListener('click', () => SYNC.deltaSync($('api-url').value));
