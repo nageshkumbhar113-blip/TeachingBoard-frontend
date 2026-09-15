@@ -1,0 +1,4 @@
+- New: Students now get direct notifications on their own phone — when a new Note, Test, or Exercise is added for their batch, a reminder if they haven't studied in 3 days, a daily motivation quote, and a nudge if a subscription payment was started but not completed
+- New: Admin "Quick Links Share" panel (Sync tab) — one place to copy/WhatsApp-share the Web Admin, Web Student, YouTube Partner Portal, App Download, and other site links
+- Fixed real bug: app was closing instantly on open on devices without Google Play Services (e.g. interactive smart boards) — found and fixed in two rounds after live testing on an actual affected device
+- Internal: updated to the newer Android platform version Google Play now requires for new app submissions (no visible change for existing users)
