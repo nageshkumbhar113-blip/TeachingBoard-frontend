@@ -2,7 +2,7 @@
 
 > पुढच्या release ला फक्त ही file उघडा, खालचे ६ ठिकाणं बदला. Search करायची गरज नाही.
 
-**सध्याची version (last updated 2026-09-12):** `8.0.2` · versionCode `149` · SW `v149`
+**सध्याची version (last updated 2026-09-15):** `8.1.0` · Student versionCode `150` · Admin versionCode `148` · SW `v150`
 
 ---
 

@@ -5,7 +5,10 @@ const config: CapacitorConfig = {
   appName: 'TB Admin',
   webDir:  'dist-admin',
   bundledWebRuntime: false,
-  server: { androidScheme: 'https' }
+  server: { androidScheme: 'https' },
+  // Same targetSdk 36 edge-to-edge concern as capacitor-student.config.ts —
+  // see its comment for why.
+  android: { adjustMarginsForEdgeToEdge: 'auto' }
 };
 
 export default config;

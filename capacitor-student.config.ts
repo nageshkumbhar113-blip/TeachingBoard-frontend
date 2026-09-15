@@ -13,7 +13,17 @@ const config: CapacitorConfig = {
   // to scope this to just one screen/route within a single WebView, so
   // it's enabled app-wide; it's a normal, expected capability elsewhere
   // too (e.g. zooming a diagram in an Exercise question).
-  android: { zoomEnabled: true }
+  android: {
+    zoomEnabled: true,
+    // Android 16 (API 36, targeted starting this release) removes the
+    // ability to opt out of edge-to-edge display entirely — WebView
+    // content would draw under the status/nav bars with no compensating
+    // margin unless told to add one. 'auto' is Capacitor's own built-in
+    // handling for exactly this (see node_modules/@capacitor/android/
+    // .../CapacitorWebView.java#edgeToEdgeHandler) — no custom native
+    // code needed.
+    adjustMarginsForEdgeToEdge: 'auto',
+  }
 };
 
 export default config;

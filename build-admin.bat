@@ -4,8 +4,8 @@ echo  TeachingBoard — ADMIN APK Build
 echo ========================================
 
 :: ── Version — update BOTH values for every release ──────────────────────────
-set VERSION=8.0.0
-set VERSION_CODE=147
+set VERSION=8.1.0
+set VERSION_CODE=148
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: [PRE] Stale .bak cleanup
@@ -36,6 +36,12 @@ if errorlevel 1 (
 echo [5/7] Setting Admin icon (red) + app name...
 copy /Y icons-admin\ic_launcher_background.xml android\app\src\main\res\values\ic_launcher_background.xml >nul 2>&1
 copy /Y icons-admin\strings.xml android\app\src\main\res\values\strings.xml >nul 2>&1
+
+:: compileSdk/targetSdk (currently 36) — android/ is gitignored/regenerable
+:: with no backup, so android-shared\variables.gradle is the tracked
+:: source of truth (shared by both apps' builds, see build-student.bat's
+:: matching copy step for the full explanation).
+copy /Y android-shared\variables.gradle android\variables.gradle >nul 2>&1
 
 echo [6/7] Capacitor sync...
 call npx cap sync android

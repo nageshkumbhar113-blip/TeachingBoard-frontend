@@ -4,8 +4,8 @@ echo  Nks EduOrbit — STUDENT APK Build
 echo ========================================
 
 :: ── Version — update BOTH values for every release ──────────────────────────
-set VERSION=8.0.2
-set VERSION_CODE=149
+set VERSION=8.1.0
+set VERSION_CODE=150
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: [PRE] Stale .bak cleanup
@@ -52,6 +52,13 @@ copy /Y android-student\MainActivity.java android\app\src\main\java\com\nkseduor
 :: — same gitignored-android/ problem as MainActivity.java above, so
 :: android-student/AndroidManifest.xml is the tracked source of truth.
 copy /Y android-student\AndroidManifest.xml android\app\src\main\AndroidManifest.xml >nul 2>&1
+
+:: compileSdk/targetSdk (currently 36, for Play Store's "new apps need API
+:: 36" requirement) — same gitignored-android/ problem as the two files
+:: above, so android-shared\variables.gradle is the tracked source of
+:: truth. Shared by both apps (not app-specific like the two above), hence
+:: its own folder rather than android-student\.
+copy /Y android-shared\variables.gradle android\variables.gradle >nul 2>&1
 
 echo [6/7] Capacitor sync...
 call npx cap sync android
