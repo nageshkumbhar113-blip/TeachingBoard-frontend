@@ -1121,6 +1121,42 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // Teacher Paper Builder quota (admin): defaults, teacher x batch usage, overrides
+  async function fetchPaperQuotas(pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/teachers/paper-quota', { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || { config: {}, rows: [] };
+  }
+
+  async function setPaperQuotaConfig(config, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/teachers/paper-quota/config', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(config),
+    });
+    return payload?.data || {};
+  }
+
+  async function setTeacherPaperOverride(teacherId, override, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(`/teachers/${encodeURIComponent(teacherId)}/paper-quota-override`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(override),
+    });
+  }
+
+  // Teacher: own quota for one batch (used / limit / paid students / unlimited)
+  async function fetchMyPaperQuota(batch) {
+    const token = await ensureTeacherSession().catch(() => '');
+    if (!token) return null;
+    const payload = await request(`/teacher/paper-quota?batch=${encodeURIComponent(batch)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || null;
+  }
+
   async function fetchUnassignedStudents(pin = '') {
     const token = await ensureAdminSession(pin);
     const payload = await request('/teachers/unassigned-students', {
@@ -2384,6 +2420,7 @@ const API = (() => {
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
     fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
+    fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota,
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,

@@ -2779,6 +2779,87 @@ const ADMIN = (() => {
     } catch (err) {
       list.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load teachers')}</p>`;
     }
+    _loadPaperQuota();
+  }
+
+  // ── Teacher Paper Builder quota (defaults + teacher x batch table) ─────────
+  async function _loadPaperQuota() {
+    const table = $('pq-table');
+    if (!table) return;
+    table.innerHTML = '<p class="empty-hint">Loading...</p>';
+    try {
+      const { config, rows } = await API.fetchPaperQuotas();
+      if ($('pq-free') && document.activeElement !== $('pq-free')) $('pq-free').value = config.free_papers ?? '';
+      if ($('pq-need') && document.activeElement !== $('pq-need')) $('pq-need').value = config.unlock_paid_students ?? '';
+
+      if (!rows.length) {
+        table.innerHTML = '<p class="empty-hint">अजून कोणत्याही शिक्षकाला batch चे विद्यार्थी जोडलेले नाहीत.</p>';
+        return;
+      }
+      table.innerHTML = '';
+      rows.forEach(r => {
+        const isStar = r.batch === '*';
+        let badge;
+        if (r.override === 'unlimited') badge = '🔓 अमर्यादित (Admin)';
+        else if (r.unlimited) badge = '🔓 अमर्यादित (paid विद्यार्थी)';
+        else if (r.allowed === false) badge = '⚠️ मर्यादा संपली';
+        else badge = '✅ चालू';
+        const detail = isStar
+          ? 'सर्व batches'
+          : `Papers ${r.used}/${r.limit} · Paid ${r.paid}/${r.need}${r.override === 'custom' ? ' · ✏️ वेगळे आकडे' : ''}`;
+
+        const item = document.createElement('div');
+        item.className = 'batch-admin-item';
+        item.innerHTML = `
+          <div class="student-card-info">
+            <div class="batch-admin-name">${_escHtml(r.teacher_name || '')} <small>(${_escHtml(r.teacher_code || '')})</small></div>
+            <div class="student-meta-row"><span>${_escHtml(isStar ? 'सर्व batches' : r.batch)}</span><span>${_escHtml(detail)}</span><span>${badge}</span></div>
+          </div>
+          <div class="chapter-admin-actions">
+            ${r.override === 'unlimited' ? '' : '<button class="admin-btn-secondary" data-act="unlimited">🔓 अमर्यादित</button>'}
+            ${isStar ? '' : '<button class="admin-btn-secondary" data-act="custom">✏️ आकडे</button>'}
+            ${r.override ? '<button class="admin-btn-secondary" data-act="default">↩️ सामान्य</button>' : ''}
+          </div>`;
+        item.querySelectorAll('[data-act]').forEach(btn => {
+          btn.addEventListener('click', () => _setPaperOverride(r, btn.dataset.act));
+        });
+        table.appendChild(item);
+      });
+    } catch (err) {
+      table.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load quotas')}</p>`;
+    }
+  }
+
+  async function _setPaperOverride(row, act) {
+    try {
+      const payload = { batch: row.batch, mode: act };
+      if (act === 'custom') {
+        const free = await APP.promptAsync(`${row.teacher_name} — ${row.batch}: मोफत papers किती? (सध्या ${row.limit})`, 'text', String(row.limit ?? ''));
+        if (free === null || free === undefined) return;
+        const need = await APP.promptAsync(`अनलॉकसाठी किती paid विद्यार्थी? (सध्या ${row.need})`, 'text', String(row.need ?? ''));
+        if (need === null || need === undefined) return;
+        payload.free_papers = Number(free);
+        payload.unlock_paid_students = Number(need);
+      }
+      await API.setTeacherPaperOverride(row.teacher_id, payload);
+      APP.toast('✅ जतन झाले', 'success');
+      await _loadPaperQuota();
+    } catch (err) {
+      APP.toast(`अयशस्वी: ${err.message}`, 'error');
+    }
+  }
+
+  async function _savePaperQuotaConfig() {
+    try {
+      await API.setPaperQuotaConfig({
+        free_papers: Number($('pq-free')?.value),
+        unlock_paid_students: Number($('pq-need')?.value),
+      });
+      APP.toast('✅ आकडे जतन झाले', 'success');
+      await _loadPaperQuota();
+    } catch (err) {
+      APP.toast(`अयशस्वी: ${err.message}`, 'error');
+    }
   }
 
   function _showTeacherCredsModal(code, pin, students) {
@@ -3470,6 +3551,8 @@ const ADMIN = (() => {
     $('btn-save-teacher')?.addEventListener('click', _saveTeacherAccount);
     $('btn-reset-teacher')?.addEventListener('click', _resetTeacherForm);
     $('btn-refresh-teachers')?.addEventListener('click', _loadTeachersAdmin);
+    $('pq-refresh')?.addEventListener('click', _loadPaperQuota);
+    $('pq-save-config')?.addEventListener('click', _savePaperQuotaConfig);
     $('btn-gen-teacher-code')?.addEventListener('click', () => {
       const name = String($('teacher-name')?.value || '').trim();
       if ($('teacher-code')) $('teacher-code').value = _autoTeacherCode(name);

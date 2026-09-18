@@ -656,6 +656,22 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <div id="teacher-admin-list" class="batch-admin-list" role="list" aria-label="Teacher list"></div>
             </section>
 
+            <section class="import-section admin-card" aria-label="Paper Builder quota">
+              <h3 class="admin-section-title">📄 Paper Builder मर्यादा (शिक्षकांसाठी, प्रति batch)</h3>
+              <p class="import-hint">शिक्षकाला प्रत्येक batch चे ठराविक papers मोफत. त्या batch चे ठराविक विद्यार्थी Razorpay ने paid झाले की त्या batch चा Paper Builder अमर्यादित. Admin ने हाताने मुदत दिलेले विद्यार्थी मोजले जात नाहीत. आधीचे papers मोजले जात नाहीत.</p>
+              <div class="admin-toolbar" style="flex-wrap:wrap;gap:8px;align-items:flex-end">
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">मोफत papers (प्रति batch)
+                  <input id="pq-free" type="number" min="0" step="1" class="admin-input short" aria-label="Free papers per batch" />
+                </label>
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">अनलॉकसाठी paid विद्यार्थी
+                  <input id="pq-need" type="number" min="1" step="1" class="admin-input short" aria-label="Paid students to unlock" />
+                </label>
+                <button id="pq-save-config" class="admin-btn-primary" type="button">आकडे Save करा</button>
+                <button id="pq-refresh" class="admin-btn-secondary" type="button">Refresh</button>
+              </div>
+              <div id="pq-table" class="batch-admin-list" role="list" aria-label="Teacher paper quotas"></div>
+            </section>
+
             <!-- Teacher credentials modal -->
             <div id="teacher-creds-modal" class="creds-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Teacher credentials">
               <div class="creds-modal-card">

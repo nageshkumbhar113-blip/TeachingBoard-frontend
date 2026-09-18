@@ -106,8 +106,35 @@ const TEACHER_PAPER_BUILDER = (() => {
     }
   }
 
+  // Per-batch paper quota (server enforces it; this only shows progress and
+  // avoids a pointless save attempt).
+  let _quota = null;
+  async function _refreshQuota() {
+    const bar = $('tpb-quota-bar');
+    _quota = null;
+    if (!bar) return;
+    if (!_batch) { bar.classList.add('hidden'); return; }
+    try {
+      const q = await API.fetchMyPaperQuota(_batch);
+      if (!q || _batch !== q.batch) { bar.classList.add('hidden'); return; }
+      _quota = q;
+      bar.classList.remove('hidden', 'unlimited', 'exceeded');
+      if (q.unlimited) {
+        bar.classList.add('unlimited');
+        bar.textContent = '🔓 या batch साठी Paper Builder अमर्यादित आहे.';
+      } else {
+        if (!q.allowed) bar.classList.add('exceeded');
+        bar.textContent = `📄 Papers: ${q.used} / ${q.limit} वापरले · Paid विद्यार्थी: ${q.paid} / ${q.need}` +
+          (q.allowed ? ` — आणखी ${q.remaining_students} paid झाले की अमर्यादित.` : ' — मोफत papers संपले; ' + q.remaining_students + ' आणखी paid झाले की अमर्यादित.');
+      }
+    } catch {
+      bar.classList.add('hidden');
+    }
+  }
+
   async function _onBatchChange(batch) {
     _batch = batch;
+    _refreshQuota();
     _subjects = [];
     _chapters = [];
     _resetPaperState();
@@ -424,6 +451,10 @@ const TEACHER_PAPER_BUILDER = (() => {
       APP?.toast?.('किमान एक प्रश्न जोडा', 'error');
       return;
     }
+    if (_quota && !_quota.allowed) {
+      APP?.toast?.(`या batch चे ${_quota.limit} मोफत papers संपले. ${_quota.need} विद्यार्थी paid झाले की अमर्यादित (${_quota.paid} / ${_quota.need}).`, 'error');
+      return;
+    }
     const title = $('tpb-title')?.value?.trim();
 
     const btn = $('tpb-save-btn');
@@ -446,11 +477,17 @@ const TEACHER_PAPER_BUILDER = (() => {
       APP?.toast?.(`✅ Paper "${paper.paperTitle}" saved (Paper #${paper.paperNumber})`, 'success');
       _showPdfExportPanel(paper);
       _resetPaperState(false);
+      _refreshQuota();
       if ($('tpb-title')) $('tpb-title').value = '';
       if ($('tpb-autofill-target')) $('tpb-autofill-target').value = '';
     } catch (err) {
       console.error('Failed to save paper:', err);
-      APP?.toast?.('Paper save करताना error आला', 'error');
+      if (err?.code === 'PAPER_LIMIT') {
+        APP?.toast?.(err.message, 'error');
+        _refreshQuota();
+      } else {
+        APP?.toast?.('Paper save करताना error आला', 'error');
+      }
     } finally {
       btn.disabled = false;
       btn.textContent = '💾 Paper Save करा';
