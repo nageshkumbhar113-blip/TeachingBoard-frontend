@@ -2750,30 +2750,69 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
    TEACHER DASHBOARD — ANALYTICS
 ═══════════════════════════════════════════ */
 
-/* Tab row */
-.td-tab-row {
-  display: flex;
+/* Tab drawer — the toggle button always visible; .td-tab-row becomes the
+   dropdown panel underneath it (shown/hidden via .hidden, toggled by
+   teacherDashboard.js), instead of the old always-visible horizontal row. */
+.td-tab-drawer-wrap {
+  position: relative;
   border-bottom: 1px solid rgba(255,255,255,0.08);
   background: var(--card-bg, #161b22);
-  padding: 0 12px;
-  gap: 4px;
 }
-.td-tab {
-  flex: 1;
-  padding: 11px 8px;
+.td-tab-drawer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  color: var(--accent, #f97316);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.td-tab-drawer-caret {
+  transition: transform 0.15s;
   color: var(--text2, #8b949e);
-  font-size: 0.88rem;
+}
+.td-tab-drawer-toggle[aria-expanded="true"] .td-tab-drawer-caret {
+  transform: rotate(180deg);
+}
+
+/* Tab row (dropdown panel) */
+.td-tab-row {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg, #161b22);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-top: none;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  padding: 4px;
+  gap: 2px;
+}
+.td-tab {
+  padding: 11px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  color: var(--text2, #8b949e);
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  text-align: center;
+  transition: color 0.15s, background 0.15s;
+  text-align: left;
 }
+.td-tab:hover { background: rgba(255,255,255,0.05); }
 .td-tab.active {
   color: var(--accent, #f97316);
-  border-bottom-color: var(--accent, #f97316);
+  border-left-color: var(--accent, #f97316);
+  background: rgba(249,115,22,0.08);
 }
 .td-tab-pane { padding: 0; }
 
@@ -3118,6 +3157,7 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .td-modal-btn-secondary { background: var(--card-bg, #161b22); color: var(--text2, #8b949e); border: 1px solid rgba(255,255,255,0.1); }
 
 /* Light theme overrides */
+.theme-light .td-tab-drawer-wrap { background: #f6f8fa; border-color: rgba(0,0,0,0.08); }
 .theme-light .td-tab-row      { background: #f6f8fa; border-color: rgba(0,0,0,0.08); }
 .theme-light .td-tab.active   { color: #f97316; }
 .theme-light .td-analytics-title { color: #0f172a; }

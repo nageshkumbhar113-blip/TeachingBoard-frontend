@@ -54,6 +54,7 @@ const TEACHER_DASHBOARD = (() => {
     document.querySelectorAll('[data-tdtab]').forEach(btn => {
       btn.addEventListener('click', () => _switchTab(btn.dataset.tdtab));
     });
+    $('td-tab-drawer-toggle')?.addEventListener('click', _toggleTabDrawer);
 
     // Batch notification button (Notifications tab)
     $('td-send-batch-btn')?.addEventListener('click', () => _openModal('batch'));
@@ -71,6 +72,21 @@ const TEACHER_DASHBOARD = (() => {
     });
   }
 
+  // ── Tab drawer (dropdown holding the 6 tab buttons) ─────────────────────────
+
+  function _toggleTabDrawer() {
+    const row = $('td-tab-row');
+    const toggle = $('td-tab-drawer-toggle');
+    const willOpen = row?.classList.contains('hidden');
+    row?.classList.toggle('hidden', !willOpen);
+    toggle?.setAttribute('aria-expanded', String(!!willOpen));
+  }
+
+  function _closeTabDrawer() {
+    $('td-tab-row')?.classList.add('hidden');
+    $('td-tab-drawer-toggle')?.setAttribute('aria-expanded', 'false');
+  }
+
   // ── Tab switching ─────────────────────────────────────────────────────────────
 
   function _switchTab(tab) {
@@ -79,7 +95,12 @@ const TEACHER_DASHBOARD = (() => {
       const active = b.dataset.tdtab === tab;
       b.classList.toggle('active', active);
       b.setAttribute('aria-selected', String(active));
+      if (active) {
+        const label = $('td-tab-drawer-current');
+        if (label) label.textContent = b.textContent;
+      }
     });
+    _closeTabDrawer();
     $('td-tab-students')?.classList.toggle('hidden', tab !== 'students');
     $('td-tab-analytics')?.classList.toggle('hidden', tab !== 'analytics');
     $('td-tab-notifications')?.classList.toggle('hidden', tab !== 'notifications');

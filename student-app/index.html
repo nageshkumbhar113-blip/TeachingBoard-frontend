@@ -776,14 +776,25 @@
           <button id="td-refresh-btn" class="td-refresh-btn" aria-label="Refresh">↺</button>
         </div>
 
-        <!-- Tab row: Students | Analytics | Notifications -->
-        <div class="td-tab-row" role="tablist" aria-label="Dashboard sections" id="td-tab-row">
-          <button class="td-tab active" data-tdtab="students" role="tab" aria-selected="true">👨‍🎓 Students</button>
-          <button class="td-tab" data-tdtab="analytics" role="tab" aria-selected="false">📊 Analytics</button>
-          <button class="td-tab" data-tdtab="notifications" role="tab" aria-selected="false">🔔 Notify</button>
-          <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
-          <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
-          <button class="td-tab" data-tdtab="papers" role="tab" aria-selected="false">📄 Paper</button>
+        <!-- Tab drawer: Students | Analytics | Notifications | Vocab | Fee | Paper
+             — user-requested: was a wide horizontal row of 6 buttons, now
+             collapsed behind a single toggle so it doesn't crowd the topbar
+             on narrower screens. _switchTab() and the [data-tdtab] click
+             wiring (teacherDashboard.js) are unchanged — same buttons, just
+             hidden inside a dropdown panel instead of always visible. -->
+        <div class="td-tab-drawer-wrap">
+          <button type="button" id="td-tab-drawer-toggle" class="td-tab-drawer-toggle" aria-expanded="false" aria-controls="td-tab-row">
+            <span id="td-tab-drawer-current">👨‍🎓 Students</span>
+            <span class="td-tab-drawer-caret">▾</span>
+          </button>
+          <div class="td-tab-row hidden" role="tablist" aria-label="Dashboard sections" id="td-tab-row">
+            <button class="td-tab active" data-tdtab="students" role="tab" aria-selected="true">👨‍🎓 Students</button>
+            <button class="td-tab" data-tdtab="analytics" role="tab" aria-selected="false">📊 Analytics</button>
+            <button class="td-tab" data-tdtab="notifications" role="tab" aria-selected="false">🔔 Notify</button>
+            <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
+            <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
+            <button class="td-tab" data-tdtab="papers" role="tab" aria-selected="false">📄 Paper</button>
+          </div>
         </div>
 
         <!-- Students tab -->
