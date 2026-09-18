@@ -1245,6 +1245,7 @@ const APP = (() => {
     const screen = $('screen-teacher-dashboard');
     if (screen) screen.classList.remove('hidden');
     _setBottomNavVisible(false);
+    window.TEACHER_DASHBOARD?.init?.();
     if (window.TEACHER_DASHBOARD?.loadDashboard) {
       TEACHER_DASHBOARD.loadDashboard().catch(err => console.warn('teacher dashboard load failed', err));
     }

@@ -11,6 +11,7 @@ const TEACHER_DASHBOARD = (() => {
   let _selectedStudentCode = null;
   let _analyticsLoaded     = false;
   let _activeTab           = 'students';
+  let _initialized         = false;
   let _notifMode           = null;   // 'batch' | 'individual'
   let _notifStudentCode    = null;   // for individual mode
 
@@ -36,6 +37,17 @@ const TEACHER_DASHBOARD = (() => {
   // ── Init ──────────────────────────────────────────────────────────────────────
 
   function init() {
+    // Real bug found live: this function was written and exported but never
+    // actually called from anywhere — student-app/app.js's
+    // _showTeacherDashboard() only ever called loadDashboard(), never
+    // init() — so not one of these listeners was ever attached. Every tab
+    // button (Analytics/Notify/Vocab/Fee/Paper), the back button, and the
+    // notification modal were all completely dead; tapping did nothing.
+    // Guarded so _showTeacherDashboard() can safely call this every time a
+    // teacher opens the dashboard without stacking duplicate listeners.
+    if (_initialized) return;
+    _initialized = true;
+
     $('td-back-btn')?.addEventListener('click', _handleBack);
     $('td-refresh-btn')?.addEventListener('click', _handleRefresh);
 
