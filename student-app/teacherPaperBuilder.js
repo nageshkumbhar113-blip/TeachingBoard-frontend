@@ -75,7 +75,14 @@ const TEACHER_PAPER_BUILDER = (() => {
 
   async function _populateBatches() {
     const sel = $('tpb-batch-sel');
-    if (!sel || !window.DB?.getAllBatches) return;
+    // Second real bug found live, alongside the missing init() call: DB
+    // (core/db.js) is a plain top-level `const`, never assigned to
+    // `window.DB` — so this guard's `window.DB?.getAllBatches` was always
+    // undefined and always bailed out here, even after the init()/sync fix
+    // made local batches genuinely available. Confirmed via Playwright:
+    // after fixing init(), local batch count was correct but the <select>
+    // still had only the placeholder option until this line was fixed too.
+    if (!sel || typeof DB === 'undefined' || !DB.getAllBatches) return;
     try {
       const batches = await DB.getAllBatches();
       sel.innerHTML = '<option value="">Select Batch</option>';

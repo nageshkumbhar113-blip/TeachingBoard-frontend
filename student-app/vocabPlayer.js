@@ -156,7 +156,10 @@ const VOCAB = (() => {
       subjects = res.subjects || [];
     } catch {
       // fallback: local DB (works if admin synced subjects)
-      if (window.DB?.getSubjectsByBatch) {
+      // DB (core/db.js) is a top-level const, never assigned to window.DB —
+      // this check was always false. Same bug found live in
+      // teacherDashboard.js/teacherPaperBuilder.js.
+      if (typeof DB !== 'undefined' && DB.getSubjectsByBatch) {
         const rows = await DB.getSubjectsByBatch(_batch).catch(() => []);
         subjects = rows.map(s => s.name).filter(Boolean);
       }
@@ -541,7 +544,8 @@ const VOCAB = (() => {
           const res = await API.fetchVocabSubjects(_batch);
           subjects = res.subjects || [];
         } catch {
-          if (window.DB?.getSubjectsByBatch) {
+          // Same window.DB-vs-bare-DB bug as above.
+          if (typeof DB !== 'undefined' && DB.getSubjectsByBatch) {
             const rows = await DB.getSubjectsByBatch(_batch).catch(() => []);
             subjects = rows.map(s => s.name).filter(Boolean);
           }

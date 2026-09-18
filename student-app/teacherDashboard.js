@@ -582,7 +582,10 @@ const TEACHER_DASHBOARD = (() => {
     $('td-vocab-load-btn')?.addEventListener('click', _loadVocabScores);
     $('td-vocab-batch-sel')?.addEventListener('change', async () => {
       const batch = $('td-vocab-batch-sel')?.value || '';
-      if (window.DB?.getSubjectsByBatch) {
+      // Same window.DB-vs-bare-DB bug as _populateVocabBatchSel below (DB
+      // is a top-level const, never assigned to window.DB) — this exact
+      // bug is also what broke the Paper Builder's batch dropdown.
+      if (typeof DB !== 'undefined' && DB.getSubjectsByBatch) {
         const subjects = await DB.getSubjectsByBatch(batch).catch(() => []);
         const sel = $('td-vocab-subject-sel');
         if (sel) {
@@ -599,7 +602,11 @@ const TEACHER_DASHBOARD = (() => {
   }
 
   async function _populateVocabBatchSel() {
-    if (!window.DB?.getAllBatches) return;
+    // Real bug found live (Vocab Scores tab: "All Batches"/"All Subjects"
+    // dropdowns stayed empty) — window.DB is always undefined, DB is a
+    // top-level const never assigned to window. See teacherPaperBuilder.js's
+    // _populateBatches for the same bug and full explanation.
+    if (typeof DB === 'undefined' || !DB.getAllBatches) return;
     const batches = await DB.getAllBatches().catch(() => []);
     const sel = $('td-vocab-batch-sel');
     if (!sel) return;
