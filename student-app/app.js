@@ -1090,13 +1090,41 @@ const APP = (() => {
     });
   }
 
+  // Board → Medium → Batch: the two filters narrow the batch list, so a
+  // student picks their board and medium first and only sees matching batches.
+  let _regBatches = [];
+  function _renderRegBatchOptions() {
+    const sel = document.getElementById('reg-batch');
+    if (!sel) return;
+    const board  = document.getElementById('reg-board')?.value  || '';
+    const medium = document.getElementById('reg-medium')?.value || '';
+    const previous = sel.value;
+    const list = _regBatches.filter(b =>
+      (!board  || b.board  === board) &&
+      (!medium || b.medium === medium)
+    );
+    sel.innerHTML = list.length
+      ? '<option value="">Batch निवडा…</option>' +
+        list.map(b => `<option value="${_escAttr(b.name)}">${_escAttr(b.name)}</option>`).join('')
+      : '<option value="">या Board/Medium साठी batch उपलब्ध नाही</option>';
+    if (list.some(b => b.name === previous)) sel.value = previous;
+  }
+
   async function _populateRegBatches() {
     const sel = document.getElementById('reg-batch');
     if (!sel || sel.dataset.loaded === '1') return;
     try {
-      const batches = await API.getBatchPlans();
-      sel.innerHTML = '<option value="">Batch निवडा…</option>' +
-        batches.map(b => `<option value="${_escAttr(b.name)}">${_escAttr(b.name)}</option>`).join('');
+      _regBatches = await API.getBatchPlans();
+      const fill = (id, allLabel, values) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<option value="">${allLabel}</option>` +
+          values.map(v => `<option value="${_escAttr(v)}">${_escAttr(v)}</option>`).join('');
+      };
+      fill('reg-board',  'सर्व Boards',  [...new Set(_regBatches.map(b => b.board).filter(Boolean))].sort());
+      fill('reg-medium', 'सर्व Mediums', [...new Set(_regBatches.map(b => b.medium).filter(Boolean))].sort());
+      document.getElementById('reg-board')?.addEventListener('change', _renderRegBatchOptions);
+      document.getElementById('reg-medium')?.addEventListener('change', _renderRegBatchOptions);
+      _renderRegBatchOptions();
       sel.dataset.loaded = '1';
     } catch {
       sel.innerHTML = '<option value="">Batch लोड झाले नाहीत — Internet तपासा</option>';
