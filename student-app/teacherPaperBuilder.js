@@ -246,11 +246,16 @@ const TEACHER_PAPER_BUILDER = (() => {
         <div class="tpb-picker-item">
           <div class="tpb-picker-qtext">${_esc(text)}</div>
           <div class="tpb-picker-meta">वापर: ${qq.usageCount || 0}x${_esc(_chapterLabelFor(qq.chapterId))}</div>
-          <button type="button" class="td-send-notif-btn tpb-picker-add-btn" data-id="${qq._id}" ${already ? 'disabled' : ''}>
+          <button type="button" class="tpb-picker-add-btn" data-id="${qq._id}" ${already ? 'disabled' : ''}>
             ${already ? '✓ जोडलं' : '+ जोडा'}
           </button>
         </div>`;
       }).join('');
+      // Real bug found live: this list showed raw "$x^2-3x-2=0$" text
+      // instead of rendered math — Preview already renders it correctly
+      // (same PAPER_PDF/KaTeX pipeline), so a question was only actually
+      // readable AFTER adding it and opening Preview. Render here too.
+      window.PAPER_PDF?.ensureKatex().then(() => window.PAPER_PDF.renderMath(list)).catch(() => {});
       list.querySelectorAll('.tpb-picker-add-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const qq = questions.find(x => x._id === btn.dataset.id);
@@ -306,6 +311,8 @@ const TEACHER_PAPER_BUILDER = (() => {
     list.querySelectorAll('.tpb-remove-btn').forEach(btn => {
       btn.addEventListener('click', () => _removeSelectedQuestion(btn.dataset.id));
     });
+    // Same raw-LaTeX-vs-rendered-math fix as the picker list above.
+    window.PAPER_PDF?.ensureKatex().then(() => window.PAPER_PDF.renderMath(list)).catch(() => {});
   }
 
   async function _runAutoFill() {

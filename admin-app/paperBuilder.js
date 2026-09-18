@@ -300,6 +300,12 @@ const PAPER_BUILDER = (() => {
           </button>
         </div>`;
       }).join('');
+      // Real bug found live: this list showed raw "$x^2-3x-2=0$" text
+      // instead of rendered math — Preview already renders it correctly
+      // (via the same PAPER_PDF/KaTeX pipeline), so a question was only
+      // actually readable AFTER adding it and opening Preview. Render here
+      // too, same as Preview.
+      window.PAPER_PDF?.ensureKatex().then(() => window.PAPER_PDF.renderMath(list)).catch(() => {});
       list.querySelectorAll('.pb-picker-add-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const qq = questions.find(x => x._id === btn.dataset.id);
@@ -366,6 +372,8 @@ const PAPER_BUILDER = (() => {
     list.querySelectorAll('.pb-remove-btn').forEach(btn => {
       btn.addEventListener('click', () => _removeSelectedQuestion(btn.dataset.id));
     });
+    // Same raw-LaTeX-vs-rendered-math fix as the picker list above.
+    window.PAPER_PDF?.ensureKatex().then(() => window.PAPER_PDF.renderMath(list)).catch(() => {});
   }
 
   // ════════════════════════════════════════════════════════════════════════════

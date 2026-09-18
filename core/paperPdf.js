@@ -400,7 +400,12 @@ const PAPER_PDF = (() => {
     return container.innerHTML;
   }
 
-  return { exportQuestionPaper, exportAnswerSheet, previewHtml };
+  // Exposed for other screens that show raw question/answer text and want
+  // it readable (math rendered) rather than literal "$...$" — e.g. the
+  // question picker lists in admin-app/paperBuilder.js and
+  // student-app/teacherPaperBuilder.js. Same loader/renderer the PDF
+  // export itself uses, just callable standalone.
+  return { exportQuestionPaper, exportAnswerSheet, previewHtml, ensureKatex: _ensureKatex, renderMath: _renderMath };
 })();
 
 window.PAPER_PDF = PAPER_PDF;

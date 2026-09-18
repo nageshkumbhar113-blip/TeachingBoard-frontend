@@ -4706,6 +4706,26 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 }
 .tpb-picker-qtext { flex: 1; font-size: 0.88rem; }
 .tpb-picker-meta { font-size: 0.72rem; color: var(--text-muted, #888); white-space: nowrap; }
+/* Real bug found live: this button used to also carry .td-send-notif-btn
+   (width:100%, meant for the big standalone "+ Batch Notification पाठवा"
+   button elsewhere) — inside this flex row it fought .tpb-picker-qtext's
+   flex:1 for space, squeezing question text into a narrow column and
+   leaving a huge button. Own compact style instead, matching how the
+   admin app's equivalent (.btn.btn-small) is already sized. */
+.tpb-picker-add-btn {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 6px 12px;
+  background: var(--surface2, #f0f0f0);
+  color: var(--text1, #333);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tpb-picker-add-btn:disabled { opacity: 0.6; cursor: default; }
 .tpb-autofill-row {
   display: flex;
   gap: 8px;
