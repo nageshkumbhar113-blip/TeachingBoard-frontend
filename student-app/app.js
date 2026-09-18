@@ -158,10 +158,20 @@ const APP = (() => {
   // Pure check, no side effects — used both by the background runner below
   // and by _syncOfflineContentWithOverlay (login-time, visible) to decide
   // whether there's actually anything to do before showing that overlay at all.
+  // Batch set + access level: upgrading free→paid (or dropping back to free)
+  // changes what the server sends, so it must re-sync.
+  async function _fullSyncKey() {
+    const assigned = await DB.getSetting('student_allowed_batches', []).catch(() => []);
+    const batches = (Array.isArray(assigned) ? assigned : []).map(String).slice().sort().join('|');
+    if (!batches) return '';
+    const profile = await API.getStudentProfile().catch(() => null);
+    // 'full' keeps the plain batch key so existing students don't re-sync needlessly.
+    return profile?.access_level === 'free' ? `${batches}#free` : batches;
+  }
+
   async function _needsFullOfflineSync() {
     if (!navigator.onLine) return false;
-    const assigned = await DB.getSetting('student_allowed_batches', []).catch(() => []);
-    const batchesKey = (Array.isArray(assigned) ? assigned : []).map(String).slice().sort().join('|');
+    const batchesKey = await _fullSyncKey();
     if (!batchesKey) return false; // no assigned batches yet (e.g. teacher/parent mode)
     const done = await DB.getSetting(FULL_SYNC_FLAG_KEY, null).catch(() => null);
     return done?.batchesKey !== batchesKey;
@@ -171,8 +181,7 @@ const APP = (() => {
     if (_fullSyncInFlight) return;
     if (!await _needsFullOfflineSync().catch(() => false)) return;
 
-    const assigned = await DB.getSetting('student_allowed_batches', []).catch(() => []);
-    const batchesKey = (Array.isArray(assigned) ? assigned : []).map(String).slice().sort().join('|');
+    const batchesKey = await _fullSyncKey();
 
     _fullSyncInFlight = true;
     try {
@@ -337,6 +346,10 @@ const APP = (() => {
 
     window.addEventListener('online', () => {
       DB.flushPendingWrites?.().catch(err => console.warn('online flush failed', err));
+    });
+
+    window.addEventListener('teachingboard:locked', () => {
+      _offerSubscribe().catch(err => console.warn('subscribe offer failed', err));
     });
 
     window.addEventListener('teachingboard:expired', event => {
@@ -900,6 +913,64 @@ const APP = (() => {
     });
   }
 
+  // ════════════════════════
+  // FREE CHAPTER LOCKS
+  // ════════════════════════
+  // Students on the free plan (unpaid, or expired) can open only the free
+  // chapters; every other chapter shows a lock and opens the subscribe sheet.
+  // The server enforces the same rule (403 CHAPTER_LOCKED) — this is the UX layer.
+  let _freeChapterKeys = null;
+  const _lockKey = (b, s, c) => [b, s, c].map(x => String(x || '').trim().toLowerCase()).join('|');
+
+  async function _loadFreeChapterKeys() {
+    if (_freeChapterKeys) return _freeChapterKeys;
+    let list = null;
+    if (navigator.onLine) {
+      try {
+        list = await API.fetchStudentFreeChapters();
+        await DB.setSetting('free_chapters', list).catch(() => {});
+      } catch { /* fall back to the cached list below */ }
+    }
+    if (!list) list = await DB.getSetting('free_chapters', []).catch(() => []);
+    _freeChapterKeys = new Set((list || []).map(f => _lockKey(f.batch, f.subject, f.chapter)));
+    return _freeChapterKeys;
+  }
+
+  async function isChapterLocked(batch, subject, chapter) {
+    const profile = await API.getStudentProfile().catch(() => null);
+    if (!profile || profile.access_level !== 'free') return false;
+    const keys = await _loadFreeChapterKeys();
+    return !keys.has(_lockKey(batch, subject, chapter));
+  }
+
+  let _lastSubscribeAt = 0;
+  async function _offerSubscribe() {
+    if (Date.now() - _lastSubscribeAt < 2000) return;
+    _lastSubscribeAt = Date.now();
+
+    const code = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
+    const pin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+    if (!code || !pin || !window.PAYMENT?.openPlanSelect) {
+      toast('🔒 हा chapter Subscribe केल्यावर उघडेल — आधी login करा', 'info');
+      return;
+    }
+    const profile = await API.getStudentProfile().catch(() => null);
+    toast('🔒 हा chapter Subscribe केल्यावर उघडेल', 'info');
+
+    PAYMENT.openPlanSelect(
+      { student_code: code, pin, name: profile?.name || '', contact: profile?.mobile || '' },
+      async () => {
+        try {
+          await API.loginStudent({ student_code: code, pin, device_id: _getDeviceId() });
+        } catch { /* profile refresh below still tries */ }
+        _freeChapterKeys = null;
+        await _refreshProfileAfterLogin();
+        showScreen('home');
+        loadHome();
+      }
+    );
+  }
+
   function _initRegistration() {
     const loginCard = document.querySelector('#onboarding-screen .onboarding-card:first-of-type') ||
                       document.getElementById('onboarding-screen')?.querySelector('.onboarding-card');
@@ -909,6 +980,7 @@ const APP = (() => {
       if (loginCard) loginCard.classList.add('hidden');
       regCard?.classList.remove('hidden');
       document.getElementById('reg-name')?.focus();
+      _populateRegBatches();
     });
 
     const codeCard = document.getElementById('reg-code-card');
@@ -928,6 +1000,7 @@ const APP = (() => {
       const mobile      = (document.getElementById('reg-mobile')?.value || '').trim();
       const school_name = (document.getElementById('reg-school')?.value || '').trim();
       const pin         = (document.getElementById('reg-pin')?.value    || '').trim();
+      const batch       = (document.getElementById('reg-batch')?.value  || '').trim();
       const consent     = !!document.getElementById('reg-consent')?.checked;
       const errEl       = document.getElementById('reg-error-msg');
       const submitBtn   = document.getElementById('reg-submit');
@@ -941,6 +1014,7 @@ const APP = (() => {
       if (!school_name) return _showErr('शाळेचे नाव टाका');
       if (!mobile)       return _showErr('Mobile Number टाका');
       if (!_isValidMobile(mobile)) return _showErr('वैध 10 अंकी mobile number टाका (6-9 ने सुरू)');
+      if (!batch)       return _showErr('तुमचा Batch / Class निवडा');
       if (!/^\d{4}$/.test(pin)) return _showErr('PIN 4 अंकी असणे आवश्यक आहे');
       if (_isWeakPin(pin)) return _showErr('हा PIN खूप सोपा आहे (उदा. 0000, 1234). वेगळा PIN निवडा');
       if (!consent) return _showErr('पुढे जाण्यासाठी संमती checkbox निवडा');
@@ -950,7 +1024,7 @@ const APP = (() => {
         const server = (document.getElementById('ob-server')?.value || '').trim() || API.DEFAULT_API_URL;
         if (server && window.API?.setApiUrl) API.setApiUrl(server);
 
-        const res = await API.selfRegister({ name, mobile, school_name, pin });
+        const res = await API.selfRegister({ name, mobile, school_name, pin, batch });
         const code = res?.student_code || '';
 
         const codeEl = document.getElementById('reg-success-code');
@@ -958,16 +1032,24 @@ const APP = (() => {
         const pinEl = document.getElementById('reg-success-pin');
         if (pinEl) pinEl.textContent = pin;
         const detailEl = document.getElementById('reg-success-detail');
-        if (detailEl) detailEl.textContent = '💾 हे दोन्ही जपून ठेवा — login साठी लागतील.';
+        if (detailEl) detailEl.textContent = '💾 हे दोन्ही जपून ठेवा — login साठी लागतील. तुमचा पहिला chapter आत्ताच Free आहे!';
 
-        const _goLogin = () => {
+        const _goLogin = (autoLogin = false) => {
           codeCard?.classList.add('hidden');
           if (loginCard) loginCard.classList.remove('hidden');
           const codeIn = document.getElementById('ob-student-code');
           if (codeIn) codeIn.value = code;
-          document.getElementById('ob-pin')?.focus();
+          const pinIn = document.getElementById('ob-pin');
+          if (autoLogin === true && pinIn) {
+            pinIn.value = pin;
+            document.getElementById('ob-continue')?.click();
+            return;
+          }
+          pinIn?.focus();
           toast('आता तुमचा PIN टाकून login करा', 'info');
         };
+
+        document.getElementById('reg-start-free')?.addEventListener('click', () => _goLogin(true), { once: true });
 
         document.getElementById('reg-copy-code')?.addEventListener('click', () => {
           navigator.clipboard?.writeText(`Code: ${code}\nPIN: ${pin}`)
@@ -977,7 +1059,7 @@ const APP = (() => {
 
         document.getElementById('reg-choose-plan')?.addEventListener('click', () => {
           if (window.PAYMENT?.openPlanSelect) {
-            PAYMENT.openPlanSelect({ student_code: code, pin, name, contact: mobile }, _goLogin);
+            PAYMENT.openPlanSelect({ student_code: code, pin, name, contact: mobile }, () => _goLogin(true));
           } else {
             toast('Payment system उपलब्ध नाही', 'error');
           }
@@ -991,6 +1073,23 @@ const APP = (() => {
         submitBtn.disabled = false;
       }
     });
+  }
+
+  async function _populateRegBatches() {
+    const sel = document.getElementById('reg-batch');
+    if (!sel || sel.dataset.loaded === '1') return;
+    try {
+      const batches = await API.getBatchPlans();
+      sel.innerHTML = '<option value="">Batch निवडा…</option>' +
+        batches.map(b => `<option value="${_escAttr(b.name)}">${_escAttr(b.name)}</option>`).join('');
+      sel.dataset.loaded = '1';
+    } catch {
+      sel.innerHTML = '<option value="">Batch लोड झाले नाहीत — Internet तपासा</option>';
+    }
+  }
+
+  function _escAttr(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   // Reject trivially-guessable 4-digit PINs (all-same, sequential, repeating pairs)
@@ -1867,6 +1966,10 @@ const APP = (() => {
 
   function _bindChapterFlow(batchName, subject) {
     return async chapter => {
+      if (await isChapterLocked(batchName, subject, chapter)) {
+        _offerSubscribe().catch(err => console.warn('subscribe offer failed', err));
+        return;
+      }
       _homeChapter = chapter;
 
       // Show Deep Study launch button for this chapter
@@ -2292,6 +2395,8 @@ const APP = (() => {
     // Notifications
     toast,
     isTouchDevice,
+    // Free-chapter locks
+    isChapterLocked,
     // Profile
     openProfileSettings: _openProfileSettings,
     // Test-only — not used by any production code path.

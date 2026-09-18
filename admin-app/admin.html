@@ -1595,7 +1595,7 @@ Marks: 1"></textarea>
 
                   <div id="bp-pricing-fields" class="bp-pricing-fields">
                     <p style="margin:0 0 1rem;font-size:0.85rem;color:#666;">
-                      💡 Subscription pricing (Jio/Hotstar style). Set monthly and/or yearly price. Students get a free trial first.
+                      💡 Subscription pricing (Jio/Hotstar style). Set monthly and/or yearly price. The first chapter of every subject is free; mark more chapters Free from Classes → Chapters.
                     </p>
                     <div class="bp-form-group">
                       <label for="bp-monthly-price">📅 Monthly Price (₹)</label>
@@ -1605,9 +1605,9 @@ Marks: 1"></textarea>
                       <label for="bp-yearly-price">🗓️ Yearly Price (₹)</label>
                       <input id="bp-yearly-price" type="number" min="0" step="1" placeholder="e.g., 1999" aria-label="Yearly price in rupees" />
                     </div>
-                    <div class="bp-form-group">
-                      <label for="bp-trial-days">🎁 Free Trial (days)</label>
-                      <input id="bp-trial-days" type="number" min="0" step="1" value="1" placeholder="1" aria-label="Free trial days" />
+                    <div class="bp-form-group" hidden>
+                      <label for="bp-trial-days">🎁 Free Trial (days) — retired, free chapters replace it</label>
+                      <input id="bp-trial-days" type="number" min="0" step="1" value="0" placeholder="0" aria-label="Free trial days" />
                     </div>
                   </div>
 

@@ -689,8 +689,13 @@ const UI = (() => {
     list.innerHTML = '';
     if (!chapters.length) { section.classList.add('hidden'); return; }
 
+    const lockedFlags = await Promise.all(
+      chapters.map(ch => Promise.resolve(APP?.isChapterLocked?.(batchName, subjectName, ch)).catch(() => false))
+    );
+
     const fragment = document.createDocumentFragment();
-    chapters.forEach(ch => {
+    chapters.forEach((ch, chIdx) => {
+      const isLocked = !!lockedFlags[chIdx];
       const totalQuestions = questions.filter(q => q.chapter === ch).length;
       const testCount = published.filter(quiz =>
         quiz.batch === batchName &&
@@ -703,12 +708,13 @@ const UI = (() => {
       makeFocusable(item);
       item.innerHTML = `
         <div class="chapter-info">
-          <div class="chapter-name">${ch}</div>
-          <div class="chapter-meta">${testCount} test${testCount === 1 ? '' : 's'}${totalQuestions ? ` · ${totalQuestions} questions` : ''}</div>
+          <div class="chapter-name">${isLocked ? '🔒 ' : ''}${ch}</div>
+          <div class="chapter-meta">${isLocked ? 'Subscribe केल्यावर उघडेल' : `${testCount} test${testCount === 1 ? '' : 's'}${totalQuestions ? ` · ${totalQuestions} questions` : ''}`}</div>
         </div>
         <div class="chapter-stats"></div>
         <span class="chapter-arrow" aria-hidden="true">›</span>
       `;
+      if (isLocked) item.classList.add('chapter-locked');
       item.addEventListener('click', () => {
         if (onChapterClick) onChapterClick(ch);
       });

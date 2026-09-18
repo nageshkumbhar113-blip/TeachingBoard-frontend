@@ -156,6 +156,9 @@ const API = (() => {
         ? [...new Set(user.assigned_batches.map(item => String(item || '').trim()).filter(Boolean))]
         : [],
       expiry_date: String(user.expiry_date || '').trim(),
+      // 'free' = free chapters only (unpaid / expired); anything else, incl. an
+      // older server that doesn't send it, means full access.
+      access_level: user.access_level === 'free' ? 'free' : 'full',
     };
 
     await Promise.all([
@@ -345,6 +348,8 @@ const API = (() => {
         markExpired(payload.message, payload.expiryDate);
       } else if (response.status === 403 && ['ACCOUNT_BLOCKED', 'ACCOUNT_PENDING'].includes(payload?.code)) {
         clearStudentToken();
+      } else if (response.status === 403 && payload?.code === 'CHAPTER_LOCKED') {
+        window.dispatchEvent(new CustomEvent('teachingboard:locked', { detail: payload }));
       } else if (response.status === 401 && path !== '/auth/login') {
         window.dispatchEvent(new CustomEvent('teachingboard:unauthorized', { detail: { path } }));
       }
@@ -1637,6 +1642,30 @@ const API = (() => {
     }).catch(() => {});
   }
 
+  // Admin: mark a chapter Free (open to free-tier students) or Paid (locked).
+  // The first chapter of every subject is always free regardless.
+  async function setChapterFree(batch, subject, chapter, isFree) {
+    const token = await ensureAdminSession().catch(() => '');
+    if (!token) throw new Error('Admin session आवश्यक आहे');
+    return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters/${encodeURIComponent(chapter)}/free`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ is_free: !!isFree }),
+    });
+  }
+
+  // Student: free chapters of the student's own batches ([{batch, subject,
+  // chapter}]) — everything else in those batches shows a lock.
+  async function fetchStudentFreeChapters() {
+    const profile = await getStudentProfile();
+    const token   = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
+    if (!token) return [];
+    const payload = await request('/batches/student/free-chapters', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
   // Public — no admin session needed, so students can also fetch the
   // admin-chosen chapter order (their local subject_chapters table has no
   // order info of its own; it's derived alphabetically from synced content).
@@ -2384,6 +2413,7 @@ const API = (() => {
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,
     addCatalogSubject, renameCatalogSubject, deleteCatalogSubject,
     addCatalogChapter, renameCatalogChapter, deleteCatalogChapter, reorderCatalogChapters,
+    setChapterFree, fetchStudentFreeChapters,
     fetchChapterOrder, getOrderedChapters,
     fetchLatestAppVersion, fetchAllAppVersions, createAppVersion, activateAppVersion, deleteAppVersion,
     // ─── Fee Management (Teacher) ─────────────────────────────────

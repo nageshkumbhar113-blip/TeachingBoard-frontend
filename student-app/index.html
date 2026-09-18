@@ -192,6 +192,13 @@
       </div>
 
       <div class="onboarding-field">
+        <label for="reg-batch" class="onboarding-label">तुमचा Batch / Class <span class="ob-required">*</span></label>
+        <select id="reg-batch" class="onboarding-input">
+          <option value="">Batch निवडा…</option>
+        </select>
+      </div>
+
+      <div class="onboarding-field">
         <label for="reg-pin" class="onboarding-label">4 digit PIN सेट करा <span class="ob-required">*</span></label>
         <div class="pin-toggle-wrap">
           <input id="reg-pin" type="password" class="onboarding-input"
@@ -210,7 +217,7 @@
       </div>
 
       <p id="reg-error-msg" class="pin-error hidden" role="alert"></p>
-      <button id="reg-submit" class="onboarding-btn">Registration पाठवा →</button>
+      <button id="reg-submit" class="onboarding-btn">Registration करा →</button>
       <button id="reg-back" class="onboarding-skip">← Login कडे परत जा</button>
       </div>
     </div>
@@ -236,7 +243,8 @@
           <div id="reg-success-detail" class="admit-success-note"></div>
         </div>
         <button type="button" id="reg-copy-code" class="onboarding-skip" style="margin-top:2px">📋 दोन्ही Copy करा</button>
-        <button type="button" id="reg-choose-plan" class="onboarding-btn" style="margin-top:10px">Next → Plan निवडा</button>
+        <button type="button" id="reg-start-free" class="onboarding-btn" style="margin-top:10px">🚀 आता सुरू करा (पहिला chapter Free)</button>
+        <button type="button" id="reg-choose-plan" class="onboarding-skip" style="margin-top:6px">💳 पूर्ण Plan घ्या</button>
       </div>
     </div>
   </div>

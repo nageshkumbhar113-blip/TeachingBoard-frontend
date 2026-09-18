@@ -493,6 +493,15 @@ const ADMIN = (() => {
       chapters.map(chapter => _countPublishedQuizzes(batch, subject, chapter.name))
     );
 
+    // Free/Paid state comes from the server (first chapter is always free;
+    // an admin can flag more). Offline or unknown = no badge, toggle still shown.
+    const accessByName = new Map();
+    if (navigator.onLine) {
+      try {
+        (await API.fetchChapterOrder(batch, subject)).forEach(c => accessByName.set(c.name, c));
+      } catch { /* badge just stays hidden */ }
+    }
+
     list.innerHTML = `
       <p class="chapter-order-hint">⠿ चिन्ह धरून वर-खाली ओढा, किंवा बाणांनी क्रम बदला — विद्यार्थ्यांना पुस्तकाच्याच क्रमाने chapters दिसतील.</p>
       <div class="chapter-admin-list-inner" id="chapter-admin-list-inner"></div>
@@ -509,6 +518,13 @@ const ADMIN = (() => {
       const fragment = document.createDocumentFragment();
       chapters.forEach((chapter, idx) => {
         const quizCount = quizCounts[idx];
+        const access = accessByName.get(chapter.name);
+        const autoFree = !!access && access.free && !access.is_free;
+        const flaggedFree = !!access && access.is_free;
+        const freeBadge = autoFree ? '🔓 Free (आपोआप)' : flaggedFree ? '🔓 Free' : access ? '🔒 Paid' : '—';
+        const freeToggle = autoFree
+          ? ''
+          : `<button class="admin-btn-secondary" data-action="free">${flaggedFree ? '🔒 Paid करा' : '🔓 Free करा'}</button>`;
         const item = document.createElement('div');
         item.className = 'chapter-admin-item';
         item.dataset.idx = idx;
@@ -518,9 +534,10 @@ const ADMIN = (() => {
           <span class="chapter-seq-num">${idx + 1}</span>
           <div class="chapter-admin-info">
             <div class="chapter-admin-name">${_escHtml(chapter.name)}</div>
-            <div class="chapter-admin-meta">${quizCount} published test${quizCount === 1 ? '' : 's'}</div>
+            <div class="chapter-admin-meta">${quizCount} published test${quizCount === 1 ? '' : 's'} · ${freeBadge}</div>
           </div>
           <div class="chapter-admin-actions">
+            ${freeToggle}
             <button class="chapter-arrow-btn" data-action="up" ${idx === 0 ? 'disabled' : ''} title="Move up">↑</button>
             <button class="chapter-arrow-btn" data-action="down" ${idx === chapters.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
             <button class="admin-btn-secondary" data-action="edit">Edit</button>
@@ -556,6 +573,15 @@ const ADMIN = (() => {
             _loadBatchOptions(),
           ]);
           if (navigator.onLine) API.deleteCatalogChapter(batch, subject, chapter.name).catch(() => {});
+        });
+        item.querySelector('[data-action="free"]')?.addEventListener('click', async () => {
+          try {
+            await API.setChapterFree(batch, subject, chapter.name, !flaggedFree);
+            APP.toast(flaggedFree ? `🔒 "${chapter.name}" आता Paid` : `🔓 "${chapter.name}" आता Free`, 'success');
+            await _loadChapterAdmin();
+          } catch (err) {
+            APP.toast(`अयशस्वी: ${err.message}`, 'error');
+          }
         });
         item.querySelector('[data-action="up"]')?.addEventListener('click', () => moveChapter(idx, -1));
         item.querySelector('[data-action="down"]')?.addEventListener('click', () => moveChapter(idx, 1));
@@ -2255,6 +2281,7 @@ const ADMIN = (() => {
             ${_escHtml(student.name)}
             <span class="student-status-badge ${_escHtml(student.status || 'active')}">${_escHtml(student.status || 'active')}</span>
             ${deviceBadge}
+            ${student.access_level === 'free' ? '<span class="expiry-badge soon" title="Only free chapters until they subscribe">🆓 Free plan</span>' : ''}
           </div>
           <div class="student-meta-row">
             <span>${_escHtml(student.student_code || '')}</span>

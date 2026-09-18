@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════
    payment.js — Student subscription checkout
-   Plan select (Trial / Monthly / Yearly) + Razorpay
+   Plan select (Monthly / Yearly) + Razorpay
    Global: PAYMENT
 ════════════════════════════════════════ */
 
@@ -156,14 +156,7 @@ const PAYMENT = (() => {
     const host = _overlay?.querySelector('#pay-plans');
     if (!host || !batch) return;
 
-    const trialDays = batch.trial_days != null ? batch.trial_days : 1;
     const btns = [];
-    if (trialDays > 0) {
-      btns.push(`<button class="admit-plan-btn trial" data-plan="trial">
-        <span class="admit-plan-name">🎁 ${trialDays}-दिवस Free Trial</span>
-        <span class="admit-plan-price">मोफत</span>
-      </button>`);
-    }
     if (batch.monthly_price > 0) {
       btns.push(`<button class="admit-plan-btn featured" data-plan="monthly">
         <span class="admit-plan-name">📅 Monthly <span class="admit-plan-badge">Popular</span></span>
@@ -194,14 +187,6 @@ const PAYMENT = (() => {
     buttons.forEach(b => b.disabled = true);
 
     try {
-      if (plan === 'trial') {
-        await API.startTrial({ student_code: student.student_code, pin: student.pin, batch: batch.name });
-        _toast('🎁 Free trial सुरू झाला!', 'success');
-        _close();
-        onActivated?.();
-        return;
-      }
-
       // monthly / yearly → Razorpay
       if (typeof window.Razorpay !== 'function') {
         _msg(host, 'Payment system load झाले नाही. Internet तपासा.');
