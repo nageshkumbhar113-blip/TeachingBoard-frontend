@@ -999,11 +999,12 @@ const APP = (() => {
     });
 
     const codeCard = document.getElementById('reg-code-card');
+    _applyRegistrationLinkParams(loginCard, regCard);
 
     $('reg-back')?.addEventListener('click', () => {
       regCard?.classList.add('hidden');
       if (loginCard) loginCard.classList.remove('hidden');
-      ['reg-name','reg-mobile','reg-school','reg-pin'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+      ['reg-name','reg-mobile','reg-school','reg-teacher','reg-pin'].forEach(id => { const el = $(id); if (el) el.value = ''; });
       const consentEl = document.getElementById('reg-consent');
       if (consentEl) consentEl.checked = false;
       const err = document.getElementById('reg-error-msg');
@@ -1016,6 +1017,7 @@ const APP = (() => {
       const school_name = (document.getElementById('reg-school')?.value || '').trim();
       const pin         = (document.getElementById('reg-pin')?.value    || '').trim();
       const batch       = (document.getElementById('reg-batch')?.value  || '').trim();
+      const teacher_code = (document.getElementById('reg-teacher')?.value || '').trim().toUpperCase();
       const consent     = !!document.getElementById('reg-consent')?.checked;
       const errEl       = document.getElementById('reg-error-msg');
       const submitBtn   = document.getElementById('reg-submit');
@@ -1039,7 +1041,7 @@ const APP = (() => {
         const server = (document.getElementById('ob-server')?.value || '').trim() || API.DEFAULT_API_URL;
         if (server && window.API?.setApiUrl) API.setApiUrl(server);
 
-        const res = await API.selfRegister({ name, mobile, school_name, pin, batch });
+        const res = await API.selfRegister({ name, mobile, school_name, pin, batch, ...(teacher_code ? { teacher_code } : {}) });
         const code = res?.student_code || '';
 
         const codeEl = document.getElementById('reg-success-code');
@@ -1047,7 +1049,10 @@ const APP = (() => {
         const pinEl = document.getElementById('reg-success-pin');
         if (pinEl) pinEl.textContent = pin;
         const detailEl = document.getElementById('reg-success-detail');
-        if (detailEl) detailEl.textContent = '💾 हे दोन्ही जपून ठेवा — login साठी लागतील. तुमचा पहिला chapter आत्ताच Free आहे!';
+        if (detailEl) {
+          detailEl.textContent = '💾 हे दोन्ही जपून ठेवा — login साठी लागतील. तुमचा पहिला chapter आत्ताच Free आहे!' +
+            (res?.teacher_linked ? ` ✅ ${res.teacher_name || 'शिक्षक'} यांच्याशी जोडले गेलात.` : '');
+        }
 
         const _goLogin = (autoLogin = false) => {
           codeCard?.classList.add('hidden');
@@ -1110,6 +1115,28 @@ const APP = (() => {
     if (list.some(b => b.name === previous)) sel.value = previous;
   }
 
+  // A share link like /student-app/index.html?teacher=CODE&batch=NAME opens
+  // Registration with those two fields already filled (web/PWA). Android
+  // installs can't carry link data through the install, so there the
+  // student types the Teacher code themselves.
+  function _linkParam(name) {
+    try { return (new URLSearchParams(location.search).get(name) || '').trim(); } catch { return ''; }
+  }
+
+  let _linkParamsApplied = false;
+  function _applyRegistrationLinkParams(loginCard, regCard) {
+    if (_linkParamsApplied) return;
+    const teacher = _linkParam('teacher').toUpperCase();
+    const batch = _linkParam('batch');
+    if (!teacher && !batch) return;
+    _linkParamsApplied = true;
+    const t = document.getElementById('reg-teacher');
+    if (t && teacher) t.value = teacher;
+    loginCard?.classList.add('hidden');
+    regCard?.classList.remove('hidden');
+    _populateRegBatches();
+  }
+
   async function _populateRegBatches() {
     const sel = document.getElementById('reg-batch');
     if (!sel || sel.dataset.loaded === '1') return;
@@ -1125,6 +1152,8 @@ const APP = (() => {
       document.getElementById('reg-board')?.addEventListener('change', _renderRegBatchOptions);
       document.getElementById('reg-medium')?.addEventListener('change', _renderRegBatchOptions);
       _renderRegBatchOptions();
+      const wanted = _linkParam('batch');
+      if (wanted && _regBatches.some(b => b.name === wanted)) sel.value = wanted;
       sel.dataset.loaded = '1';
     } catch {
       sel.innerHTML = '<option value="">Batch लोड झाले नाहीत — Internet तपासा</option>';
