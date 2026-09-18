@@ -312,23 +312,53 @@ const PAPER_PDF = (() => {
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    let heightLeft = imgHeight;
-    let position = 0;
-    const imgData = canvas.toDataURL('image/png');
+    // Real print margin, found live: the old code placed the image at
+    // (0,0) full page width/height with no border at all — fine on
+    // screen, but real printers can't print to the physical edge of the
+    // sheet (their own hardware margin), so anything near an edge got
+    // clipped when actually printed. 12mm is a safe, standard margin for
+    // exam-paper printing on any common printer.
+    const MARGIN_MM = 12;
+    const contentWidthMm  = pageWidth  - 2 * MARGIN_MM;
+    const contentHeightMm = pageHeight - 2 * MARGIN_MM;
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
-    heightLeft -= pageHeight;
+    // mm-per-source-pixel, derived from how the full canvas maps onto the
+    // (now narrower) content width — needed to crop the canvas into exact
+    // per-page slices in source-pixel units.
+    const pxPerMm = canvas.width / contentWidthMm;
+    const sliceHeightPx = Math.round(contentHeightMm * pxPerMm);
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    const sliceCanvas = document.createElement('canvas');
+    sliceCanvas.width = canvas.width;
+    const sliceCtx = sliceCanvas.getContext('2d');
+
+    let sourceY = 0;
+    let firstPage = true;
+    while (sourceY < canvas.height) {
+      const thisSliceHeightPx = Math.min(sliceHeightPx, canvas.height - sourceY);
+      sliceCanvas.height = thisSliceHeightPx;
+      sliceCtx.clearRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      sliceCtx.drawImage(
+        canvas,
+        0, sourceY, canvas.width, thisSliceHeightPx,
+        0, 0, canvas.width, thisSliceHeightPx
+      );
+
+      if (!firstPage) pdf.addPage();
+      firstPage = false;
+
+      // Bottom-margin-safe: this slice's own height (not the full page's
+      // contentHeightMm) so a short final slice doesn't get stretched down
+      // into where the bottom margin should be.
+      const thisSliceHeightMm = (thisSliceHeightPx / pxPerMm);
+      pdf.addImage(
+        sliceCanvas.toDataURL('image/png'), 'PNG',
+        MARGIN_MM, MARGIN_MM, contentWidthMm, thisSliceHeightMm
+      );
       _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
-      heightLeft -= pageHeight;
+
+      sourceY += thisSliceHeightPx;
     }
 
     return pdf.output('blob');
