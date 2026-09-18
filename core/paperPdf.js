@@ -384,7 +384,23 @@ const PAPER_PDF = (() => {
     await FILE_EXPORT.saveAndShare(blob, _safeFilename(paper, 'Answer_Sheet'));
   }
 
-  return { exportQuestionPaper, exportAnswerSheet };
+  // User-requested: let a teacher check a paper looks right BEFORE saving
+  // it (and before spending the time on the heavier html2canvas/jsPDF PDF
+  // pipeline). Returns the same chrome + question/answer HTML the PDF
+  // export renders, with KaTeX math already processed — the caller shows
+  // it in an on-screen modal (or anywhere else); this function has no
+  // opinion on presentation, unlike exportQuestionPaper/exportAnswerSheet
+  // which go straight to a saved file.
+  async function previewHtml(paper, withAnswers, opts = {}) {
+    await _ensureKatex();
+    const container = document.createElement('div');
+    container.innerHTML = _buildHtml(paper, withAnswers, opts.institutionName, opts.language);
+    try { _renderMath(container); } catch (e) { console.warn('KaTeX preview render error:', e.message); }
+    try { await document.fonts.ready; } catch (e) { /* best effort, same as _renderToBlob */ }
+    return container.innerHTML;
+  }
+
+  return { exportQuestionPaper, exportAnswerSheet, previewHtml };
 })();
 
 window.PAPER_PDF = PAPER_PDF;

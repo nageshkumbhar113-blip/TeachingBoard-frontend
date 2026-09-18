@@ -71,6 +71,15 @@ const TEACHER_PAPER_BUILDER = (() => {
 
     $('tpb-autofill-btn')?.addEventListener('click', () => _runAutoFill());
     $('tpb-save-btn')?.addEventListener('click', () => _savePaper());
+
+    $('tpb-preview-btn')?.addEventListener('click', () => _previewPaper());
+    $('tpb-preview-close')?.addEventListener('click', () => _closePreview());
+    $('tpb-preview-modal')?.addEventListener('click', e => {
+      if (e.target === $('tpb-preview-modal')) _closePreview();
+    });
+    document.querySelectorAll('.tpb-preview-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => _renderPreviewMode(btn.dataset.mode));
+    });
   }
 
   async function _populateBatches() {
@@ -258,7 +267,13 @@ const TEACHER_PAPER_BUILDER = (() => {
 
   function _addSelectedQuestion(qq) {
     if (_selectedQuestions.some(s => s._id === qq._id)) return;
-    _selectedQuestions.push({ _id: qq._id, marks: qq.marks, questionText: qq.questionText, chapterId: qq.chapterId });
+    // answerText/diagrams kept too (previously dropped) — needed for the
+    // "Preview" button to show a real Answer Sheet preview before saving,
+    // without a second server round-trip.
+    _selectedQuestions.push({
+      _id: qq._id, marks: qq.marks, questionText: qq.questionText, chapterId: qq.chapterId,
+      answerText: qq.answerText, questionDiagrams: qq.questionDiagrams, answerDiagrams: qq.answerDiagrams,
+    });
     _renderSelectedList();
   }
 
@@ -341,6 +356,56 @@ const TEACHER_PAPER_BUILDER = (() => {
     } else {
       APP?.toast?.(`✅ ${addedCount} प्रश्न auto-fill झाले, target पूर्ण!`, 'success');
     }
+  }
+
+  // Builds the same shape core/paperPdf.js's _buildHtml expects, straight
+  // from current in-memory selection — no server round-trip, so Preview
+  // works on a draft that hasn't been (and might never be) saved.
+  function _draftPaperForPreview() {
+    return {
+      paperTitle: $('tpb-title')?.value?.trim() || 'Practice Paper',
+      subjectIds: _subjects,
+      subjectId: _subjects[0] || '',
+      questions: _selectedQuestions,
+    };
+  }
+
+  let _previewMode = 'question';
+
+  async function _previewPaper() {
+    if (!_selectedQuestions.length) {
+      APP?.toast?.('आधी किमान एक प्रश्न जोडा', 'error');
+      return;
+    }
+    const btn = $('tpb-preview-btn');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ तयार करत आहे...';
+    try {
+      _previewMode = 'question';
+      document.querySelectorAll('.tpb-preview-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'question'));
+      await _renderPreviewMode('question');
+      $('tpb-preview-modal')?.classList.remove('hidden');
+    } catch (err) {
+      console.error('Preview failed:', err);
+      APP?.toast?.('Preview तयार करताना error आला', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  async function _renderPreviewMode(mode) {
+    _previewMode = mode;
+    document.querySelectorAll('.tpb-preview-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    const body = $('tpb-preview-body');
+    if (body) body.innerHTML = '<p class="td-hint td-hint-sm">Loading…</p>';
+    const html = await window.PAPER_PDF.previewHtml(_draftPaperForPreview(), mode === 'answer', {});
+    if (body) body.innerHTML = html;
+  }
+
+  function _closePreview() {
+    $('tpb-preview-modal')?.classList.add('hidden');
   }
 
   async function _savePaper() {

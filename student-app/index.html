@@ -909,13 +909,31 @@
                 <span id="tpb-total-marks" class="tpb-total-chip">Total: 0 marks</span>
               </div>
               <div id="tpb-selected-list" class="tpb-selected-list"></div>
-              <button type="button" id="tpb-save-btn" class="td-send-notif-btn" style="margin-top:10px">💾 Paper Save करा</button>
+              <div class="tpb-save-row" style="margin-top:10px;display:flex;gap:8px">
+                <button type="button" id="tpb-preview-btn" class="admin-btn-secondary">👁 Preview करा</button>
+                <button type="button" id="tpb-save-btn" class="td-send-notif-btn">💾 Paper Save करा</button>
+              </div>
             </div>
 
             <div class="tpb-form-section" id="tpb-pdf-section" style="display:none"></div>
           </div>
         </div>
       </section>
+
+      <!-- Paper preview modal — see teacherPaperBuilder.js's _previewPaper -->
+      <div id="tpb-preview-modal" class="creds-modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Paper Preview">
+        <div class="creds-modal-card" style="max-width:800px;width:95vw;max-height:90vh;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+            <h3 class="creds-modal-title" id="tpb-preview-title">Paper Preview</h3>
+            <button type="button" id="tpb-preview-close" class="btn-icon" aria-label="Close">✕</button>
+          </div>
+          <div class="tpb-save-row" style="margin:8px 0;flex-shrink:0">
+            <button type="button" class="admin-btn-secondary tpb-preview-mode-btn active" data-mode="question">📄 Question Paper</button>
+            <button type="button" class="admin-btn-secondary tpb-preview-mode-btn" data-mode="answer">📝 Answer Sheet</button>
+          </div>
+          <div id="tpb-preview-body" style="overflow-y:auto;flex:1;border:1px solid #ddd;border-radius:8px;padding:12px;background:#fff"></div>
+        </div>
+      </div>
 
       <!-- Notification send modal -->
       <div id="td-notif-modal" class="td-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="td-modal-title">

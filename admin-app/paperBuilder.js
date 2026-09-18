@@ -59,6 +59,60 @@ const PAPER_BUILDER = (() => {
 
     $('pb-autofill-btn')?.addEventListener('click', () => _runAutoFill());
     $('pb-save-btn')?.addEventListener('click', () => _savePaper());
+
+    $('pb-preview-btn')?.addEventListener('click', () => _previewPaper());
+    $('pb-preview-close')?.addEventListener('click', () => _closePreview());
+    $('pb-preview-modal')?.addEventListener('click', e => {
+      if (e.target === $('pb-preview-modal')) _closePreview();
+    });
+    document.querySelectorAll('.pb-preview-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => _renderPreviewMode(btn.dataset.mode));
+    });
+  }
+
+  // Same shape core/paperPdf.js's _buildHtml expects, straight from
+  // current in-memory selection — no server round-trip, so Preview works
+  // on a draft that hasn't been (and might never be) saved.
+  function _draftPaperForPreview() {
+    return {
+      paperTitle: $('pb-title')?.value?.trim() || 'Practice Paper',
+      subjectIds: _subjects,
+      subjectId: _subjects[0] || '',
+      questions: _selectedQuestions,
+    };
+  }
+
+  async function _previewPaper() {
+    if (!_selectedQuestions.length) {
+      APP.toast('आधी किमान एक प्रश्न जोडा', 'error');
+      return;
+    }
+    const btn = $('pb-preview-btn');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ तयार करत आहे...';
+    try {
+      await _renderPreviewMode('question');
+      $('pb-preview-modal')?.classList.remove('hidden');
+    } catch (err) {
+      console.error('Preview failed:', err);
+      APP.toast('Preview तयार करताना error आला', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  async function _renderPreviewMode(mode) {
+    document.querySelectorAll('.pb-preview-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    const body = $('pb-preview-body');
+    if (body) body.innerHTML = '<p class="empty-hint">Loading…</p>';
+    const html = await window.PAPER_PDF.previewHtml(_draftPaperForPreview(), mode === 'answer', {});
+    if (body) body.innerHTML = html;
+  }
+
+  function _closePreview() {
+    $('pb-preview-modal')?.classList.add('hidden');
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -262,12 +316,17 @@ const PAPER_BUILDER = (() => {
 
   function _addSelectedQuestion(qq) {
     if (_selectedQuestions.some(s => s._id === qq._id)) return;
+    // answerText/diagrams kept too (previously dropped) — needed for the
+    // "Preview" button to show a real Answer Sheet preview before saving.
     _selectedQuestions.push({
       _id: qq._id,
       marks: qq.marks,
       questionText: qq.questionText,
       usageCount: qq.usageCount || 0,
       chapterId: qq.chapterId,
+      answerText: qq.answerText,
+      questionDiagrams: qq.questionDiagrams,
+      answerDiagrams: qq.answerDiagrams,
     });
     _renderSelectedList();
   }
