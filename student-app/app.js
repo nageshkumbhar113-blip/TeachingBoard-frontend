@@ -920,6 +920,8 @@ const APP = (() => {
   // chapters; every other chapter shows a lock and opens the subscribe sheet.
   // The server enforces the same rule (403 CHAPTER_LOCKED) — this is the UX layer.
   let _freeChapterKeys = null;
+  let _freeChapterIds = null;
+  const _normPart = x => String(x || '').trim().toLowerCase().replace(/\s+/g, '-');
   const _lockKey = (b, s, c) => [b, s, c].map(x => String(x || '').trim().toLowerCase()).join('|');
 
   async function _loadFreeChapterKeys() {
@@ -933,7 +935,18 @@ const APP = (() => {
     }
     if (!list) list = await DB.getSetting('free_chapters', []).catch(() => []);
     _freeChapterKeys = new Set((list || []).map(f => _lockKey(f.batch, f.subject, f.chapter)));
+    // Same composite chapterId scheme the Notes/Exercise content uses.
+    _freeChapterIds = new Set((list || []).map(f => `${_normPart(f.batch)}::${_normPart(f.subject)}::${_normPart(f.chapter)}`));
     return _freeChapterKeys;
+  }
+
+  // Set of free chapterIds for a free-plan student, or null when the student
+  // has full access (nothing is locked).
+  async function getFreeChapterIds() {
+    const profile = await API.getStudentProfile().catch(() => null);
+    if (!profile || profile.access_level !== 'free') return null;
+    await _loadFreeChapterKeys();
+    return _freeChapterIds;
   }
 
   async function isChapterLocked(batch, subject, chapter) {
@@ -964,7 +977,9 @@ const APP = (() => {
           await API.loginStudent({ student_code: code, pin, device_id: _getDeviceId() });
         } catch { /* profile refresh below still tries */ }
         _freeChapterKeys = null;
+        _freeChapterIds = null;
         await _refreshProfileAfterLogin();
+        window.NOTES_VIEWER?.refreshLocks?.();
         showScreen('home');
         loadHome();
       }
@@ -2397,6 +2412,8 @@ const APP = (() => {
     isTouchDevice,
     // Free-chapter locks
     isChapterLocked,
+    getFreeChapterIds,
+    offerSubscribe: _offerSubscribe,
     // Profile
     openProfileSettings: _openProfileSettings,
     // Test-only — not used by any production code path.

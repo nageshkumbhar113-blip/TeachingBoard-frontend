@@ -69,6 +69,7 @@ const NOTES_VIEWER = (() => {
     language: localStorage.getItem('nv_language') || 'english',
     studyMode: localStorage.getItem('nv_study_mode') || 'read',
     studentCode: null,
+    freeIds: null,
     initialized: false
   };
 
@@ -86,6 +87,8 @@ const NOTES_VIEWER = (() => {
 
       _setupEventListeners();
       await _loadChapters();
+      // Free-plan students: chapters outside this set show a lock (null = full access).
+      state.freeIds = await APP.getFreeChapterIds?.().catch(() => null) ?? null;
       _renderUI();
     } catch (err) {
       console.error('Failed to init notes viewer:', err);
@@ -650,7 +653,7 @@ const NOTES_VIEWER = (() => {
       <div class="nv-chapters-grid">
         ${chapters.map(ch => `
           <div class="nv-chapter-card" onclick="NOTES_VIEWER.selectChapter('${ch.chapter_id}')">
-            <div class="nv-chapter-name">${_esc(ch.name)}</div>
+            <div class="nv-chapter-name">${state.freeIds && !state.freeIds.has(ch.chapter_id) ? '🔒 ' : ''}${_esc(ch.name)}</div>
             <div class="nv-chapter-batch">${_esc(ch.standard ? `Std ${ch.standard}` : '')}</div>
           </div>
         `).join('')}
@@ -659,6 +662,10 @@ const NOTES_VIEWER = (() => {
   }
 
   async function selectChapter(chapterId) {
+    if (state.freeIds && !state.freeIds.has(chapterId)) {
+      APP.offerSubscribe?.();
+      return;
+    }
     await _loadConcepts(chapterId);
     _renderUI();
     _showConceptsList();
@@ -823,8 +830,15 @@ const NOTES_VIEWER = (() => {
   // PUBLIC API
   // ════════════════════════════════════════════════════════════════════════════
 
+  // Called after a payment upgrades the student, so lock icons/guards refresh.
+  async function refreshLocks() {
+    state.freeIds = await APP.getFreeChapterIds?.().catch(() => null) ?? null;
+    if (state.initialized) _renderUI();
+  }
+
   return {
     init,
+    refreshLocks,
     viewConcept,
     selectSubject,
     selectChapter,
