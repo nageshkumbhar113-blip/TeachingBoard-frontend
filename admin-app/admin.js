@@ -3050,7 +3050,7 @@ const ADMIN = (() => {
           <div class="student-card-name">v${_esc(v.version)} ${badge}</div>
           <div class="student-card-meta">${platformLabel} · ${date}</div>
           ${v.release_notes ? `<div class="student-card-meta ver-notes">${_esc(v.release_notes)}</div>` : ''}
-          ${v.apk_url ? `<div class="student-card-meta"><a href="${_esc(v.apk_url)}" target="_blank" rel="noopener" class="ver-link">🔗 Download URL</a></div>` : ''}
+          ${v.apk_url ? `<div class="student-card-meta"><a href="${_esc(v.apk_url)}" target="_blank" rel="noopener" class="ver-link">${/play\.google\.com/i.test(v.apk_url) ? '▶️ Play Store Link' : '🔗 APK Download URL'}</a></div>` : ''}
         </div>
         <div class="student-card-actions">
           ${!v.is_latest

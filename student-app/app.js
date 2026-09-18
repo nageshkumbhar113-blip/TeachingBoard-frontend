@@ -405,6 +405,10 @@ const APP = (() => {
 
   let _pendingUpdate = null;
 
+  function _isPlayStoreLink(url) {
+    return /play\.google\.com/i.test(String(url || ''));
+  }
+
   function _isNewerVersion(remote, local) {
     const parse = v => String(v || '0.0.0').split('.').map(n => parseInt(n, 10) || 0);
     const [rMaj, rMin, rPatch] = parse(remote);
@@ -451,6 +455,13 @@ const APP = (() => {
 
     const notesEl = $('update-notes');
     if (notesEl) notesEl.textContent = remote.release_notes || 'Bug fixes and improvements.';
+
+    const downloadBtn = $('btn-download-update');
+    if (downloadBtn) {
+      downloadBtn.textContent = _isPlayStoreLink(remote.apk_url)
+        ? '⬇️ Play Store वर Update करा'
+        : '⬇️ Download & Install';
+    }
 
     backdrop?.classList.remove('hidden');
     sheet.classList.remove('hidden');
@@ -595,7 +606,7 @@ const APP = (() => {
     } catch { window.open(url, '_blank'); }
 
     const isAndroid = /android/i.test(navigator.userAgent);
-    if (isAndroid) { _showInstallGuide(); }
+    if (isAndroid && !_isPlayStoreLink(url)) { _showInstallGuide(); }
   }
 
   async function _primeQuizCache() {
