@@ -107,6 +107,13 @@ const TEACHER_DASHBOARD = (() => {
     $('td-tab-vocab')?.classList.toggle('hidden', tab !== 'vocab');
     $('td-tab-fee')?.classList.toggle('hidden', tab !== 'fee');
     $('td-tab-papers')?.classList.toggle('hidden', tab !== 'papers');
+    $('td-tab-share')?.classList.toggle('hidden', tab !== 'share');
+
+    if (tab === 'share') {
+      $('td-back-btn')?.classList.add('hidden');
+      $('td-detail-name').textContent = 'App Share करा';
+      _initShareTab();
+    }
 
     if (tab === 'papers') {
       $('td-back-btn')?.classList.add('hidden');
@@ -146,6 +153,75 @@ const TEACHER_DASHBOARD = (() => {
         $('td-back-btn')?.classList.remove('hidden');
       }
     }
+  }
+
+  // ── Share tab: ready-made message students use to join this teacher ─────────
+  const _SHARE_BASE = 'https://teachingboard-frontend.vercel.app/get-app.html';
+  let _shareBound = false;
+  let _shareCode = '';
+
+  function _buildShareMessage() {
+    const batch = ($('td-share-batch')?.value || '').trim();
+    const params = new URLSearchParams();
+    if (batch) params.set('batch', batch);
+    if (_shareCode) params.set('teacher', _shareCode);
+    const link = params.toString() ? `${_SHARE_BASE}?${params.toString()}` : _SHARE_BASE;
+    const target = batch ? `${batch} साठी` : 'अभ्यासासाठी';
+    return [
+      `📚 *Nks EduOrbit* — ${target} Quiz, Notes आणि सराव प्रश्न एकाच App मध्ये!`,
+      '🎁 प्रत्येक विषयाचा पहिला chapter Free.',
+      '',
+      '👉 App download / सुरू करा:',
+      link,
+      '',
+      `Registration मध्ये हा Teacher code टाका: *${_shareCode}*`,
+    ].join('\n');
+  }
+
+  function _refreshShareMessage() {
+    const box = $('td-share-msg');
+    if (box) box.value = _shareCode ? _buildShareMessage() : '';
+  }
+
+  async function _initShareTab() {
+    const profile = await API.getTeacherProfile().catch(() => null);
+    _shareCode = String(profile?.teacher_code || '').trim().toUpperCase();
+    const codeEl = $('td-share-code');
+    if (codeEl) codeEl.textContent = _shareCode || '—';
+
+    const sel = $('td-share-batch');
+    if (sel && sel.options.length <= 1) {
+      try {
+        const batches = await API.getBatchPlans();
+        batches.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.name;
+          opt.textContent = b.name;
+          sel.appendChild(opt);
+        });
+      } catch { /* the general (no-batch) message still works */ }
+    }
+    _refreshShareMessage();
+
+    if (_shareBound) return;
+    _shareBound = true;
+    sel?.addEventListener('change', _refreshShareMessage);
+    $('td-share-copy')?.addEventListener('click', async () => {
+      const status = $('td-share-status');
+      try {
+        await navigator.clipboard.writeText($('td-share-msg')?.value || '');
+        if (status) status.textContent = '✅ संदेश Copy झाला — WhatsApp/Telegram मध्ये paste करा.';
+      } catch {
+        $('td-share-msg')?.select();
+        if (status) status.textContent = 'Copy होत नाही — संदेश निवडला आहे, हाताने Copy करा.';
+      }
+    });
+    $('td-share-wa')?.addEventListener('click', () => {
+      const text = $('td-share-msg')?.value || '';
+      if (!text) return;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      try { if (!window.open(url, '_system')) window.open(url, '_blank'); } catch { window.open(url, '_blank'); }
+    });
   }
 
   function _handleBack() {

@@ -823,6 +823,7 @@
             <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
             <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
             <button class="td-tab" data-tdtab="papers" role="tab" aria-selected="false">📄 Paper</button>
+            <button class="td-tab" data-tdtab="share" role="tab" aria-selected="false">📤 Share</button>
           </div>
         </div>
 
@@ -896,6 +897,20 @@
           </div>
           <div id="td-notif-history-all">
             <p class="td-hint td-hint-sm">Sent notifications येथे दिसतील.</p>
+          </div>
+        </div>
+
+        <!-- Share tab: ready-made message students use to join this teacher -->
+        <div id="td-tab-share" class="td-tab-pane hidden">
+          <div class="td-share-box">
+            <h4>📤 विद्यार्थ्यांना App Share करा</h4>
+            <p class="td-share-hint">Batch निवडा, संदेश Copy करा किंवा थेट WhatsApp वर पाठवा. विद्यार्थी Registration मध्ये तुमचा Teacher code टाकतो आणि तुमच्या यादीत जोडला जातो.</p>
+            <div class="td-share-code">Teacher code: <strong id="td-share-code">—</strong></div>
+            <select id="td-share-batch" class="td-modal-select"><option value="">कोणताही Batch (सर्वसाधारण)</option></select>
+            <textarea id="td-share-msg" class="td-share-msg" rows="8" readonly aria-label="Share message"></textarea>
+            <button type="button" id="td-share-copy" class="td-send-notif-btn">📋 संदेश Copy करा</button>
+            <button type="button" id="td-share-wa" class="td-send-notif-btn" style="margin-top:8px">💬 WhatsApp वर पाठवा</button>
+            <p id="td-share-status" class="td-share-hint" role="status"></p>
           </div>
         </div>
 

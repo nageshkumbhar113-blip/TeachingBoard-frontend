@@ -4904,6 +4904,14 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   margin-left: 4px;
 }
 
+/* Teacher dashboard: Share tab */
+.td-share-box { padding: 14px; }
+.td-share-box h4 { margin: 0 0 6px; }
+.td-share-hint { font-size: 0.82rem; color: var(--text2, #8b949e); margin: 6px 0 10px; line-height: 1.5; }
+.td-share-code { font-size: 0.95rem; margin-bottom: 10px; }
+.td-share-code strong { display: inline-block; padding: 3px 12px; border-radius: 8px; border: 1px dashed var(--accent, #f97316); letter-spacing: 0.08em; }
+.td-share-msg { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #30363d); background: var(--surface2, #161b22); color: var(--text1, #e6edf3); font: inherit; font-size: 0.86rem; line-height: 1.5; resize: vertical; }
+
 /* Free plan: locked chapter rows */
 .chapter-item.chapter-locked { opacity: 0.65; }
 .chapter-item.chapter-locked .chapter-meta { color: var(--accent, #f97316); }
