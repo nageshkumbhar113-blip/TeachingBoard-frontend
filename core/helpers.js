@@ -1121,6 +1121,26 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // Admin > Import: copy Notes/Exercises/MCQ/Tests/PDF between batches
+  async function _adminGet(path, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(path, { headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function _adminPost(path, body, pin = '') {
+    const token = await ensureAdminSession(pin);
+    return request(path, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+  }
+  async function fetchCatalogBatches() {
+    return (await _adminGet('/batches'))?.data || [];
+  }
+  async function fetchImportChapters(batch, subject) {
+    return (await _adminGet(`/admin/import/source-chapters?batch=${encodeURIComponent(batch)}&subject=${encodeURIComponent(subject)}`))?.data || [];
+  }
+  async function previewImport(body) { return (await _adminPost('/admin/import/preview', body))?.data; }
+  async function runImport(body) { return (await _adminPost('/admin/import/run', body))?.data; }
+  async function fetchImportJobs() { return (await _adminGet('/admin/import/jobs'))?.data || []; }
+  async function undoImport(jobId) { return (await _adminPost('/admin/import/undo', { job_id: jobId }))?.data; }
+
   // Teacher Paper Builder quota (admin): defaults, teacher x batch usage, overrides
   async function fetchPaperQuotas(pin = '') {
     const token = await ensureAdminSession(pin);
@@ -2421,6 +2441,7 @@ const API = (() => {
     fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota,
+    fetchCatalogBatches, fetchImportChapters, previewImport, runImport, fetchImportJobs, undoImport,
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,
     fetchTeacherStudents, fetchStudentAttemptsForTeacher, updateTeacherDeviceToken,

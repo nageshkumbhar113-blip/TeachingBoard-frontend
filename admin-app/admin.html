@@ -480,6 +480,51 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               </div>
               <div class="batch-admin-list" id="chapter-admin-list" role="list" aria-label="Chapter list"></div>
             </section>
+
+            <section class="import-section admin-card" aria-label="Import content from another batch">
+              <h3 class="admin-section-title">📥 दुसऱ्या Batch मधून Import</h3>
+              <p class="import-hint">एका Batch चे Notes, Exercises, MCQ, Tests आणि PDF Notes दुसऱ्या Batch मध्ये copy करा — पुन्हा भरायची गरज नाही. चुकलं तर Undo करता येतं.</p>
+
+              <div class="imp-grid">
+                <div class="imp-col">
+                  <h4>1️⃣ कुठून (Source)</h4>
+                  <select id="imp-src-board" class="admin-select" aria-label="Source board"><option value="">सर्व Boards</option></select>
+                  <select id="imp-src-medium" class="admin-select" aria-label="Source medium"><option value="">सर्व Mediums</option></select>
+                  <select id="imp-src-batch" class="admin-select" aria-label="Source batch"><option value="">Batch निवडा…</option></select>
+                  <select id="imp-src-subject" class="admin-select" aria-label="Source subject"><option value="">Subject निवडा…</option></select>
+                </div>
+                <div class="imp-col">
+                  <h4>2️⃣ कुठे (Target)</h4>
+                  <select id="imp-tgt-board" class="admin-select" aria-label="Target board"><option value="">सर्व Boards</option></select>
+                  <select id="imp-tgt-medium" class="admin-select" aria-label="Target medium"><option value="">सर्व Mediums</option></select>
+                  <select id="imp-tgt-batch" class="admin-select" aria-label="Target batch"><option value="">Batch निवडा…</option></select>
+                  <select id="imp-tgt-subject" class="admin-select" aria-label="Target subject"><option value="">Subject निवडा…</option></select>
+                  <input id="imp-tgt-new-subject" class="admin-input hidden" placeholder="नवीन Subject चे नाव" aria-label="New subject name" />
+                </div>
+              </div>
+
+              <h4 class="imp-h">3️⃣ काय Import करायचं</h4>
+              <div class="imp-types">
+                <label><input type="checkbox" class="imp-type" value="notes" checked /> 📓 Notes</label>
+                <label><input type="checkbox" class="imp-type" value="exercises" checked /> 📄 Exercises</label>
+                <label><input type="checkbox" class="imp-type" value="mcq" checked /> ❓ MCQ Questions</label>
+                <label><input type="checkbox" class="imp-type" value="quizzes" checked /> 📝 Tests</label>
+                <label><input type="checkbox" class="imp-type" value="pdf" checked /> 📎 PDF Notes</label>
+                <label><input type="checkbox" id="imp-draft" /> Draft म्हणून import करा (आधी तपासून मग publish)</label>
+              </div>
+
+              <h4 class="imp-h">4️⃣ Chapters</h4>
+              <div id="imp-chapters" class="imp-chapters"><p class="empty-hint">Source Batch आणि Subject निवडा.</p></div>
+
+              <div class="admin-toolbar">
+                <button id="imp-preview-btn" class="admin-btn-secondary" type="button">🔍 Preview</button>
+                <button id="imp-run-btn" class="admin-btn-primary" type="button" disabled>📥 Import करा</button>
+              </div>
+              <div id="imp-preview-out" class="imp-out"></div>
+
+              <h4 class="imp-h">मागचे Imports <button id="imp-refresh-jobs" class="admin-btn-secondary" type="button" style="margin-left:8px">Refresh</button></h4>
+              <div id="imp-jobs" class="batch-admin-list" role="list"></div>
+            </section>
           </div>
 
           <!-- ── Batch Details Modal (Board → Medium → Class) ──────────
@@ -2101,6 +2146,7 @@ Marks: 1"></textarea>
   <script src="exerciseManager.js" defer></script>
   <script src="booksManager.js" defer></script>
   <script src="paperBuilder.js" defer></script>
+  <script src="importManager.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="bannerAdmin.js" defer></script>

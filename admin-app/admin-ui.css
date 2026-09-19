@@ -2398,3 +2398,23 @@ body.admin-app {
   padding:9px 18px; border-radius:8px; border:none;
   background:var(--accent,#f97316); color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; min-height:44px;
 }
+
+
+/* Admin > Classes > Import from another batch */
+.imp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 10px 0; }
+.imp-col { display: flex; flex-direction: column; gap: 8px; }
+.imp-col h4, .imp-h { margin: 6px 0 4px; }
+.imp-types { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 6px 0 10px; font-size: 0.9rem; }
+.imp-chapters { max-height: 320px; overflow: auto; border: 1px solid var(--border, #30363d); border-radius: 8px; padding: 6px 10px; margin-bottom: 10px; }
+.imp-chapter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,0.15); }
+.imp-chapter-row:last-child { border-bottom: 0; }
+.imp-chips { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.78rem; opacity: 0.85; }
+.imp-map { max-width: 240px; }
+.imp-out { margin-top: 10px; }
+.imp-summary { padding: 10px 12px; border-radius: 8px; background: rgba(249,115,22,0.10); border: 1px solid rgba(249,115,22,0.35); margin-bottom: 8px; line-height: 1.6; }
+.imp-summary.imp-done { background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.4); }
+.imp-note { font-size: 0.82rem; opacity: 0.85; margin-top: 4px; }
+.imp-prev-row { padding: 6px 2px; border-bottom: 1px solid rgba(128,128,128,0.15); font-size: 0.86rem; }
+.imp-new { color: #f97316; font-size: 0.78rem; }
+.imp-existing { opacity: 0.8; font-size: 0.78rem; }
+@media (max-width: 720px) { .imp-grid { grid-template-columns: 1fr; } }
