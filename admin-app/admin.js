@@ -2097,6 +2097,11 @@ const ADMIN = (() => {
     _renderStudentBatchOptions([]);
   }
 
+  // Same rule as the backend (utils/mobile.js): 10 digits, starts 6-9, not all-same.
+  function _validMobile(m) {
+    return /^\d{10}$/.test(m) && !/^(\d)\1{9}$/.test(m) && Number(m[0]) >= 6;
+  }
+
   function _studentFormPayload({ requirePin = true } = {}) {
     const student_code = String($('student-code')?.value || '').trim().toUpperCase();
     const name = String($('student-name')?.value || '').trim();
@@ -2108,6 +2113,7 @@ const ADMIN = (() => {
 
     if (!student_code) throw new Error('Student code is required');
     if (!name) throw new Error('Student name is required');
+    if (!_validMobile(mobile)) throw new Error('वैध 10 अंकी Mobile number आवश्यक आहे (6-9 ने सुरू)');
     if (requirePin && !/^\d{4}$/.test(pin)) throw new Error('PIN must be 4 digits');
     if (!assigned_batches.length) throw new Error('Assign at least one class');
 
@@ -2956,6 +2962,7 @@ const ADMIN = (() => {
       const rawStudents = String($('teacher-assigned-students')?.value || '').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
 
       if (!name) { APP.toast('Name is required', 'error'); return; }
+      if (!_validMobile(mobile)) { APP.toast('वैध 10 अंकी Mobile number आवश्यक आहे (6-9 ने सुरू)', 'error'); return; }
 
       const payload = { name, mobile, assigned_students: rawStudents };
       if (code)  payload.teacher_code = code;
