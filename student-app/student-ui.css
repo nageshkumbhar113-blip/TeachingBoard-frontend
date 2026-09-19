@@ -2582,12 +2582,12 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 }
 .ob-role-tab {
   flex: 1;
-  padding: 7px 4px;
+  padding: 11px 4px;
   border: none;
   border-radius: 7px;
   background: transparent;
   color: var(--text2, #8b949e);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.18s, color 0.18s;
@@ -2596,6 +2596,13 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .ob-role-tab.active {
   background: var(--accent, #f0883e);
   color: #fff;
+}
+/* "Register" tab: always visible as a call to action, never the active role. */
+.ob-role-tab-register {
+  background: rgba(240, 136, 62, 0.16);
+  color: var(--accent, #f0883e);
+  font-weight: 800;
+  border: 1px solid rgba(240, 136, 62, 0.55);
 }
 
 /* ════════════════════════════════════════

@@ -991,12 +991,15 @@ const APP = (() => {
                       document.getElementById('onboarding-screen')?.querySelector('.onboarding-card');
     const regCard   = document.getElementById('reg-card');
 
-    $('ob-goto-register')?.addEventListener('click', () => {
+    const _openRegistration = () => {
       if (loginCard) loginCard.classList.add('hidden');
       regCard?.classList.remove('hidden');
       document.getElementById('reg-name')?.focus();
       _populateRegBatches();
-    });
+    };
+    $('ob-goto-register')?.addEventListener('click', _openRegistration);
+    // "Register" is the 4th tab next to Student / Teacher / Parent.
+    $('ob-tab-register')?.addEventListener('click', _openRegistration);
 
     const codeCard = document.getElementById('reg-code-card');
     _applyRegistrationLinkParams(loginCard, regCard);
@@ -1209,7 +1212,7 @@ const APP = (() => {
     const errorEl        = document.getElementById('ob-error-msg');
     const subEl          = document.getElementById('ob-role-sub');
     const codeLabelEl    = document.getElementById('ob-code-label');
-    const roleTabs       = document.querySelectorAll('.ob-role-tab');
+    const roleTabs       = document.querySelectorAll('.ob-role-tab[data-role]');
 
     // Role state — tracks which role is selected in the onboarding form
     let _selectedRole = 'student';
