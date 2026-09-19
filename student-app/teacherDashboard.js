@@ -111,7 +111,7 @@ const TEACHER_DASHBOARD = (() => {
 
     if (tab === 'share') {
       $('td-back-btn')?.classList.add('hidden');
-      $('td-detail-name').textContent = 'App Share करा';
+      $('td-detail-name').textContent = 'Share the app';
       _initShareTab();
     }
 
@@ -166,15 +166,15 @@ const TEACHER_DASHBOARD = (() => {
     if (batch) params.set('batch', batch);
     if (_shareCode) params.set('teacher', _shareCode);
     const link = params.toString() ? `${_SHARE_BASE}?${params.toString()}` : _SHARE_BASE;
-    const target = batch ? `${batch} साठी` : 'अभ्यासासाठी';
+    const target = batch ? `for ${batch}` : 'for your studies';
     return [
-      `📚 *Nks EduOrbit* — ${target} Quiz, Notes आणि सराव प्रश्न एकाच App मध्ये!`,
-      '🎁 प्रत्येक विषयाचा पहिला chapter Free.',
+      `📚 *Nks EduOrbit*: quizzes, notes and practice questions ${target}, all in one app!`,
+      '🎁 The first chapter of every subject is free.',
       '',
-      '👉 App download / सुरू करा:',
+      'Download / open the app:',
       link,
       '',
-      `Registration मध्ये हा Teacher code टाका: *${_shareCode}*`,
+      `Enter this Teacher code when you register: *${_shareCode}*`,
     ].join('\n');
   }
 
@@ -210,10 +210,10 @@ const TEACHER_DASHBOARD = (() => {
       const status = $('td-share-status');
       try {
         await navigator.clipboard.writeText($('td-share-msg')?.value || '');
-        if (status) status.textContent = '✅ संदेश Copy झाला — WhatsApp/Telegram मध्ये paste करा.';
+        if (status) status.textContent = '✅ Message copied. Paste it into WhatsApp or Telegram.';
       } catch {
         $('td-share-msg')?.select();
-        if (status) status.textContent = 'Copy होत नाही — संदेश निवडला आहे, हाताने Copy करा.';
+        if (status) status.textContent = 'Could not copy. The message is selected, please copy it manually.';
       }
     });
     $('td-share-wa')?.addEventListener('click', () => {

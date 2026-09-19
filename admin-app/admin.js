@@ -431,7 +431,7 @@ const ADMIN = (() => {
           try {
             await API.renameCatalogSubject(batch, subject.name, trimmed);
           } catch (err) {
-            APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+            APP.toast(`Server rename Failed: ${err.message}`, 'error');
             return;
           }
         }
@@ -521,10 +521,10 @@ const ADMIN = (() => {
         const access = accessByName.get(chapter.name);
         const autoFree = !!access && access.free && !access.is_free;
         const flaggedFree = !!access && access.is_free;
-        const freeBadge = autoFree ? '🔓 Free (आपोआप)' : flaggedFree ? '🔓 Free' : access ? '🔒 Paid' : '—';
+        const freeBadge = autoFree ? '🔓 Free (automatic)' : flaggedFree ? '🔓 Free' : access ? '🔒 Paid' : '—';
         const freeToggle = autoFree
           ? ''
-          : `<button class="admin-btn-secondary" data-action="free">${flaggedFree ? '🔒 Paid करा' : '🔓 Free करा'}</button>`;
+          : `<button class="admin-btn-secondary" data-action="free">${flaggedFree ? '🔒 Make paid' : '🔓 Make free'}</button>`;
         const item = document.createElement('div');
         item.className = 'chapter-admin-item';
         item.dataset.idx = idx;
@@ -557,7 +557,7 @@ const ADMIN = (() => {
             try {
               await API.renameCatalogChapter(batch, subject, chapter.name, trimmed);
             } catch (err) {
-              APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+              APP.toast(`Server rename Failed: ${err.message}`, 'error');
               return;
             }
           }
@@ -577,10 +577,10 @@ const ADMIN = (() => {
         item.querySelector('[data-action="free"]')?.addEventListener('click', async () => {
           try {
             await API.setChapterFree(batch, subject, chapter.name, !flaggedFree);
-            APP.toast(flaggedFree ? `🔒 "${chapter.name}" आता Paid` : `🔓 "${chapter.name}" आता Free`, 'success');
+            APP.toast(flaggedFree ? `🔒 "${chapter.name}" is now Paid` : `🔓 "${chapter.name}" is now Free`, 'success');
             await _loadChapterAdmin();
           } catch (err) {
-            APP.toast(`अयशस्वी: ${err.message}`, 'error');
+            APP.toast(`Failed: ${err.message}`, 'error');
           }
         });
         item.querySelector('[data-action="up"]')?.addEventListener('click', () => moveChapter(idx, -1));
@@ -1535,7 +1535,7 @@ const ADMIN = (() => {
           _loadBatchAdmin();
           APP.refreshHome?.();
         } catch (err) {
-          APP.toast(`Cover upload अयशस्वी: ${err.message}`, 'error');
+          APP.toast(`Cover upload Failed: ${err.message}`, 'error');
         } finally {
           e.target.value = '';
         }
@@ -1562,7 +1562,7 @@ const ADMIN = (() => {
           try {
             await API.renameBatchCatalog(name, trimmed, icon);
           } catch (err) {
-            APP.toast(`Server rename अयशस्वी: ${err.message}`, 'error');
+            APP.toast(`Server rename Failed: ${err.message}`, 'error');
             return;
           }
         }
@@ -1586,7 +1586,7 @@ const ADMIN = (() => {
         ]);
         if (navigator.onLine) {
           API.deleteBatchCatalog(name).catch(err =>
-            APP.toast(`Server delete अयशस्वी: ${err.message}`, 'error')
+            APP.toast(`Server delete Failed: ${err.message}`, 'error')
           );
         }
         APP.refreshHome();
@@ -2113,7 +2113,7 @@ const ADMIN = (() => {
 
     if (!student_code) throw new Error('Student code is required');
     if (!name) throw new Error('Student name is required');
-    if (!_validMobile(mobile)) throw new Error('वैध 10 अंकी Mobile number आवश्यक आहे (6-9 ने सुरू)');
+    if (!_validMobile(mobile)) throw new Error('A valid 10-digit mobile number is required (starting with 6-9)');
     if (requirePin && !/^\d{4}$/.test(pin)) throw new Error('PIN must be 4 digits');
     if (!assigned_batches.length) throw new Error('Assign at least one class');
 
@@ -2873,32 +2873,32 @@ const ADMIN = (() => {
       if ($('pq-need') && document.activeElement !== $('pq-need')) $('pq-need').value = config.unlock_paid_students ?? '';
 
       if (!rows.length) {
-        table.innerHTML = '<p class="empty-hint">अजून कोणत्याही शिक्षकाला batch चे विद्यार्थी जोडलेले नाहीत.</p>';
+        table.innerHTML = '<p class="empty-hint">No teacher has students linked to a batch yet.</p>';
         return;
       }
       table.innerHTML = '';
       rows.forEach(r => {
         const isStar = r.batch === '*';
         let badge;
-        if (r.override === 'unlimited') badge = '🔓 अमर्यादित (Admin)';
-        else if (r.unlimited) badge = '🔓 अमर्यादित (paid विद्यार्थी)';
-        else if (r.allowed === false) badge = '⚠️ मर्यादा संपली';
-        else badge = '✅ चालू';
+        if (r.override === 'unlimited') badge = '🔓 Unlimited (admin)';
+        else if (r.unlimited) badge = '🔓 Unlimited (paid students)';
+        else if (r.allowed === false) badge = '⚠️ Limit reached';
+        else badge = '✅ Active';
         const detail = isStar
-          ? 'सर्व batches'
-          : `Papers ${r.used}/${r.limit} · Paid ${r.paid}/${r.need}${r.override === 'custom' ? ' · ✏️ वेगळे आकडे' : ''}`;
+          ? 'All batches'
+          : `Papers ${r.used}/${r.limit} · Paid ${r.paid}/${r.need}${r.override === 'custom' ? ' · ✏️ custom numbers' : ''}`;
 
         const item = document.createElement('div');
         item.className = 'batch-admin-item';
         item.innerHTML = `
           <div class="student-card-info">
             <div class="batch-admin-name">${_escHtml(r.teacher_name || '')} <small>(${_escHtml(r.teacher_code || '')})</small></div>
-            <div class="student-meta-row"><span>${_escHtml(isStar ? 'सर्व batches' : r.batch)}</span><span>${_escHtml(detail)}</span><span>${badge}</span></div>
+            <div class="student-meta-row"><span>${_escHtml(isStar ? 'All batches' : r.batch)}</span><span>${_escHtml(detail)}</span><span>${badge}</span></div>
           </div>
           <div class="chapter-admin-actions">
-            ${r.override === 'unlimited' ? '' : '<button class="admin-btn-secondary" data-act="unlimited">🔓 अमर्यादित</button>'}
-            ${isStar ? '' : '<button class="admin-btn-secondary" data-act="custom">✏️ आकडे</button>'}
-            ${r.override ? '<button class="admin-btn-secondary" data-act="default">↩️ सामान्य</button>' : ''}
+            ${r.override === 'unlimited' ? '' : '<button class="admin-btn-secondary" data-act="unlimited">🔓 Unlimited</button>'}
+            ${isStar ? '' : '<button class="admin-btn-secondary" data-act="custom">✏️ Numbers</button>'}
+            ${r.override ? '<button class="admin-btn-secondary" data-act="default">↩️ Default</button>' : ''}
           </div>`;
         item.querySelectorAll('[data-act]').forEach(btn => {
           btn.addEventListener('click', () => _setPaperOverride(r, btn.dataset.act));
@@ -2914,18 +2914,18 @@ const ADMIN = (() => {
     try {
       const payload = { batch: row.batch, mode: act };
       if (act === 'custom') {
-        const free = await APP.promptAsync(`${row.teacher_name} — ${row.batch}: मोफत papers किती? (सध्या ${row.limit})`, 'text', String(row.limit ?? ''));
+        const free = await APP.promptAsync(`${row.teacher_name} — ${row.batch}: how many free papers? (currently ${row.limit})`, 'text', String(row.limit ?? ''));
         if (free === null || free === undefined) return;
-        const need = await APP.promptAsync(`अनलॉकसाठी किती paid विद्यार्थी? (सध्या ${row.need})`, 'text', String(row.need ?? ''));
+        const need = await APP.promptAsync(`How many paid students to unlock? (currently ${row.need})`, 'text', String(row.need ?? ''));
         if (need === null || need === undefined) return;
         payload.free_papers = Number(free);
         payload.unlock_paid_students = Number(need);
       }
       await API.setTeacherPaperOverride(row.teacher_id, payload);
-      APP.toast('✅ जतन झाले', 'success');
+      APP.toast('✅ Saved', 'success');
       await _loadPaperQuota();
     } catch (err) {
-      APP.toast(`अयशस्वी: ${err.message}`, 'error');
+      APP.toast(`Failed: ${err.message}`, 'error');
     }
   }
 
@@ -2935,10 +2935,10 @@ const ADMIN = (() => {
         free_papers: Number($('pq-free')?.value),
         unlock_paid_students: Number($('pq-need')?.value),
       });
-      APP.toast('✅ आकडे जतन झाले', 'success');
+      APP.toast('✅ Numbers saved', 'success');
       await _loadPaperQuota();
     } catch (err) {
-      APP.toast(`अयशस्वी: ${err.message}`, 'error');
+      APP.toast(`Failed: ${err.message}`, 'error');
     }
   }
 
@@ -3036,7 +3036,7 @@ const ADMIN = (() => {
       const rawStudents = String($('teacher-assigned-students')?.value || '').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
 
       if (!name) { APP.toast('Name is required', 'error'); return; }
-      if (!_validMobile(mobile)) { APP.toast('वैध 10 अंकी Mobile number आवश्यक आहे (6-9 ने सुरू)', 'error'); return; }
+      if (!_validMobile(mobile)) { APP.toast('A valid 10-digit mobile number is required (starting with 6-9)', 'error'); return; }
 
       const payload = {
         name,

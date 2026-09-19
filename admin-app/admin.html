@@ -482,47 +482,47 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </section>
 
             <section class="import-section admin-card" aria-label="Import content from another batch">
-              <h3 class="admin-section-title">📥 दुसऱ्या Batch मधून Import</h3>
-              <p class="import-hint">एका Batch चे Notes, Exercises, MCQ, Tests आणि PDF Notes दुसऱ्या Batch मध्ये copy करा — पुन्हा भरायची गरज नाही. चुकलं तर Undo करता येतं.</p>
+              <h3 class="admin-section-title">📥 Import from another batch</h3>
+              <p class="import-hint">Copy the Notes, Exercises, MCQ, Tests and PDF Notes of one batch into another batch, so you never enter the same content twice. You can undo an import if it turns out wrong.</p>
 
               <div class="imp-grid">
                 <div class="imp-col">
-                  <h4>1️⃣ कुठून (Source)</h4>
-                  <select id="imp-src-board" class="admin-select" aria-label="Source board"><option value="">सर्व Boards</option></select>
-                  <select id="imp-src-medium" class="admin-select" aria-label="Source medium"><option value="">सर्व Mediums</option></select>
-                  <select id="imp-src-batch" class="admin-select" aria-label="Source batch"><option value="">Batch निवडा…</option></select>
-                  <select id="imp-src-subject" class="admin-select" aria-label="Source subject"><option value="">Subject निवडा…</option></select>
+                  <h4>1️⃣ From (source)</h4>
+                  <select id="imp-src-board" class="admin-select" aria-label="Source board"><option value="">All boards</option></select>
+                  <select id="imp-src-medium" class="admin-select" aria-label="Source medium"><option value="">All mediums</option></select>
+                  <select id="imp-src-batch" class="admin-select" aria-label="Source batch"><option value="">Select batch...</option></select>
+                  <select id="imp-src-subject" class="admin-select" aria-label="Source subject"><option value="">Select subject...</option></select>
                 </div>
                 <div class="imp-col">
-                  <h4>2️⃣ कुठे (Target)</h4>
-                  <select id="imp-tgt-board" class="admin-select" aria-label="Target board"><option value="">सर्व Boards</option></select>
-                  <select id="imp-tgt-medium" class="admin-select" aria-label="Target medium"><option value="">सर्व Mediums</option></select>
-                  <select id="imp-tgt-batch" class="admin-select" aria-label="Target batch"><option value="">Batch निवडा…</option></select>
-                  <select id="imp-tgt-subject" class="admin-select" aria-label="Target subject"><option value="">Subject निवडा…</option></select>
-                  <input id="imp-tgt-new-subject" class="admin-input hidden" placeholder="नवीन Subject चे नाव" aria-label="New subject name" />
+                  <h4>2️⃣ To (target)</h4>
+                  <select id="imp-tgt-board" class="admin-select" aria-label="Target board"><option value="">All boards</option></select>
+                  <select id="imp-tgt-medium" class="admin-select" aria-label="Target medium"><option value="">All mediums</option></select>
+                  <select id="imp-tgt-batch" class="admin-select" aria-label="Target batch"><option value="">Select batch...</option></select>
+                  <select id="imp-tgt-subject" class="admin-select" aria-label="Target subject"><option value="">Select subject...</option></select>
+                  <input id="imp-tgt-new-subject" class="admin-input hidden" placeholder="New subject name" aria-label="New subject name" />
                 </div>
               </div>
 
-              <h4 class="imp-h">3️⃣ काय Import करायचं</h4>
+              <h4 class="imp-h">3️⃣ What to import</h4>
               <div class="imp-types">
                 <label><input type="checkbox" class="imp-type" value="notes" checked /> 📓 Notes</label>
                 <label><input type="checkbox" class="imp-type" value="exercises" checked /> 📄 Exercises</label>
                 <label><input type="checkbox" class="imp-type" value="mcq" checked /> ❓ MCQ Questions</label>
                 <label><input type="checkbox" class="imp-type" value="quizzes" checked /> 📝 Tests</label>
                 <label><input type="checkbox" class="imp-type" value="pdf" checked /> 📎 PDF Notes</label>
-                <label><input type="checkbox" id="imp-draft" /> Draft म्हणून import करा (आधी तपासून मग publish)</label>
+                <label><input type="checkbox" id="imp-draft" /> Import as draft (review first, then publish)</label>
               </div>
 
               <h4 class="imp-h">4️⃣ Chapters</h4>
-              <div id="imp-chapters" class="imp-chapters"><p class="empty-hint">Source Batch आणि Subject निवडा.</p></div>
+              <div id="imp-chapters" class="imp-chapters"><p class="empty-hint">Select the source batch and subject.</p></div>
 
               <div class="admin-toolbar">
                 <button id="imp-preview-btn" class="admin-btn-secondary" type="button">🔍 Preview</button>
-                <button id="imp-run-btn" class="admin-btn-primary" type="button" disabled>📥 Import करा</button>
+                <button id="imp-run-btn" class="admin-btn-primary" type="button" disabled>📥 Import</button>
               </div>
               <div id="imp-preview-out" class="imp-out"></div>
 
-              <h4 class="imp-h">मागचे Imports <button id="imp-refresh-jobs" class="admin-btn-secondary" type="button" style="margin-left:8px">Refresh</button></h4>
+              <h4 class="imp-h">Previous imports <button id="imp-refresh-jobs" class="admin-btn-secondary" type="button" style="margin-left:8px">Refresh</button></h4>
               <div id="imp-jobs" class="batch-admin-list" role="list"></div>
             </section>
           </div>
@@ -590,7 +590,7 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                   <input id="student-code" class="admin-input" placeholder="Student code (auto)" aria-label="Student code" />
                   <button id="btn-gen-code" class="admin-btn-secondary icon-btn" type="button" title="Auto-generate code">⚡</button>
                 </div>
-                <input id="student-mobile" class="admin-input" placeholder="Mobile * (10 अंकी)" aria-label="Mobile (required)" type="tel" inputmode="numeric" maxlength="10" required />
+                <input id="student-mobile" class="admin-input" placeholder="Mobile * (10 digits)" aria-label="Mobile (required)" type="tel" inputmode="numeric" maxlength="10" required />
               </div>
               <div class="import-target">
                 <div class="pin-input-row">
@@ -719,16 +719,16 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </section>
 
             <section class="import-section admin-card" aria-label="Paper Builder quota">
-              <h3 class="admin-section-title">📄 Paper Builder मर्यादा (शिक्षकांसाठी, प्रति batch)</h3>
-              <p class="import-hint">शिक्षकाला प्रत्येक batch चे ठराविक papers मोफत. त्या batch चे ठराविक विद्यार्थी Razorpay ने paid झाले की त्या batch चा Paper Builder अमर्यादित. Admin ने हाताने मुदत दिलेले विद्यार्थी मोजले जात नाहीत. आधीचे papers मोजले जात नाहीत.</p>
+              <h3 class="admin-section-title">📄 Paper Builder limits (teachers, per batch)</h3>
+              <p class="import-hint">A teacher gets a fixed number of free papers per batch. Once enough students of that batch have paid through Razorpay, Paper Builder becomes unlimited for that batch. Students whose validity was set by hand in Admin do not count, and papers saved before this rule started are not counted.</p>
               <div class="admin-toolbar" style="flex-wrap:wrap;gap:8px;align-items:flex-end">
-                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">मोफत papers (प्रति batch)
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Free papers (per batch)
                   <input id="pq-free" type="number" min="0" step="1" class="admin-input short" aria-label="Free papers per batch" />
                 </label>
-                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">अनलॉकसाठी paid विद्यार्थी
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Paid students to unlock
                   <input id="pq-need" type="number" min="1" step="1" class="admin-input short" aria-label="Paid students to unlock" />
                 </label>
-                <button id="pq-save-config" class="admin-btn-primary" type="button">आकडे Save करा</button>
+                <button id="pq-save-config" class="admin-btn-primary" type="button">Save numbers</button>
                 <button id="pq-refresh" class="admin-btn-secondary" type="button">Refresh</button>
               </div>
               <div id="pq-table" class="batch-admin-list" role="list" aria-label="Teacher paper quotas"></div>

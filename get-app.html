@@ -930,14 +930,14 @@
       const box = document.createElement('div');
       box.style.cssText = 'max-width:520px;margin:16px auto 0;padding:14px 16px;border:2px dashed #F0883E;border-radius:14px;background:#FFF7ED;text-align:center;font-size:0.95rem;line-height:1.6';
       box.innerHTML = `
-        <div>📌 App install केल्यावर <strong>Registration मध्ये Teacher code टाका:</strong></div>
+        <div>📌 After installing the app, <strong>enter this Teacher code when you register:</strong></div>
         <div style="margin:8px 0"><span id="teacher-code-chip" style="display:inline-block;padding:6px 18px;border-radius:10px;background:#fff;border:1px solid #FDE1C4;font-size:1.4rem;font-weight:800;letter-spacing:.08em"></span></div>
-        <button type="button" id="teacher-code-copy" style="padding:8px 18px;border-radius:999px;border:0;background:#F0883E;color:#fff;font-weight:700;cursor:pointer">📋 Code Copy करा</button>
-        <div style="margin-top:10px;font-size:0.85rem"><a id="teacher-web-start" style="text-decoration:underline;color:#C1600F">किंवा Web वर थेट सुरू करा (code आपोआप भरतो)</a></div>`;
+        <button type="button" id="teacher-code-copy" style="padding:8px 18px;border-radius:999px;border:0;background:#F0883E;color:#fff;font-weight:700;cursor:pointer">📋 Copy code</button>
+        <div style="margin-top:10px;font-size:0.85rem"><a id="teacher-web-start" style="text-decoration:underline;color:#C1600F">Or start on the web (the code is filled in automatically)</a></div>`;
       box.querySelector('#teacher-code-chip').textContent = teacher;
       box.querySelector('#teacher-web-start').href = webUrl;
       box.querySelector('#teacher-code-copy').addEventListener('click', e => {
-        navigator.clipboard?.writeText(teacher).then(() => { e.target.textContent = '✅ Copy झाले'; }).catch(() => {});
+        navigator.clipboard?.writeText(teacher).then(() => { e.target.textContent = '✅ Copied'; }).catch(() => {});
       });
       const hero = document.querySelector('.hero');
       hero?.parentNode.insertBefore(box, hero.nextSibling);

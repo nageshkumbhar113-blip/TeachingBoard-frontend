@@ -121,11 +121,11 @@ const TEACHER_PAPER_BUILDER = (() => {
       bar.classList.remove('hidden', 'unlimited', 'exceeded');
       if (q.unlimited) {
         bar.classList.add('unlimited');
-        bar.textContent = '🔓 या batch साठी Paper Builder अमर्यादित आहे.';
+        bar.textContent = '🔓 Paper Builder is unlimited for this batch.';
       } else {
         if (!q.allowed) bar.classList.add('exceeded');
-        bar.textContent = `📄 Papers: ${q.used} / ${q.limit} वापरले · Paid विद्यार्थी: ${q.paid} / ${q.need}` +
-          (q.allowed ? ` — आणखी ${q.remaining_students} paid झाले की अमर्यादित.` : ' — मोफत papers संपले; ' + q.remaining_students + ' आणखी paid झाले की अमर्यादित.');
+        bar.textContent = `📄 Papers: ${q.used} / ${q.limit} used · Paid students: ${q.paid} / ${q.need}` +
+          (q.allowed ? ` - ${q.remaining_students} more paid students unlock unlimited.` : ' - free papers used up; ' + q.remaining_students + ' more paid students unlock unlimited.');
       }
     } catch {
       bar.classList.add('hidden');
@@ -452,7 +452,7 @@ const TEACHER_PAPER_BUILDER = (() => {
       return;
     }
     if (_quota && !_quota.allowed) {
-      APP?.toast?.(`या batch चे ${_quota.limit} मोफत papers संपले. ${_quota.need} विद्यार्थी paid झाले की अमर्यादित (${_quota.paid} / ${_quota.need}).`, 'error');
+      APP?.toast?.(`You have used the ${_quota.limit} free papers for this batch. Unlimited unlocks when ${_quota.need} students of this batch have paid (${_quota.paid} / ${_quota.need}).`, 'error');
       return;
     }
     const title = $('tpb-title')?.value?.trim();
@@ -486,7 +486,7 @@ const TEACHER_PAPER_BUILDER = (() => {
         APP?.toast?.(err.message, 'error');
         _refreshQuota();
       } else {
-        APP?.toast?.('Paper save करताना error आला', 'error');
+        APP?.toast?.('Could not save the paper', 'error');
       }
     } finally {
       btn.disabled = false;

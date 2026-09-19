@@ -38,7 +38,7 @@
   }
 
   function _refreshBatchOptions(side) {
-    _fill($(sides[side].batch), _filteredBatches(side).map(b => b.name), 'Batch निवडा…', true);
+    _fill($(sides[side].batch), _filteredBatches(side).map(b => b.name), 'Select batch...', true);
     _refreshSubjectOptions(side);
   }
 
@@ -48,12 +48,12 @@
     const sel = $(sides[side].subject);
     const subjects = batch?.subjects || [];
     if (side === 'tgt') {
-      sel.innerHTML = '<option value="">Subject निवडा…</option>' +
+      sel.innerHTML = '<option value="">Select subject...</option>' +
         subjects.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('') +
-        '<option value="__new__">➕ नवीन Subject…</option>';
+        '<option value="__new__">➕ New subject...</option>';
       _toggleNewSubject();
     } else {
-      _fill(sel, subjects, 'Subject निवडा…', true);
+      _fill(sel, subjects, 'Select subject...', true);
     }
   }
 
@@ -78,12 +78,12 @@
     _resetPreview();
     _srcChapters = [];
     if (!host) return;
-    if (!batch || !subject) { host.innerHTML = '<p class="empty-hint">Source Batch आणि Subject निवडा.</p>'; return; }
+    if (!batch || !subject) { host.innerHTML = '<p class="empty-hint">Select the source batch and subject.</p>'; return; }
     host.innerHTML = '<p class="empty-hint">Loading…</p>';
     try {
       _srcChapters = await API.fetchImportChapters(batch, subject);
     } catch (err) {
-      host.innerHTML = `<p class="empty-hint">${esc(err.message || 'Chapters load झाले नाहीत')}</p>`;
+      host.innerHTML = `<p class="empty-hint">${esc(err.message || 'Could not load chapters')}</p>`;
       return;
     }
     await _loadTargetChapters();
@@ -103,11 +103,11 @@
   function _renderChapters() {
     const host = $('imp-chapters');
     if (!host) return;
-    if (!_srcChapters.length) { host.innerHTML = '<p class="empty-hint">या Subject मध्ये काहीही content सापडले नाही.</p>'; return; }
-    const mapOptions = '<option value="">→ तेच नाव / नवीन</option>' +
+    if (!_srcChapters.length) { host.innerHTML = '<p class="empty-hint">No content found in this subject.</p>'; return; }
+    const mapOptions = '<option value="">→ same name / new</option>' +
       _tgtChapterNames.map(n => `<option value="${esc(n)}">→ ${esc(n)}</option>`).join('');
     host.innerHTML = `
-      <label class="imp-chapter-row imp-chapter-all"><input type="checkbox" id="imp-chapter-all" checked /> <strong>सर्व chapters (${_srcChapters.length})</strong></label>
+      <label class="imp-chapter-row imp-chapter-all"><input type="checkbox" id="imp-chapter-all" checked /> <strong>All chapters (${_srcChapters.length})</strong></label>
       ${_srcChapters.map((c, i) => `
         <div class="imp-chapter-row">
           <label><input type="checkbox" class="imp-chapter-cb" data-i="${i}" checked /> ${esc(c.name)}</label>
@@ -125,13 +125,13 @@
   function _buildRequest() {
     const source = { batch: $('imp-src-batch')?.value || '', subject: $('imp-src-subject')?.value || '' };
     const target = { batch: $('imp-tgt-batch')?.value || '', subject: _targetSubjectName() };
-    if (!source.batch || !source.subject) throw new Error('Source Batch आणि Subject निवडा');
-    if (!target.batch || !target.subject) throw new Error('Target Batch आणि Subject निवडा');
+    if (!source.batch || !source.subject) throw new Error('Select the source batch and subject');
+    if (!target.batch || !target.subject) throw new Error('Select the target batch and subject');
     const types = [...document.querySelectorAll('.imp-type:checked')].map(cb => cb.value);
-    if (!types.length) throw new Error('किमान एक प्रकार (Notes/Exercises/…) निवडा');
+    if (!types.length) throw new Error('Select at least one type (Notes/Exercises/...)');
 
     const checked = [...document.querySelectorAll('.imp-chapter-cb')].filter(cb => cb.checked).map(cb => Number(cb.dataset.i));
-    if (!checked.length) throw new Error('किमान एक chapter निवडा');
+    if (!checked.length) throw new Error('Select at least one chapter');
     const chapters = checked.length === _srcChapters.length ? [] : checked.map(i => _srcChapters[i].name);
     const chapterMap = {};
     document.querySelectorAll('.imp-map').forEach(sel => {
@@ -157,27 +157,27 @@
     let req;
     try { req = _buildRequest(); } catch (err) { toast(err.message, 'error'); return; }
     _setBusy(true);
-    $('imp-preview-out').innerHTML = '<p class="empty-hint">तपासत आहे…</p>';
+    $('imp-preview-out').innerHTML = '<p class="empty-hint">Checking...</p>';
     try {
       const d = await API.previewImport(req);
       const fresh = Object.values(d.totals).reduce((s, t) => s + t.fresh, 0);
       const dup = Object.values(d.totals).reduce((s, t) => s + t.duplicate, 0);
       const rows = d.chapters.map(c => {
         const cells = Object.entries(c.counts).filter(([, n]) => n.total > 0)
-          .map(([k, n]) => `${TYPE_LABELS[k]} <strong>${n.fresh}</strong>${n.duplicate ? ` <small>(+${n.duplicate} आधीच आहेत)</small>` : ''}`).join(' · ') || '—';
-        return `<div class="imp-prev-row"><div><strong>${esc(c.name)}</strong> ${c.target_is_new ? '<span class="imp-new">नवीन chapter</span>' : `<span class="imp-existing">→ ${esc(c.target_name)}</span>`}</div><div>${cells}</div></div>`;
+          .map(([k, n]) => `${TYPE_LABELS[k]} <strong>${n.fresh}</strong>${n.duplicate ? ` <small>(+${n.duplicate} already there)</small>` : ''}`).join(' · ') || '—';
+        return `<div class="imp-prev-row"><div><strong>${esc(c.name)}</strong> ${c.target_is_new ? '<span class="imp-new">new chapter</span>' : `<span class="imp-existing">→ ${esc(c.target_name)}</span>`}</div><div>${cells}</div></div>`;
       }).join('');
       $('imp-preview-out').innerHTML = `
         <div class="imp-summary">
-          <strong>${fresh}</strong> नवीन items import होतील${dup ? ` · ${dup} आधीच आहेत (skip)` : ''}
-          ${d.mixed_quizzes_skipped ? ` · ${d.mixed_quizzes_skipped} mixed test skip (एकापेक्षा जास्त chapters)` : ''}
-          ${!d.target_subject_exists ? '<div class="imp-note">ℹ️ Target मध्ये हा Subject नाही — नवीन तयार होईल.</div>' : ''}
-          ${d.target_has_chapters ? '<div class="imp-note">ℹ️ Target Subject मध्ये आधीपासून chapters आहेत — नवीन chapters शेवटी जोडले जातील.</div>' : ''}
+          <strong>${fresh}</strong> new items will be imported${dup ? ` · ${dup} already there (skipped)` : ''}
+          ${d.mixed_quizzes_skipped ? ` · ${d.mixed_quizzes_skipped} mixed test skipped (spans several chapters)` : ''}
+          ${!d.target_subject_exists ? '<div class="imp-note">ℹ️ This subject does not exist in the target yet and will be created.</div>' : ''}
+          ${d.target_has_chapters ? '<div class="imp-note">ℹ️ The target subject already has chapters. New chapters will be added at the end.</div>' : ''}
         </div>${rows}`;
       _previewOk = fresh > 0;
-      if (!fresh) toast('Import करण्यासारखं काही नवीन नाही', 'info');
+      if (!fresh) toast('Nothing new to import', 'info');
     } catch (err) {
-      $('imp-preview-out').innerHTML = `<p class="empty-hint">${esc(err.message || 'Preview अयशस्वी')}</p>`;
+      $('imp-preview-out').innerHTML = `<p class="empty-hint">${esc(err.message || 'Preview failed')}</p>`;
     } finally {
       _setBusy(false);
     }
@@ -187,20 +187,20 @@
     if (_busy || !_previewOk) return;
     let req;
     try { req = _buildRequest(); } catch (err) { toast(err.message, 'error'); return; }
-    if (!await APP.confirmAsync(`"${req.target.batch} / ${req.target.subject}" मध्ये import करायचं? (चुकलं तर Undo करता येईल)`)) return;
+    if (!await APP.confirmAsync(`Import into "${req.target.batch} / ${req.target.subject}"? (You can undo it afterwards)`)) return;
     _setBusy(true);
     try {
       const d = await API.runImport(req);
       const line = Object.entries(d.results).filter(([, r]) => r.created || r.skipped)
-        .map(([k, r]) => `${TYPE_LABELS[k]}: ${r.created} नवीन${r.skipped ? `, ${r.skipped} skip` : ''}`).join(' · ');
-      $('imp-preview-out').innerHTML = `<div class="imp-summary imp-done">✅ Import झाला — ${esc(line)}
-        <div><button class="admin-btn-secondary" id="imp-undo-now" type="button">↩️ हा Import Undo करा</button></div></div>`;
+        .map(([k, r]) => `${TYPE_LABELS[k]}: ${r.created} new${r.skipped ? `, ${r.skipped} skipped` : ''}`).join(' · ');
+      $('imp-preview-out').innerHTML = `<div class="imp-summary imp-done">✅ Import complete: ${esc(line)}
+        <div><button class="admin-btn-secondary" id="imp-undo-now" type="button">↩️ Undo this import</button></div></div>`;
       $('imp-undo-now')?.addEventListener('click', () => _undo(d.job_id));
       _previewOk = false;
-      toast('✅ Import झाला', 'success');
+      toast('✅ Import complete', 'success');
       await _loadJobs();
     } catch (err) {
-      toast(`Import अयशस्वी: ${err.message}`, 'error');
+      toast(`Import failed: ${err.message}`, 'error');
       await _loadJobs();
     } finally {
       _setBusy(false);
@@ -208,15 +208,15 @@
   }
 
   async function _undo(jobId) {
-    if (!await APP.confirmAsync('हा Import परत काढायचा? (फक्त ह्या import ने आलेले items delete होतील)')) return;
+    if (!await APP.confirmAsync('Undo this import? (Only the items created by this import will be deleted)')) return;
     try {
       const d = await API.undoImport(jobId);
       const n = Object.values(d.deleted).reduce((s, v) => s + v, 0);
-      toast(`↩️ Undo झाला — ${n} items काढले`, 'success');
+      toast(`↩️ Undone: ${n} items removed`, 'success');
       _resetPreview();
       await _loadJobs();
     } catch (err) {
-      toast(`Undo अयशस्वी: ${err.message}`, 'error');
+      toast(`Undo failed: ${err.message}`, 'error');
     }
   }
 
@@ -225,7 +225,7 @@
     if (!host) return;
     try {
       const jobs = await API.fetchImportJobs();
-      if (!jobs.length) { host.innerHTML = '<p class="empty-hint">अजून कोणताही Import झालेला नाही.</p>'; return; }
+      if (!jobs.length) { host.innerHTML = '<p class="empty-hint">No imports yet.</p>'; return; }
       host.innerHTML = '';
       jobs.forEach(j => {
         const made = Object.entries(j.results || {}).filter(([k, r]) => TYPE_LABELS[k] && r?.created)
@@ -235,14 +235,14 @@
         row.innerHTML = `
           <div class="student-card-info">
             <div class="batch-admin-name">${esc(j.source?.batch)} / ${esc(j.source?.subject)} → ${esc(j.target?.batch)} / ${esc(j.target?.subject)}</div>
-            <div class="student-meta-row"><span>${esc(new Date(j.created_at).toLocaleString('mr-IN'))}</span><span>${made}</span>${j.as_draft ? '<span>Draft</span>' : ''}${j.undone ? '<span>↩️ Undo झाला</span>' : ''}${j.results?.error ? '<span>⚠️ अर्धवट</span>' : ''}</div>
+            <div class="student-meta-row"><span>${esc(new Date(j.created_at).toLocaleString())}</span><span>${made}</span>${j.as_draft ? '<span>Draft</span>' : ''}${j.undone ? '<span>↩️ Undone</span>' : ''}${j.results?.error ? '<span>⚠️ Partial</span>' : ''}</div>
           </div>
           ${j.undone ? '' : '<button class="admin-btn-secondary" data-undo type="button">↩️ Undo</button>'}`;
         row.querySelector('[data-undo]')?.addEventListener('click', () => _undo(j.job_id));
         host.appendChild(row);
       });
     } catch (err) {
-      host.innerHTML = `<p class="empty-hint">${esc(err.message || 'Jobs load झाले नाहीत')}</p>`;
+      host.innerHTML = `<p class="empty-hint">${esc(err.message || 'Could not load imports')}</p>`;
     }
   }
 
@@ -265,15 +265,15 @@
     try {
       _batches = await API.fetchCatalogBatches();
     } catch (err) {
-      toast(`Batches load झाले नाहीत: ${err.message}`, 'error');
+      toast(`Could not load batches: ${err.message}`, 'error');
       return;
     }
     _loaded = true;
     const boards = [...new Set(_batches.map(b => b.board).filter(Boolean))].sort();
     const mediums = [...new Set(_batches.map(b => b.medium).filter(Boolean))].sort();
     ['src', 'tgt'].forEach(side => {
-      _fill($(sides[side].board), boards, 'सर्व Boards');
-      _fill($(sides[side].medium), mediums, 'सर्व Mediums');
+      _fill($(sides[side].board), boards, 'All boards');
+      _fill($(sides[side].medium), mediums, 'All mediums');
       _refreshBatchOptions(side);
     });
     await _loadJobs();

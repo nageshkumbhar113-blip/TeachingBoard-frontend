@@ -1708,7 +1708,7 @@ const API = (() => {
   // The first chapter of every subject is always free regardless.
   async function setChapterFree(batch, subject, chapter, isFree) {
     const token = await ensureAdminSession().catch(() => '');
-    if (!token) throw new Error('Admin session आवश्यक आहे');
+    if (!token) throw new Error('Admin session required');
     return request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters/${encodeURIComponent(chapter)}/free`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },

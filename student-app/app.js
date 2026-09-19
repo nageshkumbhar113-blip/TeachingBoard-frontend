@@ -472,7 +472,7 @@ const APP = (() => {
     const downloadBtn = $('btn-download-update');
     if (downloadBtn) {
       downloadBtn.textContent = _isPlayStoreLink(remote.apk_url)
-        ? '⬇️ Play Store वर Update करा'
+        ? '⬇️ Update on Play Store'
         : '⬇️ Download & Install';
     }
 
@@ -964,11 +964,11 @@ const APP = (() => {
     const code = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
     const pin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
     if (!code || !pin || !window.PAYMENT?.openPlanSelect) {
-      toast('🔒 हा chapter Subscribe केल्यावर उघडेल — आधी login करा', 'info');
+      toast('🔒 Subscribe to unlock this chapter. Please log in first.', 'info');
       return;
     }
     const profile = await API.getStudentProfile().catch(() => null);
-    toast('🔒 हा chapter Subscribe केल्यावर उघडेल', 'info');
+    toast('🔒 Subscribe to unlock this chapter', 'info');
 
     PAYMENT.openPlanSelect(
       { student_code: code, pin, name: profile?.name || '', contact: profile?.mobile || '' },

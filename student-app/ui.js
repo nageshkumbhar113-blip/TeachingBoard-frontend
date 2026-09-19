@@ -709,7 +709,7 @@ const UI = (() => {
       item.innerHTML = `
         <div class="chapter-info">
           <div class="chapter-name">${isLocked ? '🔒 ' : ''}${ch}</div>
-          <div class="chapter-meta">${isLocked ? 'Subscribe केल्यावर उघडेल' : `${testCount} test${testCount === 1 ? '' : 's'}${totalQuestions ? ` · ${totalQuestions} questions` : ''}`}</div>
+          <div class="chapter-meta">${isLocked ? 'Subscribe to unlock' : `${testCount} test${testCount === 1 ? '' : 's'}${totalQuestions ? ` · ${totalQuestions} questions` : ''}`}</div>
         </div>
         <div class="chapter-stats"></div>
         <span class="chapter-arrow" aria-hidden="true">›</span>
