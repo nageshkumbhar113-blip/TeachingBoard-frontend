@@ -912,6 +912,17 @@ body.student-app.mode-board.theme-board-light::before {
 
 .onboarding-screen.hidden { display: none; }
 
+/* Tall cards (Registration has many fields) must scroll on short windows
+   instead of being cut off. `margin: auto` on the card keeps it centered when
+   there is room, and unlike align-items:center it never clips the top. */
+.onboarding-screen {
+  overflow-y: auto;
+  align-items: flex-start;
+}
+.onboarding-screen > .onboarding-card {
+  margin: auto;
+}
+
 .onboarding-card {
   width: 100%;
   max-width: 420px;

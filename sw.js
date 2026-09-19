@@ -1,4 +1,4 @@
-const SW_VERSION = 'v164';
+const SW_VERSION = 'v165';
 const CACHE_PREFIX = 'nkseduorbit';
 const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
