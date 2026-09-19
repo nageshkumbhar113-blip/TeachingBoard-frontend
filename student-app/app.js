@@ -991,15 +991,87 @@ const APP = (() => {
                       document.getElementById('onboarding-screen')?.querySelector('.onboarding-card');
     const regCard   = document.getElementById('reg-card');
 
-    const _openRegistration = () => {
+    const chooseCard = document.getElementById('reg-choose-card');
+    const tregCard = document.getElementById('treg-card');
+    const tregDoneCard = document.getElementById('treg-done-card');
+
+    const _openStudentRegistration = () => {
+      chooseCard?.classList.add('hidden');
       if (loginCard) loginCard.classList.add('hidden');
       regCard?.classList.remove('hidden');
       document.getElementById('reg-name')?.focus();
       _populateRegBatches();
     };
-    $('ob-goto-register')?.addEventListener('click', _openRegistration);
-    // "Register" is the 4th tab next to Student / Teacher / Parent.
-    $('ob-tab-register')?.addEventListener('click', _openRegistration);
+    // "Register" is the 4th tab next to Student / Teacher / Parent: first ask who is registering.
+    const _openRegisterChooser = () => {
+      if (loginCard) loginCard.classList.add('hidden');
+      chooseCard?.classList.remove('hidden');
+    };
+    $('ob-goto-register')?.addEventListener('click', _openRegisterChooser);
+    $('ob-tab-register')?.addEventListener('click', _openRegisterChooser);
+    $('reg-choose-student')?.addEventListener('click', _openStudentRegistration);
+    $('reg-choose-teacher')?.addEventListener('click', () => {
+      chooseCard?.classList.add('hidden');
+      tregCard?.classList.remove('hidden');
+      document.getElementById('treg-name')?.focus();
+    });
+    $('reg-choose-back')?.addEventListener('click', () => {
+      chooseCard?.classList.add('hidden');
+      if (loginCard) loginCard.classList.remove('hidden');
+    });
+    $('treg-back')?.addEventListener('click', () => {
+      tregCard?.classList.add('hidden');
+      chooseCard?.classList.remove('hidden');
+    });
+    $('treg-done-login')?.addEventListener('click', () => {
+      tregDoneCard?.classList.add('hidden');
+      if (loginCard) loginCard.classList.remove('hidden');
+      document.querySelector('.ob-role-tab[data-role="teacher"]')?.click();
+      const codeIn = document.getElementById('ob-student-code');
+      if (codeIn) codeIn.value = document.getElementById('treg-done-code')?.textContent || '';
+      document.getElementById('ob-pin')?.focus();
+    });
+    $('treg-copy')?.addEventListener('click', () => {
+      navigator.clipboard?.writeText(document.getElementById('treg-done-code')?.textContent || '')
+        .then(() => toast('Copied', 'success'))
+        .catch(() => toast('Could not copy', 'error'));
+    });
+    $('treg-submit')?.addEventListener('click', async () => {
+      const errEl = document.getElementById('treg-error-msg');
+      const submitBtn = document.getElementById('treg-submit');
+      const showErr = msg => { if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); } };
+      errEl?.classList.add('hidden');
+
+      const name = (document.getElementById('treg-name')?.value || '').trim();
+      const mobile = (document.getElementById('treg-mobile')?.value || '').trim();
+      const institute = (document.getElementById('treg-institute')?.value || '').trim();
+      const pin = (document.getElementById('treg-pin')?.value || '').trim();
+      const agree = !!document.getElementById('treg-agree')?.checked;
+
+      if (!name) return showErr('Enter your full name');
+      if (!_isValidMobile(mobile)) return showErr('Enter a valid 10-digit mobile number (starting with 6-9)');
+      if (!institute) return showErr('Enter your institute / coaching class name');
+      if (!/^\d{4}$/.test(pin)) return showErr('PIN must be 4 digits');
+      if (_isWeakPin(pin)) return showErr('That PIN is too easy to guess (e.g. 0000, 1234). Choose a different PIN');
+      if (!agree) return showErr('Please tick the agreement box to continue');
+
+      submitBtn.disabled = true;
+      try {
+        const server = (document.getElementById('ob-server')?.value || '').trim() || API.DEFAULT_API_URL;
+        if (server && window.API?.setApiUrl) API.setApiUrl(server);
+        const res = await API.registerTeacher({ name, mobile, institute_name: institute, pin, agree: true });
+        const codeEl = document.getElementById('treg-done-code');
+        if (codeEl) codeEl.textContent = res?.teacher_code || '';
+        tregCard?.classList.add('hidden');
+        tregDoneCard?.classList.remove('hidden');
+        ['treg-name', 'treg-mobile', 'treg-institute', 'treg-pin'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        const ag = document.getElementById('treg-agree'); if (ag) ag.checked = false;
+      } catch (err) {
+        showErr(err?.message || 'Registration failed. Please try again');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
 
     const codeCard = document.getElementById('reg-code-card');
     _applyRegistrationLinkParams(loginCard, regCard);
@@ -1030,14 +1102,14 @@ const APP = (() => {
       };
       if (errEl) errEl.classList.add('hidden');
 
-      if (!name)        return _showErr('पूर्ण नाव टाका');
-      if (!school_name) return _showErr('शाळेचे नाव टाका');
-      if (!mobile)       return _showErr('Mobile Number टाका');
-      if (!_isValidMobile(mobile)) return _showErr('वैध 10 अंकी mobile number टाका (6-9 ने सुरू)');
-      if (!batch)       return _showErr('तुमचा Batch / Class निवडा');
-      if (!/^\d{4}$/.test(pin)) return _showErr('PIN 4 अंकी असणे आवश्यक आहे');
-      if (_isWeakPin(pin)) return _showErr('हा PIN खूप सोपा आहे (उदा. 0000, 1234). वेगळा PIN निवडा');
-      if (!consent) return _showErr('पुढे जाण्यासाठी संमती checkbox निवडा');
+      if (!name)        return _showErr('Enter your full name');
+      if (!school_name) return _showErr('Enter your school name');
+      if (!mobile)       return _showErr('Enter your mobile number');
+      if (!_isValidMobile(mobile)) return _showErr('Enter a valid 10-digit mobile number (starting with 6-9)');
+      if (!batch)       return _showErr('Select your batch / class');
+      if (!/^\d{4}$/.test(pin)) return _showErr('PIN must be 4 digits');
+      if (_isWeakPin(pin)) return _showErr('That PIN is too easy to guess (e.g. 0000, 1234). Choose a different PIN');
+      if (!consent) return _showErr('Please tick the consent box to continue');
 
       submitBtn.disabled = true;
       try {
@@ -1053,8 +1125,8 @@ const APP = (() => {
         if (pinEl) pinEl.textContent = pin;
         const detailEl = document.getElementById('reg-success-detail');
         if (detailEl) {
-          detailEl.textContent = '💾 हे दोन्ही जपून ठेवा — login साठी लागतील. तुमचा पहिला chapter आत्ताच Free आहे!' +
-            (res?.teacher_linked ? ` ✅ ${res.teacher_name || 'शिक्षक'} यांच्याशी जोडले गेलात.` : '');
+          detailEl.textContent = 'Keep both safe. You need them to log in. Your first chapter is free right now!' +
+            (res?.teacher_linked ? ` You are linked to ${res.teacher_name || 'your teacher'}.` : '');
         }
 
         const _goLogin = (autoLogin = false) => {
@@ -1069,29 +1141,29 @@ const APP = (() => {
             return;
           }
           pinIn?.focus();
-          toast('आता तुमचा PIN टाकून login करा', 'info');
+          toast('Now enter your PIN to log in', 'info');
         };
 
         document.getElementById('reg-start-free')?.addEventListener('click', () => _goLogin(true), { once: true });
 
         document.getElementById('reg-copy-code')?.addEventListener('click', () => {
           navigator.clipboard?.writeText(`Code: ${code}\nPIN: ${pin}`)
-            .then(() => toast('Copy झाला ✓', 'success'))
-            .catch(() => toast('Copy करता आले नाही', 'error'));
+            .then(() => toast('Copied', 'success'))
+            .catch(() => toast('Could not copy', 'error'));
         }, { once: true });
 
         document.getElementById('reg-choose-plan')?.addEventListener('click', () => {
           if (window.PAYMENT?.openPlanSelect) {
             PAYMENT.openPlanSelect({ student_code: code, pin, name, contact: mobile }, () => _goLogin(true));
           } else {
-            toast('Payment system उपलब्ध नाही', 'error');
+            toast('Payment is not available right now', 'error');
           }
         }, { once: true });
 
         regCard?.classList.add('hidden');
         codeCard?.classList.remove('hidden');
       } catch (err) {
-        _showErr(err?.message || 'Registration failed — पुन्हा प्रयत्न करा');
+        _showErr(err?.message || 'Registration failed. Please try again');
       } finally {
         submitBtn.disabled = false;
       }
@@ -1112,9 +1184,9 @@ const APP = (() => {
       (!medium || b.medium === medium)
     );
     sel.innerHTML = list.length
-      ? '<option value="">Batch निवडा…</option>' +
+      ? '<option value="">Select batch...</option>' +
         list.map(b => `<option value="${_escAttr(b.name)}">${_escAttr(b.name)}</option>`).join('')
-      : '<option value="">या Board/Medium साठी batch उपलब्ध नाही</option>';
+      : '<option value="">No batch available for this board/medium</option>';
     if (list.some(b => b.name === previous)) sel.value = previous;
   }
 
@@ -1150,8 +1222,8 @@ const APP = (() => {
         if (el) el.innerHTML = `<option value="">${allLabel}</option>` +
           values.map(v => `<option value="${_escAttr(v)}">${_escAttr(v)}</option>`).join('');
       };
-      fill('reg-board',  'सर्व Boards',  [...new Set(_regBatches.map(b => b.board).filter(Boolean))].sort());
-      fill('reg-medium', 'सर्व Mediums', [...new Set(_regBatches.map(b => b.medium).filter(Boolean))].sort());
+      fill('reg-board',  'All boards',  [...new Set(_regBatches.map(b => b.board).filter(Boolean))].sort());
+      fill('reg-medium', 'All mediums', [...new Set(_regBatches.map(b => b.medium).filter(Boolean))].sort());
       document.getElementById('reg-board')?.addEventListener('change', _renderRegBatchOptions);
       document.getElementById('reg-medium')?.addEventListener('change', _renderRegBatchOptions);
       _renderRegBatchOptions();
@@ -1159,7 +1231,7 @@ const APP = (() => {
       if (wanted && _regBatches.some(b => b.name === wanted)) sel.value = wanted;
       sel.dataset.loaded = '1';
     } catch {
-      sel.innerHTML = '<option value="">Batch लोड झाले नाहीत — Internet तपासा</option>';
+      sel.innerHTML = '<option value="">Could not load batches. Check your internet</option>';
     }
   }
 
@@ -1218,15 +1290,15 @@ const APP = (() => {
     let _selectedRole = 'student';
 
     const ROLE_META = {
-      student: { sub: 'Student access साठी code आणि PIN टाका', label: 'Student Code', placeholder: 'उदा. STU001' },
-      teacher: { sub: 'Teacher login — teacher code आणि PIN टाका', label: 'Teacher Code', placeholder: 'उदा. TCH123' },
-      parent:  { sub: 'Parent login — parent code आणि PIN टाका', label: 'Parent Code', placeholder: 'उदा. PAR123' },
+      student: { sub: 'Enter your student code and PIN', label: 'Student Code', placeholder: 'e.g. STU001' },
+      teacher: { sub: 'Teacher login: enter your teacher code and PIN', label: 'Teacher Code', placeholder: 'e.g. TCH123' },
+      parent:  { sub: 'Parent login: enter your parent code and PIN', label: 'Parent Code', placeholder: 'e.g. PAR123' },
     };
 
     function _applyRole(role) {
       _selectedRole = role;
       const meta = ROLE_META[role] || ROLE_META.student;
-      if (subEl) subEl.textContent = opts.force ? 'पुन्हा authenticate करा' : meta.sub;
+      if (subEl) subEl.textContent = opts.force ? 'Please log in again' : meta.sub;
       if (codeLabelEl) codeLabelEl.firstChild.textContent = meta.label + ' ';
       if (codeInput) codeInput.placeholder = meta.placeholder;
       roleTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.role === role));
@@ -1332,12 +1404,14 @@ const APP = (() => {
         onDone?.();
       } catch (err) {
         let msg = err?.message || 'Login failed';
-        if (err?.code === 'DEVICE_MISMATCH') {
-          msg = 'हे account दुसऱ्या device वर registered आहे. Admin ला reset करायला सांगा.';
+        if (_selectedRole === 'teacher' && ['ACCOUNT_PENDING', 'ACCOUNT_BLOCKED', 'TEACHER_VALIDITY_ENDED'].includes(err?.code)) {
+          msg = err.message;
+        } else if (err?.code === 'DEVICE_MISMATCH') {
+          msg = 'This account is registered on another device. Ask the admin to reset it.';
         } else if (err?.code === 'ACCOUNT_PENDING') {
           // No admin approval anymore — pending means "not subscribed yet".
           // Offer the plan-select / payment flow directly.
-          msg = '⏳ Subscription active नाही — Plan निवडून सुरू करा.';
+          msg = 'Your subscription is not active. Choose a plan to continue.';
           if (window.PAYMENT?.openPlanSelect && code) {
             setTimeout(() => PAYMENT.openPlanSelect(
               { student_code: code, pin, name: '', contact: '' },
@@ -1345,14 +1419,14 @@ const APP = (() => {
             ), 400);
           }
         } else if (err?.code === 'ACCOUNT_BLOCKED') {
-          msg = '🚫 तुमचा account block केला आहे. Admin ला संपर्क करा.';
+          msg = 'Your account is blocked. Please contact the admin.';
         } else if (/invalid credentials/i.test(msg) || /unauthorized/i.test(msg)) {
           if (_selectedRole === 'parent') {
-            msg = 'चुकीचा Parent Code किंवा PIN. Admin ने दिलेला code आणि PIN वापरा.';
+            msg = 'Wrong Parent Code or PIN. Use the code and PIN given by the admin.';
           } else if (_selectedRole === 'teacher') {
-            msg = 'चुकीचा Teacher Code किंवा PIN. पुन्हा check करा.';
+            msg = 'Wrong Teacher Code or PIN. Please check and try again.';
           } else {
-            msg = 'चुकीचा Student Code किंवा PIN. पुन्हा try करा.';
+            msg = 'Wrong Student Code or PIN. Please try again.';
           }
         }
         if (errorEl) {
@@ -1372,7 +1446,7 @@ const APP = (() => {
         // Require both code AND pin to be saved (means they've successfully logged in before)
         if (!savedCode || !savedPin) {
           if (errorEl) {
-            errorEl.textContent = 'First login online करणे आवश्यक आहे';
+            errorEl.textContent = 'You must log in online at least once first';
             errorEl.classList.remove('hidden');
           }
           return;
@@ -1382,7 +1456,7 @@ const APP = (() => {
         return;
       }
       if (errorEl) {
-        errorEl.textContent = 'Cached access फक्त offline mode मध्ये available आहे';
+        errorEl.textContent = 'Cached access is available only in offline mode';
         errorEl.classList.remove('hidden');
       }
     }, { signal });

@@ -673,7 +673,18 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                   <input id="teacher-code" class="admin-input" placeholder="Teacher code (auto)" aria-label="Teacher code" />
                   <button id="btn-gen-teacher-code" class="admin-btn-secondary icon-btn" type="button" title="Auto-generate code">⚡</button>
                 </div>
-                <input id="teacher-mobile" class="admin-input" placeholder="Mobile * (10 अंकी)" aria-label="Mobile (required)" type="tel" inputmode="numeric" maxlength="10" required />
+                <input id="teacher-mobile" class="admin-input" placeholder="Mobile * (10 digits)" aria-label="Mobile (required)" type="tel" inputmode="numeric" maxlength="10" required />
+                <input id="teacher-institute" class="admin-input" placeholder="Institute / coaching name" aria-label="Institute name" />
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Valid until (optional)
+                  <input id="teacher-validity" class="admin-input" type="date" aria-label="Teacher validity date" />
+                </label>
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Status
+                  <select id="teacher-status" class="admin-select" aria-label="Teacher status">
+                    <option value="active">Active</option>
+                    <option value="pending">Pending approval</option>
+                    <option value="blocked">Blocked</option>
+                  </select>
+                </label>
               </div>
               <div class="import-target">
                 <div class="pin-input-row">
@@ -691,6 +702,12 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                 <button id="btn-save-teacher" class="admin-btn-primary">Save Teacher</button>
                 <button id="btn-reset-teacher" class="admin-btn-secondary" type="button">Reset</button>
               </div>
+            </section>
+
+            <section class="import-section admin-card" id="pending-teachers-section" style="display:none" aria-label="Pending Teacher Registrations">
+              <h3 class="admin-section-title">Pending Teacher Registrations</h3>
+              <p class="import-hint">Teachers who registered themselves. Contact them (WhatsApp), then approve. They can log in only after approval. Optionally set a validity date before approving.</p>
+              <div id="pending-teachers-list" class="batch-admin-list" role="list" aria-label="Pending teachers"></div>
             </section>
 
             <section class="import-section admin-card" aria-label="Teacher List">

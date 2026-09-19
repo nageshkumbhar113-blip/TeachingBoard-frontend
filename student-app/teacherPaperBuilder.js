@@ -501,7 +501,9 @@ const TEACHER_PAPER_BUILDER = (() => {
   async function _showPdfExportPanel(paper) {
     const panel = $('tpb-pdf-section');
     if (!panel) return;
-    const savedName = await DB.getSetting?.(INSTITUTION_NAME_KEY, '').catch(() => '') || '';
+    const savedName = (await DB.getSetting?.(INSTITUTION_NAME_KEY, '').catch(() => '') || '')
+      || (await API.getTeacherProfile?.().catch(() => null))?.institute_name
+      || '';
     const savedLang = await DB.getSetting?.(PDF_LANGUAGE_KEY, 'marathi').catch(() => 'marathi') || 'marathi';
     panel.style.display = '';
     panel.innerHTML = `

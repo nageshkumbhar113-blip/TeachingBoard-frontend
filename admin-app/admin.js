@@ -2711,6 +2711,9 @@ const ADMIN = (() => {
     _setValue('teacher-name', '');
     _setValue('teacher-code', '');
     _setValue('teacher-mobile', '');
+    _setValue('teacher-institute', '');
+    _setValue('teacher-validity', '');
+    _setValue('teacher-status', 'active');
     _setValue('teacher-pin', '');
     _setValue('teacher-assigned-students', '');
   }
@@ -2733,11 +2736,20 @@ const ADMIN = (() => {
 
     list.innerHTML = filtered.map(t => {
       const stuCount = Array.isArray(t.assigned_students) ? t.assigned_students.length : 0;
+      const today = new Date().toISOString().slice(0, 10);
+      const validityBadge = t.validity_until
+        ? `<span class="expiry-badge ${t.validity_until < today ? 'expired' : 'soon'}" title="Validity">${t.validity_until < today ? 'Validity ended ' : 'Valid till '}${_escHtml(t.validity_until)}</span>`
+        : '';
+      const statusBadge = t.status && t.status !== 'active'
+        ? `<span class="student-status-badge ${_escHtml(t.status)}">${_escHtml(t.status)}</span>`
+        : '';
       return `<div class="student-row" data-id="${_escHtml(t.id)}">
         <div class="student-row-main">
           <span class="student-row-code">${_escHtml(t.teacher_code || '—')}</span>
           <span class="student-row-name">${_escHtml(t.name)}</span>
+          ${t.institute_name ? `<span class="student-meta-row"><span>${_escHtml(t.institute_name)}</span></span>` : ''}
           <span class="student-status-badge active">${stuCount} students</span>
+          ${statusBadge}${validityBadge}
         </div>
         <div class="student-row-actions">
           <button class="admin-btn-secondary" data-teacher-edit="${_escHtml(t.id)}">Edit</button>
@@ -2754,6 +2766,9 @@ const ADMIN = (() => {
         _setValue('teacher-name', t.name);
         _setValue('teacher-code', t.teacher_code || '');
         _setValue('teacher-mobile', t.mobile || '');
+        _setValue('teacher-institute', t.institute_name || '');
+        _setValue('teacher-validity', t.validity_until || '');
+        _setValue('teacher-status', t.status || 'active');
         _setValue('teacher-assigned-students', (t.assigned_students || []).join(', '));
         $('atab-teachers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
@@ -2782,10 +2797,69 @@ const ADMIN = (() => {
     try {
       _teachersCache = await API.fetchTeachers();
       _renderTeacherList($('teacher-search')?.value || '');
+      _renderPendingTeachers();
     } catch (err) {
       list.innerHTML = `<p class="empty-hint">${_escHtml(err.message || 'Could not load teachers')}</p>`;
     }
     _loadPaperQuota();
+  }
+
+  // ── Pending self-registered teachers: contact, approve (optional validity), reject ──
+  function _teacherWhatsAppUrl(t) {
+    const msg = t.status === 'active'
+      ? `Hello ${t.name}, your Nks EduOrbit teacher account is now active. Log in with Teacher code ${t.teacher_code} and the PIN you set during registration.`
+      : `Hello ${t.name}, this is Nks EduOrbit. We received your teacher registration (code ${t.teacher_code}). We would like to confirm a few details before activating your account.`;
+    return `https://wa.me/91${encodeURIComponent(t.mobile || '')}?text=${encodeURIComponent(msg)}`;
+  }
+
+  function _renderPendingTeachers() {
+    const section = $('pending-teachers-section');
+    const host = $('pending-teachers-list');
+    if (!section || !host) return;
+    const pending = _teachersCache.filter(t => t.status === 'pending');
+    section.style.display = pending.length ? '' : 'none';
+    host.innerHTML = '';
+    pending.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'batch-admin-item';
+      row.innerHTML = `
+        <div class="student-card-info">
+          <div class="batch-admin-name">${_escHtml(t.name)} <small>(${_escHtml(t.teacher_code)})</small></div>
+          <div class="student-meta-row">
+            <span>${_escHtml(t.mobile || '')}</span>
+            <span>${_escHtml(t.institute_name || 'No institute given')}</span>
+            <span>${t.created_at ? _escHtml(new Date(t.created_at).toLocaleDateString()) : ''}</span>
+            <span>${t.terms_accepted_at ? 'Terms accepted' : 'Terms not recorded'}</span>
+          </div>
+        </div>
+        <div class="chapter-admin-actions">
+          <label style="font-size:0.75rem">Valid until <input type="date" class="admin-input pt-validity" style="max-width:150px" /></label>
+          <a class="admin-btn-secondary" href="${_teacherWhatsAppUrl(t)}" target="_blank" rel="noopener">WhatsApp</a>
+          <button class="admin-btn-primary" data-approve type="button">Approve</button>
+          <button class="admin-btn-danger" data-reject type="button">Reject</button>
+        </div>`;
+      row.querySelector('[data-approve]').addEventListener('click', async () => {
+        try {
+          const validity = row.querySelector('.pt-validity')?.value || '';
+          await API.updateTeacher(t.id, { status: 'active', validity_until: validity });
+          APP.toast(`${t.name} approved. Send them the WhatsApp message with their code.`, 'success');
+          await _loadTeachersAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Could not approve', 'error');
+        }
+      });
+      row.querySelector('[data-reject]').addEventListener('click', async () => {
+        if (!await APP.confirmAsync(`Reject and delete the registration of "${t.name}"?`)) return;
+        try {
+          await API.deleteTeacher(t.id);
+          APP.toast('Registration rejected', 'success');
+          await _loadTeachersAdmin();
+        } catch (err) {
+          APP.toast(err.message || 'Could not reject', 'error');
+        }
+      });
+      host.appendChild(row);
+    });
   }
 
   // ── Teacher Paper Builder quota (defaults + teacher x batch table) ─────────
@@ -2964,7 +3038,14 @@ const ADMIN = (() => {
       if (!name) { APP.toast('Name is required', 'error'); return; }
       if (!_validMobile(mobile)) { APP.toast('वैध 10 अंकी Mobile number आवश्यक आहे (6-9 ने सुरू)', 'error'); return; }
 
-      const payload = { name, mobile, assigned_students: rawStudents };
+      const payload = {
+        name,
+        mobile,
+        assigned_students: rawStudents,
+        institute_name: String($('teacher-institute')?.value || '').trim(),
+        validity_until: String($('teacher-validity')?.value || '').trim(),
+        status: String($('teacher-status')?.value || 'active'),
+      };
       if (code)  payload.teacher_code = code;
       if (pin) {
         if (!/^\d{4}$/.test(pin)) { APP.toast('PIN must be 4 digits', 'error'); return; }

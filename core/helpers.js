@@ -189,6 +189,7 @@ const API = (() => {
       name: String(user.name || '').trim(),
       teacher_code: String(user.teacher_code || credentials.teacher_code || '').trim().toUpperCase(),
       mobile: String(user.mobile || '').trim(),
+      institute_name: String(user.institute_name || '').trim(),
       assigned_students: Array.isArray(user.assigned_students) ? user.assigned_students : [],
     };
     await Promise.all([
@@ -1321,6 +1322,11 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  // Public: a teacher registers themselves; the account is pending until an admin approves.
+  async function registerTeacher(data = {}) {
+    return request('/teachers/register', { method: 'POST', body: JSON.stringify(data) });
+  }
+
   async function selfRegister(data = {}) {
     return request('/students/register', {
       method: 'POST',
@@ -2441,6 +2447,7 @@ const API = (() => {
     fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota,
+    registerTeacher,
     fetchCatalogBatches, fetchImportChapters, previewImport, runImport, fetchImportJobs, undoImport,
     fetchParents, createParent, updateParent, deleteParent,
     fetchTeacherWeekly, fetchTeacherMonthly, fetchTeacherWeakTopics, fetchTeacherStrongTopics, fetchTeacherRanking,

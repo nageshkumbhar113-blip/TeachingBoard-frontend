@@ -92,7 +92,7 @@
       <div class="pin-lock-avatar">⏰</div>
       <div class="pin-lock-name">Subscription संपली आहे</div>
       <div class="pin-lock-sub">तुमची Subscription संपल्याचं दिसतंय. खात्री करण्यासाठी Internet सुरू करा.</div>
-      <button id="offline-expired-retry" class="pin-lock-btn">🔄 पुन्हा तपासा</button>
+      <button id="offline-expired-retry" class="pin-lock-btn">🔄 Check again</button>
     </div>
   </div>
 
@@ -104,7 +104,7 @@
         <div>
           <div class="admit-eyebrow">NKS EDUORBIT · ACCESS</div>
           <h1 class="onboarding-title">Nks EduOrbit</h1>
-          <p class="onboarding-sub" id="ob-role-sub">Student access साठी code आणि PIN टाका</p>
+          <p class="onboarding-sub" id="ob-role-sub">Enter your student code and PIN</p>
         </div>
       </div>
       <div class="admit-perforation" aria-hidden="true"></div>
@@ -120,7 +120,7 @@
       <div class="onboarding-field">
         <label for="ob-student-code" class="onboarding-label" id="ob-code-label">Student Code <span class="ob-required">*</span></label>
         <input id="ob-student-code" type="text" class="onboarding-input"
-          placeholder="उदा. STU001"
+          placeholder="e.g. STU001"
           autocomplete="username" autocapitalize="characters" spellcheck="false" />
       </div>
 
@@ -141,19 +141,19 @@
         <input id="ob-server" type="url" class="onboarding-input"
           placeholder="http://192.168.x.x:4000/api"
           autocomplete="url" spellcheck="false" />
-        <p class="onboarding-hint" id="ob-server-hint">शाळेतील server चा IP address टाका.</p>
-        <button type="button" id="ob-change-server" class="ob-change-link" style="display:none">बदलायचे आहे का? ✏️</button>
+        <p class="onboarding-hint" id="ob-server-hint">Enter the school server IP address.</p>
+        <button type="button" id="ob-change-server" class="ob-change-link" style="display:none">Change? ✏️</button>
       </div>
 
       <p id="ob-error-msg" class="pin-error hidden" role="alert"></p>
       <button id="ob-continue" class="onboarding-btn">Continue →</button>
-      <button id="ob-skip" class="onboarding-skip">Cached access वापरा</button>
-      <button id="ob-goto-register" class="onboarding-skip hidden" style="margin-top:2px" tabindex="-1" aria-hidden="true">नवीन Registration? येथे करा →</button>
+      <button id="ob-skip" class="onboarding-skip">Use cached access</button>
+      <button id="ob-goto-register" class="onboarding-skip hidden" style="margin-top:2px" tabindex="-1" aria-hidden="true">New here? Register &rarr;</button>
       <a href="https://wa.me/918390484545?text=I%20want%20help"
          target="_blank" rel="noopener noreferrer"
          class="ob-whatsapp-btn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        संपर्क करा — WhatsApp Help
+        Contact us: WhatsApp help
       </a>
       </div>
     </div>
@@ -164,67 +164,67 @@
         <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">VERIFIED<br>STUDENT</div></div>
         <div>
           <div class="admit-eyebrow">NEW ENROLLMENT</div>
-          <h1 class="onboarding-title">नवीन Registration</h1>
-          <p class="onboarding-sub">माहिती भरा — Admin approve केल्यावर login होईल</p>
+          <h1 class="onboarding-title">Student Registration</h1>
+          <p class="onboarding-sub">Fill in your details. You can log in right away and start with the free chapters.</p>
         </div>
       </div>
       <div class="admit-perforation" aria-hidden="true"></div>
       <div class="admit-body">
       <div class="onboarding-field">
-        <label for="reg-name" class="onboarding-label">पूर्ण नाव <span class="ob-required">*</span></label>
+        <label for="reg-name" class="onboarding-label">Full name <span class="ob-required">*</span></label>
         <input id="reg-name" type="text" class="onboarding-input"
-          placeholder="उदा. Rahul Patil"
+          placeholder="e.g. Rahul Patil"
           autocomplete="name" autocapitalize="words" spellcheck="false" />
       </div>
 
       <div class="onboarding-field">
         <label for="reg-mobile" class="onboarding-label">Mobile Number <span class="ob-required">*</span></label>
         <input id="reg-mobile" type="tel" class="onboarding-input"
-          placeholder="उदा. 9876543210"
+          placeholder="e.g. 9876543210"
           inputmode="numeric" maxlength="10"
           autocomplete="tel" />
       </div>
 
       <div class="onboarding-field">
-        <label for="reg-school" class="onboarding-label">शाळेचे नाव <span class="ob-required">*</span></label>
+        <label for="reg-school" class="onboarding-label">School name <span class="ob-required">*</span></label>
         <input id="reg-school" type="text" class="onboarding-input"
-          placeholder="उदा. Z.P. School, Pune"
+          placeholder="e.g. Z.P. School, Pune"
           autocomplete="organization" spellcheck="false" />
       </div>
 
       <div class="onboarding-field">
         <label for="reg-board" class="onboarding-label">Board</label>
         <select id="reg-board" class="onboarding-input">
-          <option value="">सर्व Boards</option>
+          <option value="">All boards</option>
         </select>
       </div>
 
       <div class="onboarding-field">
         <label for="reg-medium" class="onboarding-label">Medium</label>
         <select id="reg-medium" class="onboarding-input">
-          <option value="">सर्व Mediums</option>
+          <option value="">All mediums</option>
         </select>
       </div>
 
       <div class="onboarding-field">
-        <label for="reg-batch" class="onboarding-label">तुमचा Batch / Class <span class="ob-required">*</span></label>
+        <label for="reg-batch" class="onboarding-label">Your batch / class <span class="ob-required">*</span></label>
         <select id="reg-batch" class="onboarding-input">
-          <option value="">Batch निवडा…</option>
+          <option value="">Select batch...</option>
         </select>
       </div>
 
       <div class="onboarding-field">
-        <label for="reg-teacher" class="onboarding-label">Teacher code <small style="opacity:.7">(असल्यास)</small></label>
+        <label for="reg-teacher" class="onboarding-label">Teacher code <small style="opacity:.7">(if you have one)</small></label>
         <input id="reg-teacher" type="text" class="onboarding-input"
-          placeholder="शिक्षकांनी दिलेला code, उदा. ABC1234"
+          placeholder="Code given by your teacher, e.g. ABC123"
           maxlength="20" autocapitalize="characters" autocomplete="off" spellcheck="false" />
       </div>
 
       <div class="onboarding-field">
-        <label for="reg-pin" class="onboarding-label">4 digit PIN सेट करा <span class="ob-required">*</span></label>
+        <label for="reg-pin" class="onboarding-label">Set a 4-digit PIN <span class="ob-required">*</span></label>
         <div class="pin-toggle-wrap">
           <input id="reg-pin" type="password" class="onboarding-input"
-            placeholder="4 अंकी PIN"
+            placeholder="4-digit PIN"
             maxlength="4" inputmode="numeric"
             autocomplete="new-password" />
           <button type="button" class="pin-toggle-btn" data-target="reg-pin" aria-label="Show PIN">👁</button>
@@ -234,13 +234,97 @@
       <div class="onboarding-field" style="margin-top:4px">
         <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;line-height:1.5;cursor:pointer;color:var(--text2,#8b949e)">
           <input id="reg-consent" type="checkbox" style="margin-top:3px;flex-shrink:0" />
-          <span>मी 18+ वर्षांचा आहे किंवा माझ्या पालकांची/guardian ची संमती आहे, आणि app वापरण्याच्या अटी मान्य आहेत.</span>
+          <span>I am 18+ or have my parent/guardian's consent, and I accept the terms of using this app.</span>
         </label>
       </div>
 
       <p id="reg-error-msg" class="pin-error hidden" role="alert"></p>
-      <button id="reg-submit" class="onboarding-btn">Registration करा →</button>
-      <button id="reg-back" class="onboarding-skip">← Login कडे परत जा</button>
+      <button id="reg-submit" class="onboarding-btn">Register →</button>
+      <button id="reg-back" class="onboarding-skip">← Back to login</button>
+      </div>
+    </div>
+
+    <!-- Register: choose Student or Teacher -->
+    <div class="onboarding-card admit-card hidden" id="reg-choose-card">
+      <div class="admit-head">
+        <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">NKS<br>EDUORBIT</div></div>
+        <div>
+          <div class="admit-eyebrow">NEW HERE?</div>
+          <h1 class="onboarding-title">Register</h1>
+          <p class="onboarding-sub">Who are you registering as?</p>
+        </div>
+      </div>
+      <div class="admit-perforation" aria-hidden="true"></div>
+      <div class="admit-body">
+        <button type="button" id="reg-choose-student" class="onboarding-btn">👨‍🎓 I'm a Student</button>
+        <button type="button" id="reg-choose-teacher" class="onboarding-btn" style="margin-top:10px">👩‍🏫 I'm a Teacher</button>
+        <button type="button" id="reg-choose-back" class="onboarding-skip" style="margin-top:6px">← Back to login</button>
+      </div>
+    </div>
+
+    <!-- Teacher registration (admin approves before login is allowed) -->
+    <div class="onboarding-card admit-card hidden" id="treg-card">
+      <div class="admit-head">
+        <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">TEACHER<br>REQUEST</div></div>
+        <div>
+          <div class="admit-eyebrow">TEACHER REGISTRATION</div>
+          <h1 class="onboarding-title">Teacher Registration</h1>
+          <p class="onboarding-sub">Our admin will contact you and approve your account.</p>
+        </div>
+      </div>
+      <div class="admit-perforation" aria-hidden="true"></div>
+      <div class="admit-body">
+        <div class="onboarding-field">
+          <label for="treg-name" class="onboarding-label">Full name <span class="ob-required">*</span></label>
+          <input id="treg-name" type="text" class="onboarding-input" placeholder="e.g. Nagesh Kumbhar" autocomplete="name" autocapitalize="words" spellcheck="false" />
+        </div>
+        <div class="onboarding-field">
+          <label for="treg-mobile" class="onboarding-label">Mobile number <span class="ob-required">*</span></label>
+          <input id="treg-mobile" type="tel" class="onboarding-input" placeholder="e.g. 9876543210" inputmode="numeric" maxlength="10" autocomplete="tel" />
+        </div>
+        <div class="onboarding-field">
+          <label for="treg-institute" class="onboarding-label">Institute / coaching class name <span class="ob-required">*</span></label>
+          <input id="treg-institute" type="text" class="onboarding-input" placeholder="e.g. Sai Coaching Classes" autocomplete="organization" spellcheck="false" />
+        </div>
+        <div class="onboarding-field">
+          <label for="treg-pin" class="onboarding-label">Set a 4-digit PIN <span class="ob-required">*</span></label>
+          <div class="pin-toggle-wrap">
+            <input id="treg-pin" type="password" class="onboarding-input" placeholder="4-digit PIN" maxlength="4" inputmode="numeric" autocomplete="new-password" />
+            <button type="button" class="pin-toggle-btn" data-target="treg-pin" aria-label="Show PIN">👁</button>
+          </div>
+        </div>
+        <div class="onboarding-field" style="margin-top:4px">
+          <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;line-height:1.5;cursor:pointer;color:var(--text2,#8b949e)">
+            <input id="treg-agree" type="checkbox" style="margin-top:3px;flex-shrink:0" />
+            <span>I agree: on the free plan I can build only <strong>4 papers per batch</strong>. Unlimited Paper Builder for a batch requires <strong>at least 10 students of that batch to have paid</strong>.</span>
+          </label>
+        </div>
+        <p id="treg-error-msg" class="pin-error hidden" role="alert"></p>
+        <button id="treg-submit" class="onboarding-btn">Submit registration →</button>
+        <button id="treg-back" class="onboarding-skip">← Back</button>
+      </div>
+    </div>
+
+    <!-- Teacher registration submitted -->
+    <div class="onboarding-card admit-card hidden" id="treg-done-card">
+      <div class="admit-head">
+        <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">REQUEST<br>SENT</div></div>
+        <div>
+          <div class="admit-eyebrow">REGISTRATION RECEIVED</div>
+          <h1 class="onboarding-title">Thank you!</h1>
+          <p class="onboarding-sub">An admin will contact you. You can log in after approval.</p>
+        </div>
+      </div>
+      <div class="admit-perforation" aria-hidden="true"></div>
+      <div class="admit-body">
+        <div class="admit-success-box">
+          <div class="admit-success-icon">✅</div>
+          <div class="admit-success-label">Your Teacher code</div>
+          <strong id="treg-done-code" class="admit-code-chip"></strong>
+          <div class="admit-success-note">Keep this code and your PIN safe. Log in as Teacher once you are approved.</div>
+        </div>
+        <button type="button" id="treg-copy" class="onboarding-skip" style="margin-top:2px">Copy code</button>
+        <button type="button" id="treg-done-login" class="onboarding-btn" style="margin-top:10px">Back to login</button>
       </div>
     </div>
 
@@ -250,8 +334,8 @@
         <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">VERIFIED<br>STUDENT</div></div>
         <div>
           <div class="admit-eyebrow">REGISTRATION COMPLETE</div>
-          <h1 class="onboarding-title">तुमचे Login Details</h1>
-          <p class="onboarding-sub">हे जपून ठेवा — login साठी दोन्ही लागतील</p>
+          <h1 class="onboarding-title">Your login details</h1>
+          <p class="onboarding-sub">Keep these safe. You need both to log in.</p>
         </div>
       </div>
       <div class="admit-perforation" aria-hidden="true"></div>
