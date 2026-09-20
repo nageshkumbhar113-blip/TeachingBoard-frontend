@@ -1850,6 +1850,15 @@ const API = (() => {
   // slsRouter, a separate router from the concept CRUD above)
   // ════════════════════════
 
+  // MCQ bank (GET /api/questions) for the board-paper MCQ picker: admin and teacher variants.
+  async function _fetchMcqBank(token, params) {
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')));
+    const payload = await request(`/questions?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || [];
+  }
+  async function fetchMcqBankAdmin(params = {}) { return _fetchMcqBank(await ensureAdminSession(), params); }
+  async function fetchMcqBankTeacher(params = {}) { return _fetchMcqBank(await ensureTeacherSession(), params); }
+
   async function fetchAdminSlsQuestions(params = {}) {
     const token = await ensureAdminSession();
     const qs = new URLSearchParams(
@@ -2497,7 +2506,7 @@ const API = (() => {
     deleteAdminSlsQuestion, publishAdminSlsQuestion,
     createAdminSlsPaperManual, generateAdminSlsPaper, fetchAdminSlsPapers,
     fetchAdminSlsPaper, publishAdminSlsPaper,
-    fetchTeacherSlsQuestions, createTeacherSlsPaperManual,
+    fetchTeacherSlsQuestions, createTeacherSlsPaperManual, fetchMcqBankAdmin, fetchMcqBankTeacher,
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
     fetchStudentExerciseQuestions,
     fetchYoutubeVideosForExercise, recordYoutubeVideoOpen,

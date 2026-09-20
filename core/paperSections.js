@@ -85,13 +85,31 @@ const PAPER_SECTIONS = (() => {
       .pps-total.bad { background: rgba(239,68,68,.15); }
       .pps-issue { font-size: 0.78rem; color: #ef4444; margin: 3px 0; }
       .pps-hint { font-size: 0.76rem; opacity: .75; margin: 4px 0; }
+      .pps-mcq { border: 1px solid rgba(128,128,128,.35); border-radius: 10px; padding: 8px; margin-top: 8px; }
+      .pps-mcq-list { max-height: 320px; overflow-y: auto; margin-top: 6px; }
+      .pps-mcq-item { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(128,128,128,.25); font-size: 0.85rem; }
+      .pps-mcq-item ul { list-style: none; margin: 4px 0 0; padding: 0; opacity: .85; }
+      .pps-mcq-item li.ok { color: #16a34a; font-weight: 700; }
       .pps-list-head { font-weight: 700; font-size: 0.85rem; margin: 10px 0 4px; padding: 4px 8px; border-left: 3px solid #f97316; background: rgba(249,115,22,.08); }
       .pps-move { max-width: 110px; font-size: 0.75rem; padding: 2px 4px; border-radius: 6px; border: 1px solid rgba(128,128,128,.45); background: transparent; color: inherit; }
     `;
     document.head.appendChild(st);
   }
 
-  function create({ getSelected, onChange, fetchByMarks, addQuestion, canFill, toast } = {}) {
+  // An MCQ-bank question, shaped like a paper question (options printed one per line).
+  function _mcqToQ(m) {
+    const opts = m.options || {};
+    const lines = ['A', 'B', 'C', 'D'].filter(k => opts[k]).map(k => `(${k}) ${opts[k]}`);
+    const ans = String(m.answer || '').trim().toUpperCase();
+    return {
+      _id: `mcq:${m._id}`, mcqId: m._id, isMcq: true, marks: 1, usageCount: 0,
+      questionText: { english: [m.question, ...lines].join('\n') },
+      answerText: { english: opts[ans] ? `(${ans}) ${opts[ans]}` : ans },
+    };
+  }
+  const _isMcqSection = s => /alternative|choose the correct|\bmcq\b/i.test(String(s.instruction || ''));
+
+  function create({ getSelected, onChange, fetchByMarks, fetchMcq, addQuestion, canFill, toast } = {}) {
     const state = { enabled: false, sections: [], activeId: null, header: DEFAULT_HEADER() };
     let root = null;
     const selected = () => (typeof getSelected === 'function' ? getSelected() : []) || [];
@@ -164,11 +182,13 @@ const PAPER_SECTIONS = (() => {
             <strong>Sections</strong>
             <span>
               <button type="button" class="pps-btn" data-pps="template">Load template: SSC Algebra 40 marks</button>
+              <button type="button" class="pps-btn" data-pps="mcq">+ MCQ from MCQ bank</button>
               <button type="button" class="pps-btn" data-pps="autofill">Auto-fill questions</button>
               <button type="button" class="pps-btn pri" data-pps="add">+ Add section</button>
             </span>
           </div>
           <p class="pps-hint">New questions go into the <b>active</b> section (highlighted). Pick a section, then add questions with the marks buttons.</p>
+          <div data-pps="mcqpicker" class="pps-mcq" style="display:none"></div>
           <div data-pps="sections"></div>
         </div>
         <div class="pps-box" data-pps="summary"></div>`;
@@ -186,6 +206,7 @@ const PAPER_SECTIONS = (() => {
       });
       root.querySelector('[data-pps="add"]').addEventListener('click', () => addSection());
       root.querySelector('[data-pps="autofill"]').addEventListener('click', e => autoFill(e.currentTarget));
+      root.querySelector('[data-pps="mcq"]').addEventListener('click', () => openMcqPicker());
       root.querySelector('[data-pps="template"]').addEventListener('click', () => loadTemplate('ssc_algebra_40'));
       renderSections();
       renderSummary();
@@ -305,6 +326,39 @@ const PAPER_SECTIONS = (() => {
       notify();
     }
 
+    // Picker for MCQ-bank questions; a chosen one goes into the active section.
+    async function openMcqPicker() {
+      const host = root?.querySelector('[data-pps="mcqpicker"]');
+      const say = (m, kind) => { try { toast?.(m, kind); } catch { /* ignore */ } };
+      if (!host || typeof fetchMcq !== 'function') return;
+      if (typeof canFill === 'function' && !canFill()) { say('Select the batch, subject and chapters first', 'error'); return; }
+      if (!state.sections.length) { say('Add a section first, then add questions', 'error'); return; }
+      host.style.display = '';
+      host.innerHTML = '<p class="pps-hint">Loading MCQs...</p>';
+      let rows = [];
+      try { rows = (await fetchMcq()).filter(m => (m.type || 'mcq') === 'mcq'); } catch (e) { host.innerHTML = '<p class="pps-hint">Could not load MCQs.</p>'; return; }
+      const paint = term => {
+        const t = String(term || '').toLowerCase();
+        const shown = rows.filter(m => !t || String(m.question || '').toLowerCase().includes(t)).slice(0, 100);
+        host.querySelector('.pps-mcq-list').innerHTML = shown.length ? shown.map(m => {
+          const added = selected().some(q => q._id === `mcq:${m._id}`);
+          const opts = m.options || {};
+          return `<div class="pps-mcq-item"><div><div>${_esc(m.question)}</div><ul>${['A', 'B', 'C', 'D'].filter(k => opts[k]).map(k => `<li class="${String(m.answer).toUpperCase() === k ? 'ok' : ''}">(${k}) ${_esc(opts[k])}</li>`).join('')}</ul></div><button type="button" class="pps-btn" data-mid="${_esc(m._id)}" ${added ? 'disabled' : ''}>${added ? 'Added' : '+ Add'}</button></div>`;
+        }).join('') : '<p class="pps-hint">No MCQs found for the selected chapters.</p>';
+        host.querySelectorAll('[data-mid]').forEach(b => b.addEventListener('click', () => {
+          const m = rows.find(x => String(x._id) === b.dataset.mid);
+          if (!m) return;
+          addQuestion(_mcqToQ(m));
+          b.disabled = true; b.textContent = 'Added';
+        }));
+        window.PAPER_PDF?.ensureKatex?.().then(() => window.PAPER_PDF.renderMath(host)).catch(() => {});
+      };
+      host.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><strong>MCQ bank (${rows.length}) - adds to the active section</strong><button type="button" class="pps-btn" data-x="close">Close</button></div><input class="pps-in" data-x="search" placeholder="Search MCQs..." style="width:100%;margin-top:6px" /><div class="pps-mcq-list"></div>`;
+      host.querySelector('[data-x="close"]').addEventListener('click', () => { host.style.display = 'none'; });
+      host.querySelector('[data-x="search"]').addEventListener('input', e => paint(e.target.value));
+      paint('');
+    }
+
     // Fill every section up to its "attempt" count from the chosen chapters. Candidates come
     // least-used first (ties shuffled) and are spread round-robin across chapters.
     async function autoFill(btn) {
@@ -325,6 +379,17 @@ const PAPER_SECTIONS = (() => {
           const need = Math.max(0, (Number(sec.attempt) || 0) - have);
           if (!need) continue;
           const marks = Number(sec.marksEach);
+          if (typeof fetchMcq === 'function' && _isMcqSection(sec)) {
+            if (!pools.has('mcq')) pools.set('mcq', (await fetchMcq()).filter(m => (m.type || 'mcq') === 'mcq'));
+            const bank = pools.get('mcq');
+            if (bank.length) {
+              const take = bank.filter(m => !used.has(`mcq:${m._id}`)).map(m => ({ m, r: Math.random() })).sort((a, b) => a.r - b.r).slice(0, need).map(x => x.m);
+              state.activeId = sec.id;
+              take.forEach(m => { used.add(`mcq:${m._id}`); addQuestion(_mcqToQ(m)); added++; });
+              if (take.length < need) missing.push(`${label(sec)}: ${need - take.length} more MCQ${need - take.length === 1 ? '' : 's'} needed`);
+              continue;
+            }
+          }
           if (!pools.has(marks)) pools.set(marks, await fetchByMarks(marks));
           const byChapter = new Map();
           (pools.get(marks) || []).filter(c => !used.has(c._id)).forEach(c => {

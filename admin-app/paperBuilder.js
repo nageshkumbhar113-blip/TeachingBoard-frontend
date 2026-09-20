@@ -53,6 +53,14 @@ const PAPER_BUILDER = (() => {
       _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true),
         canFill: () => !!(_batch && _subjects.length && _chapters.length),
         fetchByMarks: marks => API.fetchAdminSlsQuestions({ chapterId: _chapterIdsParam(), marks, status: 'published', sort: 'usageCount', limit: 300 }),
+        fetchMcq: async () => {
+          const out = []; const seen = new Set();
+          for (const c of _chapters) {
+            const rows = await API.fetchMcqBankAdmin({ batch: _batch, subject: c.subject, chapter: c.chapter, type: 'mcq' });
+            rows.forEach(r => { if (!seen.has(r._id)) { seen.add(r._id); out.push(r); } });
+          }
+          return out;
+        },
         addQuestion: _addSelectedQuestion,
         toast: (m, k) => APP?.toast?.(m, k) });
       _sections.mount($('pb-board-panel'));
@@ -344,6 +352,7 @@ const PAPER_BUILDER = (() => {
       answerText: qq.answerText,
       questionDiagrams: qq.questionDiagrams,
       answerDiagrams: qq.answerDiagrams,
+      ...(qq.isMcq ? { isMcq: true, mcqId: qq.mcqId } : {}),
     });
     const added = _selectedQuestions[_selectedQuestions.length - 1];
     if (_sections?.isEnabled() && !_sections.assign(added)) {
@@ -520,7 +529,7 @@ const PAPER_BUILDER = (() => {
         subjectIds: _subjects,
         paperTitle: title || undefined,
         ...(_sections?.payload() || {}),
-        questions: _selectedQuestions.map(q => ({ questionId: q._id, marks: q.marks, ...(q.sectionId ? { sectionId: q.sectionId } : {}) }))
+        questions: _selectedQuestions.map(q => ({ ...(q.isMcq ? { mcqId: q.mcqId } : { questionId: q._id }), marks: q.marks, ...(q.sectionId ? { sectionId: q.sectionId } : {}) }))
       });
       APP.toast(`✅ Paper "${paper.paperTitle}" saved (Paper #${paper.paperNumber})`, 'success');
       _showPdfExportPanel(paper);
