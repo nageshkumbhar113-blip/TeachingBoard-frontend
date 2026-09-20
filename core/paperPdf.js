@@ -81,6 +81,7 @@ const PAPER_PDF = (() => {
   function _renderMath(el) {
     if (!window.renderMathInElement) return;
     try {
+      window.MATH?.normalizeBlanks?.(el);
       window.renderMathInElement(el, {
         delimiters: [
           { left: '$$',  right: '$$',  display: true  },
@@ -108,9 +109,11 @@ const PAPER_PDF = (() => {
   const _BLANK_RE = /\[\[\s*([sl]?)\s*\]\]/g;
   const _blankBox = size => `\\boxed{\\phantom{${size === 's' ? '00' : size === 'l' ? '00000000' : '0000'}}}`;
 
+  const _UNDERSCORE_BLANK_RE = /\\text\{\s*_{2,}\s*\}|(?:\\_){2,}/g;
+
   function _expandBlanks(text) {
     const s = String(text ?? '');
-    if (!s.includes('[[')) return s;
+    if (!s.includes('[[') && !s.includes('_')) return s;
     const outside = t => t.replace(_BLANK_RE, (_m, size) => `$${_blankBox(size)}$`);
     const mathRe = /\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g;
     const out = [];
@@ -118,7 +121,7 @@ const PAPER_PDF = (() => {
     let m;
     while ((m = mathRe.exec(s))) {
       out.push(outside(s.slice(last, m.index)));
-      out.push(m[0].replace(_BLANK_RE, (_x, size) => _blankBox(size)));
+      out.push(m[0].replace(_UNDERSCORE_BLANK_RE, _blankBox()).replace(_BLANK_RE, (_x, size) => _blankBox(size)));
       last = m.index + m[0].length;
     }
     out.push(outside(s.slice(last)));

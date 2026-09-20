@@ -77,6 +77,7 @@ const EXERCISE_PDF = (() => {
   function _renderMath(el) {
     if (!window.renderMathInElement) return;
     try {
+      window.MATH?.normalizeBlanks?.(el);
       window.renderMathInElement(el, {
         delimiters: [
           { left: '$$',  right: '$$',  display: true  },
