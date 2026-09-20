@@ -91,7 +91,7 @@ const PAPER_SECTIONS = (() => {
     document.head.appendChild(st);
   }
 
-  function create({ getSelected, onChange } = {}) {
+  function create({ getSelected, onChange, fetchByMarks, addQuestion, canFill, toast } = {}) {
     const state = { enabled: false, sections: [], activeId: null, header: DEFAULT_HEADER() };
     let root = null;
     const selected = () => (typeof getSelected === 'function' ? getSelected() : []) || [];
@@ -164,6 +164,7 @@ const PAPER_SECTIONS = (() => {
             <strong>Sections</strong>
             <span>
               <button type="button" class="pps-btn" data-pps="template">Load template: SSC Algebra 40 marks</button>
+              <button type="button" class="pps-btn" data-pps="autofill">Auto-fill questions</button>
               <button type="button" class="pps-btn pri" data-pps="add">+ Add section</button>
             </span>
           </div>
@@ -184,6 +185,7 @@ const PAPER_SECTIONS = (() => {
         });
       });
       root.querySelector('[data-pps="add"]').addEventListener('click', () => addSection());
+      root.querySelector('[data-pps="autofill"]').addEventListener('click', e => autoFill(e.currentTarget));
       root.querySelector('[data-pps="template"]').addEventListener('click', () => loadTemplate('ssc_algebra_40'));
       renderSections();
       renderSummary();
@@ -303,6 +305,58 @@ const PAPER_SECTIONS = (() => {
       notify();
     }
 
+    // Fill every section up to its "attempt" count from the chosen chapters. Candidates come
+    // least-used first (ties shuffled) and are spread round-robin across chapters.
+    async function autoFill(btn) {
+      const say = (m, kind) => { try { toast?.(m, kind); } catch { /* ignore */ } };
+      if (!state.enabled || !state.sections.length) { say('Add sections first (or load a template)', 'error'); return; }
+      if (typeof fetchByMarks !== 'function' || typeof addQuestion !== 'function') return;
+      if (typeof canFill === 'function' && !canFill()) { say('Select the batch, subject and chapters first', 'error'); return; }
+      const label0 = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'Filling...'; }
+      const keepActive = state.activeId;
+      const pools = new Map();
+      const used = new Set(selected().map(q => q._id));
+      let added = 0;
+      const missing = [];
+      try {
+        for (const sec of state.sections) {
+          const have = selected().filter(q => q.sectionId === sec.id).length;
+          const need = Math.max(0, (Number(sec.attempt) || 0) - have);
+          if (!need) continue;
+          const marks = Number(sec.marksEach);
+          if (!pools.has(marks)) pools.set(marks, await fetchByMarks(marks));
+          const byChapter = new Map();
+          (pools.get(marks) || []).filter(c => !used.has(c._id)).forEach(c => {
+            const k = String(c.chapterId || '');
+            if (!byChapter.has(k)) byChapter.set(k, []);
+            byChapter.get(k).push(c);
+          });
+          const lists = [...byChapter.values()].map(l => l.map(c => ({ c, r: Math.random() })).sort((a, b) => ((a.c.usageCount || 0) - (b.c.usageCount || 0)) || (a.r - b.r)).map(x => x.c));
+          const picks = [];
+          for (let i = 0; picks.length < need; i++) {
+            let any = false;
+            for (const l of lists) { if (i < l.length && picks.length < need) { picks.push(l[i]); any = true; } }
+            if (!any) break;
+          }
+          state.activeId = sec.id;
+          picks.forEach(c => { used.add(c._id); addQuestion(c); added++; });
+          if (picks.length < need) missing.push(`${label(sec)}: ${need - picks.length} more ${marks}-mark question${need - picks.length === 1 ? '' : 's'} needed`);
+        }
+      } catch (err) {
+        console.error('auto-fill failed', err);
+        say('Auto-fill failed, please try again', 'error');
+      } finally {
+        state.activeId = state.sections.some(s => s.id === keepActive) ? keepActive : (state.sections[0] && state.sections[0].id);
+        if (btn) { btn.disabled = false; btn.textContent = label0; }
+        refresh();
+        notify();
+      }
+      if (missing.length) say(`Added ${added}. Not enough questions: ${missing.join('; ')}`, 'info');
+      else if (added) say(`Auto-filled ${added} question${added === 1 ? '' : 's'}`, 'success');
+      else say('All sections already have enough questions', 'info');
+    }
+
     // Called by the builder when a question is added: put it in the active section.
     function assign(q) {
       if (!state.enabled) { q.sectionId = undefined; return true; }
@@ -342,6 +396,7 @@ const PAPER_SECTIONS = (() => {
       payload,
       reset,
       refresh,
+      autoFill,
     };
   }
 

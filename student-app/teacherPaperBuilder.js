@@ -64,7 +64,11 @@ const TEACHER_PAPER_BUILDER = (() => {
 
   function _setupEventListeners() {
     if (window.PAPER_SECTIONS && !_sections) {
-      _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true) });
+      _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true),
+        canFill: () => !!(_batch && _subjects.length && _chapters.length),
+        fetchByMarks: marks => API.fetchTeacherSlsQuestions({ chapterId: _chapterIdsParam(), marks, status: 'published', sort: 'usageCount', limit: 300 }),
+        addQuestion: _addSelectedQuestion,
+        toast: (m, k) => APP?.toast?.(m, k) });
       _sections.mount($('tpb-board-panel'));
       _applyBoardAccess(false);
     }
