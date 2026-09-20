@@ -102,8 +102,31 @@ const PAPER_PDF = (() => {
   // Real bug found live: this file never had this at all, so a question
   // authored as a pipe-table (e.g. a "match the columns" question) printed
   // as literal "| col | col |" text instead of an actual table.
+  // "[[ ]]" (or [[s]] small / [[l]] large) marks an empty box a student fills in, as in
+  // board "complete the activity" questions. It becomes a KaTeX \boxed{\phantom{..}} so it
+  // works standalone AND inside fractions/exponents (e.g. 5 x [[ ]]^2, P(A) = n(A)/[[ ]]).
+  const _BLANK_RE = /\[\[\s*([sl]?)\s*\]\]/g;
+  const _blankBox = size => `\\boxed{\\phantom{${size === 's' ? '00' : size === 'l' ? '00000000' : '0000'}}}`;
+
+  function _expandBlanks(text) {
+    const s = String(text ?? '');
+    if (!s.includes('[[')) return s;
+    const outside = t => t.replace(_BLANK_RE, (_m, size) => `$${_blankBox(size)}$`);
+    const mathRe = /\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g;
+    const out = [];
+    let last = 0;
+    let m;
+    while ((m = mathRe.exec(s))) {
+      out.push(outside(s.slice(last, m.index)));
+      out.push(m[0].replace(_BLANK_RE, (_x, size) => _blankBox(size)));
+      last = m.index + m[0].length;
+    }
+    out.push(outside(s.slice(last)));
+    return out.join('');
+  }
+
   function _richText(raw) {
-    const bolded = _esc(raw).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const bolded = _esc(_expandBlanks(raw)).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     const lines = bolded.split('\n');
     const out = [];
     let textBuf = [];
@@ -176,7 +199,92 @@ const PAPER_PDF = (() => {
     return _CHROME_TEXT[language] || _CHROME_TEXT.marathi;
   }
 
+  const _NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const _ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
+
+  function _isBoard(paper) {
+    return paper?.layout === 'board' && Array.isArray(paper.sections) && paper.sections.length > 0;
+  }
+
+  // Paper total for a board paper = sum of (attempt x marks each) per section.
+  function boardTotalMarks(sections) {
+    return (sections || []).reduce((s, x) => s + (Number(x.attempt) || 0) * (Number(x.marksEach) || 0), 0);
+  }
+
+  // Board-style paper: header block, notes, then sections "1. (A) instruction ..... marks"
+  // with (i), (ii)... sub-questions. Shared by Question Paper and Answer Sheet.
+  function _buildBoardHtml(paper, withAnswers, institutionName, language) {
+    const t = _chromeText(language);
+    const h = paper.header || {};
+    const total = boardTotalMarks(paper.sections);
+    const brandName = String(institutionName || '').trim();
+    const code = _esc(h.paperCode || '');
+
+    const byId = new Map();
+    for (const s of paper.sections) byId.set(s.id, []);
+    const stray = [];
+    const ordered = [...(paper.questions || [])].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    for (const q of ordered) {
+      if (byId.has(q.sectionId)) byId.get(q.sectionId).push(q); else stray.push(q);
+    }
+
+    const seatBoxes = `<span style="display:inline-flex;border:2px solid #111;vertical-align:middle">${
+      Array.from({ length: 6 }, (_, i) => `<span style="width:24px;height:26px;${i < 5 ? 'border-right:2px solid #111;' : ''}"></span>`).join('')}</span>`;
+
+    const notes = (h.notes || []).filter(Boolean);
+    const notesHtml = notes.length ? `
+      <div class="pp-atom" style="font-size:14px;margin:6px 0 4px"><b><i>Note :</i></b></div>
+      ${notes.map((n, i) => `<div class="pp-atom" style="display:flex;font-size:14px;margin:2px 0 2px 26px"><span style="width:34px;font-style:italic">(${_ROMAN[i] || i + 1})</span><span style="flex:1">${_richText(n)}</span></div>`).join('')}` : '';
+
+    const sectionsHtml = paper.sections.map(sec => {
+      const qs = byId.get(sec.id) || [];
+      if (!qs.length) return '';
+      const marks = (Number(sec.attempt) || 0) * (Number(sec.marksEach) || 0);
+      let instruction = String(sec.instruction || '').trim();
+      if (sec.attempt < qs.length && !/\bany\b|\battempt\b/i.test(instruction)) {
+        instruction += ` (any ${_NUM_WORDS[sec.attempt] || sec.attempt})`;
+      }
+      const head = `
+        <div class="pp-atom" data-pp-keep="1" style="display:flex;justify-content:space-between;align-items:flex-start;font-size:14.5px;font-weight:700;margin-top:16px">
+          <span style="display:flex;flex:1"><span style="width:30px">${_esc(sec.qNo)}.</span><span style="width:40px">${sec.part ? `(${_esc(sec.part)})` : ''}</span><span style="flex:1">${_richText(instruction)}</span></span>
+          <span style="margin-left:14px">${marks}</span>
+        </div>`;
+      const items = qs.map((q, idx) => {
+        const qText = q.questionText?.marathi || q.questionText?.english || '';
+        const aText = q.answerText?.marathi || q.answerText?.english || '';
+        return `
+          <div class="pp-atom" style="display:flex;margin:9px 0 9px 70px;font-size:14px;line-height:1.7">
+            <span style="width:34px;font-style:italic;flex-shrink:0">(${_ROMAN[idx] || idx + 1})</span>
+            <div style="flex:1">${_richText(qText)}${_diagramsHtml(q.questionDiagrams, '#ddd')}
+              ${withAnswers ? `<div style="margin-top:5px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#166534"><b>${t.answerLabel}:</b> ${_richText(aText)}${_diagramsHtml(q.answerDiagrams, '#cde9d3')}</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+      return head + items;
+    }).join('');
+
+    const strayHtml = stray.length ? `
+      <div class="pp-atom" style="font-weight:700;margin-top:16px;font-size:14px">Other questions</div>
+      ${stray.map((q, i) => `<div class="pp-atom" style="margin:8px 0 8px 70px;font-size:14px">(${_ROMAN[i] || i + 1}) ${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>`).join('')}` : '';
+
+    return `
+      <div style="font-family:'Times New Roman',Times,'Noto Serif Devanagari','Mangal',serif;width:754px;padding:10px 36px 30px;color:#111;background:#fff">
+        ${code ? `<div class="pp-atom" style="text-align:center;font-size:46px;font-weight:800;letter-spacing:2px;line-height:1.1;margin-top:18px">${code}</div>` : ''}
+        <div class="pp-atom" style="text-align:right;font-size:14px;font-weight:700;margin:2px 0 14px">Seat Number ${seatBoxes}</div>
+        ${(h.examLine || h.subjectLine) ? `<div class="pp-atom" style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>${_esc(h.examLine || '')}</span><span>${_esc(h.subjectLine || '')}</span></div>` : ''}
+        ${h.courseLine ? `<div class="pp-atom" style="text-align:center;font-size:13px;font-weight:700;margin-top:6px">${_esc(h.courseLine)}</div>` : ''}
+        <div class="pp-atom" style="display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:700;border-bottom:2px solid #111;padding:8px 0 8px;margin:8px 0 12px">
+          <span>${_esc(h.timeText || '')}</span><span data-pp-pages style="display:inline-block;min-width:90px;height:16px"></span><span>Max. Marks : ${total}</span>
+        </div>
+        ${withAnswers ? `<div class="pp-atom" style="font-size:12px;color:#16a34a;font-weight:700;font-family:Arial,sans-serif;margin-bottom:6px">${t.answerSheetLabel}</div>` : ''}
+        ${notesHtml}
+        ${sectionsHtml}
+        ${strayHtml}
+      </div>`;
+  }
+
   function _buildHtml(paper, withAnswers, institutionName, language) {
+    if (_isBoard(paper)) return _buildBoardHtml(paper, withAnswers, institutionName, language);
     const t = _chromeText(language);
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     // User-requested: a teacher downloading their own paper can put their
@@ -208,7 +316,7 @@ const PAPER_PDF = (() => {
         const qDiagramsHtml = _diagramsHtml(q.questionDiagrams, '#ddd');
         const aDiagramsHtml = _diagramsHtml(q.answerDiagrams, '#cde9d3');
         return `
-          <div style="margin-bottom:14px;page-break-inside:avoid">
+          <div class="pp-atom" style="margin-bottom:14px;page-break-inside:avoid">
             <div style="font-size:14px;line-height:1.5"><b>${qNum}.</b> ${_richText(qText)} <span style="color:#e16b13;font-weight:600;font-size:12px">${t.marksTag(marks)}</span></div>
             ${qDiagramsHtml}
             ${withAnswers ? `<div style="margin-top:4px;padding:8px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:13px;color:#166534"><b>${t.answerLabel}:</b> ${_richText(aText)}${aDiagramsHtml}</div>` : ''}
@@ -259,6 +367,41 @@ const PAPER_PDF = (() => {
     pdf.setTextColor(0, 0, 0);
   }
 
+  // Running header/footer of a board paper, drawn as real PDF text on top of each page:
+  // page 1 gets "(Pages N)"; later pages get "n/CODE" and (optionally) the seat-number
+  // box at the top; every page but the last gets "P.T.O." at the bottom right.
+  function _drawBoardPageChrome(pdf, o) {
+    const { pageNo, totalPages, codeText, header, pageWidth, pageHeight, topMm, MARGIN_MM, pagesSpot, cssPerMm } = o;
+    pdf.setTextColor(0, 0, 0);
+    if (pageNo === 1) {
+      if (pagesSpot) {
+        pdf.setFont('times', 'bold');
+        pdf.setFontSize(11);
+        pdf.text(`(Pages ${totalPages})`, MARGIN_MM + (pagesSpot.left + pagesSpot.width / 2) / cssPerMm, topMm + (pagesSpot.top + pagesSpot.height - 3) / cssPerMm, { align: 'center' });
+      }
+    } else {
+      pdf.setFont('times', 'bold');
+      pdf.setFontSize(15);
+      pdf.text(codeText ? `${pageNo}/${codeText}` : String(pageNo), pageWidth / 2, 14, { align: 'center' });
+      if (header.seatOnEveryPage !== false) {
+        const boxW = 6.2, boxH = 6.8, n = 6;
+        const right = pageWidth - MARGIN_MM;
+        const left = right - boxW * n;
+        pdf.setFontSize(11);
+        pdf.text('Seat Number', left - 2, 20.5, { align: 'right' });
+        pdf.setLineWidth(0.5);
+        pdf.rect(left, 14.5, boxW * n, boxH);
+        for (let i = 1; i < n; i++) pdf.line(left + boxW * i, 14.5, left + boxW * i, 14.5 + boxH);
+      }
+    }
+    if (pageNo < totalPages) {
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(11);
+      pdf.text('P.T.O.', pageWidth - MARGIN_MM, pageHeight - 8, { align: 'right' });
+    }
+    pdf.setFont('helvetica', 'normal');
+  }
+
   async function _renderToBlob(paper, withAnswers, institutionName, language) {
     await _ensureLibs();
     const { jsPDF } = window.jspdf;
@@ -271,6 +414,10 @@ const PAPER_PDF = (() => {
     document.body.appendChild(container);
 
     let canvas;
+    let atoms = [];
+    let rootCssWidth = 754;
+    let rootCssHeight = 0;
+    let pagesSpot = null;
     try {
       // KaTeX must finish rendering ($...$ math -> real DOM markup) before
       // the snapshot — html2canvas only ever captures what's already in
@@ -304,12 +451,30 @@ const PAPER_PDF = (() => {
       // content: the font-ready wait above is sufficient on its own —
       // do not re-add foreignObjectRendering without first re-testing
       // against real off-screen content, not just an on-screen sample.
-      canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      // Block positions (CSS px, relative to the paper root) so pages can break BETWEEN
+      // questions instead of through the middle of one. Measured while still attached.
+      const root = container.firstElementChild;
+      const rootRect = root.getBoundingClientRect();
+      rootCssWidth = rootRect.width || 754;
+      rootCssHeight = rootRect.height;
+      atoms = Array.from(root.querySelectorAll('.pp-atom')).map(el => {
+        const r = el.getBoundingClientRect();
+        return { top: r.top - rootRect.top, bottom: r.bottom - rootRect.top, keep: el.hasAttribute('data-pp-keep') };
+      });
+      const spot = root.querySelector('[data-pp-pages]');
+      if (spot) {
+        const r = spot.getBoundingClientRect();
+        pagesSpot = { top: r.top - rootRect.top, left: r.left - rootRect.left, width: r.width, height: r.height };
+      }
+      canvas = await window.html2canvas(root, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     } finally {
       container.remove();
     }
+    const board = _isBoard(paper);
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    // compress:true matters a lot: without it jsPDF stores every page image as raw pixels
+    // (~12 MB per A4 page); with it a normal paper is around 1 MB per page.
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
@@ -320,8 +485,12 @@ const PAPER_PDF = (() => {
     // clipped when actually printed. 12mm is a safe, standard margin for
     // exam-paper printing on any common printer.
     const MARGIN_MM = 12;
+    // Board papers reserve room for the running header (page/paper code, seat number)
+    // and the "P.T.O." footer.
+    const topMm = board ? 24 : MARGIN_MM;
+    const botMm = board ? 16 : MARGIN_MM;
     const contentWidthMm  = pageWidth  - 2 * MARGIN_MM;
-    const contentHeightMm = pageHeight - 2 * MARGIN_MM;
+    const contentHeightMm = pageHeight - topMm - botMm;
 
     // mm-per-source-pixel, derived from how the full canvas maps onto the
     // (now narrower) content width — needed to crop the canvas into exact
@@ -333,10 +502,41 @@ const PAPER_PDF = (() => {
     sliceCanvas.width = canvas.width;
     const sliceCtx = sliceCanvas.getContext('2d');
 
+    // Page breaks (in canvas px): normally one page of content, but if a question block
+    // straddles the page end, the whole block moves to the next page.
+    const canvasPerCss = canvas.height / (rootCssHeight || canvas.height);
+    const cssPerMm = rootCssWidth / contentWidthMm;
+    const pageCss = contentHeightMm * cssPerMm;
+    const cssBreaks = [];
+    {
+      let start = 0;
+      const total = rootCssHeight || canvas.height / canvasPerCss;
+      while (total - start > pageCss + 0.5) {
+        let end = start + pageCss;
+        const straddle = atoms.find(a => a.top < end && a.bottom > end && a.top > start + 24);
+        if (straddle) end = straddle.top;
+        // Never leave a section heading (keep-with-next) stranded at the bottom of a page.
+        for (let guard = 0; guard < 4; guard++) {
+          const last = atoms.filter(a => a.bottom <= end + 0.5 && a.top > start).pop();
+          if (last && last.keep && last.top > start + 24) end = last.top; else break;
+        }
+        cssBreaks.push([start, end]);
+        start = end;
+      }
+      cssBreaks.push([start, total]);
+    }
+    const totalPages = cssBreaks.length;
+    const codeText = String(paper.header?.paperCode || '').trim();
+
     let sourceY = 0;
     let firstPage = true;
+    let pageIdx = 0;
     while (sourceY < canvas.height) {
-      const thisSliceHeightPx = Math.min(sliceHeightPx, canvas.height - sourceY);
+      const [cs, ce] = cssBreaks[pageIdx] || [0, 0];
+      const isLast = pageIdx >= totalPages - 1;
+      const thisSliceHeightPx = isLast
+        ? canvas.height - sourceY
+        : Math.min(Math.round((ce - cs) * canvasPerCss), canvas.height - sourceY);
       sliceCanvas.height = thisSliceHeightPx;
       sliceCtx.clearRect(0, 0, sliceCanvas.width, sliceCanvas.height);
       sliceCtx.drawImage(
@@ -354,11 +554,15 @@ const PAPER_PDF = (() => {
       const thisSliceHeightMm = (thisSliceHeightPx / pxPerMm);
       pdf.addImage(
         sliceCanvas.toDataURL('image/png'), 'PNG',
-        MARGIN_MM, MARGIN_MM, contentWidthMm, thisSliceHeightMm
+        MARGIN_MM, topMm, contentWidthMm, thisSliceHeightMm, undefined, 'FAST'
       );
-      _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
+      // A board-style exam paper stays clean (no diagonal watermark) unless the teacher
+      // gave an institute name, which is then shown lightly like on practice papers.
+      if (!board || String(institutionName || '').trim()) _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
+      if (board) _drawBoardPageChrome(pdf, { pageNo: pageIdx + 1, totalPages, codeText, header: paper.header || {}, pageWidth, pageHeight, topMm, MARGIN_MM, pagesSpot, cssPerMm });
 
       sourceY += thisSliceHeightPx;
+      pageIdx++;
     }
 
     return pdf.output('blob');
@@ -405,7 +609,7 @@ const PAPER_PDF = (() => {
   // question picker lists in admin-app/paperBuilder.js and
   // student-app/teacherPaperBuilder.js. Same loader/renderer the PDF
   // export itself uses, just callable standalone.
-  return { exportQuestionPaper, exportAnswerSheet, previewHtml, ensureKatex: _ensureKatex, renderMath: _renderMath };
+  return { exportQuestionPaper, exportAnswerSheet, previewHtml, ensureKatex: _ensureKatex, renderMath: _renderMath, boardTotalMarks };
 })();
 
 window.PAPER_PDF = PAPER_PDF;

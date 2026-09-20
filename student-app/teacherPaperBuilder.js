@@ -60,7 +60,13 @@ const TEACHER_PAPER_BUILDER = (() => {
     _populateBatches();
   }
 
+  let _sections = null;
+
   function _setupEventListeners() {
+    if (window.PAPER_SECTIONS && !_sections) {
+      _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true) });
+      _sections.mount($('tpb-board-panel'));
+    }
     $('tpb-batch-sel')?.addEventListener('change', e => _onBatchChange(e.target.value));
     // Subject/Chapter checklists re-bind their own change listeners each
     // time they're re-rendered (see _renderSubjectChecklist/_renderChapterChecklist).
@@ -306,6 +312,12 @@ const TEACHER_PAPER_BUILDER = (() => {
       _id: qq._id, marks: qq.marks, questionText: qq.questionText, chapterId: qq.chapterId,
       answerText: qq.answerText, questionDiagrams: qq.questionDiagrams, answerDiagrams: qq.answerDiagrams,
     });
+    const added = _selectedQuestions[_selectedQuestions.length - 1];
+    if (_sections?.isEnabled() && !_sections.assign(added)) {
+      _selectedQuestions.pop();
+      APP?.toast?.('Add a section first, then add questions', 'error');
+      return;
+    }
     _renderSelectedList();
   }
 
@@ -314,29 +326,65 @@ const TEACHER_PAPER_BUILDER = (() => {
     _renderSelectedList();
   }
 
-  function _renderSelectedList() {
+  function _renderSelectedList(fromPanel) {
     const list = $('tpb-selected-list');
     const chip = $('tpb-total-marks');
     if (!list || !chip) return;
+    const board = !!_sections?.isEnabled();
+    if (!fromPanel) _sections?.refresh();
 
-    const total = _selectedQuestions.reduce((sum, q) => sum + q.marks, 0);
-    chip.textContent = `Total: ${total} marks (${_selectedQuestions.length} प्रश्न)`;
+    if (board) {
+      chip.textContent = `Total: ${_sections.summary().total} marks (${_selectedQuestions.length} questions, board style)`;
+    } else {
+      const total = _selectedQuestions.reduce((sum, q) => sum + q.marks, 0);
+      chip.textContent = `Total: ${total} marks (${_selectedQuestions.length} प्रश्न)`;
+    }
 
     if (!_selectedQuestions.length) {
       list.innerHTML = '<p class="td-hint td-hint-sm">अजून प्रश्न जोडलेले नाहीत.</p>';
       return;
     }
-    list.innerHTML = _selectedQuestions.map((q, i) => {
+
+    const row = (q, i) => {
       const text = q.questionText?.marathi || q.questionText?.english || '';
+      const move = board
+        ? `<select class="pps-move" data-move="${q._id}" title="Move to section">${_sections.optionsHtml(q.sectionId)}</select>`
+        : '';
       return `
       <div class="tpb-selected-item" data-id="${q._id}">
         <span class="tpb-marks-chip">${q.marks} marks</span>
         <span class="tpb-selected-text">${i + 1}. ${_esc(text)}${_esc(_chapterLabelFor(q.chapterId))}</span>
-        <button type="button" class="btn-icon tpb-remove-btn" data-id="${q._id}" title="काढा">🗑</button>
+        ${move}
+        <button type="button" class="btn-icon tpb-remove-btn" data-id="${q._id}" title="Remove">&#128465;</button>
       </div>`;
-    }).join('');
+    };
+
+    if (!board) {
+      list.innerHTML = _selectedQuestions.map(row).join('');
+    } else {
+      const secs = _sections.getSections();
+      const parts = [];
+      for (const sec of secs) {
+        const qs = _selectedQuestions.filter(q => q.sectionId === sec.id);
+        parts.push(`<div class="pps-list-head">${_esc(_sections.label(sec.id))} - ${_esc(sec.instruction || '')} (${qs.length} added, attempt ${sec.attempt})</div>`);
+        qs.forEach((q, k) => parts.push(row(q, k)));
+      }
+      const loose = _selectedQuestions.filter(q => !secs.some(s => s.id === q.sectionId));
+      if (loose.length) {
+        parts.push('<div class="pps-list-head" style="color:#ef4444">Not in any section</div>');
+        loose.forEach((q, k) => parts.push(row(q, k)));
+      }
+      list.innerHTML = parts.join('');
+    }
+
     list.querySelectorAll('.tpb-remove-btn').forEach(btn => {
       btn.addEventListener('click', () => _removeSelectedQuestion(btn.dataset.id));
+    });
+    list.querySelectorAll('.pps-move').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const q = _selectedQuestions.find(x => x._id === sel.dataset.move);
+        if (q) { q.sectionId = sel.value; _renderSelectedList(); }
+      });
     });
     // Same raw-LaTeX-vs-rendered-math fix as the picker list above.
     window.PAPER_PDF?.ensureKatex().then(() => window.PAPER_PDF.renderMath(list)).catch(() => {});
@@ -400,7 +448,8 @@ const TEACHER_PAPER_BUILDER = (() => {
       paperTitle: $('tpb-title')?.value?.trim() || 'Practice Paper',
       subjectIds: _subjects,
       subjectId: _subjects[0] || '',
-      questions: _selectedQuestions,
+      ...(_sections?.payload() || {}),
+      questions: _selectedQuestions.map((q, i) => ({ ...q, displayOrder: i + 1 })),
     };
   }
 
@@ -456,6 +505,10 @@ const TEACHER_PAPER_BUILDER = (() => {
       return;
     }
     const title = $('tpb-title')?.value?.trim();
+    if (_sections?.isEnabled()) {
+      const issues = _sections.summary().issues;
+      if (issues.length) { APP?.toast?.(issues[0], 'error'); return; }
+    }
 
     const btn = $('tpb-save-btn');
     btn.disabled = true;
@@ -472,7 +525,8 @@ const TEACHER_PAPER_BUILDER = (() => {
         chapterIds,
         subjectIds: _subjects,
         paperTitle: title || undefined,
-        questions: _selectedQuestions.map(q => ({ questionId: q._id, marks: q.marks }))
+        ...(_sections?.payload() || {}),
+        questions: _selectedQuestions.map(q => ({ questionId: q._id, marks: q.marks, ...(q.sectionId ? { sectionId: q.sectionId } : {}) }))
       });
       APP?.toast?.(`✅ Paper "${paper.paperTitle}" saved (Paper #${paper.paperNumber})`, 'success');
       _showPdfExportPanel(paper);
