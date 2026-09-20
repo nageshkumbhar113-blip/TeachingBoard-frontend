@@ -269,6 +269,7 @@ const PAPER_PDF = (() => {
 
     return `
       <div style="font-family:'Times New Roman',Times,'Noto Serif Devanagari','Mangal',serif;width:754px;padding:10px 36px 30px;color:#111;background:#fff">
+        ${h.mock ? `<div class="pp-atom" style="text-align:center;font-size:11px;font-style:italic;font-family:Arial,sans-serif;color:#555">Practice / Mock Paper - not an official board paper${brandName ? ' - ' + _esc(brandName) : ''}</div>` : ''}
         ${code ? `<div class="pp-atom" style="text-align:center;font-size:46px;font-weight:800;letter-spacing:2px;line-height:1.1;margin-top:18px">${code}</div>` : ''}
         <div class="pp-atom" style="text-align:right;font-size:14px;font-weight:700;margin:2px 0 14px">Seat Number ${seatBoxes}</div>
         ${(h.examLine || h.subjectLine) ? `<div class="pp-atom" style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>${_esc(h.examLine || '')}</span><span>${_esc(h.subjectLine || '')}</span></div>` : ''}

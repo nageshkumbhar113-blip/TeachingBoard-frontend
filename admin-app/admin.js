@@ -2712,6 +2712,7 @@ const ADMIN = (() => {
     _setValue('teacher-code', '');
     _setValue('teacher-mobile', '');
     _setValue('teacher-institute', '');
+    if ($('teacher-board-papers')) $('teacher-board-papers').checked = false;
     _setValue('teacher-validity', '');
     _setValue('teacher-status', 'active');
     _setValue('teacher-pin', '');
@@ -2767,6 +2768,7 @@ const ADMIN = (() => {
         _setValue('teacher-code', t.teacher_code || '');
         _setValue('teacher-mobile', t.mobile || '');
         _setValue('teacher-institute', t.institute_name || '');
+        if ($('teacher-board-papers')) $('teacher-board-papers').checked = t.board_papers_allowed === true;
         _setValue('teacher-validity', t.validity_until || '');
         _setValue('teacher-status', t.status || 'active');
         _setValue('teacher-assigned-students', (t.assigned_students || []).join(', '));
@@ -3043,6 +3045,7 @@ const ADMIN = (() => {
         mobile,
         assigned_students: rawStudents,
         institute_name: String($('teacher-institute')?.value || '').trim(),
+        board_papers_allowed: !!$('teacher-board-papers')?.checked,
         validity_until: String($('teacher-validity')?.value || '').trim(),
         status: String($('teacher-status')?.value || 'active'),
       };

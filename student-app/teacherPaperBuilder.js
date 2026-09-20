@@ -66,6 +66,7 @@ const TEACHER_PAPER_BUILDER = (() => {
     if (window.PAPER_SECTIONS && !_sections) {
       _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true) });
       _sections.mount($('tpb-board-panel'));
+      _applyBoardAccess(false);
     }
     $('tpb-batch-sel')?.addEventListener('change', e => _onBatchChange(e.target.value));
     // Subject/Chapter checklists re-bind their own change listeners each
@@ -115,6 +116,13 @@ const TEACHER_PAPER_BUILDER = (() => {
   // Per-batch paper quota (server enforces it; this only shows progress and
   // avoids a pointless save attempt).
   let _quota = null;
+  // Board-style papers are an admin-granted permission; the panel stays hidden otherwise.
+  function _applyBoardAccess(allowed) {
+    const host = $('tpb-board-panel');
+    if (host) host.style.display = allowed ? '' : 'none';
+    if (!allowed && _sections?.isEnabled()) { _sections.reset(); _renderSelectedList(); }
+  }
+
   async function _refreshQuota() {
     const bar = $('tpb-quota-bar');
     _quota = null;
@@ -122,6 +130,7 @@ const TEACHER_PAPER_BUILDER = (() => {
     if (!_batch) { bar.classList.add('hidden'); return; }
     try {
       const q = await API.fetchMyPaperQuota(_batch);
+      _applyBoardAccess(q?.board_papers_allowed === true);
       if (!q || _batch !== q.batch) { bar.classList.add('hidden'); return; }
       _quota = q;
       bar.classList.remove('hidden', 'unlimited', 'exceeded');
