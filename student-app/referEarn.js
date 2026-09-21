@@ -77,7 +77,9 @@ const REFER_EARN = (() => {
             <div><b>${esc(m.title)}</b><br><small>${m.count} friends have paid</small></div>
             ${m.state === 'claimable' ? `<button type="button" class="re-claim-btn" data-claim="${m.count}">Claim</button>` : `<span class="re-state">${_stateLabel(m)}</span>`}
           </div>
-          ${m.state === 'shipped' && m.claim?.tracking ? `<small class="re-hint">Tracking: ${esc(m.claim.tracking)}</small>` : ''}`).join('')}
+          ${m.state === 'requested' ? '<small class="re-hint">We have your request. You will get a notification when the prize is sent.</small>' : ''}
+          ${m.state === 'shipped' && m.claim ? `<small class="re-hint">Sent on ${new Date(m.claim.shipped_at).toLocaleDateString('en-IN')}. You should receive it within ${m.claim.delivery_days} days (by ${new Date(m.claim.expected_by).toLocaleDateString('en-IN')}).${m.claim.tracking ? ` Tracking: ${esc(m.claim.tracking)}` : ''}</small>` : ''}
+          ${m.state === 'rejected' && m.claim?.note ? `<small class="re-hint">${esc(m.claim.note)}</small>` : ''}`).join('')}
         <div id="re-claim-form" class="re-form hidden"></div>
         <h4>Your link</h4>
         <textarea id="re-msg" class="re-msg" rows="6" readonly>${esc(_message())}</textarea>

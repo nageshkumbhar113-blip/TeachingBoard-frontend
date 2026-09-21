@@ -73,6 +73,7 @@
     $('pa-min').value = c.min_payout;
     $('pa-yt').value = c.youtube_flat;
     $('pa-school').value = c.school_percent;
+    $('pa-delivery').value = c.prize_delivery_days || 10;
     _prizes = (c.prizes || []).map(p => ({ count: p.count, title: p.title }));
     _renderPrizes();
   }
@@ -130,6 +131,7 @@
         ${c.tracking ? `<small class="import-hint">Tracking: ${esc(c.tracking)}</small>` : ''}
         ${c.status === 'requested' ? `<div class="pa-stmt-actions">
           <input class="admin-input pa-utr" data-tracking placeholder="Tracking / courier note (optional)" />
+          <input class="admin-input pa-utr" data-note placeholder="Reason (shown to the student if not approved)" />
           <button type="button" class="admin-btn-primary" data-claim-act="shipped">Mark as sent</button>
           <button type="button" class="admin-btn-danger" data-claim-act="rejected">Not approved</button></div>` : ''}
       </div>`).join('');
@@ -141,8 +143,8 @@
     const card = btn.closest('.pa-stmt');
     btn.disabled = true;
     try {
-      await API.updateReferralClaim(card.dataset.id, { status: btn.dataset.claimAct, tracking: card.querySelector('[data-tracking]')?.value.trim() || '' });
-      toast(btn.dataset.claimAct === 'shipped' ? 'Marked as sent' : 'Marked as not approved', 'success');
+      await API.updateReferralClaim(card.dataset.id, { status: btn.dataset.claimAct, tracking: card.querySelector('[data-tracking]')?.value.trim() || '', note: card.querySelector('[data-note]')?.value.trim() || '' });
+      toast(btn.dataset.claimAct === 'shipped' ? 'Marked as sent - the student has been notified' : 'Marked as not approved - the student has been notified', 'success');
       await _loadClaims();
     } catch (err) {
       btn.disabled = false;
@@ -159,6 +161,7 @@
         min_payout: Number($('pa-min').value),
         youtube_flat: Number($('pa-yt').value),
         school_percent: Number($('pa-school').value),
+        prize_delivery_days: Number($('pa-delivery').value),
       });
       toast('Settings saved', 'success');
     } catch (err) {
