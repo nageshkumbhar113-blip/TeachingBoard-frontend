@@ -17,6 +17,8 @@
   let _statements = [];
   let _partners = [];
   let _prizes = [];
+  let _refs = [];
+  let _openRef = '';
   let _claims = [];
   let _payingId = '';
   let _month = '';
@@ -39,6 +41,13 @@
       if (rm) { _readPrizes(); _prizes.splice(Number(rm.dataset.prizeRm), 1); _renderPrizes(); }
     });
     $('pa-claim-status')?.addEventListener('change', _loadClaims);
+    $('pa-ref-search')?.addEventListener('input', _renderRefs);
+    $('pa-refs')?.addEventListener('click', e => {
+      const row = e.target.closest('[data-ref]');
+      if (!row) return;
+      _openRef = _openRef === row.dataset.ref ? '' : row.dataset.ref;
+      _renderRefs();
+    });
     $('pa-claims')?.addEventListener('click', _onClaimClick);
     $('pa-statements')?.addEventListener('click', _onStatementClick);
     $('pa-ledger')?.addEventListener('click', _onLedgerClick);
@@ -50,6 +59,7 @@
       await _loadStatements();
       await _loadLedger();
       await _loadClaims();
+      await _loadRefs();
     } catch (err) {
       console.error('partners load failed', err);
       toast('Could not load partners', 'error');
@@ -83,11 +93,32 @@
     _prizes = rows.map(r => ({ count: r.querySelector('.pa-prize-count').value, title: r.querySelector('.pa-prize-title').value.trim() }));
   }
 
+  // ── student referrals overview ────────────────────────────────────────────
+  async function _loadRefs() {
+    _refs = await API.fetchReferralSummary();
+    _renderRefs();
+  }
+
+  function _renderRefs() {
+    const box = $('pa-refs');
+    if (!box) return;
+    const q = ($('pa-ref-search')?.value || '').trim().toLowerCase();
+    const rows = _refs.filter(r => !q || r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q));
+    if (!rows.length) { box.innerHTML = `<p class="import-hint">${_refs.length ? 'No match.' : 'No student has brought a friend yet.'}</p>`; return; }
+    box.innerHTML = `<div class="pa-table-wrap"><table class="pa-table"><thead><tr><th>Student</th><th>Joined</th><th>Paid</th><th>In wait</th><th>Prizes</th></tr></thead><tbody>` +
+      rows.map(r => `<tr data-ref="${esc(r.code)}" style="cursor:pointer">
+        <td><b>${esc(r.name || r.code)}</b><br><small>${esc(r.code)}</small></td><td>${r.joined}</td><td><b>${r.paid}</b></td><td>${r.pending}</td>
+        <td>${r.claims.length ? r.claims.map(c => `${c.milestone}: ${c.status === 'shipped' ? 'sent' : c.status === 'requested' ? 'to send' : 'no'}`).join('<br>') : '-'}</td></tr>
+        ${_openRef === r.code ? `<tr><td colspan="5" style="background:rgba(128,128,128,.08)">${r.friends.map(f => `${esc(f.name)} <small>(${esc(f.code)})</small> - ${f.state}`).join('<br>')}</td></tr>` : ''}`).join('') +
+      '</tbody></table></div>';
+  }
+
   // ── prize requests ────────────────────────────────────────────────────────
   async function _loadClaims() {
     const box = $('pa-claims');
     if (!box) return;
     _claims = await API.fetchReferralClaims($('pa-claim-status')?.value || '');
+    try { $('pa-claims-open').textContent = String((await API.fetchReferralClaims('requested')).length); } catch { /* keep the old number */ }
     if (!_claims.length) { box.innerHTML = '<p class="import-hint">No requests here.</p>'; return; }
     box.innerHTML = _claims.map(c => `
       <div class="pa-stmt" data-id="${esc(c.id)}">
