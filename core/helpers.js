@@ -190,6 +190,7 @@ const API = (() => {
       teacher_code: String(user.teacher_code || credentials.teacher_code || '').trim().toUpperCase(),
       mobile: String(user.mobile || '').trim(),
       institute_name: String(user.institute_name || '').trim(),
+      partner_type: String(user.partner_type || '').trim(),
       assigned_students: Array.isArray(user.assigned_students) ? user.assigned_students : [],
     };
     await Promise.all([

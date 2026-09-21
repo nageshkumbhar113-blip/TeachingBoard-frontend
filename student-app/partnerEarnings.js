@@ -12,8 +12,32 @@ const PARTNER_EARNINGS = (() => {
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthLabel = m => { const [y, mo] = String(m).split('-'); return `${MONTHS[Number(mo) - 1] || mo} ${y}`; };
 
+  const SHARE_BASE = 'https://teachingboard-frontend.vercel.app/get-app.html';
   let _bound = false;
   let _enabled = null;
+  let _code = '';
+
+  // A YouTube partner sees only Refer & Earn: hide every other dashboard tab and the student list.
+  function applyYoutubeMode() {
+    document.querySelectorAll('[data-tdtab]').forEach(b => { if (b.dataset.tdtab !== 'earnings') b.classList.add('hidden'); });
+    const earn = document.querySelector('[data-tdtab="earnings"]');
+    earn?.classList.remove('hidden');
+    document.getElementById('td-tab-drawer-toggle')?.classList.add('hidden');
+    document.getElementById('td-tab-row')?.classList.remove('hidden');
+    earn?.click();
+  }
+
+  function _shareMessage() {
+    return [
+      '📚 *Nks EduOrbit*: notes, exercises, MCQ tests and practice for Maharashtra Board students.',
+      '🎁 The first chapter of every subject is free.',
+      '',
+      'Download / open the app:',
+      `${SHARE_BASE}?teacher=${encodeURIComponent(_code)}`,
+      '',
+      `Enter this code when you register: *${_code}*`,
+    ].join('\n');
+  }
 
   // Called whenever the dashboard opens: reveals the Earnings tab only for partners.
   async function checkTab() {
@@ -22,6 +46,7 @@ const PARTNER_EARNINGS = (() => {
     try {
       const data = await API.fetchMyEarnings();
       _enabled = !!data?.enabled;
+      if (_enabled && data.partner_type === 'youtube') applyYoutubeMode();
     } catch {
       _enabled = false;
     }
@@ -36,6 +61,8 @@ const PARTNER_EARNINGS = (() => {
     const box = $('pe-body');
     if (box) box.innerHTML = '<p class="td-hint">Loading...</p>';
     try {
+      const profile = await API.getTeacherProfile().catch(() => null);
+      _code = String(profile?.teacher_code || '').trim().toUpperCase();
       _render(await API.fetchMyEarnings());
     } catch (err) {
       if (box) box.innerHTML = '<p class="td-hint">Could not load your earnings. Check your internet and try again.</p>';
@@ -47,12 +74,26 @@ const PARTNER_EARNINGS = (() => {
     const body = $('pe-body');
     if (!body) return;
     body.innerHTML = `
+      <h4 class="pe-h" style="margin-top:4px">Your link</h4>
+      <div class="pe-link">
+        <div>Your code: <strong>${esc(_code || '-')}</strong></div>
+        <textarea id="pe-msg" class="td-share-msg" rows="7" readonly aria-label="Share message">${esc(_code ? _shareMessage() : '')}</textarea>
+        <button type="button" id="pe-copy" class="td-send-notif-btn">📋 Copy message</button>
+        <button type="button" id="pe-wa" class="td-send-notif-btn" style="margin-top:8px">💬 Send on WhatsApp</button>
+      </div>
+      <h4 class="pe-h">How it works</h4>
+      <ul class="pe-steps">
+        <li>Share your link. Students who register with it are linked to you.</li>
+        <li>When a linked student pays, you earn ${esc(rule)}${d.first_payment_only ? ' (first payment only)' : ''}.</li>
+        <li>The amount is held for ${d.hold_days} days, then it is added to that month's statement.</li>
+        <li>Each month is closed on the 1st and paid between the 2nd and the 5th to your UPI ID, once it reaches ${rs(d.min_payout)}.</li>
+        ${d.partner_type === 'youtube' ? '<li>You see only the number of students, never their names.</li>' : ''}
+      </ul>
       <div class="pe-cards">
         <div class="pe-card"><small>Paid students</small><b>${d.paid_students}</b><small>of ${d.linked_students} linked</small></div>
         <div class="pe-card"><small>On hold (${d.hold_days} days)</small><b>${rs(d.pending.amount)}</b><small>${d.pending.count} payment${d.pending.count === 1 ? '' : 's'}</small></div>
         <div class="pe-card"><small>Ready, this month</small><b>${rs(d.ready.amount)}</b><small>goes into the ${monthLabel(d.current_month)} statement</small></div>
       </div>
-      <p class="td-share-hint">You earn ${esc(rule)}${d.first_payment_only ? ' (first payment only)' : ''}. A commission is held for ${d.hold_days} days after the payment. Each month is closed on the 1st and paid between the 2nd and the 5th, once it reaches ${rs(d.min_payout)}; a smaller amount moves to the next month.</p>
       ${d.payout.upi_id ? '' : '<p class="pe-warn">Add your UPI ID below, otherwise we cannot pay you.</p>'}
       <h4 class="pe-h">Monthly statements</h4>
       ${d.statements.length ? d.statements.map(s => `
@@ -66,6 +107,13 @@ const PARTNER_EARNINGS = (() => {
         </div>`).join('') : '<p class="td-hint">No statement yet. The first one is made on the 1st of the month after your first commission becomes payable.</p>'}
       <h4 class="pe-h">Payout details</h4>
       <p class="td-share-hint">Saved: ${d.payout.upi_id ? `${esc(d.payout.upi_name)} - ${esc(d.payout.upi_id)}${d.payout.pan ? ` - PAN ${esc(d.payout.pan)}` : ''}` : 'nothing yet'}</p>`;
+    $('pe-copy')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('pe-msg').value); toast('Message copied', 'success'); }
+      catch { $('pe-msg')?.select(); toast('Select the text and copy it', 'info'); }
+    });
+    $('pe-wa')?.addEventListener('click', () => {
+      window.open(`https://wa.me/?text=${encodeURIComponent($('pe-msg').value)}`, '_blank', 'noopener');
+    });
     if (d.payout.upi_id) { $('pe-upi').value = d.payout.upi_id; $('pe-upi2').value = ''; $('pe-name').value = d.payout.upi_name; }
   }
 
@@ -90,7 +138,7 @@ const PARTNER_EARNINGS = (() => {
     }
   }
 
-  return { checkTab, open };
+  return { checkTab, open, applyYoutubeMode };
 })();
 
 window.PARTNER_EARNINGS = PARTNER_EARNINGS;

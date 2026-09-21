@@ -268,12 +268,17 @@
         <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">TEACHER<br>REQUEST</div></div>
         <div>
           <div class="admit-eyebrow">TEACHER REGISTRATION</div>
-          <h1 class="onboarding-title">Teacher Registration</h1>
-          <p class="onboarding-sub">Our admin will contact you and approve your account.</p>
+          <h1 class="onboarding-title">Partner / Teacher Registration</h1>
+          <p class="onboarding-sub">Choose what describes you. Our admin will check and approve your account.</p>
         </div>
       </div>
       <div class="admit-perforation" aria-hidden="true"></div>
       <div class="admit-body">
+        <div class="treg-type" role="radiogroup" aria-label="Registration type">
+          <button type="button" class="treg-type-btn active" data-treg-type="school" role="radio" aria-checked="true">🏫 School / Institute Teacher</button>
+          <button type="button" class="treg-type-btn" data-treg-type="youtube" role="radio" aria-checked="false">🎬 YouTube Partner</button>
+        </div>
+        <p id="treg-type-note" class="onboarding-sub" style="margin:6px 0 10px"></p>
         <div class="onboarding-field">
           <label for="treg-name" class="onboarding-label">Full name <span class="ob-required">*</span></label>
           <input id="treg-name" type="text" class="onboarding-input" placeholder="e.g. Nagesh Kumbhar" autocomplete="name" autocapitalize="words" spellcheck="false" />
@@ -282,9 +287,19 @@
           <label for="treg-mobile" class="onboarding-label">Mobile number <span class="ob-required">*</span></label>
           <input id="treg-mobile" type="tel" class="onboarding-input" placeholder="e.g. 9876543210" inputmode="numeric" maxlength="10" autocomplete="tel" />
         </div>
-        <div class="onboarding-field">
+        <div class="onboarding-field" id="treg-school-fields">
           <label for="treg-institute" class="onboarding-label">Institute / coaching class name <span class="ob-required">*</span></label>
           <input id="treg-institute" type="text" class="onboarding-input" placeholder="e.g. Sai Coaching Classes" autocomplete="organization" spellcheck="false" />
+        </div>
+        <div id="treg-yt-fields" class="hidden">
+          <div class="onboarding-field">
+            <label for="treg-channel-name" class="onboarding-label">YouTube channel name <span class="ob-required">*</span></label>
+            <input id="treg-channel-name" type="text" class="onboarding-input" placeholder="e.g. Nagesh Sir Maths" spellcheck="false" />
+          </div>
+          <div class="onboarding-field">
+            <label for="treg-channel-url" class="onboarding-label">YouTube channel link <span class="ob-required">*</span></label>
+            <input id="treg-channel-url" type="url" class="onboarding-input" placeholder="https://www.youtube.com/@yourchannel" inputmode="url" autocapitalize="off" spellcheck="false" />
+          </div>
         </div>
         <div class="onboarding-field">
           <label for="treg-pin" class="onboarding-label">Set a 4-digit PIN <span class="ob-required">*</span></label>
@@ -296,7 +311,8 @@
         <div class="onboarding-field" style="margin-top:4px">
           <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;line-height:1.5;cursor:pointer;color:var(--text2,#8b949e)">
             <input id="treg-agree" type="checkbox" style="margin-top:3px;flex-shrink:0" />
-            <span>I agree: on the free plan I can build only <strong>4 papers per batch</strong>. Unlimited Paper Builder for a batch requires <strong>at least 10 students of that batch to have paid</strong>.</span>
+            <span id="treg-agree-school">I have read and agree to the <a href="../partner-terms.html?type=school" target="_blank" rel="noopener">School / Institute Teacher Terms</a> and the Privacy Policy. I understand that on the free plan I can build only <strong>4 papers per batch</strong>, and unlimited Paper Builder for a batch needs <strong>at least 10 paid students of that batch</strong>.</span>
+            <span id="treg-agree-yt" class="hidden">I have read and agree to the <a href="../partner-terms.html?type=youtube" target="_blank" rel="noopener">YouTube Teacher Partner Terms</a> and the Privacy Policy. I understand that I will earn commission only as described in these Terms.</span>
           </label>
         </div>
         <p id="treg-error-msg" class="pin-error hidden" role="alert"></p>
@@ -909,7 +925,7 @@
             <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
             <button class="td-tab" data-tdtab="papers" role="tab" aria-selected="false">📄 Paper</button>
             <button class="td-tab" data-tdtab="share" role="tab" aria-selected="false">📤 Share</button>
-            <button class="td-tab hidden" data-tdtab="earnings" role="tab" aria-selected="false">💸 Earnings</button>
+            <button class="td-tab hidden" data-tdtab="earnings" role="tab" aria-selected="false">💸 Refer &amp; Earn</button>
           </div>
         </div>
 
@@ -1003,7 +1019,7 @@
         <!-- Earnings tab: only for partners (commission turned on by the admin) -->
         <div id="td-tab-earnings" class="td-tab-pane hidden">
           <div class="td-share-box">
-            <h4>💸 Your earnings</h4>
+            <h4>💸 Refer &amp; Earn</h4>
             <div id="pe-body"></div>
             <div class="pe-form">
               <input id="pe-upi" class="td-modal-select" type="text" inputmode="email" autocomplete="off" placeholder="UPI ID (e.g. name@okbank)" aria-label="UPI ID" />

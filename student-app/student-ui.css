@@ -4985,3 +4985,11 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .pe-badge.closed { background: rgba(249,115,22,.2); font-weight: 700; }
 .pe-badge.paid { background: rgba(16,185,129,.2); font-weight: 700; }
 .pe-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+/* Partner / teacher registration: type switch */
+.treg-type { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.treg-type-btn { flex: 1 1 140px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border, #d0d7de); background: transparent; color: inherit; font-weight: 600; font-size: 0.85rem; }
+.treg-type-btn.active { border-color: var(--accent, #e16b13); background: rgba(var(--accent-rgb, 225,107,19), 0.12); }
+
+.pe-link { display: flex; flex-direction: column; gap: 6px; }
+.pe-steps { margin: 4px 0 0; padding-left: 18px; font-size: 0.85rem; line-height: 1.55; }

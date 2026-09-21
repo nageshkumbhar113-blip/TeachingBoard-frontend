@@ -1036,6 +1036,27 @@ const APP = (() => {
         .then(() => toast('Copied', 'success'))
         .catch(() => toast('Could not copy', 'error'));
     });
+    // School teacher <-> YouTube partner: different fields and different terms
+    const _setTregType = type => {
+      _tregType = type === 'youtube' ? 'youtube' : 'school';
+      const yt = _tregType === 'youtube';
+      document.querySelectorAll('[data-treg-type]').forEach(b => {
+        const on = b.dataset.tregType === _tregType;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-checked', String(on));
+      });
+      document.getElementById('treg-school-fields')?.classList.toggle('hidden', yt);
+      document.getElementById('treg-yt-fields')?.classList.toggle('hidden', !yt);
+      document.getElementById('treg-agree-school')?.classList.toggle('hidden', yt);
+      document.getElementById('treg-agree-yt')?.classList.toggle('hidden', !yt);
+      const note = document.getElementById('treg-type-note');
+      if (note) note.textContent = yt
+        ? 'Share the app with your audience and earn a commission on every student who joins through your link and pays.'
+        : 'Get a class link for your students, the Paper Builder, and a commission on students who pay.';
+    };
+    document.querySelectorAll('[data-treg-type]').forEach(b => b.addEventListener('click', () => _setTregType(b.dataset.tregType)));
+    _setTregType('school');
+
     $('treg-submit')?.addEventListener('click', async () => {
       const errEl = document.getElementById('treg-error-msg');
       const submitBtn = document.getElementById('treg-submit');
@@ -1045,12 +1066,17 @@ const APP = (() => {
       const name = (document.getElementById('treg-name')?.value || '').trim();
       const mobile = (document.getElementById('treg-mobile')?.value || '').trim();
       const institute = (document.getElementById('treg-institute')?.value || '').trim();
+      const channelName = (document.getElementById('treg-channel-name')?.value || '').trim();
+      const channelUrl = (document.getElementById('treg-channel-url')?.value || '').trim();
       const pin = (document.getElementById('treg-pin')?.value || '').trim();
       const agree = !!document.getElementById('treg-agree')?.checked;
+      const isYt = _tregType === 'youtube';
 
       if (!name) return showErr('Enter your full name');
       if (!_isValidMobile(mobile)) return showErr('Enter a valid 10-digit mobile number (starting with 6-9)');
-      if (!institute) return showErr('Enter your institute / coaching class name');
+      if (!isYt && !institute) return showErr('Enter your institute / coaching class name');
+      if (isYt && !channelName) return showErr('Enter your YouTube channel name');
+      if (isYt && !/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(channelUrl)) return showErr('Enter your YouTube channel link, e.g. https://www.youtube.com/@yourchannel');
       if (!/^\d{4}$/.test(pin)) return showErr('PIN must be 4 digits');
       if (_isWeakPin(pin)) return showErr('That PIN is too easy to guess (e.g. 0000, 1234). Choose a different PIN');
       if (!agree) return showErr('Please tick the agreement box to continue');
@@ -1059,12 +1085,14 @@ const APP = (() => {
       try {
         const server = (document.getElementById('ob-server')?.value || '').trim() || API.DEFAULT_API_URL;
         if (server && window.API?.setApiUrl) API.setApiUrl(server);
-        const res = await API.registerTeacher({ name, mobile, institute_name: institute, pin, agree: true });
+        const res = await API.registerTeacher(isYt
+          ? { name, mobile, partner_type: 'youtube', channel_name: channelName, channel_url: channelUrl, pin, agree: true }
+          : { name, mobile, partner_type: 'school', institute_name: institute, pin, agree: true });
         const codeEl = document.getElementById('treg-done-code');
         if (codeEl) codeEl.textContent = res?.teacher_code || '';
         tregCard?.classList.add('hidden');
         tregDoneCard?.classList.remove('hidden');
-        ['treg-name', 'treg-mobile', 'treg-institute', 'treg-pin'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        ['treg-name', 'treg-mobile', 'treg-institute', 'treg-channel-name', 'treg-channel-url', 'treg-pin'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         const ag = document.getElementById('treg-agree'); if (ag) ag.checked = false;
       } catch (err) {
         showErr(err?.message || 'Registration failed. Please try again');
@@ -1116,7 +1144,7 @@ const APP = (() => {
         const server = (document.getElementById('ob-server')?.value || '').trim() || API.DEFAULT_API_URL;
         if (server && window.API?.setApiUrl) API.setApiUrl(server);
 
-        const res = await API.selfRegister({ name, mobile, school_name, pin, batch, ...(teacher_code ? { teacher_code } : {}) });
+        const res = await API.selfRegister({ name, mobile, school_name, pin, batch, ...(teacher_code ? { teacher_code } : {}), ...(_friendRefCode ? { ref_code: _friendRefCode } : {}) });
         const code = res?.student_code || '';
 
         const codeEl = document.getElementById('reg-success-code');
@@ -1199,12 +1227,16 @@ const APP = (() => {
   }
 
   let _linkParamsApplied = false;
+  let _tregType = 'school';
+  let _friendRefCode = '';
   function _applyRegistrationLinkParams(loginCard, regCard) {
     if (_linkParamsApplied) return;
     const teacher = _linkParam('teacher').toUpperCase();
     const batch = _linkParam('batch');
-    if (!teacher && !batch) return;
+    const ref = _linkParam('ref').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    if (!teacher && !batch && !ref) return;
     _linkParamsApplied = true;
+    _friendRefCode = ref;
     const t = document.getElementById('reg-teacher');
     if (t && teacher) t.value = teacher;
     loginCard?.classList.add('hidden');
