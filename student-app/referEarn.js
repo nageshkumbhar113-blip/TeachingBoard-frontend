@@ -33,11 +33,11 @@ const REFER_EARN = (() => {
     if (!_data) { card.classList.add('hidden'); return; }
     const top = (_data.milestones || []).slice(-1)[0];
     const target = _data.next ? _data.next.count : (top ? top.count : 1);
-    const pct = Math.min(100, Math.round((_data.friends_paid / target) * 100));
+    const pct = Math.min(100, Math.round((_data.friends_available / target) * 100));
     const claimable = (_data.milestones || []).filter(m => m.state === 'claimable').length;
     card.innerHTML = `
       <div class="re-card-head"><b>🎁 Refer &amp; Earn</b>${claimable ? `<span class="re-badge">${claimable} prize${claimable === 1 ? '' : 's'} ready</span>` : ''}</div>
-      <div class="re-card-line">${_data.friends_paid} friend${_data.friends_paid === 1 ? '' : 's'} paid${_data.next ? ` &middot; next prize: <b>${esc(_data.next.title)}</b> at ${_data.next.count}` : ' &middot; all prizes reached'}</div>
+      <div class="re-card-line">${_data.friends_available} friend${_data.friends_available === 1 ? '' : 's'} ready to use${_data.next ? ` &middot; next prize: <b>${esc(_data.next.title)}</b> at ${_data.next.count}` : ' &middot; you can claim any prize'}</div>
       <div class="re-bar"><span style="width:${pct}%"></span></div>
       <button type="button" class="re-open-btn" id="re-open">See prizes &amp; share</button>`;
     card.classList.remove('hidden');
@@ -67,19 +67,25 @@ const REFER_EARN = (() => {
         <div class="re-sheet-head"><h3>🎁 Refer &amp; Earn</h3><button type="button" class="re-x" id="re-close" aria-label="Close">✕</button></div>
         <p class="re-hint">Share your link with friends. A friend counts when they register with it and take a paid plan, and ${d.hold_days} days have passed.</p>
         <div class="re-counts">
-          <div><b>${d.friends_paid}</b><small>paid</small></div>
+          <div><b>${d.friends_available}</b><small>ready to use</small></div>
           <div><b>${d.friends_pending}</b><small>in ${d.hold_days}-day wait</small></div>
           <div><b>${d.friends_joined}</b><small>joined</small></div>
         </div>
-        <h4>Prizes</h4>
+        <h4>Choose one prize</h4>
+        <p class="re-hint">You can pick <b>only one</b> prize. When you claim, <b>all your ready friends are used up and the count goes back to 0</b>, so choose the best prize you can. Friends used earlier: ${d.friends_spent}.</p>
         ${(d.milestones || []).map(m => `
           <div class="re-prize ${m.state}">
-            <div><b>${esc(m.title)}</b><br><small>${m.count} friends have paid</small></div>
-            ${m.state === 'claimable' ? `<button type="button" class="re-claim-btn" data-claim="${m.count}">Claim</button>` : `<span class="re-state">${_stateLabel(m)}</span>`}
+            <div><b>${esc(m.title)}</b><br><small>needs ${m.count} friends</small></div>
+            ${m.state === 'claimable' ? `<button type="button" class="re-claim-btn" data-claim="${m.count}">Choose</button>` : `<span class="re-state">${m.count - d.friends_available} more needed</span>`}
+          </div>`).join('')}
+        ${(d.claims || []).length ? `<h4>Your prize requests</h4>${d.claims.map(c => `
+          <div class="re-prize ${c.status}">
+            <div><b>${esc(c.title)}</b><br><small>${new Date(c.requested_at).toLocaleDateString('en-IN')} &middot; used ${c.friends_used || c.milestone} friends</small></div>
+            <span class="re-state">${c.status === 'shipped' ? 'Sent' : c.status === 'rejected' ? 'Not approved' : 'Requested'}</span>
           </div>
-          ${m.state === 'requested' ? '<small class="re-hint">We have your request. You will get a notification when the prize is sent.</small>' : ''}
-          ${m.state === 'shipped' && m.claim ? `<small class="re-hint">Sent on ${new Date(m.claim.shipped_at).toLocaleDateString('en-IN')}. You should receive it within ${m.claim.delivery_days} days (by ${new Date(m.claim.expected_by).toLocaleDateString('en-IN')}).${m.claim.tracking ? ` Tracking: ${esc(m.claim.tracking)}` : ''}</small>` : ''}
-          ${m.state === 'rejected' && m.claim?.note ? `<small class="re-hint">${esc(m.claim.note)}</small>` : ''}`).join('')}
+          ${c.status === 'requested' ? '<small class="re-hint">We have your request. You will get a notification when the prize is sent.</small>' : ''}
+          ${c.status === 'shipped' ? `<small class="re-hint">Sent on ${new Date(c.shipped_at).toLocaleDateString('en-IN')}. You should receive it within ${c.delivery_days} days (by ${new Date(c.expected_by).toLocaleDateString('en-IN')}).${c.tracking ? ` Tracking: ${esc(c.tracking)}` : ''}</small>` : ''}
+          ${c.status === 'rejected' ? `<small class="re-hint">${c.note ? esc(c.note) + ' ' : ''}Your ${c.friends_used || c.milestone} friends are available again.</small>` : ''}`).join('')}` : ''}
         <div id="re-claim-form" class="re-form hidden"></div>
         <h4>Your link</h4>
         <textarea id="re-msg" class="re-msg" rows="6" readonly>${esc(_message())}</textarea>
@@ -103,7 +109,7 @@ const REFER_EARN = (() => {
     box.classList.remove('hidden');
     box.innerHTML = `
       <h4>Claim: ${esc(m.title)}</h4>
-      <p class="re-hint">Ask a parent or guardian to fill in the delivery details.</p>
+      <p class="re-hint"><b>This uses all your ${_data.friends_available} ready friends and your count goes back to 0.</b> Ask a parent or guardian to fill in the delivery details.</p>
       <input id="re-name" type="text" placeholder="Name of the person who will receive it" autocomplete="name" />
       <input id="re-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="Phone number" autocomplete="tel" />
       <textarea id="re-addr" rows="3" placeholder="Full address" autocomplete="street-address"></textarea>
