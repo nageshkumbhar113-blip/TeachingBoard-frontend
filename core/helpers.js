@@ -1159,6 +1159,23 @@ const API = (() => {
     return payload?.data || {};
   }
 
+  // ── Partner programme (Admin > Partners) ─────────────────────────────────
+  async function _partnerReq(path, options = {}) {
+    const token = await ensureAdminSession();
+    return request(`/partners${path}`, { ...options, headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function fetchPartnerConfig() { return (await _partnerReq('/config'))?.data || {}; }
+  async function setPartnerConfig(cfg) { return (await _partnerReq('/config', { method: 'PUT', body: JSON.stringify(cfg) }))?.data || {}; }
+  async function fetchPartners() { return (await _partnerReq(''))?.data || []; }
+  async function fetchPartnerStatements(month = '') {
+    const p = await _partnerReq(`/statements${month ? `?month=${encodeURIComponent(month)}` : ''}`);
+    return { data: p?.data || [], current_month: p?.current_month || '', previous_month: p?.previous_month || '' };
+  }
+  async function closePartnerMonth(month = '') { return _partnerReq('/statements/close', { method: 'POST', body: JSON.stringify(month ? { month } : {}) }); }
+  async function markPartnerStatementPaid(id, utr) { return _partnerReq(`/statements/${encodeURIComponent(id)}/paid`, { method: 'POST', body: JSON.stringify({ utr }) }); }
+  async function fetchPartnerCommissions(partner = '') { return (await _partnerReq(`/commissions${partner ? `?partner=${encodeURIComponent(partner)}` : ''}`))?.data || []; }
+  async function reversePartnerCommission(id, reason = '') { return _partnerReq(`/commissions/${encodeURIComponent(id)}/reverse`, { method: 'POST', body: JSON.stringify({ reason }) }); }
+
   async function setTeacherPaperOverride(teacherId, override, pin = '') {
     const token = await ensureAdminSession(pin);
     return request(`/teachers/${encodeURIComponent(teacherId)}/paper-quota-override`, {
@@ -2456,6 +2473,8 @@ const API = (() => {
     fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota,
+    fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
+    markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission,
     registerTeacher,
     fetchCatalogBatches, fetchImportChapters, previewImport, runImport, fetchImportJobs, undoImport,
     fetchParents, createParent, updateParent, deleteParent,

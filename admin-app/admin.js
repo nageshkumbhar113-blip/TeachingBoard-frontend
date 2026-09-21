@@ -243,6 +243,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'papers')      window.PAPER_BUILDER?.init();
         if (tab.dataset.tab === 'books')       window.BOOKS_MANAGER?.init();
         if (tab.dataset.tab === 'pricing')     window.BATCH_PRICING?.init();
+        if (tab.dataset.tab === 'partners')    window.PARTNERS_ADMIN?.init();
         if (tab.dataset.tab === 'youtube-teachers') window.YOUTUBE_TEACHER_ADMIN?.init();
         if (tab.dataset.tab === 'banners')     window.BANNER_ADMIN?.init();
         if (tab.dataset.tab === 'dashboard')   _loadDashboard();
@@ -2713,6 +2714,11 @@ const ADMIN = (() => {
     _setValue('teacher-mobile', '');
     _setValue('teacher-institute', '');
     if ($('teacher-board-papers')) $('teacher-board-papers').checked = false;
+    if ($('teacher-comm-on')) $('teacher-comm-on').checked = false;
+    _setValue('teacher-partner-type', '');
+    _setValue('teacher-comm-mode', 'flat');
+    _setValue('teacher-comm-value', '');
+    if ($('teacher-comm-first')) $('teacher-comm-first').checked = true;
     _setValue('teacher-validity', '');
     _setValue('teacher-status', 'active');
     _setValue('teacher-pin', '');
@@ -2769,6 +2775,11 @@ const ADMIN = (() => {
         _setValue('teacher-mobile', t.mobile || '');
         _setValue('teacher-institute', t.institute_name || '');
         if ($('teacher-board-papers')) $('teacher-board-papers').checked = t.board_papers_allowed === true;
+        if ($('teacher-comm-on')) $('teacher-comm-on').checked = t.commission_enabled === true;
+        _setValue('teacher-partner-type', t.partner_type || '');
+        _setValue('teacher-comm-mode', t.commission_mode || 'flat');
+        _setValue('teacher-comm-value', t.commission_value || '');
+        if ($('teacher-comm-first')) $('teacher-comm-first').checked = t.commission_first_payment_only !== false;
         _setValue('teacher-validity', t.validity_until || '');
         _setValue('teacher-status', t.status || 'active');
         _setValue('teacher-assigned-students', (t.assigned_students || []).join(', '));
@@ -3046,6 +3057,11 @@ const ADMIN = (() => {
         assigned_students: rawStudents,
         institute_name: String($('teacher-institute')?.value || '').trim(),
         board_papers_allowed: !!$('teacher-board-papers')?.checked,
+        partner_type: String($('teacher-partner-type')?.value || ''),
+        commission_enabled: !!$('teacher-comm-on')?.checked,
+        commission_mode: String($('teacher-comm-mode')?.value || 'flat'),
+        commission_value: Number($('teacher-comm-value')?.value || 0),
+        commission_first_payment_only: !!$('teacher-comm-first')?.checked,
         validity_until: String($('teacher-validity')?.value || '').trim(),
         status: String($('teacher-status')?.value || 'active'),
       };

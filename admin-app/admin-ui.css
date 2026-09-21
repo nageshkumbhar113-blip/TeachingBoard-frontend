@@ -2418,3 +2418,27 @@ body.admin-app {
 .imp-new { color: #f97316; font-size: 0.78rem; }
 .imp-existing { opacity: 0.8; font-size: 0.78rem; }
 @media (max-width: 720px) { .imp-grid { grid-template-columns: 1fr; } }
+
+/* ── Admin > Partners ─────────────────────────────────────────────────────── */
+.pa-wrap { display: flex; flex-direction: column; gap: 14px; }
+.pa-section { padding: 14px; }
+.pa-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+.pa-card { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(249,115,22,.4); background: rgba(249,115,22,.08); min-width: 180px; }
+.pa-card b { font-size: 1.5rem; }
+.pa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.pa-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; }
+.pa-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pa-row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pa-table-wrap { overflow-x: auto; }
+.pa-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.pa-table th, .pa-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(128,128,128,.25); vertical-align: top; }
+.pa-stmt { border: 1px solid rgba(128,128,128,.3); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+.pa-stmt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.pa-stmt-lines { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0; font-size: 0.85rem; }
+.pa-net { margin-left: auto; }
+.pa-stmt-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.pa-utr { max-width: 220px; }
+.pa-badge { font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; background: rgba(128,128,128,.2); white-space: nowrap; }
+.pa-badge.ok { background: rgba(249,115,22,.2); color: #c2410c; font-weight: 700; }
+.pa-badge.done { background: rgba(16,185,129,.2); color: #047857; font-weight: 700; }
+.pa-warn { color: #dc2626; font-size: 0.8rem; }
