@@ -2054,6 +2054,7 @@ const APP = (() => {
     };
     UI.setBreadcrumb(labels[name] || name);
     _updateBottomNav(name);
+    _syncThemeToScreen();
   }
 
   function _updateBottomNav(screen) {
@@ -2321,7 +2322,24 @@ const APP = (() => {
   // THEME
   // ════════════════════════
 
+  // Dark / Light / Contrast applies only on the MCQ test, Notes and Exercise screens. Everywhere
+  // else the app is always light. _userTheme is what the student picked; _paintTheme() is what
+  // is actually shown on the current screen.
+  const THEMED_SCREENS = new Set(['quiz', 'test-player', 'results', 'exercise', 'notes']);
+  let _userTheme = null;
+
+  function _lightFor(theme) {
+    return String(theme).startsWith('theme-board-') ? 'theme-board-light' : 'theme-light';
+  }
+
+  function _syncThemeToScreen() {
+    const themed = THEMED_SCREENS.has(_currentScreen);
+    if (_userTheme) _paintTheme(themed ? _userTheme : _lightFor(_userTheme));
+    $('btn-theme')?.classList.toggle('hidden', !themed);
+  }
+
   function _activeTheme() {
+    if (_userTheme && ALL_THEME_PRESETS.includes(_userTheme)) return _userTheme;
     const preset = document.body.dataset.themePreset;
     if (ALL_THEME_PRESETS.includes(preset)) return preset;
     return ALL_THEME_PRESETS.find(t => document.body.classList.contains(t)) || 'theme-dark';
@@ -2366,12 +2384,7 @@ const APP = (() => {
     setTheme(theme, { silent });
   }
 
-  function setTheme(theme, { silent = false } = {}) {
-    if (!ALL_THEME_PRESETS.includes(theme)) {
-      console.warn(`setTheme: unknown theme "${theme}", falling back to theme-dark`);
-      theme = 'theme-dark';
-    }
-
+  function _paintTheme(theme) {
     const baseTheme = theme === 'theme-board-light'
       ? 'theme-light'
       : theme === 'theme-board-dark'
@@ -2382,7 +2395,18 @@ const APP = (() => {
     document.body.classList.add(baseTheme);
     if (theme.startsWith('theme-board-')) document.body.classList.add(theme);
     document.body.dataset.themePreset = theme;
+  }
+
+  function setTheme(theme, { silent = false } = {}) {
+    if (!ALL_THEME_PRESETS.includes(theme)) {
+      console.warn(`setTheme: unknown theme "${theme}", falling back to theme-dark`);
+      theme = 'theme-dark';
+    }
+
+    _userTheme = theme;
+    _paintTheme(THEMED_SCREENS.has(_currentScreen) ? theme : _lightFor(theme));
     _setThemeButtonState(theme);
+    $('btn-theme')?.classList.toggle('hidden', !THEMED_SCREENS.has(_currentScreen));
 
     if (!silent) {
       toast(`Theme: ${THEME_LABELS[theme]}`, 'info');
