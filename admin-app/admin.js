@@ -2840,7 +2840,11 @@ const ADMIN = (() => {
           <div class="batch-admin-name">${_escHtml(t.name)} <small>(${_escHtml(t.teacher_code)})</small></div>
           <div class="student-meta-row">
             <span>${_escHtml(t.mobile || '')}</span>
-            <span>${_escHtml(t.institute_name || 'No institute given')}</span>
+            <span><b>${t.partner_type === 'youtube' ? 'YouTube partner' : 'School / institute teacher'}</b></span>
+            ${t.partner_type === 'youtube'
+              ? `<span>${_escHtml(t.channel_name || '')} - <a href="${_escHtml(t.channel_url || '#')}" target="_blank" rel="noopener">open channel</a></span>`
+              : `<span>${_escHtml(t.institute_name || 'No institute given')}</span>`}
+            <span>${t.commission_enabled ? (t.commission_mode === 'percent' ? `${t.commission_value}% commission` : `Rs ${t.commission_value} commission`) : 'No commission'}</span>
             <span>${t.created_at ? _escHtml(new Date(t.created_at).toLocaleDateString()) : ''}</span>
             <span>${t.terms_accepted_at ? 'Terms accepted' : 'Terms not recorded'}</span>
           </div>

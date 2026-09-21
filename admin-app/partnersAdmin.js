@@ -16,6 +16,8 @@
   let _loaded = false;
   let _statements = [];
   let _partners = [];
+  let _prizes = [];
+  let _claims = [];
   let _payingId = '';
   let _month = '';
 
@@ -31,6 +33,13 @@
     $('pa-close-month')?.addEventListener('click', _closeMonth);
     $('pa-month')?.addEventListener('change', e => { _month = e.target.value; _loadStatements(); });
     $('pa-ledger-partner')?.addEventListener('change', _loadLedger);
+    $('pa-prize-add')?.addEventListener('click', () => { _prizes.push({ count: '', title: '' }); _renderPrizes(); });
+    $('pa-prizes')?.addEventListener('click', e => {
+      const rm = e.target.closest('[data-prize-rm]');
+      if (rm) { _readPrizes(); _prizes.splice(Number(rm.dataset.prizeRm), 1); _renderPrizes(); }
+    });
+    $('pa-claim-status')?.addEventListener('change', _loadClaims);
+    $('pa-claims')?.addEventListener('click', _onClaimClick);
     $('pa-statements')?.addEventListener('click', _onStatementClick);
     $('pa-ledger')?.addEventListener('click', _onLedgerClick);
   }
@@ -40,6 +49,7 @@
       await Promise.all([_loadConfig(), _loadPartners()]);
       await _loadStatements();
       await _loadLedger();
+      await _loadClaims();
     } catch (err) {
       console.error('partners load failed', err);
       toast('Could not load partners', 'error');
@@ -53,11 +63,67 @@
     $('pa-min').value = c.min_payout;
     $('pa-yt').value = c.youtube_flat;
     $('pa-school').value = c.school_percent;
+    _prizes = (c.prizes || []).map(p => ({ count: p.count, title: p.title }));
+    _renderPrizes();
+  }
+
+  function _renderPrizes() {
+    const box = $('pa-prizes');
+    if (!box) return;
+    box.innerHTML = _prizes.length ? _prizes.map((p, i) => `
+      <div class="pa-prize-row">
+        <input class="admin-input pa-prize-count" type="number" min="1" placeholder="Friends" value="${esc(p.count)}" aria-label="Friends who paid" />
+        <input class="admin-input pa-prize-title" type="text" maxlength="60" placeholder="Prize name" value="${esc(p.title)}" aria-label="Prize name" />
+        <button type="button" class="admin-btn-danger" data-prize-rm="${i}">Remove</button>
+      </div>`).join('') : '<p class="import-hint">No prizes. Students will see no prize steps.</p>';
+  }
+
+  function _readPrizes() {
+    const rows = [...document.querySelectorAll('#pa-prizes .pa-prize-row')];
+    _prizes = rows.map(r => ({ count: r.querySelector('.pa-prize-count').value, title: r.querySelector('.pa-prize-title').value.trim() }));
+  }
+
+  // ── prize requests ────────────────────────────────────────────────────────
+  async function _loadClaims() {
+    const box = $('pa-claims');
+    if (!box) return;
+    _claims = await API.fetchReferralClaims($('pa-claim-status')?.value || '');
+    if (!_claims.length) { box.innerHTML = '<p class="import-hint">No requests here.</p>'; return; }
+    box.innerHTML = _claims.map(c => `
+      <div class="pa-stmt" data-id="${esc(c.id)}">
+        <div class="pa-stmt-head">
+          <div><b>${esc(c.title)}</b> <small>(${c.milestone} friends)</small><br><small>${esc(c.student_name)} - ${esc(c.student_code)} - ${new Date(c.requested_at).toLocaleDateString('en-IN')}</small></div>
+          <span class="pa-badge ${c.status === 'shipped' ? 'done' : c.status === 'requested' ? 'ok' : 'muted'}">${c.status === 'shipped' ? 'Sent' : c.status === 'requested' ? 'To send' : 'Not approved'}</span>
+        </div>
+        <div class="pa-stmt-lines"><span>${esc(c.recipient_name)}, ${esc(c.phone)}</span><span>${esc(c.address)} - ${esc(c.pincode)}</span></div>
+        ${c.tracking ? `<small class="import-hint">Tracking: ${esc(c.tracking)}</small>` : ''}
+        ${c.status === 'requested' ? `<div class="pa-stmt-actions">
+          <input class="admin-input pa-utr" data-tracking placeholder="Tracking / courier note (optional)" />
+          <button type="button" class="admin-btn-primary" data-claim-act="shipped">Mark as sent</button>
+          <button type="button" class="admin-btn-danger" data-claim-act="rejected">Not approved</button></div>` : ''}
+      </div>`).join('');
+  }
+
+  async function _onClaimClick(e) {
+    const btn = e.target.closest('[data-claim-act]');
+    if (!btn) return;
+    const card = btn.closest('.pa-stmt');
+    btn.disabled = true;
+    try {
+      await API.updateReferralClaim(card.dataset.id, { status: btn.dataset.claimAct, tracking: card.querySelector('[data-tracking]')?.value.trim() || '' });
+      toast(btn.dataset.claimAct === 'shipped' ? 'Marked as sent' : 'Marked as not approved', 'success');
+      await _loadClaims();
+    } catch (err) {
+      btn.disabled = false;
+      toast(err?.message || 'Could not update', 'error');
+    }
   }
 
   async function _saveConfig() {
     try {
+      _readPrizes();
       await API.setPartnerConfig({
+        prizes: _prizes.map(p => ({ count: Number(p.count), title: p.title })),
         hold_days: Number($('pa-hold').value),
         min_payout: Number($('pa-min').value),
         youtube_flat: Number($('pa-yt').value),

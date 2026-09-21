@@ -2442,3 +2442,7 @@ body.admin-app {
 .pa-badge.ok { background: rgba(249,115,22,.2); color: #c2410c; font-weight: 700; }
 .pa-badge.done { background: rgba(16,185,129,.2); color: #047857; font-weight: 700; }
 .pa-warn { color: #dc2626; font-size: 0.8rem; }
+
+.pa-prize-row { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.pa-prize-count { max-width: 110px; }
+.pa-prize-title { flex: 1; min-width: 160px; }

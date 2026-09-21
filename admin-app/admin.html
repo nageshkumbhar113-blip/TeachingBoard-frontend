@@ -1676,8 +1676,19 @@ Marks: 1"></textarea>
                   <label>YouTube partner, flat (₹)<input id="pa-yt" class="admin-input" type="number" min="0" /></label>
                   <label>School teacher (%)<input id="pa-school" class="admin-input" type="number" min="0" max="100" /></label>
                 </div>
-                <button type="button" id="pa-save-config" class="admin-btn-primary">Save settings</button>
-                <p class="import-hint">The two default values are suggestions shown for reference; the rate that counts is the one set on each teacher.</p>
+                <h4 style="margin:12px 0 4px">Student prizes (friends who have paid)</h4>
+                <div id="pa-prizes"></div>
+                <button type="button" id="pa-prize-add" class="admin-btn-secondary">+ Add prize</button>
+                <div style="margin-top:10px"><button type="button" id="pa-save-config" class="admin-btn-primary">Save settings</button></div>
+                <p class="import-hint">The YouTube and School values are the rate given to a new partner when they register; the rate that counts afterwards is the one on each teacher (Teachers tab). Prize changes apply to students from now on; requests already made keep their prize name.</p>
+              </div>
+
+              <div class="admin-card pa-section">
+                <div class="pa-row">
+                  <h3>Prize requests</h3>
+                  <select id="pa-claim-status" class="admin-input"><option value="requested">To send</option><option value="shipped">Sent</option><option value="rejected">Not approved</option><option value="">All</option></select>
+                </div>
+                <div id="pa-claims"></div>
               </div>
 
               <div class="admin-card pa-section">
