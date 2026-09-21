@@ -4,8 +4,8 @@ echo  Nks EduOrbit — STUDENT APK Build
 echo ========================================
 
 :: ── Version — update BOTH values for every release ──────────────────────────
-set VERSION=8.1.5
-set VERSION_CODE=155
+set VERSION=8.1.6
+set VERSION_CODE=156
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: [PRE] Stale .bak cleanup
@@ -45,6 +45,10 @@ copy /Y icons-student\strings.xml android\app\src\main\res\values\strings.xml >n
 :: as the icon/strings overrides just above.
 if not exist android\app\src\main\java\com\nkseduorbit\student\ mkdir android\app\src\main\java\com\nkseduorbit\student\ >nul 2>&1
 copy /Y android-student\MainActivity.java android\app\src\main\java\com\nkseduorbit\student\MainActivity.java >nul 2>&1
+copy /Y android-student\InstallReferrerPlugin.java android\app\src\main\java\com\nkseduorbit\student\InstallReferrerPlugin.java >nul 2>&1
+:: Play Install Referrer dependency (build.gradle is gitignored, so it is ensured here)
+node tools/ensure-install-referrer.mjs
+if errorlevel 1 ( echo ERROR: install referrer dependency patch failed & pause & exit /b 1 )
 
 :: AndroidManifest.xml customizations (TV/leanback support, FileProvider,
 :: UPI package-visibility queries, Firebase auto-init disabled so cold start

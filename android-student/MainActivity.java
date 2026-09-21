@@ -32,6 +32,9 @@ public class MainActivity extends BridgeActivity {
       Log.w("MainActivity", "FirebaseApp.initializeApp failed — push notifications won't work this session", e);
     }
 
+    // Reads the Play Store install referrer (teacher / friend code from a share link)
+    registerPlugin(InstallReferrerPlugin.class);
+
     super.onCreate(savedInstanceState);
     // Enables chrome://inspect remote debugging even on release builds —
     // used for automated QA/testing. Only exploitable with physical/adb
