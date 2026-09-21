@@ -1103,6 +1103,18 @@ const APP = (() => {
 
     const codeCard = document.getElementById('reg-code-card');
     _applyRegistrationLinkParams(loginCard, regCard);
+    // Fresh install from a Play Store share link: open Register with the code already filled in
+    _readInstallReferrer().then(code => {
+      if (!code || _linkParamsApplied) return;
+      const field = document.getElementById('reg-teacher');
+      if (field && !field.value) field.value = code;
+      if (loginCard && !loginCard.classList.contains('hidden')) {
+        _linkParamsApplied = true;
+        loginCard.classList.add('hidden');
+        regCard?.classList.remove('hidden');
+        _populateRegBatches();
+      }
+    });
 
     $('reg-back')?.addEventListener('click', () => {
       regCard?.classList.add('hidden');
@@ -1224,6 +1236,27 @@ const APP = (() => {
   // student types the Teacher code themselves.
   function _linkParam(name) {
     try { return (new URLSearchParams(location.search).get(name) || '').trim(); } catch { return ''; }
+  }
+
+  // Google Play install referrer: a share link sends people to Play with referrer=ref%3DCODE / teacher%3DCODE.
+  // The native plugin (InstallReferrerPlugin.java) hands that back on the first launch, so the teacher /
+  // friend code is filled in without typing. Read once and remembered ('' = looked, nothing there).
+  async function _readInstallReferrer() {
+    try {
+      if (!window.Capacitor?.isNativePlatform?.()) return '';
+      const saved = await DB.getSetting('install_referrer_code', null);
+      if (saved !== null && saved !== undefined) return String(saved);
+      const plugin = window.Capacitor.Plugins?.InstallReferrer
+        || (window.Capacitor.registerPlugin ? window.Capacitor.registerPlugin('InstallReferrer') : null);
+      if (!plugin?.getReferrer) return '';
+      const res = await plugin.getReferrer();
+      const params = new URLSearchParams(String(res?.referrer || ''));
+      const code = (params.get('teacher') || params.get('ref') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+      await DB.setSetting('install_referrer_code', code);
+      return code;
+    } catch {
+      return '';   // never block the app; it is asked again on the next launch
+    }
   }
 
   let _linkParamsApplied = false;
