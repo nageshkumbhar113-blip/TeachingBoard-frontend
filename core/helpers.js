@@ -1187,6 +1187,20 @@ const API = (() => {
   }
 
   // Teacher: own quota for one batch (used / limit / paid students / unlimited)
+  // Student friend-referral (Home > Refer & Earn)
+  async function fetchMyReferrals() {
+    const profile = await getStudentProfile();
+    const token = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
+    if (!token) return null;
+    const payload = await request('/referrals/me', { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || null;
+  }
+  async function claimReferralPrize(body) {
+    const token = await ensureStudentSession();
+    const payload = await request('/referrals/me/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    return payload?.data || {};
+  }
+
   // Partner earnings (Teacher Dashboard > Earnings)
   async function fetchMyEarnings() {
     const token = await ensureTeacherSession().catch(() => '');
@@ -2488,7 +2502,7 @@ const API = (() => {
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
     fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
-    fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile,
+    fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission,
     registerTeacher,

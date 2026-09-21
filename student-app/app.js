@@ -2255,6 +2255,7 @@ const APP = (() => {
     // Cache renders instantly; network refresh happens in the background —
     // see _loadHomeBanners's own doc-comment.
     _loadHomeBanners().catch(() => {});
+    window.REFER_EARN?.refresh();
 
     // Hide drill-down sections immediately
     ['subject-section', 'chapter-section', 'lesson-section', 'available-tests-section']

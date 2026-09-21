@@ -113,7 +113,7 @@ const TEACHER_DASHBOARD = (() => {
 
     if (tab === 'earnings') {
       $('td-back-btn')?.classList.add('hidden');
-      $('td-detail-name').textContent = 'Your earnings';
+      $('td-detail-name').textContent = 'Refer & Earn';
       window.PARTNER_EARNINGS?.open();
     }
 
