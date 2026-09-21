@@ -4938,3 +4938,32 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 /* Free plan: locked chapter rows */
 .chapter-item.chapter-locked { opacity: 0.65; }
 .chapter-item.chapter-locked .chapter-meta { color: var(--accent, #f97316); }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Dark + High-contrast reading polish (Exercise, and shared tokens)
+   Root cause of the white Exercise cards: --surface1 (and --text-muted / --text-secondary /
+   --text-dim) were never defined, so every fallback colour was a LIGHT one in every theme.
+   Rule of thumb on dark themes: questions / headings yellow, answers and body text white.
+════════════════════════════════════════════════════════════════════════════ */
+.theme-dark, .theme-light, .theme-contrast {
+  --surface1: var(--card);
+  --text-muted: var(--text2);
+  --text-secondary: var(--text2);
+  --text-dim: var(--text);
+}
+.theme-dark     { --read-yellow: #facc15; }
+.theme-contrast { --read-yellow: #ffff00; }
+.theme-dark .ev-qnum, .theme-contrast .ev-qnum,
+.theme-dark .ev-qtext, .theme-contrast .ev-qtext,
+.theme-dark .ev-group-card b, .theme-contrast .ev-group-card b { color: var(--read-yellow); }
+.theme-dark .ev-group-card span, .theme-contrast .ev-group-card span { color: #e6edf3; }
+.theme-dark .ev-qcard, .theme-contrast .ev-qcard,
+.theme-dark .ev-group-card, .theme-contrast .ev-group-card { background: var(--card); border-color: var(--border); }
+.theme-dark .ev-atext, .theme-contrast .ev-atext {
+  background: rgba(255, 255, 255, 0.07);
+  border-left-color: var(--read-yellow);
+  color: #ffffff;
+}
+.theme-dark .ev-reveal-btn, .theme-contrast .ev-reveal-btn { border-color: var(--read-yellow); color: var(--read-yellow); }
+.theme-dark .ev-qcard th, .theme-contrast .ev-qcard th { background: rgba(255, 255, 255, 0.1) !important; color: var(--read-yellow); border-color: #555 !important; }
+.theme-dark .ev-qcard td, .theme-contrast .ev-qcard td { border-color: #444 !important; }

@@ -735,3 +735,27 @@
     justify-content: flex-end;
   }
 }
+
+/* High-contrast (black) theme: the Notes reader used to stay light there. */
+.theme-contrast {
+  --nv-bg: #000000;
+  --nv-bg-secondary: #0a0a0a;
+  --nv-text: #ffffff;
+  --nv-text-secondary: #e5e5e5;
+  --nv-border: #555555;
+}
+
+/* Dark + black themes: body text white, headings and main points yellow. */
+.theme-dark    { --nv-yellow: #facc15; --nv-accent: #facc15; }
+.theme-contrast{ --nv-yellow: #ffff00; --nv-accent: #ffff00; }
+.theme-dark .nv-title, .theme-contrast .nv-title,
+.theme-dark .nv-section-title, .theme-contrast .nv-section-title,
+.theme-dark .nv-heading, .theme-contrast .nv-heading,
+.theme-dark .nv-concept-title, .theme-contrast .nv-concept-title,
+.theme-dark .nv-key-points li, .theme-contrast .nv-key-points li,
+.theme-dark .nv-revision-box > h3, .theme-contrast .nv-revision-box > h3,
+.theme-dark .nv-mode-exam .nv-key-points li, .theme-contrast .nv-mode-exam .nv-key-points li { color: var(--nv-yellow); }
+.theme-dark .nv-paragraph, .theme-contrast .nv-paragraph,
+.theme-dark .nv-outcomes li, .theme-contrast .nv-outcomes li,
+.theme-dark .nv-revision-section li, .theme-contrast .nv-revision-section li { color: #ffffff; }
+.theme-dark .nv-content-body strong, .theme-contrast .nv-content-body strong { color: var(--nv-yellow); }
