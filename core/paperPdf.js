@@ -128,8 +128,70 @@ const PAPER_PDF = (() => {
     return out.join('');
   }
 
+  // ── PDF-safe math ─────────────────────────────────────────────────────────────
+  // html2canvas cannot draw KaTeX's stretchy delimiters (the bars of a determinant come out as
+  // tiny marks at the bottom), so a vmatrix / |matrix| is written as an array with drawn column rules.
+  function _pdfSafeMath(s) {
+    const asArray = (_m, body) => {
+      const first = String(body).split('\\\\')[0];
+      const cols = (first.match(/&/g) || []).length + 1;
+      return '\\begin{array}{|' + 'c'.repeat(cols) + '|}' + body + '\\end{array}';
+    };
+    return String(s)
+      .replace(/\\begin\{[vV]matrix\}([\s\S]*?)\\end\{[vV]matrix\}/g, asArray)
+      .replace(/\\left\|\s*\\begin\{matrix\}([\s\S]*?)\\end\{matrix\}\s*\\right\|/g, asArray);
+  }
+
+  // ── Board paper question text clean-up ────────────────────────────────────────
+  // Bank questions carry helper text that does not belong on an exam paper: the repeated
+  // instruction ("Choose the correct alternative: (i)"), the board-year tag "(JULY 2024)" and a
+  // "Given: ..." hint. Activity bodies and tables that follow "Given:" are real content and stay.
+  const _BOARD_PREFIX_RE = /^\s*(?:Choose the correct alternative|Solve the following (?:sub-?questions?)|Complete the following activity(?: and rewrite it)?)\s*:\s*\(\s*(?:[ivx]+|[a-e])\s*\)\s*/i;
+  const _BOARD_YEAR_RE = /\s*\(\s*(?:(?:JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER)\s+)?\d{4}\s*\)\s*$/i;
+  const _MCQ_RE = /^([\s\S]*?)\s*\(\s*[Aa]\s*\)\s*([\s\S]*?)\s*\(\s*[Bb]\s*\)\s*([\s\S]*?)\s*\(\s*[Cc]\s*\)\s*([\s\S]*?)\s*\(\s*[Dd]\s*\)\s*([\s\S]*)$/;
+
+  function _boardParts(raw) {
+    const s = String(raw ?? '').replace(/\r/g, '');
+    let main = s;
+    let given = '';
+    const gm = s.match(/\n\s*Given:\s*/);
+    if (gm) { main = s.slice(0, gm.index); given = s.slice(gm.index + gm[0].length).trim(); }
+    main = main.replace(_BOARD_PREFIX_RE, '').replace(_BOARD_YEAR_RE, '').trim();
+
+    let extra = '';
+    if (/^Activity\b[^\n]*:/i.test(given)) extra = given.replace(/^Activity\b[^\n]*:\s*/i, '');
+    else if (given.includes('|---') || given.includes('| ---')) extra = given;
+
+    let options = null;
+    const mm = main.match(_MCQ_RE);
+    if (mm && mm[1].trim() && [2, 3, 4, 5].every(i => mm[i].trim() && mm[i].length < 220)) {
+      main = mm[1].trim();
+      options = [mm[2], mm[3], mm[4], mm[5]].map(x => x.trim());
+    }
+    extra = extra.split('\n').filter(l => !/^\s*Activity\b[^\n]*:\s*$/i.test(l)).join('\n');
+    return { stem: main.replace(/\n{2,}/g, '\n'), extra: extra.replace(/\n{2,}/g, '\n').trim(), options };
+  }
+
+  // Splits text into blocks that may be moved to the next page as a whole: each line, with a
+  // pipe table kept as one block.
+  function _blocks(text) {
+    const lines = String(text || '').split('\n').filter(l => l.trim() !== '');
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (/^\s*\|.*\|\s*$/.test(lines[i])) {
+        const tbl = [];
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) tbl.push(lines[i++]);
+        i--;
+        out.push(tbl.join('\n'));
+      } else {
+        out.push(lines[i]);
+      }
+    }
+    return out;
+  }
+
   function _richText(raw) {
-    const bolded = _esc(_expandBlanks(raw)).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    const bolded = _esc(_pdfSafeMath(_expandBlanks(raw))).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     const lines = bolded.split('\n');
     const out = [];
     let textBuf = [];
@@ -255,11 +317,21 @@ const PAPER_PDF = (() => {
       const items = qs.map((q, idx) => {
         const qText = q.questionText?.marathi || q.questionText?.english || '';
         const aText = q.answerText?.marathi || q.answerText?.english || '';
+        const { stem, extra, options } = _boardParts(qText);
+        const blocks = _blocks(extra ? `${stem}\n${extra}` : stem)
+          .map((b, bi) => `<div class="pp-atom"${bi === 0 ? ' data-pp-keep="1"' : ''} style="margin:${bi === 0 ? 0 : 4}px 0">${_richText(b)}</div>`).join('');
+        const plainLen = o => String(o).replace(/\$[^$]*\$/g, 'xxxx').length;
+        const cols = options && options.every(o => plainLen(o) <= 16) ? 4 : 2;
+        const optsHtml = options ? `
+          <div class="pp-atom" style="display:grid;grid-template-columns:repeat(${cols},auto);justify-content:start;gap:4px 34px;margin:6px 0 2px">
+            ${options.map((o, k) => `<div style="display:flex;gap:6px"><span>(${'ABCD'[k]})</span><span>${_richText(o)}</span></div>`).join('')}
+          </div>` : '';
+        const diag = _diagramsHtml(q.questionDiagrams, '#ddd');
         return `
-          <div class="pp-atom" style="display:flex;margin:9px 0 9px 70px;font-size:14px;line-height:1.7">
+          <div class="pp-item" style="display:flex;margin:9px 0 9px 70px;font-size:14px;line-height:1.7">
             <span style="width:34px;font-style:italic;flex-shrink:0">(${_ROMAN[idx] || idx + 1})</span>
-            <div style="flex:1">${_richText(qText)}${_diagramsHtml(q.questionDiagrams, '#ddd')}
-              ${withAnswers ? `<div style="margin-top:5px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#166534"><b>${t.answerLabel}:</b> ${_richText(aText)}${_diagramsHtml(q.answerDiagrams, '#cde9d3')}</div>` : ''}
+            <div style="flex:1">${blocks}${optsHtml}${diag ? `<div class="pp-atom">${diag}</div>` : ''}
+              ${withAnswers ? `<div class="pp-atom" style="margin-top:5px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#166534"><b>${t.answerLabel}:</b> ${_richText(String(aText).replace(/\n{2,}/g, '\n'))}${_diagramsHtml(q.answerDiagrams, '#cde9d3')}</div>` : ''}
             </div>
           </div>`;
       }).join('');
@@ -272,6 +344,7 @@ const PAPER_PDF = (() => {
 
     return `
       <div style="font-family:'Times New Roman',Times,'Noto Serif Devanagari','Mangal',serif;width:754px;padding:10px 36px 30px;color:#111;background:#fff">
+        <style>.katex-display{margin:10px 0 !important}</style>
         ${h.mock ? `<div class="pp-atom" style="text-align:center;font-size:11px;font-style:italic;font-family:Arial,sans-serif;color:#555">Practice / Mock Paper - not an official board paper${brandName ? ' - ' + _esc(brandName) : ''}</div>` : ''}
         ${code ? `<div class="pp-atom" style="text-align:center;font-size:46px;font-weight:800;letter-spacing:2px;line-height:1.1;margin-top:18px">${code}</div>` : ''}
         <div class="pp-atom" style="text-align:right;font-size:14px;font-weight:700;margin:2px 0 14px">Seat Number ${seatBoxes}</div>
@@ -375,7 +448,7 @@ const PAPER_PDF = (() => {
   // page 1 gets "(Pages N)"; later pages get "n/CODE" and (optionally) the seat-number
   // box at the top; every page but the last gets "P.T.O." at the bottom right.
   function _drawBoardPageChrome(pdf, o) {
-    const { pageNo, totalPages, codeText, header, pageWidth, pageHeight, topMm, MARGIN_MM, pagesSpot, cssPerMm } = o;
+    const { pageNo, totalPages, codeText, header, pageWidth, pageHeight, topMm, MARGIN_MM, pagesSpot, cssPerMm, institutionName } = o;
     pdf.setTextColor(0, 0, 0);
     if (pageNo === 1) {
       if (pagesSpot) {
@@ -403,6 +476,7 @@ const PAPER_PDF = (() => {
     pdf.setFontSize(7.5);
     pdf.setTextColor(120, 120, 120);
     pdf.text('Generated by Nks EduOrbit', MARGIN_MM, pageHeight - 8);
+    if (String(institutionName || '').trim()) pdf.text(String(institutionName).trim(), pageWidth / 2, pageHeight - 8, { align: 'center' });
     pdf.setTextColor(0, 0, 0);
     if (pageNo < totalPages) {
       pdf.setFont('times', 'normal');
@@ -467,10 +541,10 @@ const PAPER_PDF = (() => {
       const rootRect = root.getBoundingClientRect();
       rootCssWidth = rootRect.width || 754;
       rootCssHeight = rootRect.height;
-      atoms = Array.from(root.querySelectorAll('.pp-atom')).map(el => {
+      atoms = Array.from(root.querySelectorAll('.pp-atom, .pp-item')).map(el => {
         const r = el.getBoundingClientRect();
-        return { top: r.top - rootRect.top, bottom: r.bottom - rootRect.top, keep: el.hasAttribute('data-pp-keep') };
-      });
+        return { top: r.top - rootRect.top, bottom: r.bottom - rootRect.top, keep: el.hasAttribute('data-pp-keep'), item: el.classList.contains('pp-item') };
+      }).filter(a => !a.item || (a.bottom - a.top) <= 620);
       const spot = root.querySelector('[data-pp-pages]');
       if (spot) {
         const r = spot.getBoundingClientRect();
@@ -566,10 +640,10 @@ const PAPER_PDF = (() => {
         sliceCanvas.toDataURL('image/png'), 'PNG',
         MARGIN_MM, topMm, contentWidthMm, thisSliceHeightMm, undefined, 'FAST'
       );
-      // A board-style exam paper stays clean (no diagonal watermark) unless the teacher
-      // gave an institute name, which is then shown lightly like on practice papers.
-      if (!board || String(institutionName || '').trim()) _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
-      if (board) _drawBoardPageChrome(pdf, { pageNo: pageIdx + 1, totalPages, codeText, header: paper.header || {}, pageWidth, pageHeight, topMm, MARGIN_MM, pagesSpot, cssPerMm });
+      // A board-style exam paper stays clean: no diagonal watermark over the questions. An
+      // institute name, if given, is printed in the page footer instead.
+      if (!board) _drawWatermark(pdf, pageWidth, pageHeight, institutionName);
+      if (board) _drawBoardPageChrome(pdf, { institutionName, pageNo: pageIdx + 1, totalPages, codeText, header: paper.header || {}, pageWidth, pageHeight, topMm, MARGIN_MM, pagesSpot, cssPerMm });
 
       sourceY += thisSliceHeightPx;
       pageIdx++;
