@@ -4967,3 +4967,6 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .theme-dark .ev-reveal-btn, .theme-contrast .ev-reveal-btn { border-color: var(--read-yellow); color: var(--read-yellow); }
 .theme-dark .ev-qcard th, .theme-contrast .ev-qcard th { background: rgba(255, 255, 255, 0.1) !important; color: var(--read-yellow); border-color: #555 !important; }
 .theme-dark .ev-qcard td, .theme-contrast .ev-qcard td { border-color: #444 !important; }
+.theme-dark .back-btn, .theme-contrast .back-btn {
+  background: transparent; color: var(--read-yellow); border: 1px solid var(--read-yellow); border-radius: 8px; padding: 4px 10px;
+}
