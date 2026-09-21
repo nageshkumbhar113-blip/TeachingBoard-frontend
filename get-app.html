@@ -813,8 +813,38 @@
       });
     }
 
+    // The referral code carried by this link (?teacher=CODE for teachers/partners, ?ref=CODE for a friend).
+    // Google Play keeps a "referrer" value through the install, so the app can read it on first open.
+    function shareReferrer() {
+      const p = new URLSearchParams(location.search);
+      const t = (p.get('teacher') || '').trim().toUpperCase();
+      const r = (p.get('ref') || '').trim().toUpperCase();
+      if (/^[A-Z0-9]{2,20}$/.test(t)) return 'teacher=' + t;
+      if (/^[A-Z0-9]{2,20}$/.test(r)) return 'ref=' + r;
+      return '';
+    }
+
+    // When the admin has put the Play Store link in Admin > Updates, every share link uses it.
+    async function playStoreLink() {
+      try {
+        const res = await fetch('https://teachingboard-backend.onrender.com/api/app-version/latest');
+        if (!res.ok) return '';
+        const data = await res.json();
+        const url = String(data.apk_url || '').trim();
+        if (!/^https:\/\/play\.google\.com\/store\/apps\/details\?/i.test(url)) return '';
+        const ref = shareReferrer();
+        return ref ? `${url}${url.includes('?') ? '&' : '?'}referrer=${encodeURIComponent(ref)}` : url;
+      } catch { return ''; }
+    }
+
     async function fetchLatestApk() {
       setLoading();
+      const play = await playStoreLink();
+      if (play) {
+        setDownloadLinks(play, '', 0);
+        if (fileMeta) fileMeta.textContent = 'Android · Google Play · Nks EduOrbit';
+        return;
+      }
       try {
         const res = await fetch(
           `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
@@ -920,17 +950,19 @@
     // start where the code and batch are filled automatically.
     (function teacherBanner() {
       const params = new URLSearchParams(location.search);
-      const teacher = (params.get('teacher') || '').trim().toUpperCase();
+      // ?ref=CODE is a friend's link: same banner, same web start (the register form reads ?ref=)
+      const teacher = ((params.get('teacher') || params.get('ref') || '')).trim().toUpperCase();
+      const isFriend = !params.get('teacher') && !!params.get('ref');
       if (!teacher || !/^[A-Z0-9]{2,20}$/.test(teacher)) return;
       const batch = (params.get('batch') || '').trim();
-      const webParams = new URLSearchParams({ teacher });
+      const webParams = new URLSearchParams(isFriend ? { ref: teacher } : { teacher });
       if (batch) webParams.set('batch', batch);
       const webUrl = `/student-app/index.html?${webParams.toString()}`;
 
       const box = document.createElement('div');
       box.style.cssText = 'max-width:520px;margin:16px auto 0;padding:14px 16px;border:2px dashed #F0883E;border-radius:14px;background:#FFF7ED;text-align:center;font-size:0.95rem;line-height:1.6';
       box.innerHTML = `
-        <div>📌 After installing the app, <strong>enter this Teacher code when you register:</strong></div>
+        <div>📌 After installing the app, <strong>${isFriend ? 'enter this friend code when you register (it is filled in for you if you start on the web):' : 'enter this Teacher code when you register:'}</strong></div>
         <div style="margin:8px 0"><span id="teacher-code-chip" style="display:inline-block;padding:6px 18px;border-radius:10px;background:#fff;border:1px solid #FDE1C4;font-size:1.4rem;font-weight:800;letter-spacing:.08em"></span></div>
         <button type="button" id="teacher-code-copy" style="padding:8px 18px;border-radius:999px;border:0;background:#F0883E;color:#fff;font-weight:700;cursor:pointer">📋 Copy code</button>
         <div style="margin-top:10px;font-size:0.85rem"><a id="teacher-web-start" style="text-decoration:underline;color:#C1600F">Or start on the web (the code is filled in automatically)</a></div>`;
