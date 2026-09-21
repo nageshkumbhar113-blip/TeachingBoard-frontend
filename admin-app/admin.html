@@ -1666,6 +1666,7 @@ Marks: 1"></textarea>
 
               <div class="pa-cards">
                 <div class="pa-card"><small>To pay (closed statements)</small><b id="pa-due-total">₹0</b><small id="pa-due-count"></small></div>
+                <div class="pa-card"><small>Prize requests to send</small><b id="pa-claims-open">0</b><small>students waiting for a parcel</small></div>
               </div>
 
               <div class="admin-card pa-section">
@@ -1681,6 +1682,15 @@ Marks: 1"></textarea>
                 <button type="button" id="pa-prize-add" class="admin-btn-secondary">+ Add prize</button>
                 <div style="margin-top:10px"><button type="button" id="pa-save-config" class="admin-btn-primary">Save settings</button></div>
                 <p class="import-hint">The YouTube and School values are the rate given to a new partner when they register; the rate that counts afterwards is the one on each teacher (Teachers tab). Prize changes apply to students from now on; requests already made keep their prize name.</p>
+              </div>
+
+              <div class="admin-card pa-section">
+                <div class="pa-row">
+                  <h3>Student referrals</h3>
+                  <input id="pa-ref-search" class="admin-input" type="search" placeholder="Search name or code" style="max-width:220px" />
+                </div>
+                <p class="import-hint">Every student who has shared the app: how many friends joined, paid, and are still in the wait. Tap a row to see the friends.</p>
+                <div id="pa-refs"></div>
               </div>
 
               <div class="admin-card pa-section">

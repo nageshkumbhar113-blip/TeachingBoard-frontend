@@ -1174,6 +1174,11 @@ const API = (() => {
   }
   async function closePartnerMonth(month = '') { return _partnerReq('/statements/close', { method: 'POST', body: JSON.stringify(month ? { month } : {}) }); }
   async function markPartnerStatementPaid(id, utr) { return _partnerReq(`/statements/${encodeURIComponent(id)}/paid`, { method: 'POST', body: JSON.stringify({ utr }) }); }
+  async function fetchReferralSummary() {
+    const token = await ensureAdminSession();
+    const p = await request('/referrals/summary', { headers: { Authorization: `Bearer ${token}` } });
+    return p?.data || [];
+  }
   async function fetchReferralClaims(status = '') {
     const token = await ensureAdminSession();
     const p = await request(`/referrals/claims${status ? `?status=${encodeURIComponent(status)}` : ''}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -2513,7 +2518,7 @@ const API = (() => {
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
-    markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim,
+    markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
     registerTeacher,
     fetchCatalogBatches, fetchImportChapters, previewImport, runImport, fetchImportJobs, undoImport,
     fetchParents, createParent, updateParent, deleteParent,
