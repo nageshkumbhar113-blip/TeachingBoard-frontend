@@ -144,7 +144,7 @@
           <span class="pa-badge ${cls}">${label}</span>
         </div>
         <div class="pa-stmt-lines">
-          <span>${s.new_count} new x = ${rs(s.new_amount)}</span>
+          <span>${s.new_count} paid student${s.new_count === 1 ? "" : "s"} = ${rs(s.new_amount)}</span>
           ${s.adjust_count ? `<span>Adjustments ${rs(s.adjust_amount)}</span>` : ''}
           ${s.carried_in ? `<span>Carried in ${rs(s.carried_in)}</span>` : ''}
           <b class="pa-net">Net ${rs(s.net)}</b>
