@@ -909,6 +909,7 @@
             <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
             <button class="td-tab" data-tdtab="papers" role="tab" aria-selected="false">📄 Paper</button>
             <button class="td-tab" data-tdtab="share" role="tab" aria-selected="false">📤 Share</button>
+            <button class="td-tab hidden" data-tdtab="earnings" role="tab" aria-selected="false">💸 Earnings</button>
           </div>
         </div>
 
@@ -996,6 +997,21 @@
             <button type="button" id="td-share-copy" class="td-send-notif-btn">📋 Copy message</button>
             <button type="button" id="td-share-wa" class="td-send-notif-btn" style="margin-top:8px">💬 Send on WhatsApp</button>
             <p id="td-share-status" class="td-share-hint" role="status"></p>
+          </div>
+        </div>
+
+        <!-- Earnings tab: only for partners (commission turned on by the admin) -->
+        <div id="td-tab-earnings" class="td-tab-pane hidden">
+          <div class="td-share-box">
+            <h4>💸 Your earnings</h4>
+            <div id="pe-body"></div>
+            <div class="pe-form">
+              <input id="pe-upi" class="td-modal-select" type="text" inputmode="email" autocomplete="off" placeholder="UPI ID (e.g. name@okbank)" aria-label="UPI ID" />
+              <input id="pe-upi2" class="td-modal-select" type="text" autocomplete="off" placeholder="Type the UPI ID again" aria-label="Confirm UPI ID" />
+              <input id="pe-name" class="td-modal-select" type="text" placeholder="Name on the UPI account" aria-label="Name on the UPI account" />
+              <input id="pe-pan" class="td-modal-select" type="text" maxlength="10" autocapitalize="characters" placeholder="PAN (e.g. ABCDE1234F)" aria-label="PAN" />
+              <button type="button" id="pe-save" class="td-send-notif-btn">Save payout details</button>
+            </div>
           </div>
         </div>
 
@@ -1508,6 +1524,7 @@
   <script src="tts.js" defer></script>
   <script src="teacherDashboard.js" defer></script>
   <script src="teacherPaperBuilder.js" defer></script>
+  <script src="partnerEarnings.js" defer></script>
   <script src="exerciseViewer.js" defer></script>
   <script src="videoTeacherSelect.js" defer></script>
   <script src="parentDashboard.js" defer></script>

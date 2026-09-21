@@ -45,6 +45,7 @@ const TEACHER_DASHBOARD = (() => {
     // notification modal were all completely dead; tapping did nothing.
     // Guarded so _showTeacherDashboard() can safely call this every time a
     // teacher opens the dashboard without stacking duplicate listeners.
+    window.PARTNER_EARNINGS?.checkTab();
     if (_initialized) return;
     _initialized = true;
 
@@ -108,6 +109,13 @@ const TEACHER_DASHBOARD = (() => {
     $('td-tab-fee')?.classList.toggle('hidden', tab !== 'fee');
     $('td-tab-papers')?.classList.toggle('hidden', tab !== 'papers');
     $('td-tab-share')?.classList.toggle('hidden', tab !== 'share');
+    $('td-tab-earnings')?.classList.toggle('hidden', tab !== 'earnings');
+
+    if (tab === 'earnings') {
+      $('td-back-btn')?.classList.add('hidden');
+      $('td-detail-name').textContent = 'Your earnings';
+      window.PARTNER_EARNINGS?.open();
+    }
 
     if (tab === 'share') {
       $('td-back-btn')?.classList.add('hidden');

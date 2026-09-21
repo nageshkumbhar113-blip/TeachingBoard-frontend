@@ -1186,6 +1186,21 @@ const API = (() => {
   }
 
   // Teacher: own quota for one batch (used / limit / paid students / unlimited)
+  // Partner earnings (Teacher Dashboard > Earnings)
+  async function fetchMyEarnings() {
+    const token = await ensureTeacherSession().catch(() => '');
+    if (!token) return null;
+    const payload = await request('/partners/me/earnings', { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || null;
+  }
+  async function saveMyPayoutProfile(body) {
+    const token = await ensureTeacherSession();
+    const payload = await request('/partners/me/payout-profile', {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
+    });
+    return payload?.data || {};
+  }
+
   async function fetchMyPaperQuota(batch) {
     const token = await ensureTeacherSession().catch(() => '');
     if (!token) return null;
@@ -2472,7 +2487,7 @@ const API = (() => {
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
     fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
-    fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota,
+    fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission,
     registerTeacher,
