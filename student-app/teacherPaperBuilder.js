@@ -66,6 +66,7 @@ const TEACHER_PAPER_BUILDER = (() => {
     if (window.PAPER_SECTIONS && !_sections) {
       _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true),
         canFill: () => !!(_batch && _subjects.length && _chapters.length),
+        canFillPassage: () => !!(_batch && _subjects.length),
         fetchByMarks: marks => API.fetchTeacherSlsQuestions({ chapterId: _chapterIdsParam(), marks, status: 'published', sort: 'usageCount', limit: 300 }),
         fetchMcq: async () => {
           const out = []; const seen = new Set();
@@ -515,11 +516,16 @@ const TEACHER_PAPER_BUILDER = (() => {
   }
 
   async function _savePaper() {
+    // A board paper made only of Passage sections needs no individually-picked question — a
+    // chapter is still required, even though the passage content itself may be from the
+    // chapterless "unseen" pool.
+    const _pSections = _sections?.isEnabled() ? _sections.getSections() : [];
+    const _passageOnly = _pSections.length > 0 && _pSections.every(s => s.kind === 'passage');
     if (!_batch || !_subjects.length || !_chapters.length) {
       APP?.toast?.('आधी Batch/Subject/Chapter निवडा', 'error');
       return;
     }
-    if (!_selectedQuestions.length) {
+    if (!_selectedQuestions.length && !_passageOnly) {
       APP?.toast?.('किमान एक प्रश्न जोडा', 'error');
       return;
     }

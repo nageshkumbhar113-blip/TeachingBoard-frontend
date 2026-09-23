@@ -52,6 +52,7 @@ const PAPER_BUILDER = (() => {
     if (window.PAPER_SECTIONS && !_sections) {
       _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true),
         canFill: () => !!(_batch && _subjects.length && _chapters.length),
+        canFillPassage: () => !!(_batch && _subjects.length),
         fetchByMarks: marks => API.fetchAdminSlsQuestions({ chapterId: _chapterIdsParam(), marks, status: 'published', sort: 'usageCount', limit: 300 }),
         fetchMcq: async () => {
           const out = []; const seen = new Set();
@@ -500,11 +501,16 @@ const PAPER_BUILDER = (() => {
   // ════════════════════════════════════════════════════════════════════════════
 
   async function _savePaper() {
+    // A board paper made only of Passage sections needs no individually-picked question — a
+    // chapter is still required (it tags the paper for access/lock rules and its own listing),
+    // even though the passage content itself can be from the chapterless "unseen" pool.
+    const sections = _sections?.isEnabled() ? _sections.getSections() : [];
+    const passageOnly = sections.length > 0 && sections.every(s => s.kind === 'passage');
     if (!_batch || !_subjects.length || !_chapters.length) {
       APP.toast('आधी Batch/Subject/Chapter निवडा', 'error');
       return;
     }
-    if (!_selectedQuestions.length) {
+    if (!_selectedQuestions.length && !passageOnly) {
       APP.toast('किमान एक प्रश्न जोडा', 'error');
       return;
     }

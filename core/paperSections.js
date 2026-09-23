@@ -110,7 +110,7 @@ const PAPER_SECTIONS = (() => {
   }
   const _isMcqSection = s => /alternative|choose the correct|\bmcq\b/i.test(String(s.instruction || ''));
 
-  function create({ getSelected, onChange, fetchByMarks, fetchMcq, fetchPassageBlocks, addQuestion, canFill, toast } = {}) {
+  function create({ getSelected, onChange, fetchByMarks, fetchMcq, fetchPassageBlocks, addQuestion, canFill, canFillPassage, toast } = {}) {
     const state = { enabled: false, sections: [], activeId: null, header: DEFAULT_HEADER() };
     let root = null;
     const selected = () => (typeof getSelected === 'function' ? getSelected() : []) || [];
@@ -395,7 +395,11 @@ const PAPER_SECTIONS = (() => {
       const say = (m, kind) => { try { toast?.(m, kind); } catch { /* ignore */ } };
       if (!state.enabled || !state.sections.length) { say('Add sections first (or load a template)', 'error'); return; }
       if (typeof fetchByMarks !== 'function' || typeof addQuestion !== 'function') return;
-      if (typeof canFill === 'function' && !canFill()) { say('Select the batch, subject and chapters first', 'error'); return; }
+      // A paper of only Passage sections never needs a chapter picked (most passage content is
+      // chapterless, the "unseen" pool) — only require it when a non-passage section is present.
+      const needsChapter = state.sections.some(s => !isPassage(s));
+      const gate = needsChapter ? canFill : (canFillPassage || canFill);
+      if (typeof gate === 'function' && !gate()) { say(needsChapter ? 'Select the batch, subject and chapters first' : 'Select the batch and subject first', 'error'); return; }
       const label0 = btn ? btn.textContent : '';
       if (btn) { btn.disabled = true; btn.textContent = 'Filling...'; }
       const keepActive = state.activeId;
@@ -476,7 +480,8 @@ const PAPER_SECTIONS = (() => {
     async function openPassageBlockPicker(sectionId) {
       const say = (m, kind) => { try { toast?.(m, kind); } catch { /* ignore */ } };
       if (typeof fetchPassageBlocks !== 'function') return;
-      if (typeof canFill === 'function' && !canFill()) { say('Select the batch and subject first', 'error'); return; }
+      const gate = canFillPassage || canFill;
+      if (typeof gate === 'function' && !gate()) { say('Select the batch and subject first', 'error'); return; }
       const mcqHost = root?.querySelector('[data-pps="mcqpicker"]');
       if (!mcqHost) return;
       mcqHost.style.display = '';
