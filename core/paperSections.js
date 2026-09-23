@@ -69,6 +69,7 @@ const PAPER_SECTIONS = (() => {
       .pps-in { width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(128,128,128,.45); background: rgba(128,128,128,.08); color: inherit; font: inherit; font-size: 0.85rem; }
       .pps-sec { border: 1px solid rgba(128,128,128,.35); border-radius: 8px; padding: 8px; margin: 8px 0; }
       .pps-sec.active { border-color: #f97316; box-shadow: 0 0 0 2px rgba(249,115,22,.25); }
+      .pps-sec-passage { background: rgba(59,130,246,.06); }
       .pps-sec-row { display: grid; grid-template-columns: 52px 46px 1fr; gap: 6px; align-items: end; }
       .pps-sec-row2 { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; font-size: 0.8rem; }
       .pps-sec-row2 .pps-in { width: 70px; }
@@ -109,7 +110,7 @@ const PAPER_SECTIONS = (() => {
   }
   const _isMcqSection = s => /alternative|choose the correct|\bmcq\b/i.test(String(s.instruction || ''));
 
-  function create({ getSelected, onChange, fetchByMarks, fetchMcq, addQuestion, canFill, toast } = {}) {
+  function create({ getSelected, onChange, fetchByMarks, fetchMcq, fetchPassageBlocks, addQuestion, canFill, toast } = {}) {
     const state = { enabled: false, sections: [], activeId: null, header: DEFAULT_HEADER() };
     let root = null;
     const selected = () => (typeof getSelected === 'function' ? getSelected() : []) || [];
@@ -117,9 +118,10 @@ const PAPER_SECTIONS = (() => {
 
     function sectionMarks(s) { return (Number(s.attempt) || 0) * (Number(s.marksEach) || 0); }
     function label(s) { return `Q.${s.qNo || '?'}${s.part ? ` (${s.part})` : ''}`; }
+    const isPassage = s => s.kind === 'passage';
 
     function summary() {
-      const counts = new Map(state.sections.map(s => [s.id, 0]));
+      const counts = new Map(state.sections.filter(s => !isPassage(s)).map(s => [s.id, 0]));
       let unassigned = 0;
       const mismatched = [];
       for (const q of selected()) {
@@ -129,15 +131,17 @@ const PAPER_SECTIONS = (() => {
           if (sec && Number(q.marks) !== Number(sec.marksEach)) mismatched.push({ section: label(sec), marks: q.marks, expected: sec.marksEach });
         } else unassigned++;
       }
-      const rows = state.sections.map(s => ({
-        id: s.id, label: label(s), count: counts.get(s.id), attempt: Number(s.attempt) || 0, marks: sectionMarks(s),
-        short: counts.get(s.id) < (Number(s.attempt) || 0),
-      }));
+      const rows = state.sections.map(s => isPassage(s)
+        ? { id: s.id, label: label(s), count: s.passageBlockId ? 1 : 0, attempt: 1, marks: sectionMarks(s), short: !s.passageBlockId, isPassage: true, blockTitle: s._blockTitle || '' }
+        : { id: s.id, label: label(s), count: counts.get(s.id), attempt: Number(s.attempt) || 0, marks: sectionMarks(s), short: counts.get(s.id) < (Number(s.attempt) || 0) });
       const issues = [];
       if (!state.sections.length) issues.push('Add at least one section.');
-      rows.filter(r => r.short).forEach(r => issues.push(`${r.label}: attempt ${r.attempt} but only ${r.count} question${r.count === 1 ? '' : 's'} added.`));
+      rows.filter(r => r.short).forEach(r => issues.push(r.isPassage
+        ? `${r.label}: choose a passage block.`
+        : `${r.label}: attempt ${r.attempt} but only ${r.count} question${r.count === 1 ? '' : 's'} added.`));
       if (unassigned) issues.push(`${unassigned} question${unassigned === 1 ? ' is' : 's are'} not in any section.`);
       state.sections.forEach(s => {
+        if (isPassage(s)) return;
         if (!(Number(s.marksEach) > 0)) issues.push(`${label(s)}: marks per question must be above 0.`);
         if (!(Number(s.attempt) >= 1)) issues.push(`${label(s)}: attempt must be at least 1.`);
       });
@@ -148,7 +152,9 @@ const PAPER_SECTIONS = (() => {
       if (!state.enabled) return {};
       return {
         layout: 'board',
-        sections: state.sections.map(s => ({ id: s.id, qNo: s.qNo, part: s.part, instruction: s.instruction, marksEach: Number(s.marksEach), attempt: Number(s.attempt) })),
+        sections: state.sections.map(s => isPassage(s)
+          ? { id: s.id, qNo: s.qNo, part: s.part, instruction: s.instruction, passageBlockId: s.passageBlockId || '' }
+          : { id: s.id, qNo: s.qNo, part: s.part, instruction: s.instruction, marksEach: Number(s.marksEach), attempt: Number(s.attempt) }),
         header: { ...state.header, notes: [...state.header.notes] },
       };
     }
@@ -185,6 +191,7 @@ const PAPER_SECTIONS = (() => {
               <button type="button" class="pps-btn" data-pps="mcq">+ MCQ from MCQ bank</button>
               <button type="button" class="pps-btn" data-pps="autofill">Auto-fill questions</button>
               <button type="button" class="pps-btn pri" data-pps="add">+ Add section</button>
+              <button type="button" class="pps-btn pri" data-pps="addpassage">+ Add passage section</button>
             </span>
           </div>
           <p class="pps-hint">New questions go into the <b>active</b> section (highlighted). Pick a section, then add questions with the marks buttons.</p>
@@ -205,6 +212,7 @@ const PAPER_SECTIONS = (() => {
         });
       });
       root.querySelector('[data-pps="add"]').addEventListener('click', () => addSection());
+      root.querySelector('[data-pps="addpassage"]').addEventListener('click', () => addSection({ kind: 'passage' }));
       root.querySelector('[data-pps="autofill"]').addEventListener('click', e => autoFill(e.currentTarget));
       root.querySelector('[data-pps="mcq"]').addEventListener('click', () => openMcqPicker());
       root.querySelector('[data-pps="template"]').addEventListener('click', () => loadTemplate('ssc_algebra_40'));
@@ -219,6 +227,24 @@ const PAPER_SECTIONS = (() => {
       const byId = new Map(sum.rows.map(r => [r.id, r]));
       host.innerHTML = state.sections.length ? state.sections.map(s => {
         const r = byId.get(s.id);
+        if (isPassage(s)) {
+          return `
+          <div class="pps-sec pps-sec-passage ${s.id === state.activeId ? 'active' : ''}" data-sec="${s.id}">
+            <div class="pps-sec-row">
+              <label>Q. no<input class="pps-in" data-f="qNo" value="${_esc(s.qNo)}" /></label>
+              <label>Part<input class="pps-in" data-f="part" value="${_esc(s.part)}" placeholder="A" /></label>
+              <label>Instruction<input class="pps-in" data-f="instruction" value="${_esc(s.instruction)}" placeholder="e.g. Read the following passage and do the activities :" /></label>
+            </div>
+            <div class="pps-sec-row2">
+              ${s.passageBlockId
+                ? `<span class="pps-chip ok">${_esc(s._blockTitle || 'Passage chosen')}</span><span class="pps-chip" data-role="marks">= ${r.marks} marks</span><button type="button" class="pps-btn" data-act="choose">Change block</button>`
+                : `<span class="pps-chip bad" data-role="count">No passage block chosen</span><button type="button" class="pps-btn pri" data-act="choose">Choose passage block</button>`}
+              <button type="button" class="pps-btn" data-act="up">Up</button>
+              <button type="button" class="pps-btn" data-act="down">Down</button>
+              <button type="button" class="pps-btn" data-act="remove">Remove</button>
+            </div>
+          </div>`;
+        }
         return `
           <div class="pps-sec ${s.id === state.activeId ? 'active' : ''}" data-sec="${s.id}">
             <div class="pps-sec-row">
@@ -254,6 +280,7 @@ const PAPER_SECTIONS = (() => {
             const act = btn.dataset.act;
             const i = state.sections.findIndex(x => x.id === sec.id);
             if (act === 'active') state.activeId = sec.id;
+            if (act === 'choose') { state.activeId = sec.id; openPassageBlockPicker(sec.id); return; }
             if (act === 'remove') {
               state.sections.splice(i, 1);
               selected().forEach(q => { if (q.sectionId === sec.id) q.sectionId = undefined; });
@@ -307,11 +334,14 @@ const PAPER_SECTIONS = (() => {
       notify();
     }
 
-    function addSection({ silent } = {}) {
+    function addSection({ silent, kind } = {}) {
       const last = state.sections[state.sections.length - 1];
       const nextQ = last ? String((parseInt(last.qNo, 10) || state.sections.length) + 1) : '1';
-      state.sections.push({ id: _newId(), qNo: nextQ, part: '', instruction: '', marksEach: 1, attempt: 1 });
-      state.activeId = state.sections[state.sections.length - 1].id;
+      const sec = kind === 'passage'
+        ? { id: _newId(), kind: 'passage', qNo: nextQ, part: '', instruction: 'Read the following passage and do the activities :', passageBlockId: '', marksEach: 0, attempt: 1 }
+        : { id: _newId(), qNo: nextQ, part: '', instruction: '', marksEach: 1, attempt: 1 };
+      state.sections.push(sec);
+      state.activeId = sec.id;
       if (!silent) { renderSections(); renderSummary(); notify(); }
     }
 
@@ -375,6 +405,15 @@ const PAPER_SECTIONS = (() => {
       const missing = [];
       try {
         for (const sec of state.sections) {
+          if (isPassage(sec)) {
+            if (sec.passageBlockId || typeof fetchPassageBlocks !== 'function') continue;
+            if (!pools.has('passage')) pools.set('passage', await fetchPassageBlocks());
+            const usedBlockIds = new Set(state.sections.filter(isPassage).map(s => s.passageBlockId).filter(Boolean));
+            const pick = (pools.get('passage') || []).find(b => !usedBlockIds.has(b.id));
+            if (pick) { sec.passageBlockId = pick.id; sec.marksEach = pick.totalMarks; sec.attempt = 1; sec._blockTitle = pick.title; added++; }
+            else missing.push(`${label(sec)}: no unused passage block available`);
+            continue;
+          }
           const have = selected().filter(q => q.sectionId === sec.id).length;
           const need = Math.max(0, (Number(sec.attempt) || 0) - have);
           if (!need) continue;
@@ -426,12 +465,55 @@ const PAPER_SECTIONS = (() => {
     function assign(q) {
       if (!state.enabled) { q.sectionId = undefined; return true; }
       if (!state.sections.length || !state.activeId) return false;
+      const active = state.sections.find(s => s.id === state.activeId);
+      if (active && isPassage(active)) return false; // a passage section takes a whole block, not individual questions
       q.sectionId = state.activeId;
       return true;
     }
 
+    // Picker for a whole PassageBlock (comprehension/poetry/nonverbal/writing) — replaces the
+    // section's individual questions entirely; see models/PassageBlock.js.
+    async function openPassageBlockPicker(sectionId) {
+      const say = (m, kind) => { try { toast?.(m, kind); } catch { /* ignore */ } };
+      if (typeof fetchPassageBlocks !== 'function') return;
+      if (typeof canFill === 'function' && !canFill()) { say('Select the batch and subject first', 'error'); return; }
+      const mcqHost = root?.querySelector('[data-pps="mcqpicker"]');
+      if (!mcqHost) return;
+      mcqHost.style.display = '';
+      mcqHost.innerHTML = '<p class="pps-hint">Loading passage blocks...</p>';
+      let rows = [];
+      try { rows = await fetchPassageBlocks(); } catch { mcqHost.innerHTML = '<p class="pps-hint">Could not load passage blocks.</p>'; return; }
+      const paint = term => {
+        const t = String(term || '').toLowerCase();
+        const shown = rows.filter(b => !t || b.title.toLowerCase().includes(t) || (b.passage || '').toLowerCase().includes(t)).slice(0, 100);
+        mcqHost.querySelector('.pps-mcq-list').innerHTML = shown.length ? shown.map(b => `
+          <div class="pps-mcq-item">
+            <div><div><b>${_esc(b.title)}</b> <span class="pps-chip">${_esc(b.type)}</span> <span class="pps-chip">${b.totalMarks} marks</span></div>
+              <div style="opacity:.8;margin-top:2px">${_esc((b.type === 'writing' ? b.scenario : b.passage) || '').slice(0, 140)}${((b.type === 'writing' ? b.scenario : b.passage) || '').length > 140 ? '…' : ''}</div></div>
+            <button type="button" class="pps-btn" data-bid="${_esc(b.id)}">Use this</button>
+          </div>`).join('') : '<p class="pps-hint">No passage blocks found. Add some in Admin &gt; Passages.</p>';
+        mcqHost.querySelectorAll('[data-bid]').forEach(btn => btn.addEventListener('click', () => {
+          const b = rows.find(x => x.id === btn.dataset.bid);
+          const sec = state.sections.find(s => s.id === sectionId);
+          if (!b || !sec) return;
+          sec.passageBlockId = b.id;
+          sec.marksEach = b.totalMarks;
+          sec.attempt = 1;
+          sec._blockTitle = b.title;
+          mcqHost.style.display = 'none';
+          renderSections();
+          renderSummary();
+          notify();
+        }));
+      };
+      mcqHost.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><strong>Passage blocks (${rows.length})</strong><button type="button" class="pps-btn" data-x="close">Close</button></div><input class="pps-in" data-x="search" placeholder="Search title/passage..." style="width:100%;margin-top:6px" /><div class="pps-mcq-list"></div>`;
+      mcqHost.querySelector('[data-x="close"]').addEventListener('click', () => { mcqHost.style.display = 'none'; });
+      mcqHost.querySelector('[data-x="search"]').addEventListener('input', e => paint(e.target.value));
+      paint('');
+    }
+
     function optionsHtml(selectedId) {
-      return state.sections.map(s => `<option value="${_esc(s.id)}" ${s.id === selectedId ? 'selected' : ''}>${_esc(label(s))}</option>`).join('');
+      return state.sections.filter(s => !isPassage(s)).map(s => `<option value="${_esc(s.id)}" ${s.id === selectedId ? 'selected' : ''}>${_esc(label(s))}</option>`).join('');
     }
 
     function reset() {

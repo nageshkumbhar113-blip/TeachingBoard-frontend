@@ -75,6 +75,7 @@ const TEACHER_PAPER_BUILDER = (() => {
           }
           return out;
         },
+        fetchPassageBlocks: () => API.fetchPassageBlocksTeacher({ batchId: _batch, subjectId: _subjects[0] }),
         addQuestion: _addSelectedQuestion,
         toast: (m, k) => APP?.toast?.(m, k) });
       _sections.mount($('tpb-board-panel'));

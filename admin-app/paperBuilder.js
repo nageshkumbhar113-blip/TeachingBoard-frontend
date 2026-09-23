@@ -61,6 +61,7 @@ const PAPER_BUILDER = (() => {
           }
           return out;
         },
+        fetchPassageBlocks: () => API.fetchPassageBlocks({ batchId: _batch, subjectId: _subjects[0] }),
         addQuestion: _addSelectedQuestion,
         toast: (m, k) => APP?.toast?.(m, k) });
       _sections.mount($('pb-board-panel'));
