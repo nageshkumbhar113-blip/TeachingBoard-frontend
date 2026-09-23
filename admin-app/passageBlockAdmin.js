@@ -31,6 +31,84 @@
     $('pab-preview-btn')?.addEventListener('click', _preview);
     $('pab-run-btn')?.addEventListener('click', _run);
     $('pab-list')?.addEventListener('click', _onListClick);
+    $('pab-prompt-btn')?.addEventListener('click', _copyAiPrompt);
+  }
+
+  // ── "Copy AI prompt" — a self-contained instruction block the admin can paste into Claude/ChatGPT
+  // along with source material (a textbook chapter, a poem, an image description) to get back a
+  // JSON array in exactly the shape _run()/_preview() expect. Kept in code (not a separate doc) so it
+  // can never silently drift out of sync with the actual schema in models/PassageBlock.js.
+  const AI_PROMPT = `Generate a JSON array of "Passage Block" objects for a Maharashtra-board-style language paper. Return ONLY the JSON array — no markdown fences, no commentary.
+
+Each object in the array is one of these 4 types. Do NOT include batchId/subjectId/chapterId — the admin panel fills those in from its own pickers.
+
+──────────────────────────────────────────────
+1) type: "comprehension" | "poetry" | "nonverbal"  (all three share this exact shape)
+{
+  "type": "comprehension",
+  "title": "short title for this block, e.g. 'Unseen Passage: The Old Clock'",
+  "language": "english",                 // "english" | "marathi" | "hindi"
+  "passage": "the full passage/poem text the student reads",
+  "passageImage": "",                    // optional image URL, mainly for "nonverbal" (a chart/diagram); leave "" otherwise
+  "subQuestions": [
+    {
+      "marks": 2,
+      "format": "short_answer",          // one of: fill_blanks | true_false | web_diagram | tree_diagram | match | short_answer | rearrange
+      "prompt": "the question text shown above this sub-question",
+      "center": "",                      // ONLY for format:"web_diagram" — the word printed in the middle circle
+      "items": [
+        { "text": "one line of the question/blank/statement", "answer": "the correct answer", "given": "" }
+        // "given" is ONLY used by web_diagram/tree_diagram items — the spoke/branch label that's
+        // already printed on the diagram (not something the student fills in).
+        // For format:"fill_blanks", put the blank inside "text" using double square brackets, e.g.
+        //   "text": "The clock struck [[ ]] o'clock."   and "answer": "twelve"
+        // For format:"true_false", "text" is the statement and "answer" is "True" or "False".
+        // For format:"match" or "rearrange", one "items" entry per line to match/reorder.
+      ]
+    }
+    // add as many sub-questions as the real exam section has, with real per-question marks
+  ]
+}
+
+2) type: "writing"   (letter / essay / speech / story / news report / dialogue / ad — NO passage, NO fixed answer)
+{
+  "type": "writing",
+  "title": "short title, e.g. 'Formal Letter: Complaint to Municipal Corporation'",
+  "language": "english",
+  "format": "formal_letter",             // one of: formal_letter | informal_letter | speech | story | news_report | essay | dialogue | ad
+  "marks": 5,
+  "wordLimit": "100-120 words",
+  "scenario": "the situation/prompt the student is given, in full",
+  "points": ["point the student should cover 1", "point 2", "point 3"],
+  "rubric": ["what an examiner checks 1", "what an examiner checks 2"]
+}
+──────────────────────────────────────────────
+
+Rules:
+- Every block needs "type" and "title". A comprehension/poetry/nonverbal block also needs "passage" (non-empty) and at least one subQuestion with marks > 0. A writing block needs "scenario" instead of passage/subQuestions.
+- Keep marks realistic for the board level given (e.g. a 9th/10th std unseen passage is usually worth 8-10 marks total across its sub-questions).
+- Use real board-paper phrasing for prompts (e.g. "Complete the following activities.", "Do as directed.") — not generic placeholders.
+- If asked for Marathi/Hindi content, write the passage/prompts/answers in that language and set "language" accordingly, but keep all JSON field NAMES in English exactly as shown above.
+
+Now generate the JSON array for: `;
+
+  async function _copyAiPrompt() {
+    const text = AI_PROMPT;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('AI prompt copied — paste it into Claude/ChatGPT along with your source material', 'success');
+    } catch {
+      // Clipboard API unavailable (older WebView, no HTTPS, etc.) — fall back to a manual-copy textarea.
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); toast('AI prompt copied', 'success'); }
+      catch { toast('Could not copy automatically — select and copy the prompt shown', 'error'); }
+      document.body.removeChild(ta);
+    }
   }
 
   async function _loadBatches() {

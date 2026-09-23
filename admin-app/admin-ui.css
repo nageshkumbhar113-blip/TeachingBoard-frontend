@@ -2449,10 +2449,20 @@ body.admin-app {
 
 /* ── Admin > Passages ─────────────────────────────────────────────────────── */
 .pab-container { display: flex; flex-direction: column; gap: 14px; }
-.pab-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; }
-.pab-filters select, .pab-filters input { flex: 1 1 160px; min-width: 140px; }
+/* Grid, not flex — sidesteps the width:100% vs flex-basis fight that was blowing .form-select/
+   .admin-input up to full-row-each (each item just fills its own grid cell, height pinned below). */
+.pab-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; padding: 14px; align-items: center; }
+.pab-filters select.form-select,
+.pab-filters input.admin-input {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 8px 10px;
+  margin-bottom: 0;
+}
 .pab-json { width: 100%; box-sizing: border-box; font-family: "JetBrains Mono", monospace; font-size: 0.8rem; margin: 8px 0; }
-.pab-row { display: flex; gap: 8px; }
+.pab-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pab-prompt-btn { margin-left: auto; }
 .pab-preview { margin-top: 10px; max-height: 220px; overflow-y: auto; }
 .pab-prev { font-size: 0.82rem; padding: 4px 8px; border-radius: 6px; margin-bottom: 4px; }
 .pab-prev.ok { background: rgba(16,185,129,.1); color: #047857; }
