@@ -4971,6 +4971,24 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   background: transparent; color: var(--read-yellow); border: 1px solid var(--read-yellow); border-radius: 8px; padding: 4px 10px;
 }
 
+/* Exercise: Passage Block practice (comprehension/poetry/nonverbal/writing — see PassageBlock) */
+.ev-pb-passage { padding: 10px 12px; border: 1px solid var(--border, #e2e2e2); border-radius: 8px; background: rgba(128,128,128,.06); font-size: 0.88rem; line-height: 1.7; margin-bottom: 10px; }
+.ev-pb-sub { margin: 14px 0; padding-top: 10px; border-top: 1px dashed var(--border, #e2e2e2); }
+.ev-pb-sub:first-child { border-top: none; margin-top: 0; }
+.ev-pb-sub-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.9rem; }
+.ev-pb-item { display: flex; gap: 8px; margin: 6px 0; font-size: 0.88rem; }
+.ev-pb-item-no { font-style: italic; opacity: .75; flex-shrink: 0; }
+.ev-pb-center { font-weight: 700; margin-bottom: 4px; }
+.ev-pb-diagram-row { display: flex; gap: 8px; align-items: center; margin: 3px 0; font-size: 0.88rem; }
+.ev-pb-points { margin: 8px 0 0; padding-left: 20px; font-size: 0.88rem; }
+.theme-dark .ev-pb-passage, .theme-contrast .ev-pb-passage,
+.theme-dark .ev-pb-sub-head, .theme-contrast .ev-pb-sub-head,
+.theme-dark .ev-pb-item, .theme-contrast .ev-pb-item,
+.theme-dark .ev-pb-diagram-row, .theme-contrast .ev-pb-diagram-row,
+.theme-dark .ev-pb-points, .theme-contrast .ev-pb-points,
+.theme-dark .ev-pb-center, .theme-contrast .ev-pb-center { color: var(--read-yellow); }
+.theme-dark .ev-pb-passage, .theme-contrast .ev-pb-passage { background: rgba(255,255,255,.05); border-color: var(--border); }
+
 /* Teacher Dashboard > Earnings (partners) */
 .pe-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 8px 0; }
 .pe-card { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(249,115,22,.4); background: rgba(249,115,22,.08); }

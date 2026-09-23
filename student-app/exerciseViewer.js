@@ -72,6 +72,8 @@ const EXERCISE_VIEWER = (() => {
   let _chapterId = '';
   let _exerciseGroups = new Map(); // exerciseNo -> questions[]
   let _activeExerciseNo = '';
+  let _passageBlocks = []; // this chapter's Passage Blocks (comprehension/poetry/nonverbal/writing) — see models/PassageBlock.js
+  let _activePassageBlock = null;
   let _initialized = false;
 
   function _makeChapterId(batch, subject, chapter) {
@@ -218,6 +220,8 @@ const EXERCISE_VIEWER = (() => {
   function _resetBelowChapter() {
     _exerciseGroups = new Map();
     _activeExerciseNo = '';
+    _passageBlocks = [];
+    _activePassageBlock = null;
     $('ev-groups-section').style.display = 'none';
     $('ev-questions-section').style.display = 'none';
   }
@@ -228,8 +232,12 @@ const EXERCISE_VIEWER = (() => {
     section.style.display = '';
     list.innerHTML = '<p class="empty-hint">Loading…</p>';
     try {
-      const questions = await _resolveExerciseQuestions(_chapterId);
+      const [questions, blocks] = await Promise.all([
+        _resolveExerciseQuestions(_chapterId),
+        API.fetchStudentPassageBlocks(_chapterId).catch(() => []), // best-effort — a language chapter may have none
+      ]);
       _groupQuestions(questions);
+      _passageBlocks = blocks;
       _renderGroupList();
     } catch (err) {
       console.error('Failed to load exercise groups:', err);
@@ -266,14 +274,16 @@ const EXERCISE_VIEWER = (() => {
     throw new Error('offline, no cache');
   }
 
+  const _PB_TYPE_LABEL = { comprehension: '📖 Passage', poetry: '📜 Poem', nonverbal: '📊 Table/Diagram', writing: '✍️ Writing' };
+
   function _renderGroupList() {
     const list = $('ev-groups-list');
-    if (!_exerciseGroups.size) {
+    if (!_exerciseGroups.size && !_passageBlocks.length) {
       list.innerHTML = '<p class="empty-hint">या Chapter साठी अजून Exercise नाही.</p>';
       return;
     }
     const nos = Array.from(_exerciseGroups.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    list.innerHTML = nos.map(no => {
+    const exerciseCards = nos.map(no => {
       const qs = _exerciseGroups.get(no);
       const totalMarks = qs.reduce((s, q) => s + (q.marks || 0), 0);
       return `
@@ -282,14 +292,89 @@ const EXERCISE_VIEWER = (() => {
           <span>${qs.length} प्रश्न · ${totalMarks} गुण</span>
         </div>`;
     }).join('');
-    list.querySelectorAll('.ev-group-card').forEach(card => {
+    const passageCards = _passageBlocks.map(b => `
+      <div class="ev-group-card" data-pb="${_esc(b.id)}">
+        <b>${_esc(_PB_TYPE_LABEL[b.type] || b.type)}: ${_esc(b.title)}</b>
+        <span>${b.totalMarks} गुण</span>
+      </div>`).join('');
+    list.innerHTML = passageCards + exerciseCards;
+    list.querySelectorAll('.ev-group-card[data-no]').forEach(card => {
       UI.makeFocusable(card);
       card.addEventListener('click', () => _showQuestions(card.dataset.no));
     });
+    list.querySelectorAll('.ev-group-card[data-pb]').forEach(card => {
+      UI.makeFocusable(card);
+      card.addEventListener('click', () => _showPassageBlock(card.dataset.pb));
+    });
+  }
+
+  // ── Passage Block practice (comprehension/poetry/nonverbal/writing) ─────────
+  // Shows the passage/scenario once, then each sub-question with its own reveal toggle — same
+  // [[ ]] blank-box and $..$ math convention as everywhere else (core/math.js).
+  function _pbSubQuestionHtml(sq, sIdx) {
+    const items = Array.isArray(sq.items) ? sq.items : [];
+    const rows = (sq.format === 'web_diagram' || sq.format === 'tree_diagram')
+      ? (sq.center ? `<div class="ev-pb-center">${_richText(sq.center)}</div>` : '') + items.map((it, i) => `
+          <div class="ev-pb-diagram-row">
+            <span>${_richText(it.given || `(${i + 1})`)}</span><span>&rarr;</span>
+            <span class="ev-atext hidden" id="ev-pb-a-${sIdx}-${i}">${_richText(it.answer)}</span>
+          </div>`).join('')
+      : items.map((it, i) => `
+          <div class="ev-pb-item">
+            <span class="ev-pb-item-no">(${i + 1})</span>
+            <div style="flex:1">${_richText(it.text)}
+              <div class="ev-atext hidden" id="ev-pb-a-${sIdx}-${i}">${_richText(it.answer)}</div>
+            </div>
+          </div>`).join('');
+    return `
+      <div class="ev-pb-sub">
+        <div class="ev-pb-sub-head"><b>${sq.prompt ? _richText(sq.prompt) : ''}</b> <span class="cm-marks-chip">${sq.marks} marks</span></div>
+        ${rows}
+        <button type="button" class="ev-reveal-btn" data-sub="${sIdx}">उत्तर दाखवा</button>
+      </div>`;
+  }
+
+  function _showPassageBlock(id) {
+    const b = _passageBlocks.find(x => x.id === id);
+    if (!b) return;
+    _activePassageBlock = b;
+    _activeExerciseNo = '';
+    $('ev-groups-section').style.display = 'none';
+    $('ev-questions-section').style.display = '';
+    $('ev-questions-title').textContent = `${_PB_TYPE_LABEL[b.type] || b.type}: ${b.title}`;
+
+    const list = $('ev-questions-list');
+    if (b.type === 'writing') {
+      list.innerHTML = `
+        <div class="ev-qcard">
+          <div class="ev-qtop"><span class="cm-marks-chip">${b.marks} marks</span></div>
+          <div class="ev-qtext">${_richText(b.scenario)}${b.wordLimit ? ` <i>(${_esc(b.wordLimit)} words)</i>` : ''}</div>
+          ${(b.points || []).length ? `<ul class="ev-pb-points">${b.points.map(p => `<li>${_richText(p)}</li>`).join('')}</ul>` : ''}
+        </div>`;
+    } else {
+      list.innerHTML = `
+        <div class="ev-qcard">
+          ${b.passage ? `<div class="ev-pb-passage">${_richText(b.passage)}</div>` : ''}
+          ${_diagramsHtml(b.passageImage ? [{ url: b.passageImage }] : [])}
+          ${(b.subQuestions || []).map((sq, i) => _pbSubQuestionHtml(sq, i)).join('')}
+        </div>`;
+    }
+
+    list.querySelectorAll('.ev-reveal-btn[data-sub]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sIdx = btn.dataset.sub;
+        const els = list.querySelectorAll(`[id^="ev-pb-a-${sIdx}-"]`);
+        const hidden = !els.length ? true : els[0].classList.contains('hidden');
+        els.forEach(el => el.classList.toggle('hidden', !hidden));
+        btn.textContent = hidden ? 'उत्तर लपवा' : 'उत्तर दाखवा';
+      });
+    });
+    window.MATH?.renderElement(list);
   }
 
   function _showQuestions(no) {
     _activeExerciseNo = no;
+    _activePassageBlock = null;
     $('ev-groups-section').style.display = 'none';
     $('ev-questions-section').style.display = '';
     $('ev-questions-title').textContent = `Exercise ${no}`;
