@@ -240,6 +240,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
         if (tab.dataset.tab === 'exercise')    window.EXERCISE_MANAGER?.init();
+        if (tab.dataset.tab === 'passages')    window.PASSAGE_BLOCK_ADMIN?.init();
         if (tab.dataset.tab === 'papers')      window.PAPER_BUILDER?.init();
         if (tab.dataset.tab === 'books')       window.BOOKS_MANAGER?.init();
         if (tab.dataset.tab === 'pricing')     window.BATCH_PRICING?.init();

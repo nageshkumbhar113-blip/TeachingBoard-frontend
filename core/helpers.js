@@ -1215,6 +1215,47 @@ const API = (() => {
     return payload?.data || {};
   }
 
+  // Passage blocks (Admin > Passages, Paper Builder "Passage" sections, student Exercise practice)
+  async function fetchPassageBlocks(params = {}) {
+    const token = await ensureAdminSession();
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')));
+    const payload = await request(`/passage-blocks?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || [];
+  }
+  async function fetchPassageBlock(id) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/passage-blocks/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || null;
+  }
+  async function deletePassageBlock(id) {
+    const token = await ensureAdminSession();
+    return request(`/passage-blocks/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function previewPassageImport(blocks) {
+    const token = await ensureAdminSession();
+    return request('/passage-blocks/import/preview', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ blocks }) });
+  }
+  async function runPassageImport(blocks) {
+    const token = await ensureAdminSession();
+    return request('/passage-blocks/import/run', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ blocks }) });
+  }
+  // Teacher variants (Paper Builder read access — same endpoint, teacher session)
+  async function fetchPassageBlocksTeacher(params = {}) {
+    const token = await ensureTeacherSession();
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')));
+    const payload = await request(`/passage-blocks?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || [];
+  }
+  // Student: Exercise screen practice
+  async function fetchStudentPassageBlocks(chapterId, type) {
+    const profile = await getStudentProfile();
+    const token = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
+    if (!token) return [];
+    const qs = new URLSearchParams({ chapterId, ...(type ? { type } : {}) });
+    const payload = await request(`/passage-blocks/student?${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || [];
+  }
+
   // Partner earnings (Teacher Dashboard > Earnings)
   async function fetchMyEarnings() {
     const token = await ensureTeacherSession().catch(() => '');
@@ -2519,6 +2560,7 @@ const API = (() => {
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
+    fetchPassageBlocks, fetchPassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
     registerTeacher,
     fetchCatalogBatches, fetchImportChapters, previewImport, runImport, fetchImportJobs, undoImport,
     fetchParents, createParent, updateParent, deleteParent,

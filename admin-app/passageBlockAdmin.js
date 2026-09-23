@@ -1,0 +1,175 @@
+/* ════════════════════════════════════════
+   passageBlockAdmin.js — Admin > Passages
+   Language-paper content (comprehension / poetry / nonverbal / writing) — a passage or
+   prompt plus its sub-questions, imported as one JSON array (Claude-generated, see
+   docs/PASSAGE_BLOCK_SPEC or the shared spec artifact). Server: /api/passage-blocks
+════════════════════════════════════════ */
+
+(() => {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const toast = (m, t = 'info') => (typeof APP !== 'undefined' && APP?.toast) ? APP.toast(m, t) : console.log(m);
+
+  const TYPE_LABEL = { comprehension: '📖 Comprehension', poetry: '📜 Poetry', nonverbal: '📊 Non-verbal', writing: '✍️ Writing' };
+
+  let _loaded = false;
+  let _batches = [];
+  let _blocks = [];
+
+  async function init() {
+    if (!_loaded) { _bind(); _loaded = true; }
+    await _loadBatches();
+    await _refresh();
+  }
+
+  function _bind() {
+    $('pab-batch')?.addEventListener('change', _onBatchChange);
+    $('pab-subject')?.addEventListener('change', async () => { await _onSubjectChangeForChapters(); await _refresh(); });
+    $('pab-chapter')?.addEventListener('change', _refresh);
+    $('pab-type')?.addEventListener('change', _refresh);
+    $('pab-search')?.addEventListener('input', () => { clearTimeout(_bind._t); _bind._t = setTimeout(_refresh, 300); });
+    $('pab-preview-btn')?.addEventListener('click', _preview);
+    $('pab-run-btn')?.addEventListener('click', _run);
+    $('pab-list')?.addEventListener('click', _onListClick);
+  }
+
+  async function _loadBatches() {
+    if (_batches.length) return;
+    try { _batches = await DB.getAllBatches(); } catch { _batches = []; }
+    const sel = $('pab-batch');
+    if (sel) sel.innerHTML = '<option value="">Select batch</option>' + _batches.map(b => `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
+  }
+
+  async function _onBatchChange() {
+    const batch = $('pab-batch')?.value || '';
+    const subjSel = $('pab-subject'), chSel = $('pab-chapter');
+    subjSel.innerHTML = '<option value="">All subjects</option>';
+    chSel.innerHTML = '<option value="">Unseen pool (no chapter)</option>';
+    if (!batch) { _refresh(); return; }
+    try {
+      const subs = await DB.getSubjectsByBatch(batch);
+      subjSel.innerHTML += subs.map(s => `<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');
+    } catch { /* keep the base option */ }
+    _refresh();
+  }
+
+  async function _onSubjectChangeForChapters() {
+    const batch = $('pab-batch')?.value || '', subj = $('pab-subject')?.value || '';
+    const chSel = $('pab-chapter');
+    chSel.innerHTML = '<option value="">Unseen pool (no chapter)</option>';
+    if (!batch || !subj) return;
+    try {
+      const chs = await DB.getChaptersByBatchSubject(batch, subj);
+      chSel.innerHTML += chs.map(c => `<option value="${esc(_chapterId(batch, subj, c.name))}">${esc(c.name)}</option>`).join('');
+    } catch { /* no chapters yet */ }
+  }
+
+  function _chapterId(batch, subject, chapter) {
+    const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '-');
+    return `${norm(batch)}::${norm(subject)}::${norm(chapter)}`;
+  }
+
+  async function _refresh() {
+    await _refreshBlockList();
+  }
+
+  // ── list / delete ────────────────────────────────────────────────────────
+  async function _refreshBlockList() {
+    const box = $('pab-list');
+    if (!box) return;
+    const batch = $('pab-batch')?.value || '';
+    if (!batch) { box.innerHTML = '<p class="import-hint">Select a batch to see its passage blocks.</p>'; return; }
+    box.innerHTML = '<p class="import-hint">Loading…</p>';
+    try {
+      _blocks = await API.fetchPassageBlocks({
+        batchId: batch,
+        subjectId: $('pab-subject')?.value || undefined,
+        type: $('pab-type')?.value || undefined,
+        q: $('pab-search')?.value || undefined,
+      });
+    } catch (err) {
+      box.innerHTML = `<p class="import-hint">Could not load: ${esc(err.message || '')}</p>`;
+      return;
+    }
+    if (!_blocks.length) { box.innerHTML = '<p class="import-hint">No passage blocks yet for this filter.</p>'; return; }
+    box.innerHTML = _blocks.map(b => `
+      <div class="pab-card" data-id="${esc(b.id)}">
+        <div class="pab-card-head">
+          <span class="pab-pill">${TYPE_LABEL[b.type] || b.type}</span>
+          <b>${esc(b.title)}</b>
+          <span class="pab-meta">${esc(b.subjectId)}${b.chapterId ? '' : ' · unseen pool'} · ${b.totalMarks} marks · used ${b.usageCount}x</span>
+          <button type="button" class="admin-btn-danger" data-del="${esc(b.id)}">Delete</button>
+        </div>
+        ${b.type === 'writing'
+          ? `<div class="pab-body">${esc(b.scenario).slice(0, 220)}${b.scenario.length > 220 ? '…' : ''}</div>`
+          : `<div class="pab-body">${esc(b.passage).slice(0, 220)}${b.passage.length > 220 ? '…' : ''} <small>(${(b.subQuestions || []).length} sub-questions)</small></div>`}
+      </div>`).join('');
+  }
+
+  async function _onListClick(e) {
+    const btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    if (!await APP.confirmAsync('Delete this passage block? Papers already built from it keep their own copy.')) return;
+    try {
+      await API.deletePassageBlock(btn.dataset.del);
+      toast('Deleted', 'success');
+      await _refreshBlockList();
+    } catch (err) {
+      toast(err.message || 'Could not delete', 'error');
+    }
+  }
+
+  // ── import (paste JSON) ──────────────────────────────────────────────────
+  // The batch/subject/chapter pickers above the textarea set every pasted block's placement —
+  // a block's own batchId/subjectId (if the JSON happened to include one) is always overridden,
+  // so importing the same JSON against a different batch just needs the picker changed, not the text.
+  function _parseInput() {
+    const raw = $('pab-json')?.value?.trim();
+    if (!raw) { toast('Paste the JSON array first', 'error'); return null; }
+    let arr;
+    try { arr = JSON.parse(raw); } catch (e) { toast('Not valid JSON: ' + e.message, 'error'); return null; }
+    if (!Array.isArray(arr)) arr = [arr];
+    const batchId = $('pab-batch')?.value || '';
+    const subjectId = $('pab-subject')?.value || '';
+    const chapterId = $('pab-chapter')?.value || '';
+    return arr.map(b => ({ ...b, batchId, ...(subjectId ? { subjectId } : {}), chapterId: chapterId || b.chapterId || '' }));
+  }
+
+  async function _preview() {
+    const blocks = _parseInput();
+    if (!blocks) return;
+    if (!$('pab-batch')?.value) { toast('Select a batch first', 'error'); return; }
+    const box = $('pab-preview');
+    box.innerHTML = '<p class="import-hint">Checking…</p>';
+    try {
+      const res = await API.previewPassageImport(blocks);
+      box.innerHTML = `<p class="import-hint"><b>${res.valid} valid</b>, <b>${res.invalid} invalid</b> of ${res.results.length}.</p>` +
+        res.results.map(r => r.ok
+          ? `<div class="pab-prev ok">✓ Block ${r.index + 1}: ${esc(r.preview.title)} (${TYPE_LABEL[r.preview.type] || r.preview.type})</div>`
+          : `<div class="pab-prev bad">✕ ${esc(r.error)}</div>`).join('');
+      $('pab-run-btn').disabled = res.invalid > 0 || res.valid === 0;
+    } catch (err) {
+      box.innerHTML = `<p class="import-hint">${esc(err.message || 'Could not check')}</p>`;
+    }
+  }
+
+  async function _run() {
+    const blocks = _parseInput();
+    if (!blocks) return;
+    const btn = $('pab-run-btn');
+    btn.disabled = true;
+    try {
+      const res = await API.runPassageImport(blocks);
+      toast(`Saved ${res.count} block(s)`, 'success');
+      $('pab-json').value = '';
+      $('pab-preview').innerHTML = '';
+      await _refreshBlockList();
+    } catch (err) {
+      toast(err.message || 'Import failed', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  window.PASSAGE_BLOCK_ADMIN = { init };
+})();

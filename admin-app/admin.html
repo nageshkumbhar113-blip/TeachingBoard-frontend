@@ -194,6 +194,10 @@
               <span class="atab-icon" aria-hidden="true">📝</span>
               <span class="atab-label">Exercise</span>
             </button>
+            <button class="atab" role="tab" data-tab="passages" aria-controls="atab-passages" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📖</span>
+              <span class="atab-label">Passages</span>
+            </button>
             <button class="atab" role="tab" data-tab="papers" aria-controls="atab-papers" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">📄</span>
               <span class="atab-label">Paper Builder</span>
@@ -1448,6 +1452,44 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <!-- ── Passages Panel (language-paper comprehension/poetry/nonverbal/writing) ───────────────────── -->
+          <div class="atab-content hidden" id="atab-passages" role="tabpanel" aria-labelledby="atab-btn-passages">
+            <div class="admin-page-header">
+              <h2 class="admin-page-title">📖 Passages &amp; Writing Prompts</h2>
+              <p class="import-hint">Language-paper content: a comprehension/poetry/non-verbal passage with its sub-questions, or a letter/essay/speech prompt — imported as JSON (ask Claude to generate it in this format), one array at a time. Used in Exercise (student practice) and Paper Builder's "Passage" sections.</p>
+            </div>
+            <div class="pab-container">
+              <div class="admin-card pab-filters">
+                <select id="pab-batch" class="form-select"><option value="">Select batch</option></select>
+                <select id="pab-subject" class="form-select"><option value="">All subjects</option></select>
+                <select id="pab-chapter" class="form-select"><option value="">Unseen pool (no chapter)</option></select>
+                <select id="pab-type" class="form-select">
+                  <option value="">All types</option>
+                  <option value="comprehension">Comprehension</option>
+                  <option value="poetry">Poetry</option>
+                  <option value="nonverbal">Non-verbal</option>
+                  <option value="writing">Writing</option>
+                </select>
+                <input id="pab-search" class="admin-input" type="search" placeholder="Search title/passage" />
+              </div>
+
+              <div class="admin-card">
+                <h3>Import blocks (paste JSON array)</h3>
+                <textarea id="pab-json" class="admin-input pab-json" rows="8" placeholder='[{"type":"comprehension","title":"...","passage":"...","subQuestions":[...]}]'></textarea>
+                <div class="pab-row">
+                  <button type="button" id="pab-preview-btn" class="admin-btn-secondary">Check</button>
+                  <button type="button" id="pab-run-btn" class="admin-btn-primary" disabled>Save blocks</button>
+                </div>
+                <div id="pab-preview" class="pab-preview"></div>
+              </div>
+
+              <div class="admin-card">
+                <h3>Saved blocks</h3>
+                <div id="pab-list"><p class="import-hint">Select a batch to see its passage blocks.</p></div>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Paper Builder Panel ───────────────────── -->
           <div class="atab-content hidden" id="atab-papers" role="tabpanel" aria-labelledby="atab-btn-papers">
             <div class="admin-page-header">
@@ -1974,6 +2016,9 @@ Marks: 1"></textarea>
       <button class="abn-drawer-item" data-tab="pricing">
         <span>💰</span> Pricing
       </button>
+      <button class="abn-drawer-item" data-tab="passages">
+        <span>📖</span> Passages
+      </button>
       <button class="abn-drawer-item" data-tab="partners">
         <span>🤝</span> Partners
       </button>
@@ -2252,6 +2297,7 @@ Marks: 1"></textarea>
   <script src="booksManager.js" defer></script>
   <script src="paperBuilder.js" defer></script>
   <script src="importManager.js" defer></script>
+  <script src="passageBlockAdmin.js" defer></script>
   <script src="partnersAdmin.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>

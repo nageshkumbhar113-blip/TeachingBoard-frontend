@@ -2446,3 +2446,19 @@ body.admin-app {
 .pa-prize-row { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
 .pa-prize-count { max-width: 110px; }
 .pa-prize-title { flex: 1; min-width: 160px; }
+
+/* ── Admin > Passages ─────────────────────────────────────────────────────── */
+.pab-container { display: flex; flex-direction: column; gap: 14px; }
+.pab-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; }
+.pab-filters select, .pab-filters input { flex: 1 1 160px; min-width: 140px; }
+.pab-json { width: 100%; box-sizing: border-box; font-family: "JetBrains Mono", monospace; font-size: 0.8rem; margin: 8px 0; }
+.pab-row { display: flex; gap: 8px; }
+.pab-preview { margin-top: 10px; max-height: 220px; overflow-y: auto; }
+.pab-prev { font-size: 0.82rem; padding: 4px 8px; border-radius: 6px; margin-bottom: 4px; }
+.pab-prev.ok { background: rgba(16,185,129,.1); color: #047857; }
+.pab-prev.bad { background: rgba(239,68,68,.1); color: #b91c1c; }
+.pab-card { border: 1px solid rgba(128,128,128,.3); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.pab-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pab-pill { font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; background: rgba(249,115,22,.15); color: #c2410c; font-weight: 700; white-space: nowrap; }
+.pab-meta { font-size: 0.75rem; opacity: .75; margin-left: auto; }
+.pab-body { font-size: 0.85rem; margin-top: 6px; opacity: .9; }
