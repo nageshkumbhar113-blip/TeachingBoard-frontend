@@ -278,6 +278,60 @@ const PAPER_PDF = (() => {
 
   // Board-style paper: header block, notes, then sections "1. (A) instruction ..... marks"
   // with (i), (ii)... sub-questions. Shared by Question Paper and Answer Sheet.
+  // ── Passage sections (models/PassageBlock.js) ────────────────────────────────
+  // A passage section prints its snapshot once (comprehension/poetry/nonverbal passage, or a
+  // writing prompt's scenario) followed by its sub-questions, in the same "(i) ... (ii) ..."
+  // numbered layout as a normal board section — [[ ]] already renders as a KaTeX answer box via
+  // _richText/_expandBlanks, so fill-in-the-blank sub-questions need no separate handling.
+  function _subQuestionBodyHtml(sq, withAnswers, t) {
+    const items = Array.isArray(sq.items) ? sq.items : [];
+    if (sq.format === 'web_diagram' || sq.format === 'tree_diagram') {
+      const centerHtml = sq.center ? `<div class="pp-atom" style="font-weight:700;margin-bottom:4px">${_richText(sq.center)}</div>` : '';
+      const rows = items.map((it, i) => `
+        <div class="pp-atom" style="display:flex;gap:8px;margin:3px 0;font-size:14px">
+          <span style="min-width:120px">${_richText(it.given || `(${_ROMAN[i] || i + 1})`)}</span>
+          <span>&rarr;</span>
+          <span>${withAnswers ? `<b>${_richText(it.answer)}</b>` : _richText('[[ ]]')}</span>
+        </div>`).join('');
+      return centerHtml + rows;
+    }
+    return items.map((it, i) => `
+      <div class="pp-atom" style="display:flex;margin:6px 0;font-size:14px;line-height:1.6">
+        <span style="width:30px;font-style:italic;flex-shrink:0">(${_ROMAN[i] || i + 1})</span>
+        <div style="flex:1">${_richText(it.text)}
+          ${withAnswers ? `<div class="pp-atom" style="margin-top:4px;padding:6px 9px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;color:#166534"><b>${t.answerLabel}:</b> ${_richText(it.answer)}</div>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  function _passageSectionHtml(sec, withAnswers, t) {
+    const b = sec.passageSnapshot;
+    if (!b) return ''; // block was deleted after the paper was already saved elsewhere — skip quietly
+    const marks = (Number(sec.attempt) || 0) * (Number(sec.marksEach) || 0);
+    const head = `
+      <div class="pp-atom" data-pp-keep="1" style="display:flex;justify-content:space-between;align-items:flex-start;font-size:14.5px;font-weight:700;margin-top:16px">
+        <span style="display:flex;flex:1"><span style="width:30px">${_esc(sec.qNo)}.</span><span style="width:40px">${sec.part ? `(${_esc(sec.part)})` : ''}</span><span style="flex:1">${_richText(sec.instruction || '')}</span></span>
+        <span style="margin-left:14px">${marks}</span>
+      </div>`;
+
+    if (b.type === 'writing') {
+      const points = (b.points || []).map(p => `<div class="pp-atom" style="margin:3px 0 3px 30px;font-size:14px">* ${_richText(p)}</div>`).join('');
+      const rubric = withAnswers && (b.rubric || []).length
+        ? `<div class="pp-atom" style="margin-top:6px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;color:#166534"><b>Marking scheme:</b> ${b.rubric.map(_esc).join(' | ')}</div>` : '';
+      return head + `
+        <div class="pp-atom" style="margin:6px 0;font-size:14px;line-height:1.7">${_richText(b.scenario)}${b.wordLimit ? ` <i>(${_esc(b.wordLimit)} words)</i>` : ''}</div>
+        ${points}${rubric}`;
+    }
+
+    const passageHtml = b.passage ? `
+      <div class="pp-atom" style="margin:8px 0;padding:10px 14px;border:1px solid #999;border-radius:4px;font-size:13.5px;line-height:1.75;background:#fafafa">${_richText(b.passage)}</div>` : '';
+    const passageImg = b.passageImage ? `<div class="pp-atom">${_diagramsHtml([{ url: b.passageImage }], '#ddd')}</div>` : '';
+    const subs = (b.subQuestions || []).map((sq, i) => `
+      <div class="pp-atom" data-pp-keep="1" style="margin:10px 0 4px 30px;font-size:14px;font-weight:700">${sq.prompt ? _richText(sq.prompt) : `Question ${i + 1}`} <span style="font-weight:400">(${sq.marks})</span></div>
+      <div style="margin-left:60px">${_subQuestionBodyHtml(sq, withAnswers, t)}</div>`).join('');
+    return head + passageHtml + passageImg + subs;
+  }
+
   function _buildBoardHtml(paper, withAnswers, institutionName, language) {
     const t = _chromeText(language);
     const h = paper.header || {};
@@ -302,6 +356,7 @@ const PAPER_PDF = (() => {
       ${notes.map((n, i) => `<div class="pp-atom" style="display:flex;font-size:14px;margin:2px 0 2px 26px"><span style="width:34px;font-style:italic">(${_ROMAN[i] || i + 1})</span><span style="flex:1">${_richText(n)}</span></div>`).join('')}` : '';
 
     const sectionsHtml = paper.sections.map(sec => {
+      if (sec.passageBlockId) return _passageSectionHtml(sec, withAnswers, t);
       const qs = byId.get(sec.id) || [];
       if (!qs.length) return '';
       const marks = (Number(sec.attempt) || 0) * (Number(sec.marksEach) || 0);
