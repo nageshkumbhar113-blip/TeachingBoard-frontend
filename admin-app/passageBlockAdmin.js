@@ -177,6 +177,7 @@ Now generate the JSON array for: `;
           <b>${esc(b.title)}</b>
           <span class="pab-meta">${esc(b.subjectId)}${b.chapterId ? '' : ' · unseen pool'} · ${b.totalMarks} marks · used ${b.usageCount}x</span>
           <button type="button" class="admin-btn-secondary" data-prev="${esc(b.id)}">👁 Preview</button>
+          <button type="button" class="admin-btn-secondary" data-edit="${esc(b.id)}">✏️ Edit</button>
           <button type="button" class="admin-btn-danger" data-del="${esc(b.id)}">Delete</button>
         </div>
         ${b.type === 'writing'
@@ -186,7 +187,44 @@ Now generate the JSON array for: `;
       </div>`).join('');
   }
 
+  // Edit = the block's own JSON in a textarea (same shape as import), saved via PATCH. Placement
+  // (batch/subject/chapter) is kept from the saved block, not re-read from the pickers above.
+  const EDIT_FIELDS = ['type', 'title', 'language', 'passage', 'passageImage', 'subQuestions', 'format', 'marks', 'wordLimit', 'scenario', 'points', 'rubric', 'status'];
+
   async function _onListClick(e) {
+    const edit = e.target.closest('[data-edit]');
+    if (edit) {
+      const card = edit.closest('.pab-card');
+      const view = card.querySelector('.pab-card-view');
+      const b = _blocks.find(x => String(x.id) === edit.dataset.edit);
+      if (!b) return;
+      const editable = {};
+      for (const k of EDIT_FIELDS) if (b[k] !== undefined) editable[k] = b[k];
+      view.innerHTML = `<textarea class="admin-input pab-json pab-edit-json" rows="16">${esc(JSON.stringify(editable, null, 2))}</textarea>
+        <div class="pab-row"><button type="button" class="admin-btn-primary" data-save-edit="${esc(b.id)}">Save changes</button>
+        <button type="button" class="admin-btn-secondary" data-cancel-edit="1">Cancel</button></div>`;
+      view.classList.remove('hidden');
+      card.querySelector('.pab-body')?.classList.add('hidden');
+      return;
+    }
+    if (e.target.closest('[data-cancel-edit]')) { await _refreshBlockList(); return; }
+    const saveBtn = e.target.closest('[data-save-edit]');
+    if (saveBtn) {
+      const b = _blocks.find(x => String(x.id) === saveBtn.dataset.saveEdit);
+      const ta = saveBtn.closest('.pab-card-view').querySelector('.pab-edit-json');
+      let parsed;
+      try { parsed = JSON.parse(ta.value); } catch (err) { toast('Not valid JSON: ' + err.message, 'error'); return; }
+      saveBtn.disabled = true;
+      try {
+        await API.updatePassageBlock(b.id, { ...parsed, batchId: b.batchId, subjectId: b.subjectId, chapterId: b.chapterId || '' });
+        toast('Saved', 'success');
+        await _refreshBlockList();
+      } catch (err) {
+        toast(err.message || 'Could not save', 'error');
+        saveBtn.disabled = false;
+      }
+      return;
+    }
     const prev = e.target.closest('[data-prev]');
     if (prev) {
       const card = prev.closest('.pab-card');

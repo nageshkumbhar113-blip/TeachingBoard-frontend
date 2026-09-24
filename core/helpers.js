@@ -1231,6 +1231,10 @@ const API = (() => {
     const token = await ensureAdminSession();
     return request(`/passage-blocks/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
   }
+  async function updatePassageBlock(id, block) {
+    const token = await ensureAdminSession();
+    return request(`/passage-blocks/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(block) });
+  }
   async function previewPassageImport(blocks) {
     const token = await ensureAdminSession();
     return request('/passage-blocks/import/preview', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ blocks }) });
@@ -2560,7 +2564,7 @@ const API = (() => {
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
-    fetchPassageBlocks, fetchPassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
+    fetchPassageBlocks, fetchPassageBlock, updatePassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
     registerTeacher,
     fetchCatalogBatches, fetchImportChapters, previewImport, runImport, fetchImportJobs, undoImport,
     fetchParents, createParent, updateParent, deleteParent,
