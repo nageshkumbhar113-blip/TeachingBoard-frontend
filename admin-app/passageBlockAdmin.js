@@ -128,7 +128,7 @@ Now generate the JSON array for: `;
   // ── One focused prompt per question type (pick it in the dropdown next to the Copy button) ──
   const _HEAD = 'Generate a JSON array of "Passage Block" objects for a Maharashtra-board-style language paper. Return ONLY the JSON array - no markdown fences, no commentary. Do NOT include batchId/subjectId/chapterId - the admin panel fills those in. Use \\n for line breaks inside strings. If a real board paper is attached, copy its task word-for-word (names, addresses, cues, marks) instead of inventing one. For Marathi/Hindi write all content in that language and set "language" accordingly, but keep every JSON field NAME and every "format" value in English.\n\n';
   const _TAIL = '\n\nEvery block needs "type" and "title". Keep marks and word limits exactly as the paper prints them. Rubric numbers must add up to "marks". Tables go in the text as pipe rows, one row per line: | Column A | Column B |.\n\nNow generate the JSON array for: ';
-  const _WSHAPE = (format, marks, word, task) => `Output ONE object per alternative (so a teacher can pick either) in this shape:
+  const _WSHAPE = (format, marks, word, task) => `Output ONE object for the whole question. If the paper offers alternatives (A1 OR A2 / B1 OR B2), keep BOTH inside this same block exactly as the paper prints them: scenario = the shared intro, then "A1. <name>: <task>", a blank line, "OR", a blank line, "A2. <name>: <task>"; modelAnswer = both model answers, each headed "A1." / "A2."; rubric per alternative; "format" = the first alternative's format; "marks" = the marks for ONE attempted alternative. Shape:
 {
   "type": "writing",
   "title": "short title",
@@ -137,6 +137,7 @@ Now generate the JSON array for: `;
   "marks": ${marks},
   "wordLimit": "${word}",
   "scenario": "${task}",
+  "passageImage": "optional image URL - e.g. the empty tree-diagram / flow-chart skeleton the student must fill in; \"\" otherwise",
   "passage": "SOURCE MATERIAL printed in a box under the task (advertisement / notice / table / headline / given paragraph), one printed line per line joined with \n; \"\" if the task has none",
   "points": ["content cue 1", "content cue 2", "content cue 3"],
   "rubric": ["mark split that adds up to ${marks}"],
@@ -160,7 +161,7 @@ Now generate the JSON array for: `;
     comprehension: _HEAD + 'Type: comprehension (Q2 textual passages, Q4 non-textual passage: A1..A5 activities, each usually 2 marks).\n' + _PPASS('comprehension', 'passage') + _TAIL,
     poetry: _HEAD + 'Type: poetry (stanzas + activities such as true/false, web, rhyming words) AND "Appreciation of the poem" (give the poem as "passage"; ONE sub-question, format short_answer, marks 5, prompt "Read the following poem and write an appreciation of it with the help of the points given below", items = the points with their marks, e.g. "Title (1/2)", "Name of the poet (1/2)", "Rhyme scheme (1)", "Figure of speech - any one (1)", "Theme/Central idea in 2/3 lines (2)" with a model answer for each).\n' + _PPASS('poetry', 'poem') + _TAIL,
     nonverbal: _HEAD + 'Type: nonverbal (a table/chart/diagram/advertisement is the source; sub-questions ask the student to read or complete it). If it is a picture, leave "passage" as a short description of it and put the image URL in "passageImage". A table goes in "passage" as pipe rows.\n' + _PPASS('nonverbal', 'table/chart') + _TAIL,
-    letter: _HEAD + 'Type: LETTER WRITING (Q5 A1 informal + A2 formal from the SAME advertisement/situation = TWO blocks, formats "informal_letter" and "formal_letter", 5 marks each, wordLimit as printed).\n' + _WSHAPE('formal_letter', 5, '100-120', 'Suppose you are Kamal/Kamlesh Kale from A-254, River View, Karve Nagar, Pune. Read the following advertisement ... Write to the President of Youth Club. Thank him/her for organising the exhibition. Ask more about the entry fee and timing. You may add your own points.') + `
+    letter: _HEAD + 'Type: LETTER WRITING (Q5A: A1 informal letter OR A2 formal letter from the SAME advertisement/situation = ONE block holding both alternatives, format "informal_letter", 5 marks, wordLimit as printed).\n' + _WSHAPE('formal_letter', 5, '100-120', 'Suppose you are Kamal/Kamlesh Kale from A-254, River View, Karve Nagar, Pune. Read the following advertisement ... Write to the President of Youth Club. Thank him/her for organising the exhibition. Ask more about the entry fee and timing. You may add your own points.') + `
 scenario: the TASK only - who the writer is (gender-neutral pair like Kamal/Kamlesh Kale), full sender address, who the letter goes to (designation + organisation + place, or a friend's name/town) and the purpose. Never write the letter in the scenario.
 passage: the advertisement/notice exactly as printed in its box, one printed line per line (\n), title lines first, bullets written as "• Duration : 2nd to 8th May, 2025", contact block last. Do NOT use pipe rows here - only for a genuine multi-column table.
 rubric: "Format - 1", "Content - 2", "Language - 2".
@@ -173,7 +174,7 @@ modelAnswer: three labelled parts, dialogue lines as "A: ...\\nB: ..." alternati
 points: the bullet cues exactly as printed, plus "Add your own points".
 rubric: "Format (greeting, closing) - 1", "Content - 2", "Language - 2".
 modelAnswer: "Good morning to the Principal, respected teachers and my dear friends,\\n\\n(introduce topic)\\n\\n(one paragraph per point)\\n\\n(strong conclusion)\\n\\nThank you." Keep it within the word limit.` + _TAIL,
-    info_transfer: _HEAD + 'Type: INFORMATION TRANSFER (Q6A, 5 marks; A1 non-verbal -> verbal = table to two paragraphs, OR A2 verbal -> non-verbal = paragraph to tree diagram/flow chart). Output one block per alternative given, format "information_transfer".\n' + _WSHAPE('information_transfer', 5, 'two paragraphs', 'Read the information given in the following table. Write two paragraphs based on it. Give a suitable title to it:\\n| Effective Communication | Ineffective Communication |\\n| Use of body language | Lack of interest |') + `
+    info_transfer: _HEAD + 'Type: INFORMATION TRANSFER (Q6A, 5 marks; A1 non-verbal -> verbal = table to two paragraphs, OR A2 verbal -> non-verbal = paragraph to tree diagram/flow chart). Output ONE block holding both alternatives (A1 table -> paragraphs OR A2 paragraph -> tree diagram), format "information_transfer". If the empty tree-diagram / flow-chart skeleton is a picture, put its URL in "passageImage".\n' + _WSHAPE('information_transfer', 5, 'two paragraphs', 'Read the information given in the following table. Write two paragraphs based on it. Give a suitable title to it:\\n| Effective Communication | Ineffective Communication |\\n| Use of body language | Lack of interest |') + `
 A1 (table -> paragraphs): scenario = the task; put the table in "passage" as pipe rows (a real table). modelAnswer = "Title: ...\\n\\nParagraph 1 ...\\n\\nParagraph 2 ...".
 A2 (paragraph -> tree diagram): scenario = "Read the information given below and represent it in the form of a tree-diagram. Give a suitable title to it:" and the paragraph goes in "passage". modelAnswer = the completed diagram as indented text, one node per line: "Title: Forms of Energy\\nTypes: Kinetic energy | Potential energy\\n  Kinetic sub-types: Mechanical | Electrical\\n    Examples: leaping frog / lightning\\n  Potential sub-types: Nuclear | Chemical\\n    Examples: fusion in the sun / a matchstick".
 rubric: "Title - 1", "Content/organisation - 3", "Language - 1".` + _TAIL,
@@ -397,6 +398,7 @@ modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student
         <div class="pab-view-meta">${esc((b.format || '').replace(/_/g, ' '))}${b.marks ? ` · ${Number(b.marks)} marks` : ''}${b.wordLimit ? ` · ${esc(b.wordLimit)}` : ''}</div>
         <div class="pab-task">${esc(b.scenario || '')}</div>
         ${b.passage ? `<div class="pab-passage">${esc(b.passage)}</div>` : ''}
+        ${b.passageImage ? `<img class="pab-img" src="${esc(b.passageImage)}" alt="" />` : ''}
         ${(b.points || []).length ? `<ul class="pab-points">${b.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
         ${(b.rubric || []).length ? `<div class="pab-rubric"><b>Marking scheme</b><ul>${b.rubric.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
         ${b.modelAnswer ? `<div class="pab-rubric"><b>Model answer</b><div style="white-space:pre-wrap">${esc(b.modelAnswer)}</div></div>` : ''}
