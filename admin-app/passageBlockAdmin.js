@@ -176,15 +176,31 @@ Now generate the JSON array for: `;
           <span class="pab-pill">${TYPE_LABEL[b.type] || b.type}</span>
           <b>${esc(b.title)}</b>
           <span class="pab-meta">${esc(b.subjectId)}${b.chapterId ? '' : ' · unseen pool'} · ${b.totalMarks} marks · used ${b.usageCount}x</span>
+          <button type="button" class="admin-btn-secondary" data-prev="${esc(b.id)}">👁 Preview</button>
           <button type="button" class="admin-btn-danger" data-del="${esc(b.id)}">Delete</button>
         </div>
         ${b.type === 'writing'
           ? `<div class="pab-body">${esc(b.scenario).slice(0, 220)}${b.scenario.length > 220 ? '…' : ''}</div>`
           : `<div class="pab-body">${esc(b.passage).slice(0, 220)}${b.passage.length > 220 ? '…' : ''} <small>(${(b.subQuestions || []).length} sub-questions)</small></div>`}
+        <div class="pab-card-view hidden"></div>
       </div>`).join('');
   }
 
   async function _onListClick(e) {
+    const prev = e.target.closest('[data-prev]');
+    if (prev) {
+      const card = prev.closest('.pab-card');
+      const view = card.querySelector('.pab-card-view');
+      if (view.classList.contains('hidden')) {
+        view.innerHTML = _blockPreviewHtml(_blocks.find(x => String(x.id) === prev.dataset.prev));
+        view.classList.remove('hidden');
+        card.querySelector('.pab-body')?.classList.add('hidden');
+      } else {
+        view.classList.add('hidden');
+        card.querySelector('.pab-body')?.classList.remove('hidden');
+      }
+      return;
+    }
     const btn = e.target.closest('[data-del]');
     if (!btn) return;
     if (!await APP.confirmAsync('Delete this passage block? Papers already built from it keep their own copy.')) return;
@@ -213,6 +229,41 @@ Now generate the JSON array for: `;
     return arr.map(b => ({ ...b, batchId, ...(subjectId ? { subjectId } : {}), chapterId: chapterId || b.chapterId || '' }));
   }
 
+  // ── visual preview: roughly how a student sees the block (answers shown in green for the admin) ──
+  const _blanks = t => esc(t).replace(/\[\[[^\]]*\]\]/g, '<span class="pab-blank"></span>');
+  const _ans = a => a ? `<div class="pab-ans">✔ ${esc(a)}</div>` : '';
+
+  function _subQuestionPreview(sq, n) {
+    const items = Array.isArray(sq.items) ? sq.items : [];
+    let body;
+    if (sq.format === 'web_diagram') {
+      body = `<div class="pab-web"><span class="pab-web-center">${esc(sq.center || '?')}</span>` +
+        items.map(it => `<div class="pab-diag-row"><span class="pab-diag-given">${esc(it.given || '')}</span> → <span class="pab-diag-box">${it.answer ? esc(it.answer) : ''}</span></div>`).join('') + '</div>';
+    } else if (sq.format === 'tree_diagram') {
+      body = items.map(it => `<div class="pab-diag-row"><span class="pab-diag-given">${esc(it.given || it.text || '')}</span> → <span class="pab-diag-box">${it.answer ? esc(it.answer) : ''}</span></div>`).join('');
+    } else {
+      body = '<ol class="pab-items">' + items.map(it => `<li>${_blanks(it.text || '')}${_ans(it.answer)}</li>`).join('') + '</ol>';
+    }
+    return `<div class="pab-sq"><div class="pab-sq-head"><b>Q${n}.</b> ${_blanks(sq.prompt || '')} <span class="pab-fmt">${esc(sq.format || 'short_answer')} · ${Number(sq.marks) || 0}m</span></div>${body}</div>`;
+  }
+
+  function _blockPreviewHtml(b) {
+    if (!b) return '';
+    if (b.type === 'writing') {
+      return `<div class="pab-view">
+        <div class="pab-view-meta">${esc((b.format || '').replace(/_/g, ' '))}${b.marks ? ` · ${Number(b.marks)} marks` : ''}${b.wordLimit ? ` · ${esc(b.wordLimit)}` : ''}</div>
+        <div class="pab-passage">${esc(b.scenario || '')}</div>
+        ${(b.points || []).length ? `<ul class="pab-points">${b.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
+        ${(b.rubric || []).length ? `<div class="pab-rubric"><b>Marking scheme</b><ul>${b.rubric.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
+      </div>`;
+    }
+    return `<div class="pab-view">
+      ${b.passageImage ? `<img class="pab-img" src="${esc(b.passageImage)}" alt="" />` : ''}
+      <div class="pab-passage">${esc(b.passage || '')}</div>
+      ${(b.subQuestions || []).map((sq, i) => _subQuestionPreview(sq, i + 1)).join('')}
+    </div>`;
+  }
+
   async function _preview() {
     const blocks = _parseInput();
     if (!blocks) return;
@@ -223,7 +274,7 @@ Now generate the JSON array for: `;
       const res = await API.previewPassageImport(blocks);
       box.innerHTML = `<p class="import-hint"><b>${res.valid} valid</b>, <b>${res.invalid} invalid</b> of ${res.results.length}.</p>` +
         res.results.map(r => r.ok
-          ? `<div class="pab-prev ok">✓ Block ${r.index + 1}: ${esc(r.preview.title)} (${TYPE_LABEL[r.preview.type] || r.preview.type})</div>`
+          ? `<details class="pab-prev-detail" ${res.results.length === 1 ? 'open' : ''}><summary class="pab-prev ok">✓ Block ${r.index + 1}: ${esc(r.preview.title)} (${TYPE_LABEL[r.preview.type] || r.preview.type}) — tap to see how it looks</summary>${_blockPreviewHtml(blocks[r.index])}</details>`
           : `<div class="pab-prev bad">✕ ${esc(r.error)}</div>`).join('');
       $('pab-run-btn').disabled = res.invalid > 0 || res.valid === 0;
     } catch (err) {
