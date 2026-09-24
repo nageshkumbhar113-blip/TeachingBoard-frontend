@@ -14,8 +14,38 @@
 ════════════════════════════════════════ */
 
 const PAPER_SECTIONS = (() => {
+  // Board paper templates. Data-driven: the picker groups by `board` then lists `subject`s, so adding
+  // HSC (or any other board) is just new entries here — no UI change. Passage sections (kind:'passage')
+  // take their marks from whichever PassageBlock is chosen, so a template leaves those unset.
+  const _P = (qNo, part, instruction) => ({ kind: 'passage', qNo, part, instruction, passageBlockId: '', marksEach: 0, attempt: 1 });
   const TEMPLATES = {
+    ssc_english_80_draft: {
+      board: 'SSC',
+      subject: 'English (First Language) - 80 marks [draft, verify marks]',
+      label: 'SSC English - 80 marks',
+      sections: [
+        _P('1', 'A', 'Read the following passage and do the activities :'),
+        _P('2', 'A', 'Read the following unseen passage and do the activities :'),
+        _P('3', '', 'Read the following poem and do the activities :'),
+        { qNo: '4', part: '', instruction: 'Do as directed (Grammar) :', marksEach: 2, attempt: 5 },
+        _P('5', 'A', 'Write a letter as directed :'),
+        _P('5', 'B', 'Write a speech / story / report as directed :'),
+        _P('6', '', 'Study the following information and do the activities :'),
+      ],
+      header: {
+        subjectLine: 'ENGLISH (FIRST LANGUAGE)',
+        courseLine: '(REVISED COURSE)',
+        timeText: 'Time : 3 Hours',
+        notes: [
+          'All questions are compulsory.',
+          'The numbers to the right of the questions indicate full marks.',
+          'Write the answers in your own words as far as possible.',
+        ],
+      },
+    },
     ssc_algebra_40: {
+      board: 'SSC',
+      subject: 'Algebra Part I - 40 marks',
       label: 'SSC Algebra Part I - 40 marks',
       sections: [
         { qNo: '1', part: 'A', instruction: 'Choose the correct alternative from given :', marksEach: 1, attempt: 4 },
@@ -53,6 +83,7 @@ const PAPER_SECTIONS = (() => {
   });
 
   const _esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const _tplBoards = () => [...new Set(Object.values(TEMPLATES).map(t => t.board).filter(Boolean))];
   let _idCounter = 0;
   const _newId = () => `s${Date.now().toString(36)}${(_idCounter++).toString(36)}`;
 
@@ -190,7 +221,9 @@ const PAPER_SECTIONS = (() => {
           <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between">
             <strong>Sections</strong>
             <span>
-              <button type="button" class="pps-btn" data-pps="template">Load template: SSC Algebra 40 marks</button>
+              <select class="pps-move" data-pps="tplboard" title="Board">${_tplBoards().map(b => `<option value="${_esc(b)}">${_esc(b)}</option>`).join('')}</select>
+              <select class="pps-move" data-pps="tplsubject" title="Template" style="max-width:220px"></select>
+              <button type="button" class="pps-btn" data-pps="template">Load template</button>
               <button type="button" class="pps-btn" data-pps="mcq">+ MCQ from MCQ bank</button>
               <button type="button" class="pps-btn" data-pps="autofill">Auto-fill questions</button>
               <button type="button" class="pps-btn pri" data-pps="add">+ Add section</button>
@@ -218,7 +251,15 @@ const PAPER_SECTIONS = (() => {
       root.querySelector('[data-pps="addpassage"]').addEventListener('click', () => addSection({ kind: 'passage' }));
       root.querySelector('[data-pps="autofill"]').addEventListener('click', e => autoFill(e.currentTarget));
       root.querySelector('[data-pps="mcq"]').addEventListener('click', () => openMcqPicker());
-      root.querySelector('[data-pps="template"]').addEventListener('click', () => loadTemplate('ssc_algebra_40'));
+      const boardSel = root.querySelector('[data-pps="tplboard"]');
+      const tplSel = root.querySelector('[data-pps="tplsubject"]');
+      const fillTpls = () => {
+        tplSel.innerHTML = Object.entries(TEMPLATES).filter(([, t]) => t.board === boardSel.value)
+          .map(([k, t]) => `<option value="${_esc(k)}">${_esc(t.subject)}</option>`).join('');
+      };
+      boardSel.addEventListener('change', fillTpls);
+      fillTpls();
+      root.querySelector('[data-pps="template"]').addEventListener('click', () => { if (tplSel.value) loadTemplate(tplSel.value); });
       renderSections();
       renderSummary();
     }
