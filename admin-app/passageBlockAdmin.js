@@ -122,8 +122,71 @@ Rules:
 
 Now generate the JSON array for: `;
 
+  // ── One focused prompt per question type (pick it in the dropdown next to the Copy button) ──
+  const _HEAD = 'Generate a JSON array of "Passage Block" objects for a Maharashtra-board-style language paper. Return ONLY the JSON array - no markdown fences, no commentary. Do NOT include batchId/subjectId/chapterId - the admin panel fills those in. Use \\n for line breaks inside strings. If a real board paper is attached, copy its task word-for-word (names, addresses, cues, marks) instead of inventing one. For Marathi/Hindi write all content in that language and set "language" accordingly, but keep every JSON field NAME and every "format" value in English.\n\n';
+  const _TAIL = '\n\nEvery block needs "type" and "title". Keep marks and word limits exactly as the paper prints them. Rubric numbers must add up to "marks". Tables go in the text as pipe rows, one row per line: | Column A | Column B |.\n\nNow generate the JSON array for: ';
+  const _WSHAPE = (format, marks, word, task) => `Output ONE object per alternative (so a teacher can pick either) in this shape:
+{
+  "type": "writing",
+  "title": "short title",
+  "language": "english",
+  "format": "${format}",
+  "marks": ${marks},
+  "wordLimit": "${word}",
+  "scenario": "${task}",
+  "points": ["content cue 1", "content cue 2", "content cue 3"],
+  "rubric": ["mark split that adds up to ${marks}"],
+  "modelAnswer": "a full-marks model answer, exactly in the layout described below"
+}
+`;
+  const _PPASS = (type, what) => `Output ONE object per ${what} in this shape:
+{
+  "type": "${type}",
+  "title": "short title",
+  "language": "english",
+  "passage": "the full text exactly as printed",
+  "passageImage": "",
+  "subQuestions": [
+    { "marks": 2, "format": "fill_blanks | true_false | web_diagram | tree_diagram | match | short_answer | rearrange", "prompt": "activity heading as printed, e.g. Complete the following sentences", "center": "", "items": [ { "text": "line (use [[ ]] for a blank)", "answer": "correct answer", "given": "" } ] }
+  ]
+}
+"center" only for web_diagram; "given" only for web/tree diagram spokes. true_false answers are "True"/"False". For personal-response / open questions still put a short sample answer in "answer".
+`;
+  const PROMPTS = {
+    comprehension: _HEAD + 'Type: comprehension (Q2 textual passages, Q4 non-textual passage: A1..A5 activities, each usually 2 marks).\n' + _PPASS('comprehension', 'passage') + _TAIL,
+    poetry: _HEAD + 'Type: poetry (stanzas + activities such as true/false, web, rhyming words) AND "Appreciation of the poem" (give the poem as "passage"; ONE sub-question, format short_answer, marks 5, prompt "Read the following poem and write an appreciation of it with the help of the points given below", items = the points with their marks, e.g. "Title (1/2)", "Name of the poet (1/2)", "Rhyme scheme (1)", "Figure of speech - any one (1)", "Theme/Central idea in 2/3 lines (2)" with a model answer for each).\n' + _PPASS('poetry', 'poem') + _TAIL,
+    nonverbal: _HEAD + 'Type: nonverbal (a table/chart/diagram/advertisement is the source; sub-questions ask the student to read or complete it). If it is a picture, leave "passage" as a short description of it and put the image URL in "passageImage". A table goes in "passage" as pipe rows.\n' + _PPASS('nonverbal', 'table/chart') + _TAIL,
+    letter: _HEAD + 'Type: LETTER WRITING (Q5 A1 informal + A2 formal from the SAME advertisement/situation = TWO blocks, formats "informal_letter" and "formal_letter", 5 marks each, wordLimit as printed).\n' + _WSHAPE('formal_letter', 5, '100-120', 'Suppose you are Kamal/Kamlesh Kale from A-254, River View, Karve Nagar, Pune. Read the following advertisement ... Write to the President of Youth Club. Thank him/her for organising the exhibition. Ask more about the entry fee and timing. You may add your own points.') + `
+scenario: who the writer is (gender-neutral pair like Kamal/Kamlesh Kale), full sender address, who the letter goes to (designation + organisation + place, or a friend's name/town), the purpose, and the advertisement/information text itself (tables as pipe rows). Never write the letter in the scenario.
+rubric: "Format - 1", "Content - 2", "Language - 2".
+modelAnswer FORMAL layout (one element per line, blank line between blocks): "From: Kamal Kale\\nA-254, River View\\nKarve Nagar, Pune.\\n2 May 2025\\n\\nTo,\\nThe President\\nYouth Club\\nGandhi Corner, Pune\\n\\nDear Sir/Madam,\\nSub: Thanks for organising the exhibition and query about entry fee\\n\\nbody paragraphs covering every point in order\\n\\nThanking you,\\nYours faithfully,\\nKamal Kale".
+modelAnswer INFORMAL layout: sender address + date at the top, "Dear Rohan,", warm body using the advertisement's points (duration, venue, what is on offer, why to come), "Yours lovingly,", name - no "Sub:" line and no receiver address.` + _TAIL,
+    dialogue: _HEAD + 'Type: DIALOGUE WRITING (Q5B1 = 5 marks: (a) arrange jumbled sentences into a dialogue (1), (b) complete a given dialogue (1), (c) write a new dialogue of at least three exchanges on a topic (3)). ONE block, format "dialogue", marks 5.\n' + _WSHAPE('dialogue', 5, 'minimum three exchanges', '(a) Prepare a dialogue from the jumbled sentences: (i) ... (ii) ... (iii) ... (iv) ... (b) Complete the following dialogue: A: ... B: ...... A: ... B: ...... (c) Write a dialogue between two friends about ...') + `
+rubric: "(a) 1", "(b) 1", "(c) 3".
+modelAnswer: three labelled parts, dialogue lines as "A: ...\\nB: ..." alternating, the (a) sentences in the correct order.` + _TAIL,
+    speech: _HEAD + 'Type: DRAFTING A SPEECH (Q5B2, 5 marks). ONE block, format "speech".\n' + _WSHAPE('speech', 5, '', "Imagine that you are going to deliver a speech on 'Books are our real friends' in the elocution competition. Write a speech using the following points:") + `
+points: the bullet cues exactly as printed, plus "Add your own points".
+rubric: "Format (greeting, closing) - 1", "Content - 2", "Language - 2".
+modelAnswer: "Good morning to the Principal, respected teachers and my dear friends,\\n\\n(introduce topic)\\n\\n(one paragraph per point)\\n\\n(strong conclusion)\\n\\nThank you." Keep it within the word limit.` + _TAIL,
+    info_transfer: _HEAD + 'Type: INFORMATION TRANSFER (Q6A, 5 marks; A1 non-verbal -> verbal = table to two paragraphs, OR A2 verbal -> non-verbal = paragraph to tree diagram/flow chart). Output one block per alternative given, format "information_transfer".\n' + _WSHAPE('information_transfer', 5, 'two paragraphs', 'Read the information given in the following table. Write two paragraphs based on it. Give a suitable title to it:\\n| Effective Communication | Ineffective Communication |\\n| Use of body language | Lack of interest |') + `
+A1 (table -> paragraphs): put the table in "scenario" as pipe rows. modelAnswer = "Title: ...\\n\\nParagraph 1 ...\\n\\nParagraph 2 ...".
+A2 (paragraph -> tree diagram): scenario = "Read the information given below and represent it in the form of a tree-diagram. Give a suitable title to it:" followed by the paragraph. modelAnswer = the completed diagram as indented text, one node per line: "Title: Forms of Energy\\nTypes: Kinetic energy | Potential energy\\n  Kinetic sub-types: Mechanical | Electrical\\n    Examples: leaping frog / lightning\\n  Potential sub-types: Nuclear | Chemical\\n    Examples: fusion in the sun / a matchstick".
+rubric: "Title - 1", "Content/organisation - 3", "Language - 1".` + _TAIL,
+    news_report: _HEAD + 'Type: NEWS REPORT (Q6B1, 5 marks). ONE block, format "news_report".\n' + _WSHAPE('news_report', 5, '', "Read the following headline and prepare a news report with the help of the given points: 'Nav Bharat School Celebrates Science Day'") + `
+points: "Headline", "Dateline", "Lead/Introduction", "Short continuing paragraph" (as printed).
+rubric: "Headline - 1", "Dateline - 1", "Lead - 1", "Body paragraph - 2".
+modelAnswer: "NAV BHARAT SCHOOL CELEBRATES SCIENCE DAY\\n\\nPune, 28 February 2025: (lead - who, what, when, where)\\n\\n(continuing paragraph with details, quotes from the principal/students, prizes)".` + _TAIL,
+    story: _HEAD + 'Type: STORY WRITING from a given beginning (Q6B2, 5 marks). ONE block, format "story".\n' + _WSHAPE('story', 5, '', 'Develop a story with the help of the given beginning. Suggest a suitable title: In the last summer vacation, I visited ......') + `
+rubric: "Title - 1", "Content/plot - 2", "Language - 2".
+modelAnswer: "Title: ...\\n\\n(story that continues the given beginning smoothly: setting, problem, climax, ending)\\n\\nMoral: ..." within the word limit.` + _TAIL,
+    summary: _HEAD + 'Type: SUMMARY WRITING (Q4B, 5 marks). ONE block, format "summary". The scenario MUST contain the full passage to be summarised (the paper refers to the passage of Q4A) so the block stands alone.\n' + _WSHAPE('summary', 5, 'about one-third of the passage', 'Read the following passage and write a summary of it. Suggest a suitable title to the summary:\\n<full passage text>') + `
+rubric: "Title - 1", "Main points covered - 3", "Language and brevity - 1".
+modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student's own words, past-tense-consistent, no examples or quotes)".` + _TAIL,
+  };
+
   async function _copyAiPrompt() {
-    const text = AI_PROMPT;
+    const sel = $('pab-prompt-type')?.value || '';
+    const text = PROMPTS[sel] || AI_PROMPT;
     try {
       await navigator.clipboard.writeText(text);
       toast('AI prompt copied — paste it into Claude/ChatGPT along with your source material', 'success');

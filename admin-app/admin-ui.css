@@ -2496,3 +2496,5 @@ body.admin-app {
 .pab-web-center { display: inline-block; padding: 6px 16px; border: 2px solid #f97316; border-radius: 999px; font-weight: 700; margin-bottom: 6px; }
 .pab-points, .pab-rubric ul { margin: 6px 0 0 20px; }
 .pab-rubric { margin-top: 8px; color: #047857; }
+.pab-prompt-type { width: auto; margin: 0 0 0 auto; }
+.pab-prompt-type + .pab-prompt-btn { margin-left: 0; }

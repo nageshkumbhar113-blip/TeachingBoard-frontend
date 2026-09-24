@@ -1481,6 +1481,19 @@ Marks: 1"></textarea>
                   <input type="file" id="pab-file" accept=".json,application/json,text/plain" multiple hidden />
                   <button type="button" id="pab-preview-btn" class="admin-btn-secondary">Check</button>
                   <button type="button" id="pab-run-btn" class="admin-btn-primary" disabled>Save blocks</button>
+                  <select id="pab-prompt-type" class="form-select pab-prompt-type" title="Which question type is the prompt for?">
+                    <option value="">Prompt: all types</option>
+                    <option value="comprehension">Passage (comprehension)</option>
+                    <option value="poetry">Poetry / appreciation</option>
+                    <option value="nonverbal">Non-verbal (table / chart)</option>
+                    <option value="letter">Letter writing</option>
+                    <option value="dialogue">Dialogue writing</option>
+                    <option value="speech">Speech</option>
+                    <option value="info_transfer">Information transfer</option>
+                    <option value="news_report">News report</option>
+                    <option value="story">Story</option>
+                    <option value="summary">Summary</option>
+                  </select>
                   <button type="button" id="pab-prompt-btn" class="admin-btn-secondary pab-prompt-btn">📋 Copy AI prompt (how to write this JSON)</button>
                 </div>
                 <div id="pab-preview" class="pab-preview"></div>
