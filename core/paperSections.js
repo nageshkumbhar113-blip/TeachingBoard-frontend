@@ -274,6 +274,130 @@ const PAPER_SECTIONS = (() => {
     },
   };
 
+  // Marathi-medium versions of the same patterns: identical sections (marks/attempt), only the printed
+  // instruction lines + header/notes are Marathi. Questions themselves always come from the bank in
+  // whatever language they were saved. `instructions[i]` lines up with TEMPLATES[key].sections[i].
+  // Wording follows the usual Maharashtra board Marathi-medium papers — worth a quick read against a real one.
+  const _MR_MATH_INSTR = [
+    'खालील प्रत्येक उपप्रश्नासाठी चार पर्याय दिले आहेत. त्यांपैकी अचूक पर्याय निवडून त्याचे वर्णाक्षर लिहा :',
+    'खालील उपप्रश्न सोडवा :',
+    'खालील कृती पूर्ण करून पुन्हा लिहा (कोणत्याही दोन) :',
+    'खालील उपप्रश्न सोडवा (कोणतेही चार) :',
+    'खालील कृती पूर्ण करून पुन्हा लिहा (कोणतीही एक) :',
+    'खालील उपप्रश्न सोडवा (कोणतेही दोन) :',
+    'खालील उपप्रश्न सोडवा (कोणतेही दोन) :',
+    'खालील उपप्रश्न सोडवा (कोणताही एक) :',
+  ];
+  const _MR_MATH_NOTES = [
+    'सर्व प्रश्न सोडवणे अनिवार्य आहे.',
+    'कॅलक्युलेटरचा वापर करण्यास परवानगी नाही.',
+    'प्रश्नांच्या उजवीकडे दर्शवलेले अंक पूर्ण गुण दर्शवतात.',
+    'बहुपर्यायी प्रश्नांमध्ये [प्र. क्र. १(अ)] फक्त पहिलाच प्रयत्न ग्राह्य धरून गुण दिले जातील.',
+  ];
+  const _MR_SCI_NOTES = [
+    'सर्व प्रश्न सोडवणे अनिवार्य आहे.',
+    'कॅलक्युलेटरचा वापर करण्यास परवानगी नाही.',
+    'प्रश्नांच्या उजवीकडे दर्शवलेले अंक पूर्ण गुण दर्शवतात.',
+    'बहुपर्यायी प्रश्नांमध्ये [प्र. क्र. १(अ)] फक्त पहिलाच प्रयत्न ग्राह्य धरून गुण दिले जातील.',
+    'आवश्यक तेथे शास्त्रीयदृष्ट्या अचूक, नामनिर्देशित आकृत्या काढाव्यात.',
+  ];
+  const _MR_HDR = (subjectLine, hours, notes) => ({ subjectLine, courseLine: '(सुधारित अभ्यासक्रम)', timeText: `वेळ : ${hours} तास`, notes });
+  const _MR = {
+    ssc_algebra_40: {
+      subject: 'गणित - बीजगणित भाग १ - ४० गुण',
+      instructions: _MR_MATH_INSTR,
+      header: _MR_HDR('गणित (७१) बीजगणित - भाग १', '२', _MR_MATH_NOTES),
+    },
+    ssc_geometry_40: {
+      subject: 'गणित - भूमिती भाग २ - ४० गुण',
+      instructions: _MR_MATH_INSTR,
+      header: _MR_HDR('गणित (७१) भूमिती - भाग २', '२', [
+        ..._MR_MATH_NOTES,
+        'आवश्यक तेथे आकृत्या योग्य रीतीने काढा.',
+        'रचनेच्या खुणा स्पष्ट दिसाव्यात. त्या पुसू नयेत.',
+        'प्रमेयाची उपपत्ती लिहिताना आकृती आवश्यक आहे.',
+      ]),
+    },
+    ssc_science1_40: {
+      subject: 'विज्ञान व तंत्रज्ञान भाग १ - ४० गुण',
+      instructions: [
+        'योग्य पर्याय निवडून विधाने पूर्ण करा :',
+        'खालील प्रश्न सोडवा :',
+        'शास्त्रीय कारणे लिहा (कोणतेही दोन) :',
+        'खालील उपप्रश्न सोडवा (कोणतेही तीन) :',
+        'खालील प्रश्न सोडवा (कोणतेही पाच) :',
+        'खालील प्रश्नांची उत्तरे लिहा (कोणताही एक) :',
+      ],
+      header: _MR_HDR('विज्ञान आणि तंत्रज्ञान (७२) - भाग १', '२', _MR_SCI_NOTES),
+    },
+    ssc_science2_40: {
+      subject: 'विज्ञान व तंत्रज्ञान भाग २ - ४० गुण',
+      instructions: [
+        'योग्य पर्याय निवडून विधाने पूर्ण करा :',
+        'खालील प्रश्नांची उत्तरे लिहा :',
+        'शास्त्रीय कारणे लिहा (कोणतेही दोन) :',
+        'खालील प्रश्नांची उत्तरे लिहा (कोणतेही तीन) :',
+        'खालील प्रश्नांची उत्तरे लिहा (कोणतेही पाच) :',
+        'खालील प्रश्नांची उत्तरे लिहा (कोणताही एक) :',
+      ],
+      header: _MR_HDR('विज्ञान आणि तंत्रज्ञान (७२) - भाग २', '२', [
+        'सर्व प्रश्न सोडवणे अनिवार्य आहे.',
+        'प्रश्नांच्या उजवीकडे दर्शवलेले अंक पूर्ण गुण दर्शवतात.',
+        'बहुपर्यायी प्रश्नांमध्ये [प्र. क्र. १(अ)] फक्त पहिलाच प्रयत्न ग्राह्य धरून गुण दिले जातील.',
+        'आवश्यक तेथे शास्त्रीयदृष्ट्या व तांत्रिकदृष्ट्या अचूक, नामनिर्देशित आकृत्या काढाव्यात.',
+        'प्रत्येक नवीन प्रश्न नवीन पानावर सुरू करावा.',
+      ]),
+    },
+    ssc_history_40: {
+      subject: 'इतिहास व राज्यशास्त्र (पेपर १) - ४० गुण',
+      instructions: [
+        'दिलेल्या पर्यायांतून योग्य पर्याय निवडून वाक्ये पूर्ण करा :',
+        'खालील संचांतील चुकीची जोडी ओळखून लिहा :',
+        'सूचनेप्रमाणे कृती करा (कोणत्याही दोन) :',
+        'टीपा लिहा (कोणत्याही दोन) :',
+        'खालील विधानांचे कारणांसह स्पष्टीकरण करा (कोणतीही दोन) :',
+        'खालील उतारा वाचा व त्यावर आधारित प्रश्नांची उत्तरे लिहा :',
+        'सविस्तर उत्तरे लिहा (कोणतेही दोन) :',
+        'दिलेल्या पर्यायांतून योग्य पर्याय निवडून विधाने पूर्ण करा :',
+        'खालील विधाने सत्य की असत्य ते कारणासह लिहा (कोणतीही दोन) :',
+        'खालील संकल्पना स्पष्ट करा (कोणतीही एक) :',
+        'सूचनेप्रमाणे कृती करा (कोणतीही एक) :',
+        'थोडक्यात उत्तरे लिहा (कोणताही एक) :',
+      ],
+      header: _MR_HDR('समाजविज्ञान (७३) इतिहास व राज्यशास्त्र - पेपर १', '२', [
+        'सर्व कृती/प्रश्न सोडवणे अनिवार्य आहे.',
+        'उजवीकडील अंक पूर्ण गुण दर्शवतात.',
+        'प्रश्न क्र. १ ते ५ इतिहासावर आणि प्रश्न क्र. ६ ते ९ राज्यशास्त्रावर आधारित आहेत.',
+        'प्रश्न क्र. २(अ) व ८(ब) मध्ये योग्य उत्तरे संकल्पना चित्रात पेन/पेन्सिलने लिहावीत.',
+        'प्रश्न क्र. १(अ), १(ब) व ६ ची उत्तरे उत्तरपत्रिकेत पुन्हा लिहिल्यास पहिले उत्तरच ग्राह्य धरले जाईल.',
+      ]),
+    },
+    ssc_geography_40: {
+      subject: 'भूगोल (पेपर २) - ४० गुण',
+      instructions: [
+        'योग्य पर्याय निवडून वाक्ये पूर्ण करा :',
+        'गटात न बसणारा घटक ओळखा :',
+        'खालील वाक्ये बरोबर की चूक ते लिहा (कोणतीही चार) :',
+        'ब्राझीलच्या outline नकाशात खालील गोष्टी दाखवा व सूची द्या (कोणत्याही चार) :',
+        'भारताच्या नकाशाचे निरीक्षण करून खालील प्रश्नांची उत्तरे लिहा (कोणतेही चार) :',
+        'भौगोलिक कारणे लिहा (कोणतीही दोन) :',
+        'दिलेल्या सांख्यिकीय माहितीच्या आधारे साधा रेषा आलेख तयार करून प्रश्नांची उत्तरे लिहा - किंवा - आलेख वाचून प्रश्नांची उत्तरे लिहा :',
+        'सविस्तर उत्तरे लिहा (कोणतीही दोन) :',
+      ],
+      header: _MR_HDR('समाजविज्ञान (७३) भूगोल - पेपर २', '२', [
+        'सर्व प्रश्न/कृती सोडवणे अनिवार्य आहे.',
+        'उजवीकडील अंक पूर्ण गुण दर्शवतात.',
+        'प्र. क्र. ४(अ) साठी पुरवलेला ब्राझीलचा outline नकाशा उत्तरपुस्तिकेला जोडावा.',
+        'प्र. क्र. ६(अ) साठी पुरवलेला आलेखकागद मुख्य उत्तरपुस्तिकेला जोडावा.',
+        'नकाशा काढण्यासाठी स्टेन्सिल वापरण्यास परवानगी आहे.',
+        'आवश्यक तेथे आकृत्या/रेखाचित्रे नीटनेटकी काढावीत.',
+      ]),
+    },
+  };
+  Object.entries(_MR).forEach(([k, v]) => { if (TEMPLATES[k]) TEMPLATES[k].mr = v; });
+  // Marathi/Hindi language papers are already in their own language — offered under either medium.
+  ['ssc_marathi_80', 'ssc_hindi_80'].forEach(k => { if (TEMPLATES[k]) TEMPLATES[k].native = true; });
+
   const DEFAULT_HEADER = () => ({
     paperCode: '',
     examLine: '',
@@ -342,7 +466,7 @@ const PAPER_SECTIONS = (() => {
       answerText: { english: opts[ans] ? `(${ans}) ${opts[ans]}` : ans },
     };
   }
-  const _isMcqSection = s => /alternative|choose the correct|\bmcq\b/i.test(String(s.instruction || ''));
+  const _isMcqSection = s => /alternative|choose the correct|\bmcq\b|पर्याय/i.test(String(s.instruction || ''));
 
   function create({ getSelected, onChange, fetchByMarks, fetchMcq, fetchPassageBlocks, addQuestion, canFill, canFillPassage, toast } = {}) {
     const state = { enabled: false, sections: [], activeId: null, header: DEFAULT_HEADER() };
@@ -425,7 +549,8 @@ const PAPER_SECTIONS = (() => {
             <strong>Sections</strong>
             <span>
               <select class="pps-move" data-pps="tplboard" title="Board">${_tplBoards().map(b => `<option value="${_esc(b)}">${_esc(b)}</option>`).join('')}</select>
-              <select class="pps-move" data-pps="tplsubject" title="Template" style="max-width:220px"></select>
+              <select class="pps-move" data-pps="tplmedium" title="Medium"><option value="en">English medium</option><option value="mr">मराठी माध्यम</option></select>
+              <select class="pps-move" data-pps="tplsubject" title="Template" style="max-width:240px"></select>
               <button type="button" class="pps-btn" data-pps="template">Load template</button>
               <button type="button" class="pps-btn" data-pps="mcq">+ MCQ from MCQ bank</button>
               <button type="button" class="pps-btn" data-pps="autofill">Auto-fill questions</button>
@@ -456,13 +581,17 @@ const PAPER_SECTIONS = (() => {
       root.querySelector('[data-pps="mcq"]').addEventListener('click', () => openMcqPicker());
       const boardSel = root.querySelector('[data-pps="tplboard"]');
       const tplSel = root.querySelector('[data-pps="tplsubject"]');
+      const mediumSel = root.querySelector('[data-pps="tplmedium"]');
       const fillTpls = () => {
-        tplSel.innerHTML = Object.entries(TEMPLATES).filter(([, t]) => t.board === boardSel.value)
-          .map(([k, t]) => `<option value="${_esc(k)}">${_esc(t.subject)}</option>`).join('');
+        const mr = mediumSel.value === 'mr';
+        tplSel.innerHTML = Object.entries(TEMPLATES)
+          .filter(([, t]) => t.board === boardSel.value && (!mr || t.mr || t.native))
+          .map(([k, t]) => `<option value="${_esc(k)}">${_esc(mr && t.mr ? t.mr.subject : t.subject)}</option>`).join('');
       };
       boardSel.addEventListener('change', fillTpls);
+      mediumSel.addEventListener('change', fillTpls);
       fillTpls();
-      root.querySelector('[data-pps="template"]').addEventListener('click', () => { if (tplSel.value) loadTemplate(tplSel.value); });
+      root.querySelector('[data-pps="template"]').addEventListener('click', () => { if (tplSel.value) loadTemplate(tplSel.value, mediumSel.value); });
       renderSections();
       renderSummary();
     }
@@ -592,12 +721,14 @@ const PAPER_SECTIONS = (() => {
       if (!silent) { renderSections(); renderSummary(); notify(); }
     }
 
-    function loadTemplate(key) {
+    function loadTemplate(key, medium = 'en') {
       const t = TEMPLATES[key];
       if (!t) return;
-      state.sections = t.sections.map(s => ({ id: _newId(), ...s }));
+      const mr = medium === 'mr' && t.mr ? t.mr : null; // same sections, only the printed text switches
+      state.sections = t.sections.map((s, i) => ({ id: _newId(), ...s, ...(mr && mr.instructions[i] ? { instruction: mr.instructions[i] } : {}) }));
       state.activeId = state.sections[0].id;
-      state.header = { ...DEFAULT_HEADER(), ...state.header, ...t.header, notes: [...t.header.notes] };
+      const hdr = mr ? mr.header : t.header;
+      state.header = { ...DEFAULT_HEADER(), ...state.header, ...hdr, notes: [...hdr.notes] };
       selected().forEach(q => { q.sectionId = undefined; });
       render();
       notify();
