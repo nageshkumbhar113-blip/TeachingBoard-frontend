@@ -1477,6 +1477,8 @@ Marks: 1"></textarea>
                 <h3>Import blocks (paste JSON array)</h3>
                 <textarea id="pab-json" class="admin-input pab-json" rows="8" placeholder='[{"type":"comprehension","title":"...","passage":"...","subQuestions":[...]}]'></textarea>
                 <div class="pab-row">
+                  <button type="button" id="pab-file-btn" class="admin-btn-secondary">📁 Upload JSON file</button>
+                  <input type="file" id="pab-file" accept=".json,application/json,text/plain" multiple hidden />
                   <button type="button" id="pab-preview-btn" class="admin-btn-secondary">Check</button>
                   <button type="button" id="pab-run-btn" class="admin-btn-primary" disabled>Save blocks</button>
                   <button type="button" id="pab-prompt-btn" class="admin-btn-secondary pab-prompt-btn">📋 Copy AI prompt (how to write this JSON)</button>

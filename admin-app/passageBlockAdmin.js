@@ -32,6 +32,26 @@
     $('pab-run-btn')?.addEventListener('click', _run);
     $('pab-list')?.addEventListener('click', _onListClick);
     $('pab-prompt-btn')?.addEventListener('click', _copyAiPrompt);
+    $('pab-file-btn')?.addEventListener('click', () => $('pab-file')?.click());
+    $('pab-file')?.addEventListener('change', _loadFiles);
+  }
+
+  // One or more .json files (each an array or a single block) are merged into the textarea, so the
+  // usual Check → Save blocks flow (and the batch/subject/chapter pickers) applies unchanged.
+  async function _loadFiles(e) {
+    const files = [...(e.target.files || [])];
+    e.target.value = '';
+    if (!files.length) return;
+    const all = [];
+    for (const f of files) {
+      let parsed;
+      try { parsed = JSON.parse((await f.text()).replace(/^﻿/, '')); }
+      catch (err) { toast(`${f.name}: not valid JSON (${err.message})`, 'error'); return; }
+      all.push(...(Array.isArray(parsed) ? parsed : [parsed]));
+    }
+    $('pab-json').value = JSON.stringify(all, null, 2);
+    if ($('pab-run-btn')) $('pab-run-btn').disabled = true;
+    toast(`${all.length} block(s) loaded from ${files.length} file(s) — press Check`, 'success');
   }
 
   // ── "Copy AI prompt" — a self-contained instruction block the admin can paste into Claude/ChatGPT
@@ -80,13 +100,15 @@ Each object in the array is one of these 4 types. Do NOT include batchId/subject
   "wordLimit": "100-120 words",
   "scenario": "the situation/prompt the student is given, in full",
   "points": ["point the student should cover 1", "point 2", "point 3"],
-  "rubric": ["what an examiner checks 1", "what an examiner checks 2"]
+  "rubric": ["what an examiner checks 1", "what an examiner checks 2"],
+  "modelAnswer": "a complete model answer (e.g. the full letter) — see below; use \\n for line breaks"
 }
 
 HOW TO WRITE A "writing" BLOCK (letters etc.) — this is the QUESTION the student gets, not the finished letter:
 - "scenario" = the exact board-style task, written as the paper prints it. For a LETTER include: who the student is (use the board's gender-neutral pair, e.g. "Kamal/Kamlesh Kale"), the sender's full address (flat, society/road, area, city), WHO the letter goes to (designation + organisation + address, or the friend/relative's name and town) and the PURPOSE (complaint / request / invitation / congratulation / thanks / enquiry / apology). Ends with a line such as "You are Kamal/Kamlesh Kale, A-254 'River View', Karve Nagar, Pune. Write a letter to the Commissioner, Pune Municipal Corporation, about ..." Never leave the sender/receiver vague and never write the letter itself.
 - "points" = 3 to 5 short content cues the letter must cover (e.g. "State the problem and since when", "Mention the inconvenience caused", "Request prompt action"). For a story: the outline hints in order. For a speech/news report/dialogue/ad: the key facts (who, what, when, where, why) the student must use.
 - "rubric" = the marking scheme, listed so the numbers ADD UP to "marks". Typical letter (5 marks): "Format (address, date, salutation, subscription) - 1", "Content (all points covered) - 2", "Language (grammar, spelling, style) - 2". Typical 8/10-mark essay/story: "Format/Title - 1", "Content and ideas - 4", "Organisation - 2", "Language accuracy - 1..3".
+- "modelAnswer" = ONE complete, exam-quality sample answer that scores full marks, inside the word limit, written from the scenario's own names/addresses/points and using \\n for line breaks. LETTER layout, one element per line: sender's address (top), date, receiver's designation + address, "Subject: ..." (formal letters only), salutation ("Sir/Madam," or "Dear Rohan,"), body paragraphs covering every point in order, closing ("Yours faithfully," for formal to unknown / "Yours sincerely," / "Yours lovingly,"), signature name. Speech: greeting + body + thanks. News report: headline, dateline, body. Story: title, story, moral. Essay: title + intro, body, conclusion.
 - "format" must match the task: formal_letter (to an authority/editor/principal) or informal_letter (to a friend/relative); speech; story; news_report; essay; dialogue; ad. Set "wordLimit" as printed (e.g. "100-120 words") and "marks" from the paper.
 - Marathi/Hindi papers: write the whole scenario, points and rubric in that language (पत्रलेखन: औपचारिक/अनौपचारिक; वृत्तांतलेखन, जाहिरातलेखन, कथालेखन, निबंधलेखन), still using the English "format" values above.
 - If a real board paper/PDF is attached, copy its writing task word-for-word (names, addresses, bullet cues) instead of inventing one.
@@ -200,7 +222,7 @@ Now generate the JSON array for: `;
 
   // Edit = the block's own JSON in a textarea (same shape as import), saved via PATCH. Placement
   // (batch/subject/chapter) is kept from the saved block, not re-read from the pickers above.
-  const EDIT_FIELDS = ['type', 'title', 'language', 'passage', 'passageImage', 'subQuestions', 'format', 'marks', 'wordLimit', 'scenario', 'points', 'rubric', 'status'];
+  const EDIT_FIELDS = ['type', 'title', 'language', 'passage', 'passageImage', 'subQuestions', 'format', 'marks', 'wordLimit', 'scenario', 'modelAnswer', 'points', 'rubric', 'status'];
 
   async function _onListClick(e) {
     const edit = e.target.closest('[data-edit]');
@@ -304,6 +326,7 @@ Now generate the JSON array for: `;
         <div class="pab-passage">${esc(b.scenario || '')}</div>
         ${(b.points || []).length ? `<ul class="pab-points">${b.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
         ${(b.rubric || []).length ? `<div class="pab-rubric"><b>Marking scheme</b><ul>${b.rubric.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
+        ${b.modelAnswer ? `<div class="pab-rubric"><b>Model answer</b><div style="white-space:pre-wrap">${esc(b.modelAnswer)}</div></div>` : ''}
       </div>`;
     }
     return `<div class="pab-view">

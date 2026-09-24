@@ -350,6 +350,8 @@ const EXERCISE_VIEWER = (() => {
           <div class="ev-qtop"><span class="cm-marks-chip">${b.marks} marks</span></div>
           <div class="ev-qtext">${_richText(b.scenario)}${b.wordLimit ? ` <i>(${_esc(b.wordLimit)} words)</i>` : ''}</div>
           ${(b.points || []).length ? `<ul class="ev-pb-points">${b.points.map(p => `<li>${_richText(p)}</li>`).join('')}</ul>` : ''}
+          ${b.modelAnswer ? `<button type="button" class="ev-reveal-btn" data-sub="w">आदर्श उत्तर दाखवा</button>
+            <div id="ev-pb-a-w-0" class="ev-atext hidden">${_richText(b.modelAnswer)}</div>` : ''}
         </div>`;
     } else {
       list.innerHTML = `

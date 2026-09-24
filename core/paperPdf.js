@@ -318,9 +318,11 @@ const PAPER_PDF = (() => {
       const points = (b.points || []).map(p => `<div class="pp-atom" style="margin:3px 0 3px 30px;font-size:14px">* ${_richText(p)}</div>`).join('');
       const rubric = withAnswers && (b.rubric || []).length
         ? `<div class="pp-atom" style="margin-top:6px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;color:#166534"><b>Marking scheme:</b> ${b.rubric.map(_esc).join(' | ')}</div>` : '';
+      const model = withAnswers && b.modelAnswer
+        ? `<div class="pp-atom" style="margin-top:6px;padding:8px 12px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:13px;line-height:1.6;color:#166534"><b style="font-family:Arial,sans-serif">${_esc(t.answerLabel || 'Answer')} (model):</b><br>${_richText(b.modelAnswer)}</div>` : '';
       return head + `
         <div class="pp-atom" style="margin:6px 0;font-size:14px;line-height:1.7">${_richText(b.scenario)}${b.wordLimit ? ` <i>(${_esc(b.wordLimit)} words)</i>` : ''}</div>
-        ${points}${rubric}`;
+        ${points}${rubric}${model}`;
     }
 
     const passageHtml = b.passage ? `
