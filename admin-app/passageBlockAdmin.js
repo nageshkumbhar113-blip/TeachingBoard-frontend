@@ -32,6 +32,8 @@
     $('pab-run-btn')?.addEventListener('click', _run);
     $('pab-list')?.addEventListener('click', _onListClick);
     $('pab-prompt-btn')?.addEventListener('click', _copyAiPrompt);
+    $('pab-prompt-type')?.addEventListener('change', _showPrompt);
+    _showPrompt();
     $('pab-file-btn')?.addEventListener('click', () => $('pab-file')?.click());
     $('pab-file')?.addEventListener('change', _loadFiles);
   }
@@ -184,9 +186,13 @@ rubric: "Title - 1", "Main points covered - 3", "Language and brevity - 1".
 modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student's own words, past-tense-consistent, no examples or quotes)".` + _TAIL,
   };
 
+  function _showPrompt() {
+    const box = $('pab-prompt-view');
+    if (box) box.value = PROMPTS[$('pab-prompt-type')?.value || ''] || AI_PROMPT;
+  }
+
   async function _copyAiPrompt() {
-    const sel = $('pab-prompt-type')?.value || '';
-    const text = PROMPTS[sel] || AI_PROMPT;
+    const text = $('pab-prompt-view')?.value || PROMPTS[$('pab-prompt-type')?.value || ''] || AI_PROMPT;
     try {
       await navigator.clipboard.writeText(text);
       toast('AI prompt copied — paste it into Claude/ChatGPT along with your source material', 'success');
