@@ -2472,6 +2472,9 @@ body.admin-app {
 .pab-pill { font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; background: rgba(249,115,22,.15); color: #c2410c; font-weight: 700; white-space: nowrap; }
 .pab-meta { font-size: 0.75rem; opacity: .75; margin-left: auto; }
 .pab-body { font-size: 0.85rem; margin-top: 6px; opacity: .9; }
+.pab-card-head > b { flex: 1 1 100%; }
+.pab-actions { display: flex; gap: 6px; flex: none; }
+.pab-actions button { white-space: nowrap; }
 .pab-card-view { margin-top: 8px; }
 .pab-preview { max-height: 520px; }
 .pab-prev-detail { margin-bottom: 8px; }

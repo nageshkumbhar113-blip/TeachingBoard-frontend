@@ -122,7 +122,7 @@ Now generate the JSON array for: `;
     const batch = $('pab-batch')?.value || '';
     const subjSel = $('pab-subject'), chSel = $('pab-chapter');
     subjSel.innerHTML = '<option value="">All subjects</option>';
-    chSel.innerHTML = '<option value="">Unseen pool (no chapter)</option>';
+    chSel.innerHTML = '<option value="">All chapters / unseen pool</option>';
     if (!batch) { _refresh(); return; }
     try {
       const subs = await DB.getSubjectsByBatch(batch);
@@ -134,7 +134,7 @@ Now generate the JSON array for: `;
   async function _onSubjectChangeForChapters() {
     const batch = $('pab-batch')?.value || '', subj = $('pab-subject')?.value || '';
     const chSel = $('pab-chapter');
-    chSel.innerHTML = '<option value="">Unseen pool (no chapter)</option>';
+    chSel.innerHTML = '<option value="">All chapters / unseen pool</option>';
     if (!batch || !subj) return;
     try {
       const chs = await DB.getChaptersByBatchSubject(batch, subj);
@@ -162,6 +162,7 @@ Now generate the JSON array for: `;
       _blocks = await API.fetchPassageBlocks({
         batchId: batch,
         subjectId: $('pab-subject')?.value || undefined,
+        chapterId: $('pab-chapter')?.value || undefined,
         type: $('pab-type')?.value || undefined,
         q: $('pab-search')?.value || undefined,
       });
@@ -176,9 +177,11 @@ Now generate the JSON array for: `;
           <span class="pab-pill">${TYPE_LABEL[b.type] || b.type}</span>
           <b>${esc(b.title)}</b>
           <span class="pab-meta">${esc(b.subjectId)}${b.chapterId ? '' : ' · unseen pool'} · ${b.totalMarks} marks · used ${b.usageCount}x</span>
-          <button type="button" class="admin-btn-secondary" data-prev="${esc(b.id)}">👁 Preview</button>
-          <button type="button" class="admin-btn-secondary" data-edit="${esc(b.id)}">✏️ Edit</button>
-          <button type="button" class="admin-btn-danger" data-del="${esc(b.id)}">Delete</button>
+          <span class="pab-actions">
+            <button type="button" class="admin-btn-secondary" data-prev="${esc(b.id)}">👁 Preview</button>
+            <button type="button" class="admin-btn-secondary" data-edit="${esc(b.id)}">✏️ Edit</button>
+            <button type="button" class="admin-btn-danger" data-del="${esc(b.id)}">Delete</button>
+          </span>
         </div>
         ${b.type === 'writing'
           ? `<div class="pab-body">${esc(b.scenario).slice(0, 220)}${b.scenario.length > 220 ? '…' : ''}</div>`
