@@ -20,28 +20,33 @@ const PAPER_SECTIONS = (() => {
   const _P = (qNo, part, instruction) => ({ kind: 'passage', qNo, part, instruction, passageBlockId: '', marksEach: 0, attempt: 1 });
   const _Q = (qNo, part, instruction, marksEach, attempt) => ({ qNo, part, instruction, marksEach, attempt });
   const TEMPLATES = {
-    ssc_english_80_draft: {
+    // From the real N 916 paper (English, Third Language, 80 marks). Passage sections take their marks from
+    // the chosen block: Q2A 10, Q2B 10, Q3A 5, Q3B 5, Q4A 10, Q4B 5, Q5A 5, Q5B 5, Q6A 5, Q6B 5 = 65,
+    // plus Q1 (10) and Q7 (5) below = 80.
+    ssc_english_80: {
       board: 'SSC',
-      subject: 'English (First Language) - 80 marks [draft, verify marks]',
+      subject: 'English (Third Language) - 80 marks',
       label: 'SSC English - 80 marks',
       sections: [
-        _P('1', 'A', 'Read the following passage and do the activities :'),
-        _P('2', 'A', 'Read the following unseen passage and do the activities :'),
-        _P('3', '', 'Read the following poem and do the activities :'),
-        { qNo: '4', part: '', instruction: 'Do as directed (Grammar) :', marksEach: 2, attempt: 5 },
-        _P('5', 'A', 'Write a letter as directed :'),
-        _P('5', 'B', 'Write a speech / story / report as directed :'),
-        _P('6', '', 'Study the following information and do the activities :'),
+        _Q('1', 'A', 'SECTION I : Language Study - Do as directed (Attempt any four) :', 2, 4),
+        _Q('1', 'B', 'Do as directed :', 1, 2),
+        _P('2', 'A', 'SECTION II : Textual Passages - Read the following passage and do the activities :'),
+        _P('2', 'B', 'Read the following passage and do the activities :'),
+        _P('3', 'A', 'SECTION III : Poetry - Read the following stanzas and do the activities :'),
+        _P('3', 'B', 'Appreciation of the poem - read the poem and write an appreciation with the help of the points given below :'),
+        _P('4', 'A', 'SECTION IV : Non-Textual Passage - Read the following passage and do the activities :'),
+        _P('4', 'B', 'Summary Writing - read the passage given in Q. No. 4(A) and write a summary of it. Suggest a suitable title :'),
+        _P('5', 'A', 'SECTION V : Writing Skill - Letter Writing (A1 or A2, do any one) :'),
+        _P('5', 'B', 'Do any one of the following (Dialogue writing / Drafting a speech) :'),
+        _P('6', 'A', 'Information Transfer (A1 or A2, do any one) :'),
+        _P('6', 'B', 'Expand the theme (News report / Story), do any one of the following :'),
+        _Q('7', '', 'SECTION VI : Skill Development - Translation :', 1, 5),
       ],
       header: {
-        subjectLine: 'ENGLISH (FIRST LANGUAGE)',
+        subjectLine: 'ENGLISH (17) (THIRD LANGUAGE)',
         courseLine: '(REVISED COURSE)',
         timeText: 'Time : 3 Hours',
-        notes: [
-          'All questions are compulsory.',
-          'The numbers to the right of the questions indicate full marks.',
-          'Write the answers in your own words as far as possible.',
-        ],
+        notes: [],
       },
     },
     // Templates below follow the real March-2026 SSC papers (N 801/917/932/940/953/961/969). Passage
