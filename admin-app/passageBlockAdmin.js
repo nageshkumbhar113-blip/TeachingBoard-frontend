@@ -101,6 +101,7 @@ Each object in the array is one of these 4 types. Do NOT include batchId/subject
   "marks": 5,
   "wordLimit": "100-120 words",
   "scenario": "the situation/prompt the student is given, in full",
+  "passage": "optional: the advertisement / notice / table / headline printed in a box under the task (one printed line per line, joined with \n)",
   "points": ["point the student should cover 1", "point 2", "point 3"],
   "rubric": ["what an examiner checks 1", "what an examiner checks 2"],
   "modelAnswer": "a complete model answer (e.g. the full letter) — see below; use \\n for line breaks"
@@ -136,6 +137,7 @@ Now generate the JSON array for: `;
   "marks": ${marks},
   "wordLimit": "${word}",
   "scenario": "${task}",
+  "passage": "SOURCE MATERIAL printed in a box under the task (advertisement / notice / table / headline / given paragraph), one printed line per line joined with \n; \"\" if the task has none",
   "points": ["content cue 1", "content cue 2", "content cue 3"],
   "rubric": ["mark split that adds up to ${marks}"],
   "modelAnswer": "a full-marks model answer, exactly in the layout described below"
@@ -159,7 +161,8 @@ Now generate the JSON array for: `;
     poetry: _HEAD + 'Type: poetry (stanzas + activities such as true/false, web, rhyming words) AND "Appreciation of the poem" (give the poem as "passage"; ONE sub-question, format short_answer, marks 5, prompt "Read the following poem and write an appreciation of it with the help of the points given below", items = the points with their marks, e.g. "Title (1/2)", "Name of the poet (1/2)", "Rhyme scheme (1)", "Figure of speech - any one (1)", "Theme/Central idea in 2/3 lines (2)" with a model answer for each).\n' + _PPASS('poetry', 'poem') + _TAIL,
     nonverbal: _HEAD + 'Type: nonverbal (a table/chart/diagram/advertisement is the source; sub-questions ask the student to read or complete it). If it is a picture, leave "passage" as a short description of it and put the image URL in "passageImage". A table goes in "passage" as pipe rows.\n' + _PPASS('nonverbal', 'table/chart') + _TAIL,
     letter: _HEAD + 'Type: LETTER WRITING (Q5 A1 informal + A2 formal from the SAME advertisement/situation = TWO blocks, formats "informal_letter" and "formal_letter", 5 marks each, wordLimit as printed).\n' + _WSHAPE('formal_letter', 5, '100-120', 'Suppose you are Kamal/Kamlesh Kale from A-254, River View, Karve Nagar, Pune. Read the following advertisement ... Write to the President of Youth Club. Thank him/her for organising the exhibition. Ask more about the entry fee and timing. You may add your own points.') + `
-scenario: who the writer is (gender-neutral pair like Kamal/Kamlesh Kale), full sender address, who the letter goes to (designation + organisation + place, or a friend's name/town), the purpose, and the advertisement/information text itself (tables as pipe rows). Never write the letter in the scenario.
+scenario: the TASK only - who the writer is (gender-neutral pair like Kamal/Kamlesh Kale), full sender address, who the letter goes to (designation + organisation + place, or a friend's name/town) and the purpose. Never write the letter in the scenario.
+passage: the advertisement/notice exactly as printed in its box, one printed line per line (\n), title lines first, bullets written as "• Duration : 2nd to 8th May, 2025", contact block last. Do NOT use pipe rows here - only for a genuine multi-column table.
 rubric: "Format - 1", "Content - 2", "Language - 2".
 modelAnswer FORMAL layout (one element per line, blank line between blocks): "From: Kamal Kale\\nA-254, River View\\nKarve Nagar, Pune.\\n2 May 2025\\n\\nTo,\\nThe President\\nYouth Club\\nGandhi Corner, Pune\\n\\nDear Sir/Madam,\\nSub: Thanks for organising the exhibition and query about entry fee\\n\\nbody paragraphs covering every point in order\\n\\nThanking you,\\nYours faithfully,\\nKamal Kale".
 modelAnswer INFORMAL layout: sender address + date at the top, "Dear Rohan,", warm body using the advertisement's points (duration, venue, what is on offer, why to come), "Yours lovingly,", name - no "Sub:" line and no receiver address.` + _TAIL,
@@ -171,17 +174,17 @@ points: the bullet cues exactly as printed, plus "Add your own points".
 rubric: "Format (greeting, closing) - 1", "Content - 2", "Language - 2".
 modelAnswer: "Good morning to the Principal, respected teachers and my dear friends,\\n\\n(introduce topic)\\n\\n(one paragraph per point)\\n\\n(strong conclusion)\\n\\nThank you." Keep it within the word limit.` + _TAIL,
     info_transfer: _HEAD + 'Type: INFORMATION TRANSFER (Q6A, 5 marks; A1 non-verbal -> verbal = table to two paragraphs, OR A2 verbal -> non-verbal = paragraph to tree diagram/flow chart). Output one block per alternative given, format "information_transfer".\n' + _WSHAPE('information_transfer', 5, 'two paragraphs', 'Read the information given in the following table. Write two paragraphs based on it. Give a suitable title to it:\\n| Effective Communication | Ineffective Communication |\\n| Use of body language | Lack of interest |') + `
-A1 (table -> paragraphs): put the table in "scenario" as pipe rows. modelAnswer = "Title: ...\\n\\nParagraph 1 ...\\n\\nParagraph 2 ...".
-A2 (paragraph -> tree diagram): scenario = "Read the information given below and represent it in the form of a tree-diagram. Give a suitable title to it:" followed by the paragraph. modelAnswer = the completed diagram as indented text, one node per line: "Title: Forms of Energy\\nTypes: Kinetic energy | Potential energy\\n  Kinetic sub-types: Mechanical | Electrical\\n    Examples: leaping frog / lightning\\n  Potential sub-types: Nuclear | Chemical\\n    Examples: fusion in the sun / a matchstick".
+A1 (table -> paragraphs): scenario = the task; put the table in "passage" as pipe rows (a real table). modelAnswer = "Title: ...\\n\\nParagraph 1 ...\\n\\nParagraph 2 ...".
+A2 (paragraph -> tree diagram): scenario = "Read the information given below and represent it in the form of a tree-diagram. Give a suitable title to it:" and the paragraph goes in "passage". modelAnswer = the completed diagram as indented text, one node per line: "Title: Forms of Energy\\nTypes: Kinetic energy | Potential energy\\n  Kinetic sub-types: Mechanical | Electrical\\n    Examples: leaping frog / lightning\\n  Potential sub-types: Nuclear | Chemical\\n    Examples: fusion in the sun / a matchstick".
 rubric: "Title - 1", "Content/organisation - 3", "Language - 1".` + _TAIL,
     news_report: _HEAD + 'Type: NEWS REPORT (Q6B1, 5 marks). ONE block, format "news_report".\n' + _WSHAPE('news_report', 5, '', "Read the following headline and prepare a news report with the help of the given points: 'Nav Bharat School Celebrates Science Day'") + `
-points: "Headline", "Dateline", "Lead/Introduction", "Short continuing paragraph" (as printed).
+points: "Headline", "Dateline", "Lead/Introduction", "Short continuing paragraph" (as printed). passage: the given headline exactly as printed in its box.
 rubric: "Headline - 1", "Dateline - 1", "Lead - 1", "Body paragraph - 2".
 modelAnswer: "NAV BHARAT SCHOOL CELEBRATES SCIENCE DAY\\n\\nPune, 28 February 2025: (lead - who, what, when, where)\\n\\n(continuing paragraph with details, quotes from the principal/students, prizes)".` + _TAIL,
     story: _HEAD + 'Type: STORY WRITING from a given beginning (Q6B2, 5 marks). ONE block, format "story".\n' + _WSHAPE('story', 5, '', 'Develop a story with the help of the given beginning. Suggest a suitable title: In the last summer vacation, I visited ......') + `
 rubric: "Title - 1", "Content/plot - 2", "Language - 2".
 modelAnswer: "Title: ...\\n\\n(story that continues the given beginning smoothly: setting, problem, climax, ending)\\n\\nMoral: ..." within the word limit.` + _TAIL,
-    summary: _HEAD + 'Type: SUMMARY WRITING (Q4B, 5 marks). ONE block, format "summary". The scenario MUST contain the full passage to be summarised (the paper refers to the passage of Q4A) so the block stands alone.\n' + _WSHAPE('summary', 5, 'about one-third of the passage', 'Read the following passage and write a summary of it. Suggest a suitable title to the summary:\\n<full passage text>') + `
+    summary: _HEAD + 'Type: SUMMARY WRITING (Q4B, 5 marks). ONE block, format "summary". The full passage to be summarised MUST be in "passage" (the paper refers to the passage of Q4A) so the block stands alone.\n' + _WSHAPE('summary', 5, 'about one-third of the passage', 'Read the following passage and write a summary of it. Suggest a suitable title to the summary.') + `
 rubric: "Title - 1", "Main points covered - 3", "Language and brevity - 1".
 modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student's own words, past-tense-consistent, no examples or quotes)".` + _TAIL,
   };
@@ -392,7 +395,8 @@ modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student
     if (b.type === 'writing') {
       return `<div class="pab-view">
         <div class="pab-view-meta">${esc((b.format || '').replace(/_/g, ' '))}${b.marks ? ` · ${Number(b.marks)} marks` : ''}${b.wordLimit ? ` · ${esc(b.wordLimit)}` : ''}</div>
-        <div class="pab-passage">${esc(b.scenario || '')}</div>
+        <div class="pab-task">${esc(b.scenario || '')}</div>
+        ${b.passage ? `<div class="pab-passage">${esc(b.passage)}</div>` : ''}
         ${(b.points || []).length ? `<ul class="pab-points">${b.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
         ${(b.rubric || []).length ? `<div class="pab-rubric"><b>Marking scheme</b><ul>${b.rubric.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
         ${b.modelAnswer ? `<div class="pab-rubric"><b>Model answer</b><div style="white-space:pre-wrap">${esc(b.modelAnswer)}</div></div>` : ''}

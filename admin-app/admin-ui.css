@@ -2499,3 +2499,4 @@ body.admin-app {
 .pab-prompt-type { width: auto; margin: 0 0 0 auto; }
 .pab-prompt-type + .pab-prompt-btn { margin-left: 0; }
 .pab-prompt-box { margin-top: 10px; } .pab-prompt-box summary { cursor: pointer; font-size: 0.85rem; opacity: .8; }
+.pab-task { white-space: pre-wrap; margin-bottom: 8px; }
