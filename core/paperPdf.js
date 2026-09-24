@@ -324,7 +324,7 @@ const PAPER_PDF = (() => {
       const sourceImg = b.passageImage ? `<div class="pp-atom">${_diagramsHtml([{ url: b.passageImage }], '#ddd')}</div>` : '';
       return head + `
         <div class="pp-atom" style="margin:6px 0;font-size:14px;line-height:1.7">${_richText(b.scenario)}${b.wordLimit ? ` <i>(${_esc(b.wordLimit)} words)</i>` : ''}</div>
-        ${source}${sourceImg}${points}${rubric}${model}`;
+        ${source}${sourceImg}${b.diagram && window.DIAGRAM_SKELETON ? window.DIAGRAM_SKELETON.html(b.diagram) : ''}${points}${rubric}${model}`;
     }
 
     const passageHtml = b.passage ? `

@@ -1,4 +1,4 @@
-const SW_VERSION = 'v207';
+const SW_VERSION = 'v208';
 const CACHE_PREFIX = 'nkseduorbit';
 const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
@@ -27,6 +27,7 @@ const CORE_ASSETS = [
   './core/pdf.js',
   './core/sync.js',
   './core/paperPdf.js',
+  './core/diagramSkeleton.js',
   './core/paperSections.js',
   './core/crypto.js',
   './student-app/index.html',

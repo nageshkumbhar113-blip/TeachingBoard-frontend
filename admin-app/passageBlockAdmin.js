@@ -137,7 +137,7 @@ Now generate the JSON array for: `;
   "marks": ${marks},
   "wordLimit": "${word}",
   "scenario": "${task}",
-  "passageImage": "optional image URL - e.g. the empty tree-diagram / flow-chart skeleton the student must fill in; \"\" otherwise",
+  "diagram": null,   // optional empty tree/flow/web skeleton the student fills in (see the Information-transfer prompt for the shape)
   "passage": "SOURCE MATERIAL printed in a box under the task (advertisement / notice / table / headline / given paragraph), one printed line per line joined with \n; \"\" if the task has none",
   "points": ["content cue 1", "content cue 2", "content cue 3"],
   "rubric": ["mark split that adds up to ${marks}"],
@@ -174,7 +174,7 @@ modelAnswer: three labelled parts, dialogue lines as "A: ...\\nB: ..." alternati
 points: the bullet cues exactly as printed, plus "Add your own points".
 rubric: "Format (greeting, closing) - 1", "Content - 2", "Language - 2".
 modelAnswer: "Good morning to the Principal, respected teachers and my dear friends,\\n\\n(introduce topic)\\n\\n(one paragraph per point)\\n\\n(strong conclusion)\\n\\nThank you." Keep it within the word limit.` + _TAIL,
-    info_transfer: _HEAD + 'Type: INFORMATION TRANSFER (Q6A, 5 marks; A1 non-verbal -> verbal = table to two paragraphs, OR A2 verbal -> non-verbal = paragraph to tree diagram/flow chart). Output ONE block holding both alternatives (A1 table -> paragraphs OR A2 paragraph -> tree diagram), format "information_transfer". If the empty tree-diagram / flow-chart skeleton is a picture, put its URL in "passageImage".\n' + _WSHAPE('information_transfer', 5, 'two paragraphs', 'Read the information given in the following table. Write two paragraphs based on it. Give a suitable title to it:\\n| Effective Communication | Ineffective Communication |\\n| Use of body language | Lack of interest |') + `
+    info_transfer: _HEAD + 'Type: INFORMATION TRANSFER (Q6A, 5 marks; A1 non-verbal -> verbal = table to two paragraphs, OR A2 verbal -> non-verbal = paragraph to tree diagram/flow chart). Output ONE block holding both alternatives (A1 table -> paragraphs OR A2 paragraph -> tree diagram), format "information_transfer". For the empty diagram the student must fill in (A2 tree diagram / flow chart / web) add a "diagram" object - NO image needed, the app draws it: {"kind":"tree","levels":[{"label":"Title","boxes":[""]},{"label":"Types","boxes":["Kinetic energy","Potential energy"]},{"label":"Sub-types","boxes":["","","",""]},{"label":"Example","boxes":["","","",""],"lines":true}]}. kind "tree" or "flow" = stacked levels (a box with "" is an empty box to fill, text is printed inside it, "lines":true prints numbered answer lines); kind "web" = {"kind":"web","center":"hibiscus flower","boxes":["blooms ...","smiles ...","withers ...","falls ..."]}. Copy the levels/labels/given boxes exactly from the diagram printed in the paper.\n' + _WSHAPE('information_transfer', 5, 'two paragraphs', 'Read the information given in the following table. Write two paragraphs based on it. Give a suitable title to it:\\n| Effective Communication | Ineffective Communication |\\n| Use of body language | Lack of interest |') + `
 A1 (table -> paragraphs): scenario = the task; put the table in "passage" as pipe rows (a real table). modelAnswer = "Title: ...\\n\\nParagraph 1 ...\\n\\nParagraph 2 ...".
 A2 (paragraph -> tree diagram): scenario = "Read the information given below and represent it in the form of a tree-diagram. Give a suitable title to it:" and the paragraph goes in "passage". modelAnswer = the completed diagram as indented text, one node per line: "Title: Forms of Energy\\nTypes: Kinetic energy | Potential energy\\n  Kinetic sub-types: Mechanical | Electrical\\n    Examples: leaping frog / lightning\\n  Potential sub-types: Nuclear | Chemical\\n    Examples: fusion in the sun / a matchstick".
 rubric: "Title - 1", "Content/organisation - 3", "Language - 1".` + _TAIL,
@@ -295,7 +295,7 @@ modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student
 
   // Edit = the block's own JSON in a textarea (same shape as import), saved via PATCH. Placement
   // (batch/subject/chapter) is kept from the saved block, not re-read from the pickers above.
-  const EDIT_FIELDS = ['type', 'title', 'language', 'passage', 'passageImage', 'subQuestions', 'format', 'marks', 'wordLimit', 'scenario', 'modelAnswer', 'points', 'rubric', 'status'];
+  const EDIT_FIELDS = ['type', 'title', 'language', 'passage', 'passageImage', 'subQuestions', 'format', 'marks', 'wordLimit', 'scenario', 'diagram', 'modelAnswer', 'points', 'rubric', 'status'];
 
   async function _onListClick(e) {
     const edit = e.target.closest('[data-edit]');
@@ -399,6 +399,7 @@ modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student
         <div class="pab-task">${esc(b.scenario || '')}</div>
         ${b.passage ? `<div class="pab-passage">${esc(b.passage)}</div>` : ''}
         ${b.passageImage ? `<img class="pab-img" src="${esc(b.passageImage)}" alt="" />` : ''}
+        ${b.diagram && window.DIAGRAM_SKELETON ? window.DIAGRAM_SKELETON.html(b.diagram) : ''}
         ${(b.points || []).length ? `<ul class="pab-points">${b.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
         ${(b.rubric || []).length ? `<div class="pab-rubric"><b>Marking scheme</b><ul>${b.rubric.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
         ${b.modelAnswer ? `<div class="pab-rubric"><b>Model answer</b><div style="white-space:pre-wrap">${esc(b.modelAnswer)}</div></div>` : ''}
