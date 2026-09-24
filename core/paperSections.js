@@ -148,12 +148,15 @@ const PAPER_SECTIONS = (() => {
       return { rows, total: rows.reduce((t, r) => t + r.marks, 0), unassigned, mismatched, issues };
     }
 
-    function payload() {
+    // withSnapshots: for the unsaved-draft Preview only — a passage section also carries its block's
+    // content + marks (the server does this itself on save, so it is never sent then).
+    function payload(opts = {}) {
       if (!state.enabled) return {};
       return {
         layout: 'board',
         sections: state.sections.map(s => isPassage(s)
-          ? { id: s.id, qNo: s.qNo, part: s.part, instruction: s.instruction, passageBlockId: s.passageBlockId || '' }
+          ? { id: s.id, qNo: s.qNo, part: s.part, instruction: s.instruction, passageBlockId: s.passageBlockId || '',
+              ...(opts.withSnapshots ? { marksEach: Number(s.marksEach) || 0, attempt: 1, passageSnapshot: s._block || null } : {}) }
           : { id: s.id, qNo: s.qNo, part: s.part, instruction: s.instruction, marksEach: Number(s.marksEach), attempt: Number(s.attempt) }),
         header: { ...state.header, notes: [...state.header.notes] },
       };
@@ -414,7 +417,7 @@ const PAPER_SECTIONS = (() => {
             if (!pools.has('passage')) pools.set('passage', await fetchPassageBlocks());
             const usedBlockIds = new Set(state.sections.filter(isPassage).map(s => s.passageBlockId).filter(Boolean));
             const pick = (pools.get('passage') || []).find(b => !usedBlockIds.has(b.id));
-            if (pick) { sec.passageBlockId = pick.id; sec.marksEach = pick.totalMarks; sec.attempt = 1; sec._blockTitle = pick.title; added++; }
+            if (pick) { sec.passageBlockId = pick.id; sec.marksEach = pick.totalMarks; sec.attempt = 1; sec._blockTitle = pick.title; sec._block = pick; added++; }
             else missing.push(`${label(sec)}: no unused passage block available`);
             continue;
           }
@@ -505,6 +508,7 @@ const PAPER_SECTIONS = (() => {
           sec.marksEach = b.totalMarks;
           sec.attempt = 1;
           sec._blockTitle = b.title;
+          sec._block = b;
           mcqHost.style.display = 'none';
           renderSections();
           renderSummary();

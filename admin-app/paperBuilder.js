@@ -98,14 +98,16 @@ const PAPER_BUILDER = (() => {
       paperTitle: $('pb-title')?.value?.trim() || 'Practice Paper',
       subjectIds: _subjects,
       subjectId: _subjects[0] || '',
-      ...(_sections?.payload() || {}),
+      ...(_sections?.payload({ withSnapshots: true }) || {}),
       questions: _selectedQuestions.map((q, i) => ({ ...q, displayOrder: i + 1 })),
     };
   }
 
   async function _previewPaper() {
-    if (!_selectedQuestions.length) {
-      APP.toast('आधी किमान एक प्रश्न जोडा', 'error');
+    const secs = _sections?.isEnabled() ? _sections.getSections() : [];
+    const hasPassage = secs.some(s => s.kind === 'passage' && s.passageBlockId);
+    if (!_selectedQuestions.length && !hasPassage) {
+      APP.toast('आधी किमान एक प्रश्न किंवा Passage जोडा', 'error');
       return;
     }
     const btn = $('pb-preview-btn');
