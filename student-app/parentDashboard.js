@@ -127,6 +127,7 @@ const PARENT_DASHBOARD = (() => {
       detailEl.innerHTML = `
         <div class="pd-tabs">
           <button class="pd-tab${_activeTab === 'analytics' ? ' active' : ''}" data-tab="analytics">📊 Analytics</button>
+          <button class="pd-tab${_activeTab === 'plan'      ? ' active' : ''}" data-tab="plan">📅 Study Plan</button>
           <button class="pd-tab${_activeTab === 'fee'       ? ' active' : ''}" data-tab="fee">💰 Fee</button>
         </div>
         <div id="pd-tab-body"></div>`;
@@ -145,7 +146,41 @@ const PARENT_DASHBOARD = (() => {
 
   function _loadTab(studentCode) {
     if (_activeTab === 'analytics') _loadAnalytics(studentCode);
+    else if (_activeTab === 'plan') _loadPlan(studentCode);
     else                            _loadFee(studentCode);
+  }
+
+  // ── Study Plan Tab (read-only view of the child's plan) ────────────────
+
+  async function _loadPlan(studentCode) {
+    const body = $('pd-tab-body');
+    if (!body) return;
+    body.innerHTML = '<p class="td-hint">Loading...</p>';
+    try {
+      const d = await _cacheFirst('plan:' + studentCode, () => API.fetchChildStudyPlan(studentCode));
+      if (!d) { body.innerHTML = '<p class="td-hint">मुलाने अजून Study Plan बनवलेला नाही.</p>'; return; }
+      const pr = d.progress;
+      const st = { ahead: '🚀 पुढे आहे', on_track: '✅ वेळेवर', behind: '⚠️ मागे पडलाय' }[pr.onTrack.status] || '';
+      const icon = { notes: '📓', exercise: '📄', passage: '📖', mcq: '📝' };
+      body.innerHTML = `
+        <div class="pd-fee-card">
+          <div class="pd-fee-header"><span class="pd-fee-label">📅 ${_esc(d.examName)}</span><span class="pd-fee-badge">${pr.examCountdownDays} दिवस बाकी</span></div>
+          <div class="fee-progress-wrap" style="margin:8px 0 4px"><div class="fee-progress-bar" style="width:${pr.overallPercent}%"></div></div>
+          <div style="font-size:0.8rem;text-align:right">${pr.overallPercent}% पूर्ण (${pr.completedOverall}/${pr.totalItemsOverall})</div>
+          <div class="pd-fee-amounts">
+            <div class="pd-fee-amt-row"><span>स्थिती</span><strong>${st}</strong></div>
+            <div class="pd-fee-amt-row"><span>अपेक्षित / प्रत्यक्ष</span><strong>${pr.onTrack.expectedPercent}% / ${pr.onTrack.actualPercent}%</strong></div>
+            <div class="pd-fee-amt-row"><span>🔥 Streak</span><strong>${pr.streak} दिवस</strong></div>
+            <div class="pd-fee-amt-row"><span>आजचे काम</span><strong>${pr.today.completed}/${pr.today.total}</strong></div>
+          </div>
+        </div>
+        <h4 style="margin:12px 0 4px">विषयानुसार</h4>
+        ${pr.bySubject.map(s => `<div class="pd-sug-row"><span class="pd-sug-subject">${_esc(s.subjectId)}</span><span class="pd-sug-pct">${s.percent}%</span><span class="pd-sug-tag">${s.completed}/${s.totalItems}</span></div>`).join('')}
+        <h4 style="margin:12px 0 4px">आजचे tasks</h4>
+        ${(d.today || []).length ? d.today.map(t => `<div class="pd-sug-row"><span class="pd-sug-subject">${icon[t.itemType] || '📌'} ${_esc(t.label || t.chapterName)}</span><span class="pd-sug-tag">${t.status === 'completed' ? '✔ पूर्ण' : t.status === 'skipped' ? 'वगळले' : 'बाकी'}</span></div>`).join('') : '<p class="td-hint">आज काही task नाही.</p>'}`;
+    } catch (err) {
+      body.innerHTML = `<p class="td-hint" style="color:var(--error)">${_esc(err.message || 'Failed to load')}</p>`;
+    }
   }
 
   // ── Analytics Tab ────────────────────────────────────────────────────────────

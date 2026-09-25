@@ -1095,6 +1095,13 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  async function fetchChildStudyPlan(studentCode) {
+    const token = await ensureParentSession();
+    const code  = encodeURIComponent(String(studentCode || '').trim().toUpperCase());
+    const payload = await request(`/parent/children/${code}/study-plan`, { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || null;
+  }
+
   async function fetchChildFee(studentCode) {
     const token = await ensureParentSession();
     const code  = encodeURIComponent(String(studentCode || '').trim().toUpperCase());
@@ -2600,7 +2607,7 @@ const API = (() => {
     autoFillWordForStudent, fetchVocabSubjects, fetchVocabDictionary, addStudentWord,
     fetchVocabTestList, fetchVocabTest, submitVocabAttempt,
     fetchTeacherVocabScores,
-    fetchParentChildren, fetchChildAttempts, fetchChildFee, updateParentDeviceToken,
+    fetchParentChildren, fetchChildAttempts, fetchChildFee, fetchChildStudyPlan, updateParentDeviceToken,
     createLesson, updateLesson, deleteLesson,
     submitQuiz, submitAttempt,
     request,
