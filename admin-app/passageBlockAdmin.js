@@ -198,8 +198,8 @@ rubric: "Title - 1", "Content/organisation - 3", "Language - 1".` + _TAIL,
     nonverbal_to_verbal: _HEAD + 'Type: NON-VERBAL -> VERBAL (information transfer where the student reads a TABLE / chart / diagram and writes paragraphs). ONE alternative only, 5 marks, block "type" "writing", "format" "information_transfer", "subQuestions" [].\n' + _WSHAPE('information_transfer', 5, 'two paragraphs', 'Read the information given in the following table. Write two paragraphs based on it. Give a suitable title to it:\\n| Effective Communication | Ineffective Communication |\\n| Use of body language | Lack of interest |') + `
 scenario = the task line. The table/chart goes in "passage" as pipe rows (first row = column headings, one "| a | b |" line per row) so it prints as a real table; a chart may be described as rows of "label | value". Leave "diagram" null. modelAnswer = "Title: ...\\n\\nParagraph 1 ...\\n\\nParagraph 2 ..." using every point from the table.
 rubric: "Title - 1", "Content - 3", "Language - 1".` + _TAIL,
-    news_report: _HEAD + 'Type: NEWS REPORT (Q6B1, 5 marks). ONE block, format "news_report".\n' + _WSHAPE('news_report', 5, '', "Read the following headline and prepare a news report with the help of the given points: 'Nav Bharat School Celebrates Science Day'") + `
-points: "Headline", "Dateline", "Lead/Introduction", "Short continuing paragraph" (as printed). passage: the given headline exactly as printed in its box.
+    news_report: _HEAD + 'Type: NEWS REPORT (Q6B1, 5 marks). ONE block, format "news_report".\n' + _WSHAPE('news_report', 5, '', 'Read the following headline and prepare a news report with the help of the given points:') + `
+points: "Headline", "Dateline", "Lead/Introduction", "Short continuing paragraph" (as printed). passage: ONLY the headline text exactly as printed (do NOT repeat it in scenario) - the app draws it inside a cloud shape like the paper.
 rubric: "Headline - 1", "Dateline - 1", "Lead - 1", "Body paragraph - 2".
 modelAnswer: "NAV BHARAT SCHOOL CELEBRATES SCIENCE DAY\\n\\nPune, 28 February 2025: (lead - who, what, when, where)\\n\\n(continuing paragraph with details, quotes from the principal/students, prizes)".` + _TAIL,
     story: _HEAD + 'Type: STORY WRITING from a given beginning (Q6B2, 5 marks). ONE block, format "story".\n' + _WSHAPE('story', 5, '', 'Develop a story with the help of the given beginning. Suggest a suitable title: In the last summer vacation, I visited ......') + `
@@ -417,7 +417,7 @@ modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student
       return `<div class="pab-view">
         <div class="pab-view-meta">${esc((b.format || '').replace(/_/g, ' '))}${b.marks ? ` · ${Number(b.marks)} marks` : ''}${b.wordLimit ? ` · ${esc(b.wordLimit)}` : ''}</div>
         <div class="pab-task">${esc(b.scenario || '')}</div>
-        ${b.passage ? `<div class="pab-passage">${esc(b.passage)}</div>` : ''}
+        ${b.passage ? (b.format === 'news_report' && window.DIAGRAM_SKELETON ? window.DIAGRAM_SKELETON.cloud(esc(b.passage)) : `<div class="pab-passage">${esc(b.passage)}</div>`) : ''}
         ${b.passageImage ? `<img class="pab-img" src="${esc(b.passageImage)}" alt="" />` : ''}
         ${b.diagram && window.DIAGRAM_SKELETON ? window.DIAGRAM_SKELETON.html(b.diagram) : ''}
         ${(b.points || []).length ? `<ul class="pab-points">${b.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}

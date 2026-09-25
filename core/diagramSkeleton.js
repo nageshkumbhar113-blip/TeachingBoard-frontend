@@ -73,7 +73,17 @@ const DIAGRAM_SKELETON = (() => {
     return `<div class="pp-atom" style="margin:10px 0;padding:8px 6px;font-family:Arial,sans-serif">${inner}</div>`;
   }
 
-  return { html };
+  // Scalloped "cloud" outline (the headline bubble in a news-report question). Text sits centred inside.
+  function cloud(innerHtml) {
+    const N = 22, cx = 300, cy = 70, rx = 262, ry = 38;
+    const pt = i => [cx + rx * Math.cos(2 * Math.PI * i / N), cy + ry * Math.sin(2 * Math.PI * i / N)];
+    let d = 'M' + pt(0).map(v => v.toFixed(1)).join(',');
+    for (let i = 1; i <= N; i++) { const [x, y] = pt(i % N), [px, py] = pt(i - 1), r = (Math.hypot(x - px, y - py) * 0.56).toFixed(1); d += 'A' + r + ',' + r + ' 0 0 1 ' + x.toFixed(1) + ',' + y.toFixed(1); }
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 140" preserveAspectRatio="none"><path d="' + d + 'Z" fill="#fff" stroke="#222" stroke-width="2"/></svg>';
+    return '<div class="pp-atom" style="margin:10px auto;max-width:92%;box-sizing:border-box;padding:34px 12%;text-align:center;font-size:14px;line-height:1.6;color:#111;background:url(&quot;data:image/svg+xml,' + encodeURIComponent(svg) + '&quot;) center/100% 100% no-repeat">' + innerHtml + '</div>';
+  }
+
+  return { html, cloud };
 })();
 
 if (typeof window !== 'undefined') window.DIAGRAM_SKELETON = DIAGRAM_SKELETON;

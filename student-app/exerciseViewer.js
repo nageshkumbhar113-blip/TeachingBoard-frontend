@@ -349,7 +349,7 @@ const EXERCISE_VIEWER = (() => {
         <div class="ev-qcard">
           <div class="ev-qtop"><span class="cm-marks-chip">${b.marks} marks</span></div>
           <div class="ev-qtext">${_richText(b.scenario)}${b.wordLimit ? ` <i>(${_esc(b.wordLimit)} words)</i>` : ''}</div>
-          ${b.passage ? `<div class="ev-pb-passage">${_richText(b.passage)}</div>` : ''}
+          ${b.passage ? (b.format === 'news_report' && window.DIAGRAM_SKELETON ? window.DIAGRAM_SKELETON.cloud(_richText(b.passage)) : `<div class="ev-pb-passage">${_richText(b.passage)}</div>`) : ''}
           ${_diagramsHtml(b.passageImage ? [{ url: b.passageImage }] : [])}
           ${b.diagram && window.DIAGRAM_SKELETON ? window.DIAGRAM_SKELETON.html(b.diagram) : ''}
           ${(b.points || []).length ? `<ul class="ev-pb-points">${b.points.map(p => `<li>${_richText(p)}</li>`).join('')}</ul>` : ''}

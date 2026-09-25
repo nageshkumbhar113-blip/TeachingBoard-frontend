@@ -320,7 +320,7 @@ const PAPER_PDF = (() => {
         ? `<div class="pp-atom" style="margin-top:6px;padding:7px 10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;color:#166534"><b>Marking scheme:</b> ${b.rubric.map(_esc).join(' | ')}</div>` : '';
       const model = withAnswers && b.modelAnswer
         ? `<div class="pp-atom" style="margin-top:6px;padding:8px 12px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:13px;line-height:1.6;color:#166534"><b style="font-family:Arial,sans-serif">${_esc(t.answerLabel || 'Answer')} (model):</b><br>${_richText(b.modelAnswer)}</div>` : '';
-      const source = b.passage ? `<div class="pp-atom" style="margin:8px 0;padding:10px 14px;border:1.5px solid #333;border-radius:6px;font-size:13.5px;line-height:1.75;background:#fff">${_richText(b.passage)}</div>` : '';
+      const source = b.passage && b.format === 'news_report' && window.DIAGRAM_SKELETON ? window.DIAGRAM_SKELETON.cloud(_richText(b.passage)) : b.passage ? `<div class="pp-atom" style="margin:8px 0;padding:10px 14px;border:1.5px solid #333;border-radius:6px;font-size:13.5px;line-height:1.75;background:#fff">${_richText(b.passage)}</div>` : '';
       const sourceImg = b.passageImage ? `<div class="pp-atom">${_diagramsHtml([{ url: b.passageImage }], '#ddd')}</div>` : '';
       return head + `
         <div class="pp-atom" style="margin:6px 0;font-size:14px;line-height:1.7">${_richText(b.scenario)}${b.wordLimit ? ` <i>(${_esc(b.wordLimit)} words)</i>` : ''}</div>
