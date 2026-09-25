@@ -5040,3 +5040,23 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .re-consent { font-size: 0.8rem; display: flex; gap: 8px; align-items: flex-start; }
 .re-err { color: #dc2626; font-size: 0.82rem; margin: 0; }
 .re-row { display: flex; gap: 8px; margin-top: 8px; }
+
+/* Study Plan (studyPlan.js) - reuses the .re-card / .re-sheet look */
+.sp-lab { display: block; font-size: 0.85rem; font-weight: 600; margin: 8px 0; }
+.sp-lab input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border, rgba(128,128,128,.4)); background: transparent; color: inherit; font-size: 0.95rem; }
+.sp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border, rgba(128,128,128,.4)); font-size: 0.85rem; }
+.sp-more { margin: 10px 0; }
+.sp-limits { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
+.sp-limits label { font-size: 0.8rem; }
+.sp-limits input { display: block; width: 100%; box-sizing: border-box; margin-top: 3px; padding: 7px; border-radius: 8px; border: 1px solid var(--border, rgba(128,128,128,.4)); background: transparent; color: inherit; }
+.sp-task { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--border, rgba(128,128,128,.25)); }
+.sp-task-main { flex: 1; min-width: 0; }
+.sp-task-main b { display: block; font-size: 0.9rem; }
+.sp-task-main small { opacity: .75; font-size: 0.75rem; }
+.sp-task-btns { display: flex; align-items: center; gap: 4px; }
+.sp-check { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--accent, #e16b13); background: transparent; color: #fff; font-weight: 900; }
+.sp-done .sp-check { background: #16a34a; border-color: #16a34a; }
+.sp-done .sp-task-main b { text-decoration: line-through; opacity: .6; }
+.sp-skipped { opacity: .5; }
+.sp-sub { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 8px 0 3px; }

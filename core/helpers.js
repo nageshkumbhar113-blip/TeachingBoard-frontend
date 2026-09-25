@@ -1215,6 +1215,22 @@ const API = (() => {
     return payload?.data || {};
   }
 
+  // Student Study Plan (Home > Study Plan card)
+  async function _studyReq(path, options = {}) {
+    const token = await ensureStudentSession();
+    const payload = await request('/study-plan' + path, { ...options, headers: { Authorization: `Bearer ${token}` } });
+    return payload;
+  }
+  async function fetchMyStudyPlan() { return (await _studyReq('/me'))?.data || null; }
+  async function fetchMyStudyToday() { return (await _studyReq('/me/today'))?.data || { plan: null, tasks: [] }; }
+  async function createStudyPlan(body) { return _studyReq('', { method: 'POST', body: JSON.stringify(body) }); }
+  async function updateStudyTask(id, status) { return (await _studyReq('/me/tasks/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify({ status }) }))?.data; }
+  async function abandonStudyPlan() { return _studyReq('/me', { method: 'DELETE' }); }
+  async function fetchStudyHierarchy() {
+    const token = await ensureStudentSession();
+    return (await request('/batches/student/hierarchy', { headers: { Authorization: `Bearer ${token}` } }))?.data || [];
+  }
+
   // Passage blocks (Admin > Passages, Paper Builder "Passage" sections, student Exercise practice)
   async function fetchPassageBlocks(params = {}) {
     const token = await ensureAdminSession();
@@ -2562,6 +2578,7 @@ const API = (() => {
     fetchPendingPayments, fetchRevenueSummary,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
+    fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
     fetchPassageBlocks, fetchPassageBlock, updatePassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
