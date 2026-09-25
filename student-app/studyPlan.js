@@ -95,10 +95,13 @@ const STUDY_PLAN = (() => {
           <div class="sp-sub"><span>${esc(s.subjectId)}</span><small>${s.completed}/${s.totalItems}</small></div>
           <div class="re-bar"><span style="width:${s.percent}%"></span></div>`).join('')}
         <p class="re-hint">${esc(pl.startDate)} to ${esc(pl.targetDate)}</p>
-        <div class="sp-row"><button type="button" class="re-open-btn" id="sp-edit">✏️ Edit plan</button><button type="button" class="re-open-btn" id="sp-end">End plan</button></div>
+        <p class="re-hint">✅ Tumcha plan save aahe. Parat ughadla tar hach plan disel.</p>
+        <div class="sp-row"><button type="button" class="re-open-btn sp-primary" id="sp-save">✔ Save &amp; close</button><button type="button" class="re-open-btn" id="sp-edit">✏️ Edit plan</button></div>
+        <p class="re-hint" style="text-align:center"><a href="#" id="sp-end" style="color:inherit">Plan sampvaycha? End plan</a></p>
       </div>`;
     $('sp-close')?.addEventListener('click', _close);
-    $('sp-end')?.addEventListener('click', _endPlan);
+    $('sp-end')?.addEventListener('click', e => { e.preventDefault(); _endPlan(); });
+    $('sp-save')?.addEventListener('click', () => { _close(); toast('Plan saved ✅', 'success'); });
     $('sp-edit')?.addEventListener('click', () => _renderCreate(true));
     m.querySelectorAll('[data-sp-done]').forEach(b => b.addEventListener('click', () => _toggle(b.dataset.spDone, b.dataset.now)));
     m.querySelectorAll('[data-sp-skip]').forEach(b => b.addEventListener('click', () => _setStatus(b.dataset.spSkip, 'skipped')));

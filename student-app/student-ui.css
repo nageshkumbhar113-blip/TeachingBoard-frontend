@@ -5061,3 +5061,4 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .sp-skipped { opacity: .5; }
 .sp-sub { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 8px 0 3px; }
 .sp-row { display: flex; gap: 8px; margin-top: 12px; }
+.sp-primary { background: var(--accent, #e16b13); color: #fff; }
