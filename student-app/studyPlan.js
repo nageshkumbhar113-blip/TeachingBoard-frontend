@@ -95,10 +95,11 @@ const STUDY_PLAN = (() => {
           <div class="sp-sub"><span>${esc(s.subjectId)}</span><small>${s.completed}/${s.totalItems}</small></div>
           <div class="re-bar"><span style="width:${s.percent}%"></span></div>`).join('')}
         <p class="re-hint">${esc(pl.startDate)} to ${esc(pl.targetDate)}</p>
-        <button type="button" class="re-open-btn" id="sp-end">End this plan</button>
+        <div class="sp-row"><button type="button" class="re-open-btn" id="sp-edit">✏️ Edit plan</button><button type="button" class="re-open-btn" id="sp-end">End plan</button></div>
       </div>`;
     $('sp-close')?.addEventListener('click', _close);
     $('sp-end')?.addEventListener('click', _endPlan);
+    $('sp-edit')?.addEventListener('click', () => _renderCreate(true));
     m.querySelectorAll('[data-sp-done]').forEach(b => b.addEventListener('click', () => _toggle(b.dataset.spDone, b.dataset.now)));
     m.querySelectorAll('[data-sp-skip]').forEach(b => b.addEventListener('click', () => _setStatus(b.dataset.spSkip, 'skipped')));
     m.querySelectorAll('[data-sp-open]').forEach(b => b.addEventListener('click', () => _openTask(b.dataset.spOpen)));
@@ -159,7 +160,9 @@ const STUDY_PLAN = (() => {
   }
 
   // ── Create view ─────────────────────────────────────────────
-  async function _renderCreate() {
+  async function _renderCreate(edit = false) {
+    const pre = edit && _plan ? _plan.plan : null;
+    const preSubj = pre ? pre.subjects.map(x => x.subjectId) : null;
     const m = _sheet();
     m.innerHTML = '<div class="re-sheet"><p class="re-hint">Loading subjects…</p></div>';
     const batch = await _batchName();
@@ -179,25 +182,26 @@ const STUDY_PLAN = (() => {
     const tomorrow = new Date(Date.now() + 86400000 + 5.5 * 3600000).toISOString().slice(0, 10);
     m.innerHTML = `
       <div class="re-sheet">
-        <div class="re-sheet-head"><h3>📅 Create study plan</h3><button type="button" class="re-x" id="sp-close" aria-label="Close">✕</button></div>
-        <label class="sp-lab">Exam name<input id="sp-name" type="text" maxlength="100" placeholder="e.g. Semester 1 exam" /></label>
-        <label class="sp-lab">Exam date<input id="sp-date" type="date" min="${tomorrow}" /></label>
+        <div class="re-sheet-head"><h3>${pre ? '✏️ Edit study plan' : '📅 Create study plan'}</h3><button type="button" class="re-x" id="sp-close" aria-label="Close">✕</button></div>
+        <label class="sp-lab">Exam name<input id="sp-name" type="text" maxlength="100" placeholder="e.g. Semester 1 exam" value="${esc(pre?.examName || '')}" /></label>
+        <label class="sp-lab">Exam date<input id="sp-date" type="date" min="${tomorrow}" value="${esc(pre?.targetDate || '')}" /></label>
         <h4>Subjects</h4>
-        <div class="sp-chips">${subjects.map((s, i) => `<label class="sp-chip"><input type="checkbox" class="sp-subj" value="${esc(s)}" ${i < 99 ? 'checked' : ''} /> ${esc(s)}</label>`).join('')}</div>
+        <div class="sp-chips">${subjects.map((s, i) => `<label class="sp-chip"><input type="checkbox" class="sp-subj" value="${esc(s)}" ${!preSubj || preSubj.includes(s) ? 'checked' : ''} /> ${esc(s)}</label>`).join('')}</div>
         <h4>Rest days</h4>
-        <div class="sp-chips">${DAYS.map((d, i) => `<label class="sp-chip"><input type="checkbox" class="sp-off" value="${i}" /> ${d}</label>`).join('')}</div>
+        <div class="sp-chips">${DAYS.map((d, i) => `<label class="sp-chip"><input type="checkbox" class="sp-off" value="${i}" ${pre?.offDaysOfWeek?.includes(i) ? 'checked' : ''} /> ${d}</label>`).join('')}</div>
         <details class="sp-more"><summary>Daily limits (optional)</summary>
           <div class="sp-limits">
-            <label>Notes<input id="sp-l-notes" type="number" min="1" max="20" value="8" /></label>
-            <label>Exercise<input id="sp-l-ex" type="number" min="1" max="10" value="4" /></label>
-            <label>Passages<input id="sp-l-pa" type="number" min="1" max="10" value="3" /></label>
-            <label>MCQ<input id="sp-l-mcq" type="number" min="1" max="20" value="6" /></label>
+            <label>Notes<input id="sp-l-notes" type="number" min="1" max="20" value="${pre?.maxNotesPerDay || 8}" /></label>
+            <label>Exercise<input id="sp-l-ex" type="number" min="1" max="10" value="${pre?.maxItemsPerDay || 4}" /></label>
+            <label>Passages<input id="sp-l-pa" type="number" min="1" max="10" value="${pre?.maxPassagesPerDay || 3}" /></label>
+            <label>MCQ<input id="sp-l-mcq" type="number" min="1" max="20" value="${pre?.maxMcqPerDay || 6}" /></label>
           </div>
           <p class="re-hint">Maximum items per day. If the plan is too heavy for the days left, you will be told.</p>
         </details>
         <p id="sp-err" class="re-err hidden" role="alert"></p>
         <div id="sp-warn" class="re-hint hidden"></div>
-        <button type="button" class="re-open-btn" id="sp-submit">Create plan</button>
+        ${pre ? '<p class="re-hint">Plan badalla tar naveen plan suru hoto; jyach kaam jhale tyacha progress navin plan madhe jat nahi.</p>' : ''}
+        <button type="button" class="re-open-btn" id="sp-submit">${pre ? 'Save changes' : 'Create plan'}</button>
       </div>`;
     $('sp-close')?.addEventListener('click', _close);
     $('sp-submit')?.addEventListener('click', () => _submit(false));
