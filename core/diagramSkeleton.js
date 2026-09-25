@@ -17,15 +17,38 @@ const DIAGRAM_SKELETON = (() => {
   const line = i => `<div style="border-bottom:1.5px solid #222;min-width:110px;min-height:24px;font-size:13px;text-align:left;color:#111">${i}.</div>`;
   const arrow = c => `<div style="text-align:center;font-size:18px;line-height:1.1;color:#222">${c}</div>`;
 
+  // Connector row between a parent level (p boxes) and the child level (c boxes): each parent's
+  // cell holds a stem down, a horizontal bar and one arrow-headed drop per child, so lines meet the boxes.
+  function _connect(p, c) {
+    const k = c % p === 0 ? c / p : c;          // children per parent cell (all children under one stem if uneven)
+    const cells = c % p === 0 ? p : 1;
+    const one = (i) => {
+      let drops = '';
+      for (let j = 0; j < k; j++) {
+        const x = ((j + 0.5) * 100 / k).toFixed(3);
+        drops += `<div style="position:absolute;left:${x}%;top:12px;bottom:5px;border-left:1.5px solid #222"></div>`
+          + `<div style="position:absolute;left:calc(${x}% - 4px);bottom:0;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid #222"></div>`;
+      }
+      const bar = k > 1 ? `<div style="position:absolute;top:12px;left:${(50 / k).toFixed(3)}%;right:${(50 / k).toFixed(3)}%;border-top:1.5px solid #222"></div>` : '';
+      const stem = `<div style="position:absolute;left:50%;top:0;height:12px;border-left:1.5px solid #222"></div>`;
+      return `<div style="flex:1;position:relative;height:30px">${stem}${bar}${drops}</div>`;
+    };
+    return `<div style="display:flex;margin-left:88px">${Array.from({ length: cells }, (_, i) => one(i)).join('')}</div>`;
+  }
+
   function _tree(levels) {
-    return levels.map((lv, i) => `
-      ${i ? arrow('&#8595;&#xFE0E;') : ''}
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:78px;flex:none;font-size:12px;color:#333">&bull; ${esc(lv.label || '')}</div>
-        <div style="flex:1;display:flex;justify-content:space-around;gap:10px">
-          ${(lv.boxes || ['']).map((t, j) => lv.lines ? line(j + 1) : box(t)).join('')}
+    return levels.map((lv, i) => {
+      const n = (lv.boxes || ['']).length;
+      const prev = i ? (levels[i - 1].boxes || ['']).length : 0;
+      return `
+      ${i ? _connect(prev, n) : ''}
+      <div style="display:flex;align-items:center">
+        <div style="width:78px;flex:none;margin-right:10px;font-size:12px;color:#333">&bull; ${esc(lv.label || '')}</div>
+        <div style="flex:1;display:flex">
+          ${(lv.boxes || ['']).map((t, j) => `<div style="flex:1;display:flex;justify-content:center;padding:0 4px;box-sizing:border-box">${lv.lines ? line(j + 1) : box(t)}</div>`).join('')}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   function _web(d) {
