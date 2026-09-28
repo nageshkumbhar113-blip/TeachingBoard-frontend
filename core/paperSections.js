@@ -41,7 +41,7 @@ const PAPER_SECTIONS = (() => {
         _P('2', 'B', 'Read the following passage and do the activities :', { type: 'comprehension' }),
         _P('3', 'A', 'SECTION III : Poetry - Read the following stanzas and do the activities :', { type: 'poetry', titleNotHas: 'appreciation' }),
         _P('3', 'B', 'Appreciation of the poem - read the poem and write an appreciation with the help of the points given below :', { type: 'poetry', titleHas: 'appreciation' }),
-        _P('4', 'A', 'SECTION IV : Non-Textual Passage - Read the following passage and do the activities. (B) Summary Writing - write a summary of the same passage and suggest a suitable title :', { type: 'comprehension', titleHas: 'summary' }),
+        _P('4', 'A', 'SECTION IV : Non-Textual Passage - Read the following passage and do the activities. (B) Summary Writing - write a summary of the same passage and suggest a suitable title :', { type: 'comprehension', minMarks: 15 }),
         _P('5', 'A', 'SECTION V : Writing Skill - Letter Writing (A1 or A2, do any one) :', { type: 'writing', format: 'letter' }),
         _P('5', 'B', 'Do any one of the following (Dialogue writing / Drafting a speech) :', { type: 'writing', format: 'dialogue' }),
         _P('6', 'A', 'Information Transfer (A1 or A2, do any one) :', { type: 'writing', format: 'information_transfer' }),
@@ -877,6 +877,7 @@ const PAPER_SECTIONS = (() => {
       if (!hint) return true;
       if (hint.type && b.type !== hint.type) return false;
       if (hint.format && !(b.format || '').includes(hint.format)) return false;
+      if (hint.minMarks && Number(b.totalMarks) < hint.minMarks) return false;
       const title = (b.title || '').toLowerCase();
       if (hint.titleHas && !title.includes(hint.titleHas)) return false;
       if (hint.titleNotHas && title.includes(hint.titleNotHas)) return false;
