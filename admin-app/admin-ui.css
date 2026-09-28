@@ -2500,3 +2500,8 @@ body.admin-app {
 .pab-prompt-type + .pab-prompt-btn { margin-left: 0; }
 .pab-prompt-box { margin-top: 10px; } .pab-prompt-box summary { cursor: pointer; font-size: 0.85rem; opacity: .8; }
 .pab-task { white-space: pre-wrap; margin-bottom: 8px; }
+
+/* Paper Builder: Chapter(s) label row + small "select all" toggle (paperBuilder.js) */
+.pb-multi-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pb-selectall { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; color: var(--text2, #666); cursor: pointer; user-select: none; }
+.pb-selectall input { margin: 0; accent-color: var(--accent); }

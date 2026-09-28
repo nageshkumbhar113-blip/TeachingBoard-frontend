@@ -81,6 +81,12 @@ const PAPER_BUILDER = (() => {
     // functions themselves (_renderSubjectChecklist/_renderChapterChecklist)
     // rather than once here.
 
+    // "सर्व" — tick/untick every chapter checkbox at once.
+    $('pb-chapter-all')?.addEventListener('change', e => {
+      document.querySelectorAll('#pb-chapter-list input.pb-chapter-cb').forEach(cb => { cb.checked = e.target.checked; });
+      _onChaptersChanged();
+    });
+
     document.querySelectorAll('.pb-mark-btn').forEach(btn => {
       btn.addEventListener('click', () => _openMarkPicker(parseInt(btn.dataset.marks, 10)));
     });
@@ -235,9 +241,11 @@ const PAPER_BUILDER = (() => {
 
   function _renderChapterChecklist(items) {
     const list = $('pb-chapter-list');
+    const allCb = $('pb-chapter-all');
     if (!list) return;
     if (!items.length) {
       list.innerHTML = '<p class="empty-hint">या Subject(s) मध्ये अजून Chapter नाही.</p>';
+      if (allCb) allCb.checked = false;
       return;
     }
     list.innerHTML = items.map(it => `
@@ -245,9 +253,10 @@ const PAPER_BUILDER = (() => {
         <input type="checkbox" class="pb-chapter-cb" value="${_esc(it.chapterId)}" data-subject="${_esc(it.subject)}" data-chapter="${_esc(it.chapter)}" />
         <span>${_esc(it.chapter)}<span class="pb-chapter-subject-tag">(${_esc(it.subject)})</span></span>
       </label>`).join('');
-    list.querySelectorAll('.pb-chapter-cb').forEach(cb => {
-      cb.addEventListener('change', _onChaptersChanged);
-    });
+    const boxes = () => [...list.querySelectorAll('.pb-chapter-cb')];
+    const syncAll = () => { if (allCb) allCb.checked = boxes().every(cb => cb.checked); };
+    boxes().forEach(cb => cb.addEventListener('change', () => { syncAll(); _onChaptersChanged(); }));
+    if (allCb) allCb.checked = false;
   }
 
   function _onChaptersChanged() {
