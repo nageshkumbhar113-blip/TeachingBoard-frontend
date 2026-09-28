@@ -328,7 +328,7 @@ const EXERCISE_VIEWER = (() => {
           </div>`).join('');
     return `
       <div class="ev-pb-sub">
-        <div class="ev-pb-sub-head"><b>${sq.prompt ? _richText(sq.prompt) : ''}</b> <span class="cm-marks-chip">${sq.marks} marks</span></div>
+        <div class="ev-pb-sub-head"><b>${sq.partLabel ? `(${_esc(sq.partLabel)}) ` : ''}${sq.prompt ? _richText(sq.prompt) : ''}</b> <span class="cm-marks-chip">${sq.marks} marks</span></div>
         ${rows}
         <button type="button" class="ev-reveal-btn" data-sub="${sIdx}">उत्तर दाखवा</button>
       </div>`;

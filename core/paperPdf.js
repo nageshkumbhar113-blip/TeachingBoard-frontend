@@ -331,7 +331,7 @@ const PAPER_PDF = (() => {
       <div class="pp-atom" style="margin:8px 0;padding:10px 14px;border:1px solid #999;border-radius:4px;font-size:13.5px;line-height:1.75;background:#fafafa">${_richText(b.passage)}</div>` : '';
     const passageImg = b.passageImage ? `<div class="pp-atom">${_diagramsHtml([{ url: b.passageImage }], '#ddd')}</div>` : '';
     const subs = (b.subQuestions || []).map((sq, i) => `
-      <div class="pp-atom" data-pp-keep="1" style="margin:10px 0 4px 30px;font-size:14px;font-weight:700">${sq.prompt ? _richText(sq.prompt) : `Question ${i + 1}`} <span style="font-weight:400">(${sq.marks})</span></div>
+      <div class="pp-atom" data-pp-keep="1" style="margin:10px 0 4px 30px;font-size:14px;font-weight:700">${sq.partLabel ? `(${_esc(sq.partLabel)}) ` : ''}${sq.prompt ? _richText(sq.prompt) : `Question ${i + 1}`} <span style="font-weight:400">(${sq.marks})</span></div>
       <div style="margin-left:60px">${_subQuestionBodyHtml(sq, withAnswers, t)}</div>`).join('');
     return head + passageHtml + passageImg + subs;
   }
