@@ -17,7 +17,12 @@ const PAPER_SECTIONS = (() => {
   // Board paper templates. Data-driven: the picker groups by `board` then lists `subject`s, so adding
   // HSC (or any other board) is just new entries here — no UI change. Passage sections (kind:'passage')
   // take their marks from whichever PassageBlock is chosen, so a template leaves those unset.
-  const _P = (qNo, part, instruction) => ({ kind: 'passage', qNo, part, instruction, passageBlockId: '', marksEach: 0, attempt: 1 });
+  // `hint` narrows the "Choose passage block" list to the blocks meant for this exact Q-slot, so an
+  // admin picking a block for e.g. Q5A never has to eyeball comprehension/poetry blocks by title -
+  // see matchesHint() below. { type } filters to that PassageBlock.type; { titleHas }/{ titleNotHas }
+  // (lowercase substrings) further narrow same-type slots that differ only by title convention
+  // (Q3A stanzas vs Q3B "Appreciation: ..." are both type 'poetry').
+  const _P = (qNo, part, instruction, hint) => ({ kind: 'passage', qNo, part, instruction, passageBlockId: '', marksEach: 0, attempt: 1, hint: hint || null });
   const _Q = (qNo, part, instruction, marksEach, attempt) => ({ qNo, part, instruction, marksEach, attempt });
   const TEMPLATES = {
     // From the real N 916 paper (English, Third Language, 80 marks). Passage sections take their marks from
@@ -32,15 +37,15 @@ const PAPER_SECTIONS = (() => {
       sections: [
         _Q('1', 'A', 'SECTION I : Language Study - Do as directed (Attempt any four) :', 2, 4),
         _Q('1', 'B', 'Do as directed :', 1, 2),
-        _P('2', 'A', 'SECTION II : Textual Passages - Read the following passage and do the activities :'),
-        _P('2', 'B', 'Read the following passage and do the activities :'),
-        _P('3', 'A', 'SECTION III : Poetry - Read the following stanzas and do the activities :'),
-        _P('3', 'B', 'Appreciation of the poem - read the poem and write an appreciation with the help of the points given below :'),
-        _P('4', 'A', 'SECTION IV : Non-Textual Passage - Read the following passage and do the activities. (B) Summary Writing - write a summary of the same passage and suggest a suitable title :'),
-        _P('5', 'A', 'SECTION V : Writing Skill - Letter Writing (A1 or A2, do any one) :'),
-        _P('5', 'B', 'Do any one of the following (Dialogue writing / Drafting a speech) :'),
-        _P('6', 'A', 'Information Transfer (A1 or A2, do any one) :'),
-        _P('6', 'B', 'Expand the theme (News report / Story), do any one of the following :'),
+        _P('2', 'A', 'SECTION II : Textual Passages - Read the following passage and do the activities :', { type: 'comprehension' }),
+        _P('2', 'B', 'Read the following passage and do the activities :', { type: 'comprehension' }),
+        _P('3', 'A', 'SECTION III : Poetry - Read the following stanzas and do the activities :', { type: 'poetry', titleNotHas: 'appreciation' }),
+        _P('3', 'B', 'Appreciation of the poem - read the poem and write an appreciation with the help of the points given below :', { type: 'poetry', titleHas: 'appreciation' }),
+        _P('4', 'A', 'SECTION IV : Non-Textual Passage - Read the following passage and do the activities. (B) Summary Writing - write a summary of the same passage and suggest a suitable title :', { type: 'comprehension', titleHas: 'summary' }),
+        _P('5', 'A', 'SECTION V : Writing Skill - Letter Writing (A1 or A2, do any one) :', { type: 'writing', format: 'letter' }),
+        _P('5', 'B', 'Do any one of the following (Dialogue writing / Drafting a speech) :', { type: 'writing', format: 'dialogue' }),
+        _P('6', 'A', 'Information Transfer (A1 or A2, do any one) :', { type: 'writing', format: 'information_transfer' }),
+        _P('6', 'B', 'Expand the theme (News report / Story), do any one of the following :', { type: 'writing', format: 'news_report' }),
         _Q('7', '', 'SECTION VI : Skill Development - Translation :', 1, 5),
       ],
       header: {
@@ -861,6 +866,19 @@ const PAPER_SECTIONS = (() => {
       return true;
     }
 
+    // Does block b fit a section's `hint` (see _P above)? Used only to sort/badge the picker -
+    // never hides a block outright, since a hint is a best guess, not a hard rule (an admin can
+    // still deliberately pick a mismatched block, e.g. while the right-typed bank is still empty).
+    function matchesHint(b, hint) {
+      if (!hint) return true;
+      if (hint.type && b.type !== hint.type) return false;
+      if (hint.format && !(b.format || '').includes(hint.format)) return false;
+      const title = (b.title || '').toLowerCase();
+      if (hint.titleHas && !title.includes(hint.titleHas)) return false;
+      if (hint.titleNotHas && title.includes(hint.titleNotHas)) return false;
+      return true;
+    }
+
     // Picker for a whole PassageBlock (comprehension/poetry/nonverbal/writing) — replaces the
     // section's individual questions entirely; see models/PassageBlock.js.
     async function openPassageBlockPicker(sectionId) {
@@ -870,22 +888,26 @@ const PAPER_SECTIONS = (() => {
       if (typeof gate === 'function' && !gate()) { say('Select the batch and subject first', 'error'); return; }
       const mcqHost = root?.querySelector('[data-pps="mcqpicker"]');
       if (!mcqHost) return;
+      const sec = state.sections.find(s => s.id === sectionId);
+      const hint = sec?.hint || null;
       mcqHost.style.display = '';
       mcqHost.innerHTML = '<p class="pps-hint">Loading passage blocks...</p>';
       let rows = [];
       try { rows = await fetchPassageBlocks(); } catch { mcqHost.innerHTML = '<p class="pps-hint">Could not load passage blocks.</p>'; return; }
+      let onlyMatching = !!hint;
       const paint = term => {
         const t = String(term || '').toLowerCase();
-        const shown = rows.filter(b => !t || b.title.toLowerCase().includes(t) || (b.passage || '').toLowerCase().includes(t)).slice(0, 100);
+        const searched = rows.filter(b => !t || b.title.toLowerCase().includes(t) || (b.passage || '').toLowerCase().includes(t));
+        const matching = searched.filter(b => matchesHint(b, hint));
+        const shown = (onlyMatching && matching.length ? matching : searched).slice(0, 100);
         mcqHost.querySelector('.pps-mcq-list').innerHTML = shown.length ? shown.map(b => `
           <div class="pps-mcq-item">
-            <div><div><b>${_esc(b.title)}</b> <span class="pps-chip">${_esc(b.type)}</span> <span class="pps-chip">${b.totalMarks} marks</span></div>
+            <div><div><b>${_esc(b.title)}</b> <span class="pps-chip${matchesHint(b, hint) ? ' ok' : ''}">${_esc(b.type)}</span> <span class="pps-chip">${b.totalMarks} marks</span></div>
               <div style="opacity:.8;margin-top:2px">${_esc((b.type === 'writing' ? b.scenario : b.passage) || '').slice(0, 140)}${((b.type === 'writing' ? b.scenario : b.passage) || '').length > 140 ? '…' : ''}</div></div>
             <button type="button" class="pps-btn" data-bid="${_esc(b.id)}">Use this</button>
-          </div>`).join('') : '<p class="pps-hint">No passage blocks found. Add some in Admin &gt; Passages.</p>';
+          </div>`).join('') : `<p class="pps-hint">${onlyMatching ? 'No matching passage blocks for this section - untick "Only matching" to see everything, or add one in Admin &gt; Passages.' : 'No passage blocks found. Add some in Admin &gt; Passages.'}</p>`;
         mcqHost.querySelectorAll('[data-bid]').forEach(btn => btn.addEventListener('click', () => {
           const b = rows.find(x => x.id === btn.dataset.bid);
-          const sec = state.sections.find(s => s.id === sectionId);
           if (!b || !sec) return;
           sec.passageBlockId = b.id;
           sec.marksEach = b.totalMarks;
@@ -898,9 +920,15 @@ const PAPER_SECTIONS = (() => {
           notify();
         }));
       };
-      mcqHost.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><strong>Passage blocks (${rows.length})</strong><button type="button" class="pps-btn" data-x="close">Close</button></div><input class="pps-in" data-x="search" placeholder="Search title/passage..." style="width:100%;margin-top:6px" /><div class="pps-mcq-list"></div>`;
+      mcqHost.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <strong>Passage blocks (${rows.length})${hint ? ` for Q.${_esc(sec.qNo)}${sec.part ? ` (${_esc(sec.part)})` : ''}` : ''}</strong>
+        <button type="button" class="pps-btn" data-x="close">Close</button></div>
+        <input class="pps-in" data-x="search" placeholder="Search title/passage..." style="width:100%;margin-top:6px" />
+        ${hint ? `<label class="pps-toggle" style="margin-top:4px"><input type="checkbox" data-x="onlymatch" checked /> Only matching (${_esc(hint.type || '')}${hint.format ? ' / ' + _esc(hint.format) : ''})</label>` : ''}
+        <div class="pps-mcq-list"></div>`;
       mcqHost.querySelector('[data-x="close"]').addEventListener('click', () => { mcqHost.style.display = 'none'; });
       mcqHost.querySelector('[data-x="search"]').addEventListener('input', e => paint(e.target.value));
+      mcqHost.querySelector('[data-x="onlymatch"]')?.addEventListener('change', e => { onlyMatching = e.target.checked; paint(mcqHost.querySelector('[data-x="search"]').value); });
       paint('');
     }
 
