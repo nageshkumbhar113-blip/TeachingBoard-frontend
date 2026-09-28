@@ -804,7 +804,11 @@ const PAPER_SECTIONS = (() => {
             if (sec.passageBlockId || typeof fetchPassageBlocks !== 'function') continue;
             if (!pools.has('passage')) pools.set('passage', await fetchPassageBlocks());
             const usedBlockIds = new Set(state.sections.filter(isPassage).map(s => s.passageBlockId).filter(Boolean));
-            const pick = (pools.get('passage') || []).find(b => !usedBlockIds.has(b.id));
+            const avail = (pools.get('passage') || []).filter(b => !usedBlockIds.has(b.id));
+            // Prefer a block matching this section's hint (see matchesHint/_P) so Auto-fill doesn't
+            // e.g. drop a comprehension block into the Letter-writing section; fall back to any
+            // unused block only when nothing of the right type/format is left.
+            const pick = avail.find(b => matchesHint(b, sec.hint)) || avail[0];
             if (pick) { sec.passageBlockId = pick.id; sec.marksEach = pick.totalMarks; sec.attempt = 1; sec._blockTitle = pick.title; sec._block = pick; added++; }
             else missing.push(`${label(sec)}: no unused passage block available`);
             continue;
