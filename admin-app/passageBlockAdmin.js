@@ -202,9 +202,6 @@ scenario = the shared intro then BOTH parts labelled exactly as the paper prints
 passage: ONLY the B1 headline text exactly as printed (do NOT repeat it in scenario) - the app draws it inside a cloud shape like the paper. Leave "diagram" null.
 rubric: "B1: Headline - 1, Dateline - 1, Lead - 1, Body paragraph - 2.", "B2: Title - 1, Content/plot - 2, Language - 2."
 modelAnswer: both headed "B1." / "B2." - B1 as "NAV BHARAT SCHOOL CELEBRATES SCIENCE DAY\\n\\nPune, 28 February 2025: (lead - who, what, when, where)\\n\\n(continuing paragraph with details, quotes from the principal/students, prizes)."; B2 as "Title: ...\\n\\n(story that continues the given beginning smoothly: setting, problem, climax, ending)\\n\\nMoral: ..." within the word limit.` + _TAIL,
-    summary: _HEAD + 'Type: SUMMARY WRITING (Q4B, 5 marks). ONE block, format "summary". The full passage to be summarised MUST be in "passage" (the paper refers to the passage of Q4A) so the block stands alone.\n' + _WSHAPE('summary', 5, 'about one-third of the passage', 'Read the following passage and write a summary of it. Suggest a suitable title to the summary.') + `
-rubric: "Title - 1", "Main points covered - 3", "Language and brevity - 1".
-modelAnswer: "Title: ...\\n\\n(summary of about one-third length, in the student's own words, past-tense-consistent, no examples or quotes)".` + _TAIL,
   };
 
   function _showPrompt() {
