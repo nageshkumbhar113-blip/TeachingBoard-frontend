@@ -21,7 +21,9 @@ const PAPER_SECTIONS = (() => {
   const _Q = (qNo, part, instruction, marksEach, attempt) => ({ qNo, part, instruction, marksEach, attempt });
   const TEMPLATES = {
     // From the real N 916 paper (English, Third Language, 80 marks). Passage sections take their marks from
-    // the chosen block: Q2A 10, Q2B 10, Q3A 5, Q3B 5, Q4A 10, Q4B 5, Q5A 5, Q5B 5, Q6A 5, Q6B 5 = 65,
+    // the chosen block: Q2A 10, Q2B 10, Q3A 5, Q3B 5, Q4 15 (Unseen Passage + Summary Writing in ONE
+    // block/section - Summary depends on the Q4 passage, so it is never a separate block, see
+    // admin-app/passageBlockAdmin.js's "comprehension" prompt), Q5A 5, Q5B 5, Q6A 5, Q6B 5 = 65,
     // plus Q1 (10) and Q7 (5) below = 80.
     ssc_english_80: {
       board: 'SSC',
@@ -34,8 +36,7 @@ const PAPER_SECTIONS = (() => {
         _P('2', 'B', 'Read the following passage and do the activities :'),
         _P('3', 'A', 'SECTION III : Poetry - Read the following stanzas and do the activities :'),
         _P('3', 'B', 'Appreciation of the poem - read the poem and write an appreciation with the help of the points given below :'),
-        _P('4', 'A', 'SECTION IV : Non-Textual Passage - Read the following passage and do the activities :'),
-        _P('4', 'B', 'Summary Writing - read the passage given in Q. No. 4(A) and write a summary of it. Suggest a suitable title :'),
+        _P('4', 'A', 'SECTION IV : Non-Textual Passage - Read the following passage and do the activities. (B) Summary Writing - write a summary of the same passage and suggest a suitable title :'),
         _P('5', 'A', 'SECTION V : Writing Skill - Letter Writing (A1 or A2, do any one) :'),
         _P('5', 'B', 'Do any one of the following (Dialogue writing / Drafting a speech) :'),
         _P('6', 'A', 'Information Transfer (A1 or A2, do any one) :'),
