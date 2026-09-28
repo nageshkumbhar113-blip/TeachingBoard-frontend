@@ -283,12 +283,18 @@ const PAPER_PDF = (() => {
   // writing prompt's scenario) followed by its sub-questions, in the same "(i) ... (ii) ..."
   // numbered layout as a normal board section — [[ ]] already renders as a KaTeX answer box via
   // _richText/_expandBlanks, so fill-in-the-blank sub-questions need no separate handling.
+  // No .pp-atom class on the inner rows here on purpose - see _passageSectionHtml's caller, which
+  // wraps this whole sub-question (heading + every item) in ONE outer .pp-atom so the pagination
+  // pass (see the "cssBreaks" loop near html2canvas) can only ever move it as a single indivisible
+  // block. Marking these rows individually used to let a page break land between a sub-question's
+  // heading and its first item (or mid-way through its items) - a bare "Do as directed :" heading
+  // stranded alone at the bottom of a page, its items starting fresh on the next one.
   function _subQuestionBodyHtml(sq, withAnswers, t) {
     const items = Array.isArray(sq.items) ? sq.items : [];
     if (sq.format === 'web_diagram' || sq.format === 'tree_diagram') {
-      const centerHtml = sq.center ? `<div class="pp-atom" style="font-weight:700;margin-bottom:4px">${_richText(sq.center)}</div>` : '';
+      const centerHtml = sq.center ? `<div style="font-weight:700;margin-bottom:4px">${_richText(sq.center)}</div>` : '';
       const rows = items.map((it, i) => `
-        <div class="pp-atom" style="display:flex;gap:8px;margin:3px 0;font-size:14px">
+        <div style="display:flex;gap:8px;margin:3px 0;font-size:14px">
           <span style="min-width:120px">${_richText(it.given || `(${_ROMAN[i] || i + 1})`)}</span>
           <span>&rarr;</span>
           <span>${withAnswers ? `<b>${_richText(it.answer)}</b>` : _richText('[[ ]]')}</span>
@@ -296,10 +302,10 @@ const PAPER_PDF = (() => {
       return centerHtml + rows;
     }
     return items.map((it, i) => `
-      <div class="pp-atom" style="display:flex;margin:6px 0;font-size:14px;line-height:1.6">
+      <div style="display:flex;margin:6px 0;font-size:14px;line-height:1.6">
         <span style="width:30px;font-style:italic;flex-shrink:0">(${_ROMAN[i] || i + 1})</span>
         <div style="flex:1">${_richText(it.text)}
-          ${withAnswers ? `<div class="pp-atom" style="margin-top:4px;padding:6px 9px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;color:#166534"><b>${t.answerLabel}:</b> ${_richText(it.answer)}</div>` : ''}
+          ${withAnswers ? `<div style="margin-top:4px;padding:6px 9px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;color:#166534"><b>${t.answerLabel}:</b> ${_richText(it.answer)}</div>` : ''}
         </div>
       </div>`).join('');
   }
@@ -330,9 +336,15 @@ const PAPER_PDF = (() => {
     const passageHtml = b.passage ? `
       <div class="pp-atom" style="margin:8px 0;padding:10px 14px;border:1px solid #999;border-radius:4px;font-size:13.5px;line-height:1.75;background:#fafafa">${_richText(b.passage)}</div>` : '';
     const passageImg = b.passageImage ? `<div class="pp-atom">${_diagramsHtml([{ url: b.passageImage }], '#ddd')}</div>` : '';
+    // ONE .pp-atom per whole sub-question (heading + every item) - see _subQuestionBodyHtml's own
+    // comment. A sub-question that still can't fit on what's left of a page falls through to the
+    // paginator's normal "straddle" handling (moved to start fresh on the next page), same as any
+    // other oversized atom - it just can never be split heading-from-items again.
     const subs = (b.subQuestions || []).map((sq, i) => `
-      <div class="pp-atom" data-pp-keep="1" style="margin:10px 0 4px 30px;font-size:14px;font-weight:700">${sq.partLabel ? `(${_esc(sq.partLabel)}) ` : ''}${sq.prompt ? _richText(sq.prompt) : `Question ${i + 1}`} <span style="font-weight:400">(${sq.marks})</span></div>
-      <div style="margin-left:60px">${_subQuestionBodyHtml(sq, withAnswers, t)}</div>`).join('');
+      <div class="pp-atom" style="margin:10px 0 4px 30px">
+        <div style="font-size:14px;font-weight:700">${sq.partLabel ? `(${_esc(sq.partLabel)}) ` : ''}${sq.prompt ? _richText(sq.prompt) : `Question ${i + 1}`} <span style="font-weight:400">(${sq.marks})</span></div>
+        <div style="margin-left:30px">${_subQuestionBodyHtml(sq, withAnswers, t)}</div>
+      </div>`).join('');
     return head + passageHtml + passageImg + subs;
   }
 
