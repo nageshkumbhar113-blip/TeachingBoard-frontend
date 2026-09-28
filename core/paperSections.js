@@ -473,7 +473,7 @@ const PAPER_SECTIONS = (() => {
   }
   const _isMcqSection = s => /alternative|choose the correct|\bmcq\b|पर्याय/i.test(String(s.instruction || ''));
 
-  function create({ getSelected, onChange, fetchByMarks, fetchMcq, fetchPassageBlocks, addQuestion, canFill, canFillPassage, toast } = {}) {
+  function create({ getSelected, onChange, fetchByMarks, fetchMcq, fetchPassageBlocks, addQuestion, canFill, canFillPassage, toast, onChooseQuestions } = {}) {
     const state = { enabled: false, sections: [], activeId: null, header: DEFAULT_HEADER() };
     let root = null;
     const selected = () => (typeof getSelected === 'function' ? getSelected() : []) || [];
@@ -639,6 +639,7 @@ const PAPER_SECTIONS = (() => {
               <span class="pps-chip ${r.short ? 'bad' : 'ok'}" data-role="count">${r.count} question${r.count === 1 ? '' : 's'} added</span>
               <span class="pps-chip" data-role="marks">= ${r.marks} marks</span>
               <button type="button" class="pps-btn" data-act="active">${s.id === state.activeId ? 'Active' : 'Use this section'}</button>
+              ${typeof onChooseQuestions === 'function' ? `<button type="button" class="pps-btn pri" data-act="choose-q">Choose questions</button>` : ''}
               <button type="button" class="pps-btn" data-act="up">Up</button>
               <button type="button" class="pps-btn" data-act="down">Down</button>
               <button type="button" class="pps-btn" data-act="remove">Remove</button>
@@ -662,6 +663,7 @@ const PAPER_SECTIONS = (() => {
             const i = state.sections.findIndex(x => x.id === sec.id);
             if (act === 'active') state.activeId = sec.id;
             if (act === 'choose') { state.activeId = sec.id; openPassageBlockPicker(sec.id); return; }
+            if (act === 'choose-q') { state.activeId = sec.id; renderSections(); onChooseQuestions?.(sec); return; }
             if (act === 'remove') {
               state.sections.splice(i, 1);
               selected().forEach(q => { if (q.sectionId === sec.id) q.sectionId = undefined; });

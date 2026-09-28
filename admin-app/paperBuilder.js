@@ -64,7 +64,15 @@ const PAPER_BUILDER = (() => {
         },
         fetchPassageBlocks: () => API.fetchPassageBlocks({ batchId: _batch, subjectId: _subjects[0] }),
         addQuestion: _addSelectedQuestion,
-        toast: (m, k) => APP?.toast?.(m, k) });
+        toast: (m, k) => APP?.toast?.(m, k),
+        // "Choose questions" on a section card (board-style layout) - open the same marks-based
+        // picker used by the "प्रश्न जोडा (Marks नुसार)" panel, pre-set to this section's marks,
+        // and scroll it into view instead of making the admin hunt for it below the section list.
+        onChooseQuestions: sec => {
+          if (!_chapters.length) { APP?.toast?.('Select the chapter(s) first', 'error'); return; }
+          _openMarkPicker(Number(sec.marksEach) || 1);
+          $('pb-marks-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } });
       _sections.mount($('pb-board-panel'));
     }
     $('pb-batch-sel')?.addEventListener('change', e => _onBatchChange(e.target.value));
