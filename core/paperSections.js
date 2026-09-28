@@ -23,7 +23,11 @@ const PAPER_SECTIONS = (() => {
   // (lowercase substrings) further narrow same-type slots that differ only by title convention
   // (Q3A stanzas vs Q3B "Appreciation: ..." are both type 'poetry').
   const _P = (qNo, part, instruction, hint) => ({ kind: 'passage', qNo, part, instruction, passageBlockId: '', marksEach: 0, attempt: 1, hint: hint || null });
-  const _Q = (qNo, part, instruction, marksEach, attempt) => ({ qNo, part, instruction, marksEach, attempt });
+  // `chapterHint` = { subject, chapter } - restricts this exercise-question section to ONE specific
+  // ticked chapter (e.g. Q1's word-games must come from "Language study", never from an "English
+  // Grammar" chapter that happens to also have 1/2-mark questions) instead of searching every
+  // ticked chapter. Falls back to the full ticked-chapter search if that chapter isn't ticked.
+  const _Q = (qNo, part, instruction, marksEach, attempt, chapterHint) => ({ qNo, part, instruction, marksEach, attempt, chapterHint: chapterHint || null });
   const TEMPLATES = {
     // From the real N 916 paper (English, Third Language, 80 marks). Passage sections take their marks from
     // the chosen block: Q2A 10, Q2B 10, Q3A 5, Q3B 5, Q4 15 (Unseen Passage + Summary Writing in ONE
@@ -35,8 +39,8 @@ const PAPER_SECTIONS = (() => {
       subject: 'English (Third Language) - 80 marks',
       label: 'SSC English - 80 marks',
       sections: [
-        _Q('1', 'A', 'SECTION I : Language Study - Do as directed (Attempt any four) :', 2, 4),
-        _Q('1', 'B', 'Do as directed :', 1, 2),
+        _Q('1', 'A', 'SECTION I : Language Study - Do as directed (Attempt any four) :', 2, 4, { subject: 'ENGLISH', chapter: 'Language study' }),
+        _Q('1', 'B', 'Do as directed :', 1, 2, { subject: 'ENGLISH', chapter: 'Language study' }),
         _P('2', 'A', 'SECTION II : Textual Passages - Read the following passage and do the activities :', { type: 'comprehension' }),
         _P('2', 'B', 'Read the following passage and do the activities :', { type: 'comprehension' }),
         _P('3', 'A', 'SECTION III : Poetry - Read the following stanzas and do the activities :', { type: 'poetry', titleNotHas: 'appreciation' }),
@@ -828,9 +832,10 @@ const PAPER_SECTIONS = (() => {
               continue;
             }
           }
-          if (!pools.has(marks)) pools.set(marks, await fetchByMarks(marks));
+          const poolKey = sec.chapterHint ? `${marks}::${sec.chapterHint.subject}::${sec.chapterHint.chapter}` : marks;
+          if (!pools.has(poolKey)) pools.set(poolKey, await fetchByMarks(marks, sec.chapterHint));
           const byChapter = new Map();
-          (pools.get(marks) || []).filter(c => !used.has(c._id)).forEach(c => {
+          (pools.get(poolKey) || []).filter(c => !used.has(c._id)).forEach(c => {
             const k = String(c.chapterId || '');
             if (!byChapter.has(k)) byChapter.set(k, []);
             byChapter.get(k).push(c);

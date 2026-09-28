@@ -28,6 +28,16 @@ const PAPER_BUILDER = (() => {
     return _chapters.map(c => c.chapterId).join(',');
   }
 
+  // A section's chapterHint ({subject, chapter}, see core/paperSections.js's _Q) pins the search to
+  // that ONE ticked chapter instead of every ticked chapter, so e.g. Q1's word-games never pull from
+  // an "English Grammar" chapter that happens to also have 1/2-mark questions. Falls back to the
+  // full ticked-chapter search when the hinted chapter isn't actually ticked.
+  function _chapterIdForHint(hint) {
+    if (!hint) return _chapterIdsParam();
+    const cid = _makeChapterId(_batch, hint.subject, hint.chapter);
+    return _chapters.some(c => c.chapterId === cid) ? cid : _chapterIdsParam();
+  }
+
   // Same deterministic chapterId builder as conceptManager.js — must match
   // exactly, since Exercise questions are created against that chapterId.
   function _makeChapterId(batch, subject, chapter) {
@@ -53,7 +63,7 @@ const PAPER_BUILDER = (() => {
       _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true),
         canFill: () => !!(_batch && _subjects.length && _chapters.length),
         canFillPassage: () => !!(_batch && _subjects.length),
-        fetchByMarks: marks => API.fetchAdminSlsQuestions({ chapterId: _chapterIdsParam(), marks, status: 'published', sort: 'usageCount', limit: 300 }),
+        fetchByMarks: (marks, chapterHint) => API.fetchAdminSlsQuestions({ chapterId: _chapterIdForHint(chapterHint), marks, status: 'published', sort: 'usageCount', limit: 300 }),
         fetchMcq: async () => {
           const out = []; const seen = new Set();
           for (const c of _chapters) {
@@ -70,7 +80,7 @@ const PAPER_BUILDER = (() => {
         // and scroll it into view instead of making the admin hunt for it below the section list.
         onChooseQuestions: sec => {
           if (!_chapters.length) { APP?.toast?.('Select the chapter(s) first', 'error'); return; }
-          _openMarkPicker(Number(sec.marksEach) || 1);
+          _openMarkPicker(Number(sec.marksEach) || 1, sec.chapterHint);
           $('pb-marks-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } });
       _sections.mount($('pb-board-panel'));
@@ -295,14 +305,14 @@ const PAPER_BUILDER = (() => {
     return ch ? ` · ${ch.subject} — ${ch.chapter}` : '';
   }
 
-  async function _openMarkPicker(marks) {
+  async function _openMarkPicker(marks, chapterHint) {
     if (!_chapters.length) return;
     _activeMarks = marks;
     const picker = $('pb-mark-picker');
     picker.classList.remove('hidden');
     picker.innerHTML = `
       <div class="pb-picker-head">
-        <b>${marks} Mark प्रश्न निवडा</b>
+        <b>${marks} Mark प्रश्न निवडा${chapterHint ? ` · ${_esc(chapterHint.chapter)}` : ''}</b>
         <button type="button" class="btn-icon" id="pb-picker-close">✕</button>
       </div>
       <input id="pb-picker-search" class="admin-input" type="search" placeholder="प्रश्न शोधा..." />
@@ -311,18 +321,18 @@ const PAPER_BUILDER = (() => {
     $('pb-picker-close').addEventListener('click', () => picker.classList.add('hidden'));
     $('pb-picker-search').addEventListener('input', () => {
       clearTimeout(_searchDebounce);
-      _searchDebounce = setTimeout(() => _loadPickerQuestions(marks, $('pb-picker-search').value), 300);
+      _searchDebounce = setTimeout(() => _loadPickerQuestions(marks, $('pb-picker-search').value, chapterHint), 300);
     });
-    await _loadPickerQuestions(marks, '');
+    await _loadPickerQuestions(marks, '', chapterHint);
   }
 
-  async function _loadPickerQuestions(marks, q) {
+  async function _loadPickerQuestions(marks, q, chapterHint) {
     const list = $('pb-picker-list');
     if (!list) return;
     list.innerHTML = '<p class="empty-hint">Loading…</p>';
     try {
       const questions = await API.fetchAdminSlsQuestions({
-        chapterId: _chapterIdsParam(), marks, status: 'published', q, sort: 'usageCount', limit: 50
+        chapterId: _chapterIdForHint(chapterHint), marks, status: 'published', q, sort: 'usageCount', limit: 50
       });
       if (!questions.length) {
         list.innerHTML = '<p class="empty-hint">या chapter/marks साठी published प्रश्न नाहीत.</p>';
