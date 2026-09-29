@@ -10,7 +10,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const toast = (m, t = 'info') => (typeof APP !== 'undefined' && APP?.toast) ? APP.toast(m, t) : console.log(m);
 
-  const TYPE_LABELS = { notes: '📓 Notes', exercises: '📄 Exercises', mcq: '❓ MCQ', quizzes: '📝 Tests', pdf: '📎 PDF Notes' };
+  const TYPE_LABELS = { notes: '📓 Notes', exercises: '📄 Exercises', mcq: '❓ MCQ', quizzes: '📝 Tests', pdf: '📎 PDF Notes', passages: '📖 Passage Blocks' };
 
   let _batches = [];
   let _loaded = false;
