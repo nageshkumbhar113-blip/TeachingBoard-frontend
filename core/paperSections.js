@@ -809,12 +809,22 @@ const PAPER_SECTIONS = (() => {
             if (!pools.has('passage')) pools.set('passage', await fetchPassageBlocks());
             const usedBlockIds = new Set(state.sections.filter(isPassage).map(s => s.passageBlockId).filter(Boolean));
             const avail = (pools.get('passage') || []).filter(b => !usedBlockIds.has(b.id));
-            // Prefer a block matching this section's hint (see matchesHint/_P) so Auto-fill doesn't
-            // e.g. drop a comprehension block into the Letter-writing section; fall back to any
-            // unused block only when nothing of the right type/format is left.
-            const pick = avail.find(b => matchesHint(b, sec.hint)) || avail[0];
-            if (pick) { sec.passageBlockId = pick.id; sec.marksEach = pick.totalMarks; sec.attempt = 1; sec._blockTitle = pick.title; sec._block = pick; added++; }
-            else missing.push(`${label(sec)}: no unused passage block available`);
+            // A section with a hint (see matchesHint/_P) must get a block that actually matches it -
+            // silently falling back to "any unused block" used to drop e.g. a random 14-mark
+            // comprehension block into the Letter-writing section whenever the bank had no writing
+            // block at all, wrecking the paper's marks without any warning. Only a hintless section
+            // (or one whose hint the bank genuinely can't satisfy for ANY block) falls back to
+            // avail[0]; among matches, prefer the one closest to the hint's own marks boundary
+            // (nearest to minMarks from above, or to maxMarks from below) over just the first found.
+            const matched = sec.hint ? avail.filter(b => matchesHint(b, sec.hint)) : avail;
+            let pick = matched[0] || null;
+            if (matched.length > 1 && sec.hint) {
+              const target = sec.hint.minMarks ?? sec.hint.maxMarks ?? null;
+              if (target != null) pick = matched.reduce((best, b) => Math.abs(Number(b.totalMarks) - target) < Math.abs(Number(best.totalMarks) - target) ? b : best, matched[0]);
+            }
+            if (!pick && sec.hint && avail.length) missing.push(`${label(sec)}: no ${sec.hint.type}${sec.hint.format ? '/' + sec.hint.format : ''} block in the bank matches this section - add one in Admin > Passages (skipped rather than using a wrong-type block)`);
+            else if (!pick) missing.push(`${label(sec)}: no unused passage block available`);
+            else { sec.passageBlockId = pick.id; sec.marksEach = pick.totalMarks; sec.attempt = 1; sec._blockTitle = pick.title; sec._block = pick; added++; }
             continue;
           }
           const have = selected().filter(q => q.sectionId === sec.id).length;
