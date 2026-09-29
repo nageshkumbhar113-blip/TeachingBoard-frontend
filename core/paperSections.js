@@ -27,7 +27,11 @@ const PAPER_SECTIONS = (() => {
   // ticked chapter (e.g. Q1's word-games must come from "Language study", never from an "English
   // Grammar" chapter that happens to also have 1/2-mark questions) instead of searching every
   // ticked chapter. Falls back to the full ticked-chapter search if that chapter isn't ticked.
-  const _Q = (qNo, part, instruction, marksEach, attempt, chapterHint) => ({ qNo, part, instruction, marksEach, attempt, chapterHint: chapterHint || null });
+  // `printCount` (optional, defaults to `attempt`) = how many questions to print/add when the real
+  // paper shows MORE options than the student is asked to attempt, e.g. "Attempt any four" over 6
+  // printed items - marks stay attempt x marksEach either way (never printCount x marksEach), this
+  // only widens Auto-fill's add target and the "short" check so the extra options actually get added.
+  const _Q = (qNo, part, instruction, marksEach, attempt, chapterHint, printCount) => ({ qNo, part, instruction, marksEach, attempt, chapterHint: chapterHint || null, printCount: printCount || attempt });
   const TEMPLATES = {
     // From the real N 916 paper (English, Third Language, 80 marks). Passage sections take their marks from
     // the chosen block: Q2A 10, Q2B 10, Q3A 5, Q3B 5, Q4 15 (Unseen Passage + Summary Writing in ONE
@@ -39,7 +43,7 @@ const PAPER_SECTIONS = (() => {
       subject: 'English (Third Language) - 80 marks',
       label: 'SSC English - 80 marks',
       sections: [
-        _Q('1', 'A', 'SECTION I : Language Study - Do as directed (Attempt any four) :', 2, 4, { subject: 'ENGLISH', chapter: 'Language study' }),
+        _Q('1', 'A', 'SECTION I : Language Study - Do as directed (Attempt any four) :', 2, 4, { subject: 'ENGLISH', chapter: 'Language study' }, 6),
         _Q('1', 'B', 'Do as directed :', 1, 2, { subject: 'ENGLISH', chapter: 'Language study' }),
         _P('2', 'A', 'SECTION II : Textual Passages - Read the following passage and do the activities :', { type: 'comprehension', maxMarks: 12 }),
         _P('2', 'B', 'Read the following passage and do the activities :', { type: 'comprehension', maxMarks: 12 }),
@@ -506,12 +510,12 @@ const PAPER_SECTIONS = (() => {
       }
       const rows = state.sections.map(s => isPassage(s)
         ? { id: s.id, label: label(s), count: s.passageBlockId ? 1 : 0, attempt: 1, marks: sectionMarks(s), short: !s.passageBlockId, isPassage: true, blockTitle: s._blockTitle || '' }
-        : { id: s.id, label: label(s), count: counts.get(s.id), attempt: Number(s.attempt) || 0, marks: sectionMarks(s), short: counts.get(s.id) < (Number(s.attempt) || 0) });
+        : { id: s.id, label: label(s), count: counts.get(s.id), attempt: Number(s.attempt) || 0, printCount: Number(s.printCount) || Number(s.attempt) || 0, marks: sectionMarks(s), short: counts.get(s.id) < (Number(s.printCount) || Number(s.attempt) || 0) });
       const issues = [];
       if (!state.sections.length) issues.push('Add at least one section.');
       rows.filter(r => r.short).forEach(r => issues.push(r.isPassage
         ? `${r.label}: choose a passage block.`
-        : `${r.label}: attempt ${r.attempt} but only ${r.count} question${r.count === 1 ? '' : 's'} added.`));
+        : `${r.label}: need ${r.printCount} question${r.printCount === 1 ? '' : 's'} but only ${r.count} added.`));
       if (unassigned) issues.push(`${unassigned} question${unassigned === 1 ? ' is' : 's are'} not in any section.`);
       state.sections.forEach(s => {
         if (isPassage(s)) return;
@@ -646,6 +650,7 @@ const PAPER_SECTIONS = (() => {
             <div class="pps-sec-row2">
               <label>Marks each <input class="pps-in" type="number" min="1" step="1" data-f="marksEach" value="${_esc(s.marksEach)}" /></label>
               <label>Attempt <input class="pps-in" type="number" min="1" step="1" data-f="attempt" value="${_esc(s.attempt)}" /></label>
+              <label title="How many to print/add - only matters when the paper shows more options than 'attempt' (e.g. Attempt any four over 6 printed)">Print <input class="pps-in" type="number" min="1" step="1" data-f="printCount" value="${_esc(s.printCount ?? s.attempt)}" /></label>
               <span class="pps-chip ${r.short ? 'bad' : 'ok'}" data-role="count">${r.count} question${r.count === 1 ? '' : 's'} added</span>
               <span class="pps-chip" data-role="marks">= ${r.marks} marks</span>
               <button type="button" class="pps-btn" data-act="active">${s.id === state.activeId ? 'Active' : 'Use this section'}</button>
@@ -662,7 +667,7 @@ const PAPER_SECTIONS = (() => {
         card.querySelectorAll('[data-f]').forEach(inp => {
           inp.addEventListener('input', () => {
             const f = inp.dataset.f;
-            sec[f] = (f === 'marksEach' || f === 'attempt') ? Number(inp.value) : inp.value;
+            sec[f] = (f === 'marksEach' || f === 'attempt' || f === 'printCount') ? Number(inp.value) : inp.value;
             refreshLive();
             notify();
           });
@@ -828,7 +833,7 @@ const PAPER_SECTIONS = (() => {
             continue;
           }
           const have = selected().filter(q => q.sectionId === sec.id).length;
-          const need = Math.max(0, (Number(sec.attempt) || 0) - have);
+          const need = Math.max(0, (Number(sec.printCount) || Number(sec.attempt) || 0) - have);
           if (!need) continue;
           const marks = Number(sec.marksEach);
           if (typeof fetchMcq === 'function' && _isMcqSection(sec)) {
