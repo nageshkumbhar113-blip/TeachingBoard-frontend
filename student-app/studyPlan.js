@@ -17,6 +17,11 @@ const STUDY_PLAN = (() => {
   };
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  function _makeChapterId(batch, subject, chapter) {
+    const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '-');
+    return `${norm(batch)}::${norm(subject)}::${norm(chapter)}`;
+  }
+
   let _plan = null;      // { plan, progress } from /me, or null
   let _tasks = [];       // today's tasks
   let _batch = '';
@@ -164,14 +169,19 @@ const STUDY_PLAN = (() => {
   async function _renderCreate(edit = false) {
     const pre = edit && _plan ? _plan.plan : null;
     const preSubj = pre ? pre.subjects.map(x => x.subjectId) : null;
+    // pre-picked chapterIds per subject, from the plan being edited - an empty/missing array means
+    // "all chapters" (that's also what the backend treats [] as), so every chapter starts checked.
+    const preChapters = new Map((pre?.subjects || []).map(x => [x.subjectId, x.chapterIds || []]));
     const m = _sheet();
     m.innerHTML = '<div class="re-sheet"><p class="re-hint">Loading subjects…</p></div>';
     const batch = await _batchName();
     let subjects = [];
+    let chaptersBySubject = new Map();
     try {
       const all = await API.fetchStudyHierarchy();
       const b = all.find(x => x.name === batch) || all[0];
       subjects = b?.subjects || [];
+      chaptersBySubject = new Map(subjects.map(s => [s, (b?.chapters || []).filter(c => c.subject === s).map(c => c.name)]));
       if (b && !_batch) _batch = b.name;
     } catch { /* handled below */ }
     if (!subjects.length) {
@@ -187,7 +197,19 @@ const STUDY_PLAN = (() => {
         <label class="sp-lab">Exam name<input id="sp-name" type="text" maxlength="100" placeholder="e.g. Semester 1 exam" value="${esc(pre?.examName || '')}" /></label>
         <label class="sp-lab">Exam date<input id="sp-date" type="date" min="${tomorrow}" value="${esc(pre?.targetDate || '')}" /></label>
         <h4>Subjects</h4>
-        <div class="sp-chips">${subjects.map((s, i) => `<label class="sp-chip"><input type="checkbox" class="sp-subj" value="${esc(s)}" ${!preSubj || preSubj.includes(s) ? 'checked' : ''} /> ${esc(s)}</label>`).join('')}</div>
+        <div class="sp-chips">${subjects.map((s, i) => `<label class="sp-chip"><input type="checkbox" class="sp-subj" data-sp-subj="${esc(s)}" value="${esc(s)}" ${!preSubj || preSubj.includes(s) ? 'checked' : ''} /> ${esc(s)}</label>`).join('')}</div>
+        ${subjects.map(s => {
+          const chapters = chaptersBySubject.get(s) || [];
+          if (!chapters.length) return '';
+          const picked = preChapters.get(s) || [];
+          const subjOn = !preSubj || preSubj.includes(s);
+          return `
+          <details class="sp-more sp-lessons" data-sp-lessons="${esc(s)}" ${subjOn ? '' : 'hidden'}>
+            <summary>${esc(s)} - lessons (${chapters.length})</summary>
+            <label class="sp-chip sp-chip-all"><input type="checkbox" class="sp-lesson-all" data-sp-lesson-all="${esc(s)}" checked /> <b>सर्व</b></label>
+            <div class="sp-chips">${chapters.map(ch => `<label class="sp-chip"><input type="checkbox" class="sp-lesson" data-sp-lesson-subj="${esc(s)}" value="${esc(_makeChapterId(batch, s, ch))}" ${!picked.length || picked.includes(_makeChapterId(batch, s, ch)) ? 'checked' : ''} /> ${esc(ch)}</label>`).join('')}</div>
+          </details>`;
+        }).join('')}
         <h4>Rest days</h4>
         <div class="sp-chips">${DAYS.map((d, i) => `<label class="sp-chip"><input type="checkbox" class="sp-off" value="${i}" ${pre?.offDaysOfWeek?.includes(i) ? 'checked' : ''} /> ${d}</label>`).join('')}</div>
         <details class="sp-more"><summary>Daily limits (optional)</summary>
@@ -206,6 +228,17 @@ const STUDY_PLAN = (() => {
       </div>`;
     $('sp-close')?.addEventListener('click', _close);
     $('sp-submit')?.addEventListener('click', () => _submit(false));
+    m.querySelectorAll('.sp-subj').forEach(cb => cb.addEventListener('change', () => {
+      const box = m.querySelector(`[data-sp-lessons="${CSS.escape(cb.dataset.spSubj)}"]`);
+      if (box) box.hidden = !cb.checked;
+    }));
+    m.querySelectorAll('.sp-lesson-all').forEach(cb => cb.addEventListener('change', () => {
+      m.querySelectorAll(`.sp-lesson[data-sp-lesson-subj="${CSS.escape(cb.dataset.spLessonAll)}"]`).forEach(l => { l.checked = cb.checked; });
+    }));
+    m.querySelectorAll('.sp-lesson').forEach(cb => cb.addEventListener('change', () => {
+      const all = m.querySelector(`.sp-lesson-all[data-sp-lesson-all="${CSS.escape(cb.dataset.spLessonSubj)}"]`);
+      if (all) all.checked = [...m.querySelectorAll(`.sp-lesson[data-sp-lesson-subj="${CSS.escape(cb.dataset.spLessonSubj)}"]`)].every(l => l.checked);
+    }));
   }
 
   async function _submit(force) {
@@ -214,7 +247,18 @@ const STUDY_PLAN = (() => {
     err.classList.add('hidden'); warn.classList.add('hidden');
     const examName = $('sp-name').value.trim();
     const targetDate = $('sp-date').value;
-    const subjects = [...document.querySelectorAll('.sp-subj:checked')].map(c => ({ subjectId: c.value }));
+    const subjects = [];
+    for (const c of document.querySelectorAll('.sp-subj:checked')) {
+      const lessonBoxes = [...document.querySelectorAll(`.sp-lesson[data-sp-lesson-subj="${CSS.escape(c.value)}"]`)];
+      if (lessonBoxes.length) {
+        const checked = lessonBoxes.filter(l => l.checked).map(l => l.value);
+        if (!checked.length) return show(`Choose at least one lesson for ${c.value}`);
+        // all ticked ("सर्व") -> [] (the backend's "every catalog chapter" shortcut), otherwise the exact pick
+        subjects.push({ subjectId: c.value, chapterIds: checked.length === lessonBoxes.length ? [] : checked });
+      } else {
+        subjects.push({ subjectId: c.value });
+      }
+    }
     if (!examName) return show('Enter the exam name');
     if (!targetDate) return show('Choose the exam date');
     if (!subjects.length) return show('Choose at least one subject');

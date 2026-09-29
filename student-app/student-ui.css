@@ -5047,6 +5047,9 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .sp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sp-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border, rgba(128,128,128,.4)); font-size: 0.85rem; }
 .sp-more { margin: 10px 0; }
+.sp-lessons { margin: -4px 0 10px 14px; padding: 6px 0 0 8px; border-left: 2px solid var(--border, rgba(128,128,128,.3)); }
+.sp-lessons summary { font-size: 0.8rem; opacity: 0.85; }
+.sp-chip-all { font-weight: 600; }
 .sp-limits { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
 .sp-limits label { font-size: 0.8rem; }
 .sp-limits input { display: block; width: 100%; box-sizing: border-box; margin-top: 3px; padding: 7px; border-radius: 8px; border: 1px solid var(--border, rgba(128,128,128,.4)); background: transparent; color: inherit; }
