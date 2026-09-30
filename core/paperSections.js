@@ -270,14 +270,18 @@ const PAPER_SECTIONS = (() => {
       subject: 'Mathematics - Algebra Part I - 40 marks',
       label: 'SSC Algebra Part I - 40 marks',
       sections: [
-        { qNo: '1', part: 'A', instruction: 'Choose the correct alternative from given :', marksEach: 1, attempt: 4 },
+        // printCount = how many options the real paper prints for an "any N of M" question (M) -
+        // Auto-fill adds that many, marks still come from attempt (N) x marksEach; see N 919 (this
+        // paper's own real source): Q2A any 2 of 3, Q2B any 4 of 5, Q3A any 1 of 2, Q3B any 2 of 4,
+        // Q4 any 2 of 3, Q5 any 1 of 2. Q1(A)/(B) are fully compulsory - no extra options to print.
+        { qNo: '1', part: 'A', instruction: 'For every subquestion, four alternative answers are given. Choose the correct answer and write the alphabet :', marksEach: 1, attempt: 4 },
         { qNo: '1', part: 'B', instruction: 'Solve the following subquestions :', marksEach: 1, attempt: 4 },
-        { qNo: '2', part: 'A', instruction: 'Complete the following activities and rewrite it (any two) :', marksEach: 2, attempt: 2 },
-        { qNo: '2', part: 'B', instruction: 'Solve the following subquestions (any four) :', marksEach: 2, attempt: 4 },
-        { qNo: '3', part: 'A', instruction: 'Complete the following activity and rewrite it (any one) :', marksEach: 3, attempt: 1 },
-        { qNo: '3', part: 'B', instruction: 'Solve the following subquestions (any two) :', marksEach: 3, attempt: 2 },
-        { qNo: '4', part: '', instruction: 'Solve the following subquestions (any two) :', marksEach: 4, attempt: 2 },
-        { qNo: '5', part: '', instruction: 'Solve the following subquestions (any one) :', marksEach: 3, attempt: 1 },
+        { qNo: '2', part: 'A', instruction: 'Complete and write any two activities from the following :', marksEach: 2, attempt: 2, printCount: 3 },
+        { qNo: '2', part: 'B', instruction: 'Solve any four subquestions from the following :', marksEach: 2, attempt: 4, printCount: 5 },
+        { qNo: '3', part: 'A', instruction: 'Complete and write any one activity from the following :', marksEach: 3, attempt: 1, printCount: 2 },
+        { qNo: '3', part: 'B', instruction: 'Solve any two subquestions of the following :', marksEach: 3, attempt: 2, printCount: 4 },
+        { qNo: '4', part: '', instruction: 'Solve any two subquestions of the following :', marksEach: 4, attempt: 2, printCount: 3 },
+        { qNo: '5', part: '', instruction: 'Solve any one subquestion of the following :', marksEach: 3, attempt: 1, printCount: 2 },
       ],
       header: {
         subjectLine: 'ALGEBRA - PART I',
