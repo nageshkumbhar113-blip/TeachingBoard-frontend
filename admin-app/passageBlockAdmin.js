@@ -326,11 +326,17 @@ modelAnswer: both headed "B1." / "B2." - B1 as "NAV BHARAT SCHOOL CELEBRATES SCI
       if (!b) return;
       const editable = {};
       for (const k of EDIT_FIELDS) if (b[k] !== undefined) editable[k] = b[k];
-      view.innerHTML = `<textarea class="admin-input pab-json pab-edit-json" rows="16">${esc(JSON.stringify(editable, null, 2))}</textarea>
+      view.innerHTML = `
+        <div class="pab-img-field">
+          ${b.passageImage ? `<img class="pab-img" src="${esc(b.passageImage)}" alt="">` : '<p class="pab-hint">अजून image नाही (nonverbal/map/graph blocks साठी).</p>'}
+          <label class="admin-btn-secondary pab-img-upload-btn">📷 ${b.passageImage ? 'Image बदला' : 'Image upload करा'}<input type="file" accept="image/*" class="pab-img-upload hidden" data-id="${esc(b.id)}"></label>
+        </div>
+        <textarea class="admin-input pab-json pab-edit-json" rows="16">${esc(JSON.stringify(editable, null, 2))}</textarea>
         <div class="pab-row"><button type="button" class="admin-btn-primary" data-save-edit="${esc(b.id)}">Save changes</button>
         <button type="button" class="admin-btn-secondary" data-cancel-edit="1">Cancel</button></div>`;
       view.classList.remove('hidden');
       card.querySelector('.pab-body')?.classList.add('hidden');
+      view.querySelector('.pab-img-upload')?.addEventListener('change', ev => _uploadPassageImage(ev.target, view));
       return;
     }
     if (e.target.closest('[data-cancel-edit]')) { await _refreshBlockList(); return; }
@@ -374,6 +380,42 @@ modelAnswer: both headed "B1." / "B2." - B1 as "NAV BHARAT SCHOOL CELEBRATES SCI
       await _refreshBlockList();
     } catch (err) {
       toast(err.message || 'Could not delete', 'error');
+    }
+  }
+
+  // Uploads a map/graph/chart image for a "nonverbal" block straight from the Edit view (previously
+  // passageImage could only be set by typing a URL into the JSON textarea by hand) - writes the
+  // uploaded URL into the open textarea's JSON so "Save changes" picks it up like any other edit.
+  // The image then shows wherever passageImage already rendered: Paper Builder's preview/picker, the
+  // built PDF (core/paperPdf.js) and the student Exercise viewer - no changes needed there.
+  async function _uploadPassageImage(input, view) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const label = input.closest('.pab-img-upload-btn');
+    const originalText = label?.textContent;
+    if (label) label.textContent = 'Uploading…';
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const result = await API.uploadWordImage(dataUrl);
+      const url = result?.url || result?.data?.url || '';
+      if (!url) throw new Error('Upload succeeded but no URL returned');
+      const ta = view.querySelector('.pab-edit-json');
+      let parsed;
+      try { parsed = JSON.parse(ta.value); } catch { parsed = {}; }
+      parsed.passageImage = url;
+      ta.value = JSON.stringify(parsed, null, 2);
+      const field = view.querySelector('.pab-img-field');
+      if (field) field.innerHTML = `<img class="pab-img" src="${esc(url)}" alt=""><label class="admin-btn-secondary pab-img-upload-btn">📷 Image बदला<input type="file" accept="image/*" class="pab-img-upload hidden" data-id="${esc(input.dataset.id)}"></label>`;
+      field?.querySelector('.pab-img-upload')?.addEventListener('change', ev => _uploadPassageImage(ev.target, view));
+      toast('✅ Image uploaded — आता "Save changes" दाबा', 'success');
+    } catch (err) {
+      toast(err?.message || 'Image upload अयशस्वी', 'error');
+      if (label) label.textContent = originalText;
     }
   }
 

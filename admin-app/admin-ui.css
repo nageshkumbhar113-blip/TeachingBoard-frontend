@@ -2483,6 +2483,10 @@ body.admin-app {
 .pab-view-meta { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; opacity: .65; margin-bottom: 6px; }
 .pab-passage { white-space: pre-wrap; padding: 10px 12px; border-left: 3px solid #f97316; background: rgba(249,115,22,.06); border-radius: 6px; margin-bottom: 10px; }
 .pab-img { max-width: 100%; border-radius: 8px; margin-bottom: 8px; }
+.pab-img-field { margin-bottom: 10px; }
+.pab-img-field .pab-img { max-width: 260px; display: block; }
+.pab-img-upload-btn { display: inline-block; cursor: pointer; }
+.pab-hint { font-size: 0.82rem; opacity: .7; margin: 0 0 6px; }
 .pab-sq { margin-top: 10px; }
 .pab-sq-head { font-weight: 600; }
 .pab-fmt { font-weight: 500; font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; background: rgba(128,128,128,.15); margin-left: 6px; white-space: nowrap; }
