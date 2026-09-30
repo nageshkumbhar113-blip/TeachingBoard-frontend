@@ -31,7 +31,11 @@ const PAPER_SECTIONS = (() => {
   // paper shows MORE options than the student is asked to attempt, e.g. "Attempt any four" over 6
   // printed items - marks stay attempt x marksEach either way (never printCount x marksEach), this
   // only widens Auto-fill's add target and the "short" check so the extra options actually get added.
-  const _Q = (qNo, part, instruction, marksEach, attempt, chapterHint, printCount) => ({ qNo, part, instruction, marksEach, attempt, chapterHint: chapterHint || null, printCount: printCount || attempt });
+  // `activity` (optional, true/false/undefined) = this section needs SLSQuestion.isActivity to match -
+  // a board paper's "Complete and write the activity" question (a partly worked solution with blanks)
+  // is a DIFFERENT question from a plain "Solve the following subquestion" of the same marks/chapter,
+  // so the two must never fill each other's slot. undefined = either (sections with no such split).
+  const _Q = (qNo, part, instruction, marksEach, attempt, chapterHint, printCount, activity) => ({ qNo, part, instruction, marksEach, attempt, chapterHint: chapterHint || null, printCount: printCount || attempt, activity: activity === undefined ? null : activity });
   const TEMPLATES = {
     // From the real N 916 paper (English, Third Language, 80 marks). Passage sections take their marks from
     // the chosen block: Q2A 10, Q2B 10, Q3A 5, Q3B 5, Q4 15 (Unseen Passage + Summary Writing in ONE
@@ -274,14 +278,16 @@ const PAPER_SECTIONS = (() => {
         // Auto-fill adds that many, marks still come from attempt (N) x marksEach; see N 919 (this
         // paper's own real source): Q2A any 2 of 3, Q2B any 4 of 5, Q3A any 1 of 2, Q3B any 2 of 4,
         // Q4 any 2 of 3, Q5 any 1 of 2. Q1(A)/(B) are fully compulsory - no extra options to print.
-        { qNo: '1', part: 'A', instruction: 'For every subquestion, four alternative answers are given. Choose the correct answer and write the alphabet :', marksEach: 1, attempt: 4 },
-        { qNo: '1', part: 'B', instruction: 'Solve the following subquestions :', marksEach: 1, attempt: 4 },
-        { qNo: '2', part: 'A', instruction: 'Complete and write any two activities from the following :', marksEach: 2, attempt: 2, printCount: 3 },
-        { qNo: '2', part: 'B', instruction: 'Solve any four subquestions from the following :', marksEach: 2, attempt: 4, printCount: 5 },
-        { qNo: '3', part: 'A', instruction: 'Complete and write any one activity from the following :', marksEach: 3, attempt: 1, printCount: 2 },
-        { qNo: '3', part: 'B', instruction: 'Solve any two subquestions of the following :', marksEach: 3, attempt: 2, printCount: 4 },
-        { qNo: '4', part: '', instruction: 'Solve any two subquestions of the following :', marksEach: 4, attempt: 2, printCount: 3 },
-        { qNo: '5', part: '', instruction: 'Solve any one subquestion of the following :', marksEach: 3, attempt: 1, printCount: 2 },
+        // activity = true only for "Complete and write the activity" sections (Q2A/Q3A) - a partly
+        // worked solution with blanks, a different question from plain "Solve" (activity: false).
+        { qNo: '1', part: 'A', instruction: 'For every subquestion, four alternative answers are given. Choose the correct answer and write the alphabet :', marksEach: 1, attempt: 4, activity: false },
+        { qNo: '1', part: 'B', instruction: 'Solve the following subquestions :', marksEach: 1, attempt: 4, activity: false },
+        { qNo: '2', part: 'A', instruction: 'Complete and write any two activities from the following :', marksEach: 2, attempt: 2, printCount: 3, activity: true },
+        { qNo: '2', part: 'B', instruction: 'Solve any four subquestions from the following :', marksEach: 2, attempt: 4, printCount: 5, activity: false },
+        { qNo: '3', part: 'A', instruction: 'Complete and write any one activity from the following :', marksEach: 3, attempt: 1, printCount: 2, activity: true },
+        { qNo: '3', part: 'B', instruction: 'Solve any two subquestions of the following :', marksEach: 3, attempt: 2, printCount: 4, activity: false },
+        { qNo: '4', part: '', instruction: 'Solve any two subquestions of the following :', marksEach: 4, attempt: 2, printCount: 3, activity: false },
+        { qNo: '5', part: '', instruction: 'Solve any one subquestion of the following :', marksEach: 3, attempt: 1, printCount: 2, activity: false },
       ],
       header: {
         subjectLine: 'ALGEBRA - PART I',
@@ -851,8 +857,8 @@ const PAPER_SECTIONS = (() => {
               continue;
             }
           }
-          const poolKey = sec.chapterHint ? `${marks}::${sec.chapterHint.subject}::${sec.chapterHint.chapter}` : marks;
-          if (!pools.has(poolKey)) pools.set(poolKey, await fetchByMarks(marks, sec.chapterHint));
+          const poolKey = `${marks}::${sec.chapterHint ? `${sec.chapterHint.subject}::${sec.chapterHint.chapter}` : ''}::${sec.activity === true ? 'act' : sec.activity === false ? 'solve' : ''}`;
+          if (!pools.has(poolKey)) pools.set(poolKey, await fetchByMarks(marks, sec.chapterHint, sec.activity));
           const byChapter = new Map();
           (pools.get(poolKey) || []).filter(c => !used.has(c._id)).forEach(c => {
             const k = String(c.chapterId || '');

@@ -63,7 +63,7 @@ const PAPER_BUILDER = (() => {
       _sections = PAPER_SECTIONS.create({ getSelected: () => _selectedQuestions, onChange: () => _renderSelectedList(true),
         canFill: () => !!(_batch && _subjects.length && _chapters.length),
         canFillPassage: () => !!(_batch && _subjects.length),
-        fetchByMarks: (marks, chapterHint) => API.fetchAdminSlsQuestions({ chapterId: _chapterIdForHint(chapterHint), marks, status: 'published', sort: 'usageCount', limit: 300 }),
+        fetchByMarks: (marks, chapterHint, activity) => API.fetchAdminSlsQuestions({ chapterId: _chapterIdForHint(chapterHint), marks, status: 'published', sort: 'usageCount', limit: 300, isActivity: activity === true ? 'true' : activity === false ? 'false' : undefined }),
         fetchMcq: async () => {
           const out = []; const seen = new Set();
           for (const c of _chapters) {
@@ -80,7 +80,7 @@ const PAPER_BUILDER = (() => {
         // and scroll it into view instead of making the admin hunt for it below the section list.
         onChooseQuestions: sec => {
           if (!_chapters.length) { APP?.toast?.('Select the chapter(s) first', 'error'); return; }
-          _openMarkPicker(Number(sec.marksEach) || 1, sec.chapterHint);
+          _openMarkPicker(Number(sec.marksEach) || 1, sec.chapterHint, sec.activity);
           $('pb-marks-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } });
       _sections.mount($('pb-board-panel'));
@@ -305,14 +305,15 @@ const PAPER_BUILDER = (() => {
     return ch ? ` · ${ch.subject} — ${ch.chapter}` : '';
   }
 
-  async function _openMarkPicker(marks, chapterHint) {
+  async function _openMarkPicker(marks, chapterHint, activity) {
     if (!_chapters.length) return;
     _activeMarks = marks;
     const picker = $('pb-mark-picker');
     picker.classList.remove('hidden');
+    const activityNote = activity === true ? ' · Activity' : activity === false ? ' · Solve' : '';
     picker.innerHTML = `
       <div class="pb-picker-head">
-        <b>${marks} Mark प्रश्न निवडा${chapterHint ? ` · ${_esc(chapterHint.chapter)}` : ''}</b>
+        <b>${marks} Mark प्रश्न निवडा${chapterHint ? ` · ${_esc(chapterHint.chapter)}` : ''}${activityNote}</b>
         <button type="button" class="btn-icon" id="pb-picker-close">✕</button>
       </div>
       <input id="pb-picker-search" class="admin-input" type="search" placeholder="प्रश्न शोधा..." />
@@ -321,18 +322,19 @@ const PAPER_BUILDER = (() => {
     $('pb-picker-close').addEventListener('click', () => picker.classList.add('hidden'));
     $('pb-picker-search').addEventListener('input', () => {
       clearTimeout(_searchDebounce);
-      _searchDebounce = setTimeout(() => _loadPickerQuestions(marks, $('pb-picker-search').value, chapterHint), 300);
+      _searchDebounce = setTimeout(() => _loadPickerQuestions(marks, $('pb-picker-search').value, chapterHint, activity), 300);
     });
-    await _loadPickerQuestions(marks, '', chapterHint);
+    await _loadPickerQuestions(marks, '', chapterHint, activity);
   }
 
-  async function _loadPickerQuestions(marks, q, chapterHint) {
+  async function _loadPickerQuestions(marks, q, chapterHint, activity) {
     const list = $('pb-picker-list');
     if (!list) return;
     list.innerHTML = '<p class="empty-hint">Loading…</p>';
     try {
       const questions = await API.fetchAdminSlsQuestions({
-        chapterId: _chapterIdForHint(chapterHint), marks, status: 'published', q, sort: 'usageCount', limit: 50
+        chapterId: _chapterIdForHint(chapterHint), marks, status: 'published', q, sort: 'usageCount', limit: 50,
+        isActivity: activity === true ? 'true' : activity === false ? 'false' : undefined,
       });
       if (!questions.length) {
         list.innerHTML = '<p class="empty-hint">या chapter/marks साठी published प्रश्न नाहीत.</p>';

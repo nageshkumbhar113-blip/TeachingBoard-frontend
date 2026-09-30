@@ -269,6 +269,15 @@
   align-items: center;
 }
 
+.cm-autofill-activity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary, #6b7a93);
+  margin: 0 0 10px;
+}
+
 .cm-autofill-divider {
   border: none;
   border-top: 1px dashed rgba(240,136,62,0.35);

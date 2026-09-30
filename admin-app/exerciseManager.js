@@ -344,6 +344,7 @@ const EXERCISE_MANAGER = (() => {
                it visible from the list itself whether one's attached,
                without needing to open Edit to check. -->
           <span class="em-status-chip ${hasDiagram ? 'published' : 'draft'}">${hasDiagram ? '🖼️ चित्र आहे' : '🖼️ चित्र नाही'}</span>
+          <span class="em-status-chip ${q.isActivity ? 'published' : ''}">${q.isActivity ? '🧩 Activity' : '✍️ Solve'}</span>
           <!-- Inline marks edit — right where marks are shown, no need to
                open the full Edit form just to bump 1→2 marks. -->
           <select class="cm-marks-chip em-marks-select" data-id="${_esc(q._id)}">
@@ -520,6 +521,7 @@ const EXERCISE_MANAGER = (() => {
       return;
     }
 
+    const isActivity = !!$('em-autofill-activity')?.checked;
     const existingNorm = new Set(_exerciseQuestions.map(q => _norm(q.questionText?.marathi || q.questionText?.english)));
     let created = 0, skipped = 0;
     for (const item of parsed) {
@@ -535,6 +537,7 @@ const EXERCISE_MANAGER = (() => {
           marks: item.marks,
           questionType: 'short_answer',
           difficulty: 'medium',
+          isActivity,
           // Draft, not published — matches the "Publish All" button's own
           // implied workflow (user-confirmed fix: new questions were going
           // live to students immediately on creation, before Publish was
@@ -602,6 +605,7 @@ const EXERCISE_MANAGER = (() => {
         <select id="em-ex-marks" class="form-input">
           ${[1,2,3,4,5].map(m => `<option value="${m}" ${existing?.marks === m ? 'selected' : ''}>${m} ${m === 1 ? 'Mark' : 'Marks'}</option>`).join('')}
         </select>
+        <label class="cm-autofill-activity"><input type="checkbox" id="em-ex-activity" ${existing?.isActivity ? 'checked' : ''} /> 🧩 "Activity" प्रश्न (रिकाम्या जागा भरायच्या), साधं "Solve" नाही</label>
         <div class="cm-qactions" style="margin-top:8px">
           <button type="button" id="em-ex-save-btn" class="btn btn-small btn-primary">💾 Save</button>
           <button type="button" id="em-ex-cancel-btn" class="btn btn-small">Cancel</button>
@@ -668,6 +672,7 @@ const EXERCISE_MANAGER = (() => {
         marks,
         questionDiagrams: _formQDiagram ? [_formQDiagram] : [],
         answerDiagrams: _formADiagram ? [_formADiagram] : [],
+        isActivity: !!$('em-ex-activity')?.checked,
       };
       if (editId) {
         await API.updateAdminSlsQuestion(editId, payload);
