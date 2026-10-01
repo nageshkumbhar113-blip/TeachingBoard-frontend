@@ -1278,7 +1278,9 @@ const CONCEPT_MANAGER = (() => {
     await _onChapterChange(_chapterId);
   }
 
-  const CHATGPT_FORMAT_PROMPT = `Ya format made mala note dya (Marathi madhe), exact hech section headings ani emoji vaparun, ekahi section skip na karta:
+  const CHATGPT_FORMAT_PROMPT = `Mala ya dilelya dhdya/lesson chya PURN syllabus var based, tyatil PRATYEK vegळa concept/topic sathi EK separate note dya (Marathi madhe) - ekahi concept skip karu naka. Prati concept sathi "# Concept 1: शीर्षक", "# Concept 2: शीर्षक" ashi heading line sagळ्यat varti dya (number sequential, 1 pasun suru), ani tya khali त्याच concept chi khalil format exact follow kara - exact hech section headings ani emoji vaparun, ekahi section skip na karta:
+
+# Concept 1: [या concept चे शीर्षक]
 
 Title (Marathi)
 [चॅप्टरचे शीर्षक] (English translation)
@@ -1311,7 +1313,12 @@ Title (Marathi)
 ☑️ ...
 
 ⭐ Difficulty Level
-🟢 Easy / 🟡 Medium / 🔴 Hard`;
+🟢 Easy / 🟡 Medium / 🔴 Hard
+
+# Concept 2: [पुढच्या concept चे शीर्षक]
+(वरचाच पूर्ण structure इथेही परत वापरा - Title पासून Difficulty Level पर्यंत)
+
+...ashi lesson madhil JEVDHE concepts/topics astil TEVDHE blocks dya (# Concept 3, # Concept 4, ase pudhe suru theva), pratyekat varcha pUrn structure. Konteही concept combine/skip karu naka - jevढे mothe topics tya dhdyat asel tevढe separate "# Concept N" blocks havet.`;
 
   function _copyPromptFormat() {
     navigator.clipboard?.writeText(CHATGPT_FORMAT_PROMPT)
