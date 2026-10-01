@@ -113,6 +113,7 @@ const CONCEPT_MANAGER = (() => {
 
     // Concept CRUD buttons
     $('cm-new-btn')?.addEventListener('click', () => _createNewConcept());
+    $('cm-publish-all-btn')?.addEventListener('click', () => _publishAllConcepts());
     $('cm-save-btn')?.addEventListener('click', () => _saveConcept());
     $('cm-publish-btn')?.addEventListener('click', () => _publishConcept());
     $('cm-delete-btn')?.addEventListener('click', () => _deleteConcept());
@@ -1453,6 +1454,39 @@ Title (Marathi)
       _currentConcept = await API.publishAdminConcept(_currentConcept._id);
     } catch (err) {
       console.error('Publish failed:', err);
+    }
+  }
+
+  // Publishes every draft Concept in the currently selected lesson/chapter in one go - same pattern
+  // as Exercise Manager's "Publish All" button, so an admin who's bulk-imported/written several
+  // concepts for one lesson doesn't have to open and publish each one individually.
+  async function _publishAllConcepts() {
+    if (!_chapterId) {
+      APP.toast('आधी lesson/chapter निवडा', 'info');
+      return;
+    }
+    const drafts = _concepts.filter(c => c.status !== 'published');
+    if (!drafts.length) {
+      APP.toast('सगळे concepts आधीच Published आहेत', 'info');
+      return;
+    }
+    if (!await APP.confirmAsync(`या lesson मधील ${drafts.length} concepts Publish करायचे? Publish केल्यावर ते students/teachers ला दिसू लागतील.`)) return;
+
+    let published = 0, failed = 0;
+    for (const c of drafts) {
+      try {
+        await API.publishAdminConcept(c._id);
+        published++;
+      } catch (err) {
+        console.warn('publish failed for', c._id, err);
+        failed++;
+      }
+    }
+    await _refreshConceptsList();
+    if (failed) {
+      APP.toast(`${published} concepts published, ${failed} अयशस्वी`, 'error');
+    } else {
+      APP.toast(`🚀 ${published} concepts published — आता students/teachers ला दिसतील`, 'success');
     }
   }
 
