@@ -228,6 +228,7 @@ const SYNC = (() => {
       option_images: Object.fromEntries(optionEntries.map(([key]) => [key, question.option_images?.[key] || null])),
       answer       : normalizedAnswer,
       image        : question.image || null,
+      explanation  : question.explanation ? String(question.explanation).trim() : '',
     };
   }
 
@@ -414,6 +415,7 @@ const SYNC = (() => {
       answer    : answerKey,
       type      : isTrueFalse ? 'tf' : 'mcq',
       image     : remoteQuestion.image || null,
+      explanation: String(remoteQuestion?.explanation || '').trim(),
       source    : 'api',
       synced    : true,
       synced_at : Date.now(),

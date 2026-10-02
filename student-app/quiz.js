@@ -172,6 +172,7 @@ const QUIZ = (() => {
   async function _renderQuestion() {
     _stopTimer();
     $('feedback-bar')?.classList.add('hidden');
+    $('feedback-solution')?.classList.add('hidden');
     state.answered = false;
 
     const q = state.questions[state.current];
@@ -285,7 +286,7 @@ const QUIZ = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    _showFeedback(isCorrect, correct, _getAnswerFeedbackText(q, correct));
+    _showFeedback(isCorrect, correct, _getAnswerFeedbackText(q, correct), q.explanation);
   }
 
   // ════════════════════════
@@ -316,7 +317,7 @@ const QUIZ = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    _showFeedback(isCorrect, correct);
+    _showFeedback(isCorrect, correct, '', q.explanation);
   }
 
   // ════════════════════════
@@ -355,7 +356,7 @@ const QUIZ = (() => {
     input.style.borderColor = isCorrect ? 'var(--correct)' : 'var(--wrong)';
 
     _recordAnswer(q, val, isCorrect);
-    _showFeedback(isCorrect, q.answer);
+    _showFeedback(isCorrect, q.answer, '', q.explanation);
   }
 
   // ════════════════════════
@@ -511,13 +512,24 @@ const QUIZ = (() => {
     const answerText = _getAnswerFeedbackText(q, q.answer);
     _setText('feedback-text', `${I18N.t('wrong')} ${q.answer}${answerText ? ` — ${answerText}` : ''}`);
     feedback.classList.remove('hidden');
+
+    const solutionEl = $('feedback-solution');
+    if (solutionEl) {
+      if (q.explanation) {
+        solutionEl.textContent = `💡 ${q.explanation}`;
+        solutionEl.classList.remove('hidden');
+      } else {
+        solutionEl.textContent = '';
+        solutionEl.classList.add('hidden');
+      }
+    }
   }
 
   // ════════════════════════
   // FEEDBACK & SCORE
   // ════════════════════════
 
-  function _showFeedback(isCorrect, answer, ansText) {
+  function _showFeedback(isCorrect, answer, ansText, explanation) {
     const feedback = $('feedback-bar');
     const feedbackIcon = $('feedback-icon');
     const feedbackText = $('feedback-text');
@@ -528,6 +540,17 @@ const QUIZ = (() => {
       ? I18N.t('correct')
       : `${I18N.t('wrong')} ${answer}${ansText ? ` — ${ansText}` : ''}`;
     feedback.classList.remove('hidden');
+
+    const solutionEl = $('feedback-solution');
+    if (solutionEl) {
+      if (explanation) {
+        solutionEl.textContent = `💡 ${explanation}`;
+        solutionEl.classList.remove('hidden');
+      } else {
+        solutionEl.textContent = '';
+        solutionEl.classList.add('hidden');
+      }
+    }
   }
 
   function _recordAnswer(q, given, isCorrect) {

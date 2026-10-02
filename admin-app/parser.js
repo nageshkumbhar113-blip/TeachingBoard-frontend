@@ -54,7 +54,7 @@ const PARSER = (() => {
    *   **Answer:** A  |  **Correct Answer:** B) text
    */
   const RE_ANSWER =
-    /^(?:\*{0,2})(?:(?:correct|right)\s+)?(?:ans(?:wer)?|key|solution)(?:\*{0,2})\s*[:\.\-]\s*(?:\*{0,2})\s*(.+?)(?:\*{0,2})\s*$/i;
+    /^(?:\*{0,2})(?:(?:correct|right)\s+)?(?:ans(?:wer)?|key)(?:\*{0,2})\s*[:\.\-]\s*(?:\*{0,2})\s*(.+?)(?:\*{0,2})\s*$/i;
 
   /*
    * "The correct/right answer is X" — ChatGPT sentence form
@@ -66,7 +66,7 @@ const PARSER = (() => {
    * Explanation / rationale line
    */
   const RE_EXPL =
-    /^(?:\*{0,2})(?:explanation|reason|note|hint|rationale)(?:\*{0,2})\s*[:\.\-]\s*(?:\*{0,2})\s*(.+)/i;
+    /^(?:\*{0,2})(?:explanation|solution|reason|note|hint|rationale)(?:\*{0,2})\s*[:\.\-]\s*(?:\*{0,2})\s*(.+)/i;
 
   // ════════════════════════
   // PUBLIC: parse()

@@ -1832,6 +1832,19 @@ body.student-app.mode-board.theme-board-light::before {
   font-weight: 700 !important;
 }
 
+/* Solution / explanation shown under the feedback bar once a question is
+   answered — admin-entered via Quiz Builder's manual add / bulk paste. */
+.feedback-solution {
+  margin: -8px 0 14px;
+  padding: 10px 16px;
+  border-radius: var(--r-lg, 10px);
+  background: rgba(255, 193, 7, 0.12);
+  border: 1px solid rgba(255, 193, 7, 0.35);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text, inherit);
+}
+
 /* Quiz nav */
 .quiz-nav {
   /* backdrop-filter removed — this bar stays on screen through the whole

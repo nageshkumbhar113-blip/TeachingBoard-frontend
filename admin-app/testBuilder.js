@@ -753,13 +753,15 @@ B) [Option B]
 C) [Option C]
 D) [Option D]
 Ans: A
+Solution: [1-2 line explanation of why this answer is correct]
 
 For True/False questions write "(True/False)" after the question and use Ans: True or Ans: False
-For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
+For Fill in the blank put ___ in the question and Ans: [answer text]
+Solution line is optional for every question — include it when a brief explanation is useful.</pre>
               <button type="button" class="admin-btn-secondary" id="tb-copy-prompt">📋 Copy Prompt</button>
             </div>
             <textarea id="tb-bulk-text" class="admin-textarea" rows="5"
-              placeholder="Q1. What is photosynthesis?&#10;A) Making food  B) Breathing  C) Digestion  D) Excretion&#10;Ans: A&#10;&#10;Q2. The sun is a star. (True/False)&#10;Ans: True&#10;&#10;Q3. Water formula is ___&#10;Ans: H2O"></textarea>
+              placeholder="Q1. What is photosynthesis?&#10;A) Making food  B) Breathing  C) Digestion  D) Excretion&#10;Ans: A&#10;Solution: Plants use sunlight to make food - this is photosynthesis.&#10;&#10;Q2. The sun is a star. (True/False)&#10;Ans: True&#10;&#10;Q3. Water formula is ___&#10;Ans: H2O"></textarea>
             <button class="admin-btn-secondary" id="tb-bulk-parse" style="margin-top:6px">
               Parse &amp; Add →
             </button>
@@ -845,6 +847,9 @@ For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
               <input id="tb-manual-fib-ans" class="admin-input"
                 placeholder="Correct answer text">
             </div>
+
+            <textarea id="tb-manual-solution" class="admin-textarea" rows="2" style="margin-top:8px"
+              placeholder="Solution / स्पष्टीकरण (optional) — उत्तर दिल्यावर student ला दिसेल"></textarea>
 
             <button class="admin-btn-secondary" id="tb-manual-submit">+ Add to Section</button>
           </div>
@@ -1258,14 +1263,15 @@ For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
     if (!qText && !qImage) { APP.toast('Question text or question image URL is required', 'error'); return; }
 
     const q = {
-      question  : qText,
-      image     : qImage,
+      question   : qText,
+      image      : qImage,
       type,
-      difficulty: diff,
-      batch     : state.quiz?.batch   || '',
-      subject   : state.quiz?.subject || '',
-      chapter   : state.quiz?.chapter || '',
-      tags      : [],
+      difficulty : diff,
+      batch      : state.quiz?.batch   || '',
+      subject    : state.quiz?.subject || '',
+      chapter    : state.quiz?.chapter || '',
+      tags       : [],
+      explanation: $('tb-manual-solution')?.value.trim() || '',
     };
 
     if (type === 'mcq') {
@@ -1316,6 +1322,7 @@ For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
     if ($('tb-manual-c-image')) $('tb-manual-c-image').value = '';
     if ($('tb-manual-d-image')) $('tb-manual-d-image').value = '';
     if ($('tb-manual-fib-ans')) $('tb-manual-fib-ans').value = '';
+    if ($('tb-manual-solution')) $('tb-manual-solution').value = '';
 
     await _loadBankQuestions();
     _renderBankList();
@@ -1523,6 +1530,7 @@ For Fill in the blank put ___ in the question and Ans: [answer text]</pre>
           <div class="tb-preview-qtext">${_esc(q.question || '')}</div>
           ${questionImage}
           ${answersHtml}
+          ${q.explanation ? `<div class="tb-preview-solution preview-answer">💡 ${_esc(q.explanation)}</div>` : ''}
         </div>
       </div>
     `;

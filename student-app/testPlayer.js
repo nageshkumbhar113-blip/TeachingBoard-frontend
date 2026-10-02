@@ -426,7 +426,7 @@ const TEST_PLAYER = (() => {
     if (prev) {
       state.answered = true;
       if (state.mode === 'practice' && !prev.skipped) {
-        _showFeedback(prev.correct, q.answer, _getAnswerFeedbackText(q, q.answer));
+        _showFeedback(prev.correct, q.answer, _getAnswerFeedbackText(q, q.answer), q.explanation);
       }
     }
 
@@ -450,6 +450,7 @@ const TEST_PLAYER = (() => {
     $('tp-tf-grid')?.classList.add('hidden');
     $('tp-fib-wrap')?.classList.add('hidden');
     $('tp-feedback-bar')?.classList.add('hidden');
+    $('tp-feedback-solution')?.classList.add('hidden');
   }
 
   // ════════════════════════
@@ -495,7 +496,7 @@ const TEST_PLAYER = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, _getAnswerFeedbackText(q, q.answer));
+    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, _getAnswerFeedbackText(q, q.answer), q.explanation);
     if (state.mode === 'exam')     setTimeout(_nextQ, 700);
   }
 
@@ -536,7 +537,7 @@ const TEST_PLAYER = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, tfAnswerText);
+    if (state.mode === 'practice') _showFeedback(isCorrect, tfAnswerText, '', q.explanation);
     if (state.mode === 'exam')     setTimeout(_nextQ, 700);
   }
 
@@ -581,7 +582,7 @@ const TEST_PLAYER = (() => {
     inp.style.borderColor = isCorrect ? 'var(--correct)' : 'var(--wrong)';
 
     _recordAnswer(q, val, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer);
+    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, '', q.explanation);
   }
 
   // ════════════════════════
@@ -619,7 +620,7 @@ const TEST_PLAYER = (() => {
     return updatedQuestion;
   }
 
-  function _showFeedback(isCorrect, correctAns, correctText) {
+  function _showFeedback(isCorrect, correctAns, correctText, explanation) {
     const bar = $('tp-feedback-bar');
     const icon = $('tp-feedback-icon');
     const text = $('tp-feedback-text');
@@ -629,6 +630,16 @@ const TEST_PLAYER = (() => {
     $('tp-feedback-text').textContent = isCorrect
       ? 'Correct!'
       : `Wrong — Answer: ${correctAns}${correctText ? ` (${correctText})` : ''}`;
+    const solutionEl = $('tp-feedback-solution');
+    if (solutionEl) {
+      if (explanation) {
+        solutionEl.textContent = `💡 ${explanation}`;
+        solutionEl.classList.remove('hidden');
+      } else {
+        solutionEl.textContent = '';
+        solutionEl.classList.add('hidden');
+      }
+    }
     bar.classList.remove('hidden');
   }
 
@@ -1102,6 +1113,7 @@ const TEST_PLAYER = (() => {
             Correct: ${q.answer}${_getAnswerFeedbackText(q, q.answer) ? ` — ${_getAnswerFeedbackText(q, q.answer)}` : ''}
           </span>
         </div>
+        ${q.explanation ? `<div class="feedback-solution">💡 ${_escHtml(q.explanation)}</div>` : ''}
       `;
       container.appendChild(div);
     });
