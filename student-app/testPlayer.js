@@ -19,6 +19,46 @@ const TEST_PLAYER = (() => {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+  // Solution/explanation text: same light markup as Exercise content —
+  // **bold** and ```fenced``` code blocks (long-division layouts etc.) —
+  // plus KaTeX math via MATH.renderElement() once it's in the DOM.
+  function _richSolution(raw) {
+    const lines = _escHtml(raw).split('\n');
+    const out = [];
+    let textBuf = [];
+    const flushText = () => { if (textBuf.length) { out.push(`<p>${textBuf.join('<br>')}</p>`); textBuf = []; } };
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (/^\s*```/.test(line)) {
+        flushText();
+        const block = [];
+        let j = i + 1;
+        while (j < lines.length && !/^\s*```/.test(lines[j])) { block.push(lines[j]); j++; }
+        out.push(`<pre class="ex-code-block">${block.join('\n')}</pre>`);
+        i = j + 1;
+        continue;
+      }
+      textBuf.push(line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
+      i++;
+    }
+    flushText();
+    return out.join('');
+  }
+
+  // Fills and shows/hides a solution box element, rendering math afterward.
+  function _renderSolutionBox(solutionEl, explanation) {
+    if (!solutionEl) return;
+    if (explanation) {
+      solutionEl.innerHTML = `💡 ${_richSolution(explanation)}`;
+      solutionEl.classList.remove('hidden');
+      if (window.MATH) MATH.renderElement(solutionEl);
+    } else {
+      solutionEl.innerHTML = '';
+      solutionEl.classList.add('hidden');
+    }
+  }
+
   async function _resolveImageSrc(ref) {
     if (!ref) return null;
     const localSrc = await DB.getImage(ref).catch(() => null);
@@ -630,16 +670,7 @@ const TEST_PLAYER = (() => {
     $('tp-feedback-text').textContent = isCorrect
       ? 'Correct!'
       : `Wrong — Answer: ${correctAns}${correctText ? ` (${correctText})` : ''}`;
-    const solutionEl = $('tp-feedback-solution');
-    if (solutionEl) {
-      if (explanation) {
-        solutionEl.textContent = `💡 ${explanation}`;
-        solutionEl.classList.remove('hidden');
-      } else {
-        solutionEl.textContent = '';
-        solutionEl.classList.add('hidden');
-      }
-    }
+    _renderSolutionBox($('tp-feedback-solution'), explanation);
     bar.classList.remove('hidden');
   }
 
@@ -1113,8 +1144,9 @@ const TEST_PLAYER = (() => {
             Correct: ${q.answer}${_getAnswerFeedbackText(q, q.answer) ? ` — ${_getAnswerFeedbackText(q, q.answer)}` : ''}
           </span>
         </div>
-        ${q.explanation ? `<div class="feedback-solution">💡 ${_escHtml(q.explanation)}</div>` : ''}
+        ${q.explanation ? `<div class="feedback-solution">💡 ${_richSolution(q.explanation)}</div>` : ''}
       `;
+      if (q.explanation && window.MATH) MATH.renderElement(div.querySelector('.feedback-solution'));
       container.appendChild(div);
     });
   }

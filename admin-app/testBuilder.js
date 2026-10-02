@@ -1448,6 +1448,7 @@ Solution line is optional for every question — include it when a brief explana
 
     // Apply current show/hide state immediately
     _applyAnswerVisibility();
+    if (window.MATH) MATH.renderElement($('tb-body'));
 
     $('tb-footer').innerHTML = `
       <div class="tb-footer-actions">
@@ -1530,7 +1531,7 @@ Solution line is optional for every question — include it when a brief explana
           <div class="tb-preview-qtext">${_esc(q.question || '')}</div>
           ${questionImage}
           ${answersHtml}
-          ${q.explanation ? `<div class="tb-preview-solution preview-answer">💡 ${_esc(q.explanation)}</div>` : ''}
+          ${q.explanation ? `<div class="tb-preview-solution preview-answer">💡 ${_richSolution(q.explanation)}</div>` : ''}
         </div>
       </div>
     `;
@@ -1651,6 +1652,33 @@ Solution line is optional for every question — include it when a brief explana
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  // Solution/explanation preview: same **bold** + ```fenced``` code-block
+  // markup as Exercise content; KaTeX math is rendered afterward via
+  // MATH.renderElement() once this HTML is in the DOM.
+  function _richSolution(raw) {
+    const lines = _esc(raw).split('\n');
+    const out = [];
+    let textBuf = [];
+    const flushText = () => { if (textBuf.length) { out.push(`<p>${textBuf.join('<br>')}</p>`); textBuf = []; } };
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (/^\s*```/.test(line)) {
+        flushText();
+        const block = [];
+        let j = i + 1;
+        while (j < lines.length && !/^\s*```/.test(lines[j])) { block.push(lines[j]); j++; }
+        out.push(`<pre class="ex-code-block">${block.join('\n')}</pre>`);
+        i = j + 1;
+        continue;
+      }
+      textBuf.push(line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
+      i++;
+    }
+    flushText();
+    return out.join('');
   }
 
   // ════════════════════════

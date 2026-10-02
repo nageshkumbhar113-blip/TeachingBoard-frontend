@@ -44,6 +44,33 @@ const QUIZ = (() => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+  // Solution/explanation text: same light markup as Exercise content —
+  // **bold** and ```fenced``` code blocks (long-division layouts etc.) —
+  // plus KaTeX math via MATH.renderElement() once it's in the DOM.
+  function _richSolution(raw) {
+    const lines = _escHtml(raw).split('\n');
+    const out = [];
+    let textBuf = [];
+    const flushText = () => { if (textBuf.length) { out.push(`<p>${textBuf.join('<br>')}</p>`); textBuf = []; } };
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (/^\s*```/.test(line)) {
+        flushText();
+        const block = [];
+        let j = i + 1;
+        while (j < lines.length && !/^\s*```/.test(lines[j])) { block.push(lines[j]); j++; }
+        out.push(`<pre class="ex-code-block">${block.join('\n')}</pre>`);
+        i = j + 1;
+        continue;
+      }
+      textBuf.push(line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
+      i++;
+    }
+    flushText();
+    return out.join('');
+  }
+
   async function _resolveImageSrc(ref) {
     if (!ref) return null;
     const localSrc = await DB.getImage(ref).catch(() => null);
@@ -512,22 +539,26 @@ const QUIZ = (() => {
     const answerText = _getAnswerFeedbackText(q, q.answer);
     _setText('feedback-text', `${I18N.t('wrong')} ${q.answer}${answerText ? ` — ${answerText}` : ''}`);
     feedback.classList.remove('hidden');
-
-    const solutionEl = $('feedback-solution');
-    if (solutionEl) {
-      if (q.explanation) {
-        solutionEl.textContent = `💡 ${q.explanation}`;
-        solutionEl.classList.remove('hidden');
-      } else {
-        solutionEl.textContent = '';
-        solutionEl.classList.add('hidden');
-      }
-    }
+    _renderSolutionBox($('feedback-solution'), q.explanation);
   }
 
   // ════════════════════════
   // FEEDBACK & SCORE
   // ════════════════════════
+
+  // Shared by _showFeedback and _revealAnswer — fills and shows/hides the
+  // solution box, converting **bold**/```code``` and rendering KaTeX math.
+  function _renderSolutionBox(solutionEl, explanation) {
+    if (!solutionEl) return;
+    if (explanation) {
+      solutionEl.innerHTML = `💡 ${_richSolution(explanation)}`;
+      solutionEl.classList.remove('hidden');
+      if (window.MATH) MATH.renderElement(solutionEl);
+    } else {
+      solutionEl.innerHTML = '';
+      solutionEl.classList.add('hidden');
+    }
+  }
 
   function _showFeedback(isCorrect, answer, ansText, explanation) {
     const feedback = $('feedback-bar');
@@ -540,17 +571,7 @@ const QUIZ = (() => {
       ? I18N.t('correct')
       : `${I18N.t('wrong')} ${answer}${ansText ? ` — ${ansText}` : ''}`;
     feedback.classList.remove('hidden');
-
-    const solutionEl = $('feedback-solution');
-    if (solutionEl) {
-      if (explanation) {
-        solutionEl.textContent = `💡 ${explanation}`;
-        solutionEl.classList.remove('hidden');
-      } else {
-        solutionEl.textContent = '';
-        solutionEl.classList.add('hidden');
-      }
-    }
+    _renderSolutionBox($('feedback-solution'), explanation);
   }
 
   function _recordAnswer(q, given, isCorrect) {
