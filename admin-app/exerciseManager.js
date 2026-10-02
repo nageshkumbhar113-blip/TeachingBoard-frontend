@@ -348,29 +348,32 @@ const EXERCISE_MANAGER = (() => {
       const hasDiagram = (q.questionDiagrams?.length || q.answerDiagrams?.length);
       return `
       <div class="cm-qitem" data-id="${_esc(q._id)}">
-        <div class="cm-qitem-top">
-          <b>${_qLabel(q, i + 1)}</b>
-          <span class="em-status-chip ${q.status === 'published' ? 'published' : 'draft'}">${q.status === 'published' ? '✅ Published' : '📝 Draft'}</span>
-          <!-- Discoverability: image upload already lives inside the Edit
-               form (Question/Answer Diagram fields) — this chip just makes
-               it visible from the list itself whether one's attached,
-               without needing to open Edit to check. -->
-          <span class="em-status-chip ${hasDiagram ? 'published' : 'draft'}">${hasDiagram ? '🖼️ चित्र आहे' : '🖼️ चित्र नाही'}</span>
-          <span class="em-status-chip ${q.isActivity ? 'published' : ''}">${q.isActivity ? '🧩 Activity' : '✍️ Solve'}</span>
-          <!-- Inline marks edit — right where marks are shown, no need to
-               open the full Edit form just to bump 1→2 marks. -->
-          <select class="cm-marks-chip em-marks-select" data-id="${_esc(q._id)}">
-            ${[1,2,3,4,5].map(m => `<option value="${m}" ${q.marks === m ? 'selected' : ''}>${m} ${m === 1 ? 'mark' : 'marks'}</option>`).join('')}
-          </select>
+        <div class="em-card-body">
+          <div class="cm-qitem-top">
+            <b>${_qLabel(q, i + 1)}</b>
+            <span class="em-status-chip ${q.status === 'published' ? 'published' : 'draft'}">${q.status === 'published' ? '✅ Published' : '📝 Draft'}</span>
+            <!-- Discoverability: image upload already lives inside the Edit
+                 form (Question/Answer Diagram fields) — this chip just makes
+                 it visible from the list itself whether one's attached,
+                 without needing to open Edit to check. -->
+            <span class="em-status-chip ${hasDiagram ? 'published' : 'draft'}">${hasDiagram ? '🖼️ चित्र आहे' : '🖼️ चित्र नाही'}</span>
+            <span class="em-status-chip ${q.isActivity ? 'published' : ''}">${q.isActivity ? '🧩 Activity' : '✍️ Solve'}</span>
+            <!-- Inline marks edit — right where marks are shown, no need to
+                 open the full Edit form just to bump 1→2 marks. -->
+            <select class="cm-marks-chip em-marks-select" data-id="${_esc(q._id)}">
+              ${[1,2,3,4,5].map(m => `<option value="${m}" ${q.marks === m ? 'selected' : ''}>${m} ${m === 1 ? 'mark' : 'marks'}</option>`).join('')}
+            </select>
+          </div>
+          <div class="cm-qtext">${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>
+          ${_diagramThumbsHtml(q.questionDiagrams)}
+          <div class="cm-atext">${_richText(q.answerText?.marathi || q.answerText?.english || '')}</div>
+          ${_diagramThumbsHtml(q.answerDiagrams)}
+          <div class="cm-qactions">
+            <button type="button" class="btn btn-small em-edit-btn" data-id="${_esc(q._id)}">✏️ Edit${hasDiagram ? ' / चित्र बदला' : ' / चित्र जोडा'}</button>
+            <button type="button" class="btn btn-small em-delete-btn" data-id="${_esc(q._id)}">🗑 Delete</button>
+          </div>
         </div>
-        <div class="cm-qtext">${_richText(q.questionText?.marathi || q.questionText?.english || '')}</div>
-        ${_diagramThumbsHtml(q.questionDiagrams)}
-        <div class="cm-atext">${_richText(q.answerText?.marathi || q.answerText?.english || '')}</div>
-        ${_diagramThumbsHtml(q.answerDiagrams)}
-        <div class="cm-qactions">
-          <button type="button" class="btn btn-small em-edit-btn" data-id="${_esc(q._id)}">✏️ Edit${hasDiagram ? ' / चित्र बदला' : ' / चित्र जोडा'}</button>
-          <button type="button" class="btn btn-small em-delete-btn" data-id="${_esc(q._id)}">🗑 Delete</button>
-        </div>
+        <div class="em-card-edit hidden"></div>
       </div>
     `;
     }).join('');
@@ -595,16 +598,31 @@ const EXERCISE_MANAGER = (() => {
       </div>`;
   }
 
+  // Editing an EXISTING question opens the form INLINE in that question's own card (no scrolling
+  // to the top of a long list and back) - a real admin complaint, since the shared top form used
+  // to be the only place Edit ever opened, however far down the list the question sat. Adding a
+  // brand-new question (no editId, "+ मॅन्युअली प्रश्न जोडा") still uses the top form - there's no
+  // existing card to attach it to yet.
+  function _editHostFor(editId) {
+    if (!editId) return $('em-exercise-manual-form');
+    const card = $('em-exercise-list')?.querySelector(`.cm-qitem[data-id="${CSS.escape(editId)}"]`);
+    return card?.querySelector('.em-card-edit') || $('em-exercise-manual-form');
+  }
+
   function _showManualForm(editId = null) {
     const existing = editId ? _exerciseQuestions.find(q => q._id === editId) : null;
     _formQDiagram = existing?.questionDiagrams?.[0] || null;
     _formADiagram = existing?.answerDiagrams?.[0] || null;
+    if (editId) $('em-exercise-manual-form').innerHTML = ''; // only one edit box open at a time
     _renderManualForm(editId, existing);
   }
 
   function _renderManualForm(editId, existing) {
-    const host = $('em-exercise-manual-form');
+    const host = _editHostFor(editId);
     if (!host) return;
+    const card = editId ? host.closest('.cm-qitem') : null;
+    card?.querySelector('.em-card-body')?.classList.add('hidden');
+    host.classList.remove('hidden');
     host.innerHTML = `
       <div class="cm-qitem" style="margin-top:10px">
         <label class="form-label">Question ($...$ math OK)</label>
@@ -637,7 +655,12 @@ const EXERCISE_MANAGER = (() => {
         if (target) target.caption = input.value;
       }));
     $('em-ex-save-btn')?.addEventListener('click', () => _saveManual(editId));
-    $('em-ex-cancel-btn')?.addEventListener('click', () => { _formQDiagram = null; _formADiagram = null; host.innerHTML = ''; });
+    $('em-ex-cancel-btn')?.addEventListener('click', () => {
+      _formQDiagram = null; _formADiagram = null;
+      host.innerHTML = '';
+      host.classList.add('hidden');
+      card?.querySelector('.em-card-body')?.classList.remove('hidden');
+    });
   }
 
   async function _uploadDiagram(kind, file, editId, existing) {

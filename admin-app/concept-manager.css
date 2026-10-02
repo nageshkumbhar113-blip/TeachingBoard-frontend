@@ -335,6 +335,7 @@ select.cm-marks-chip.em-marks-select {
   padding-left: 10px; border-left: 2px solid #1a7f37;
 }
 .cm-qactions { display: flex; gap: 6px; margin-top: 8px; }
+.em-card-edit:not(.hidden) { margin-top: 4px; }
 
 /* Long-division / step-by-step working pasted as a ```fenced``` block (exerciseManager.js's
    _richText) - preserves alignment spaces, which plain HTML text would otherwise collapse. */
