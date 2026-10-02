@@ -21,6 +21,18 @@ const EXERCISE_VIEWER = (() => {
     let i = 0;
     while (i < lines.length) {
       const line = lines[i];
+      // ```...``` fence (long-division layouts, step-by-step working etc. pasted from
+      // ChatGPT/Claude) -> <pre>, so the alignment spaces survive instead of collapsing
+      // like normal HTML text. Opening fence may carry a language tag ("```text") - ignored.
+      if (/^\s*```/.test(line)) {
+        flushText();
+        const block = [];
+        let j = i + 1;
+        while (j < lines.length && !/^\s*```/.test(lines[j])) { block.push(lines[j]); j++; }
+        out.push(`<pre class="ex-code-block">${block.join('\n')}</pre>`);
+        i = j + 1; // skip the closing ``` line too
+        continue;
+      }
       const isRow = /^\s*\|.*\|\s*$/.test(line);
       const sepLine = lines[i + 1] || '';
       const isSep = isRow && /^\s*\|?[\s:|-]+\|?\s*$/.test(sepLine) && sepLine.includes('-');

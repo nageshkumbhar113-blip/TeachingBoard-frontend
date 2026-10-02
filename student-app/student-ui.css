@@ -4849,6 +4849,20 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   border-color: var(--accent, #f0883e);
   box-shadow: 0 0 0 3px rgba(240, 136, 62, 0.35);
 }
+/* Long-division / step-by-step working pasted as a ```fenced``` block (exerciseViewer.js's
+   _richText) - preserves alignment spaces, which plain HTML text would otherwise collapse. */
+.ex-code-block {
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow-x: auto;
+  background: rgba(128,128,128,.08);
+  border: 1px solid rgba(128,128,128,.25);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 6px 0;
+}
 .ev-qtop {
   display: flex;
   justify-content: space-between;
