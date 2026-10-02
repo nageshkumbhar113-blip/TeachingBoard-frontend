@@ -323,13 +323,19 @@ const PARSER = (() => {
 
     // ── Fill in the Blank ────────────────────
 
-    // Question contains a blank placeholder
-    if (/_{2,}|\.{3,}|\[_+\]|\[\s*blank\s*\]/i.test(question)) return 'fib';
+    // A question can contain "___" as part of its phrasing while still being
+    // a real A-D MCQ (e.g. "0 आणि -9/5 यांची तुलना केली असता ___" with 4 options
+    // and "Ans: A") — real options must win over the blank-placeholder guess,
+    // or the question's options get silently dropped.
+    const populatedOptCount = Object.values(opts).filter(v => String(v || '').trim()).length;
 
-    // Has a non-letter answer with fewer than 2 MCQ options
-    if (rawAnswer &&
-        Object.keys(opts).length < 2 &&
-        !/^[A-D]$/i.test(rawAnswer))   return 'fib';
+    if (populatedOptCount < 2) {
+      // Question contains a blank placeholder
+      if (/_{2,}|\.{3,}|\[_+\]|\[\s*blank\s*\]/i.test(question)) return 'fib';
+
+      // Has a non-letter answer with fewer than 2 MCQ options
+      if (rawAnswer && !/^[A-D]$/i.test(rawAnswer)) return 'fib';
+    }
 
     // ── MCQ (default) ────────────────────────
     return 'mcq';
@@ -347,7 +353,10 @@ const PARSER = (() => {
       return /^f/i.test(trimmed) ? 'False' : 'True';
     }
 
-    if (type === 'fib') return trimmed;
+    // FIB is matched as plain text (student types it, with no $ key on a phone
+    // keyboard), so strip math delimiters a ChatGPT-style "Ans: $0.3125$" wraps
+    // around an otherwise plain value — they'd never match what the student types.
+    if (type === 'fib') return trimmed.replace(/^\$\$?|\$\$?$/g, '').trim();
 
     // ── MCQ ──────────────────────────────────
 
