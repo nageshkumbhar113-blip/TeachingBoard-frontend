@@ -37,6 +37,12 @@
       --shadow-md: 0 4px 16px rgba(28,19,10,0.06), 0 2px 6px rgba(28,19,10,0.04);
       --shadow-lg: 0 20px 48px rgba(240,136,62,0.16), 0 6px 18px rgba(28,19,10,0.06);
       --shadow-glow: 0 24px 64px rgba(240,136,62,0.28);
+      --gc1: linear-gradient(145deg, #FF9D5C, #E8651C);
+      --gc2: linear-gradient(145deg, #34D7EA, #0891B2);
+      --gc3: linear-gradient(145deg, #4ADE94, #059669);
+      --gc4: linear-gradient(145deg, #B794FF, #7C3AED);
+      --gc5: linear-gradient(145deg, #FF8FA3, #E11D48);
+      --gc6: linear-gradient(145deg, #FFCB5C, #D97706);
     }
 
     html { scroll-behavior: smooth; overflow-x: hidden; }
@@ -531,6 +537,79 @@
     }
     .footer a { color: var(--p2); font-weight: 600; }
     .footer a:hover { text-decoration: underline; }
+
+    /* ══ GRADIENT CARDS ══ */
+    /* Cycle 6 brand gradients across each grid's own cards — independent
+       per grid (nth-child counts from that grid's first child), so adding/
+       removing a card anywhere just keeps rotating, no manual class needed. */
+    .features-grid > .feat-card:nth-child(6n+1),
+    .persona-grid > .persona-card:nth-child(6n+1),
+    .benefits-grid > .benefit-row:nth-child(6n+1),
+    .how-grid > .how-card:nth-child(6n+1),
+    .class-grid > .class-card:nth-child(6n+1) { background: var(--gc1); }
+
+    .features-grid > .feat-card:nth-child(6n+2),
+    .persona-grid > .persona-card:nth-child(6n+2),
+    .benefits-grid > .benefit-row:nth-child(6n+2),
+    .how-grid > .how-card:nth-child(6n+2),
+    .class-grid > .class-card:nth-child(6n+2) { background: var(--gc2); }
+
+    .features-grid > .feat-card:nth-child(6n+3),
+    .persona-grid > .persona-card:nth-child(6n+3),
+    .benefits-grid > .benefit-row:nth-child(6n+3),
+    .how-grid > .how-card:nth-child(6n+3),
+    .class-grid > .class-card:nth-child(6n+3) { background: var(--gc3); }
+
+    .features-grid > .feat-card:nth-child(6n+4),
+    .persona-grid > .persona-card:nth-child(6n+4),
+    .benefits-grid > .benefit-row:nth-child(6n+4),
+    .how-grid > .how-card:nth-child(6n+4),
+    .class-grid > .class-card:nth-child(6n+4) { background: var(--gc4); }
+
+    .features-grid > .feat-card:nth-child(6n+5),
+    .persona-grid > .persona-card:nth-child(6n+5),
+    .benefits-grid > .benefit-row:nth-child(6n+5),
+    .how-grid > .how-card:nth-child(6n+5),
+    .class-grid > .class-card:nth-child(6n+5) { background: var(--gc5); }
+
+    .features-grid > .feat-card:nth-child(6n+6),
+    .persona-grid > .persona-card:nth-child(6n+6),
+    .benefits-grid > .benefit-row:nth-child(6n+6),
+    .how-grid > .how-card:nth-child(6n+6),
+    .class-grid > .class-card:nth-child(6n+6) { background: var(--gc6); }
+
+    .features-grid > .feat-card,
+    .persona-grid > .persona-card,
+    .benefits-grid > .benefit-row,
+    .how-grid > .how-card,
+    .class-grid > .class-card {
+      border-color: transparent;
+      box-shadow: 0 10px 26px -6px rgba(28,19,10,0.22), var(--shadow-sm);
+    }
+    .features-grid > .feat-card:hover,
+    .persona-grid > .persona-card:hover,
+    .benefits-grid > .benefit-row:hover,
+    .how-grid > .how-card:hover,
+    .class-grid > .class-card:hover {
+      box-shadow: 0 16px 34px -6px rgba(28,19,10,0.3), var(--shadow-sm);
+    }
+    /* Text + icon treatment on the colored fill */
+    .features-grid > .feat-card h3, .features-grid > .feat-card p,
+    .persona-grid > .persona-card h4, .persona-grid > .persona-card p,
+    .benefits-grid > .benefit-row h4, .benefits-grid > .benefit-row p,
+    .how-grid > .how-card h3, .how-grid > .how-card p,
+    .class-grid > .class-card .class-lbl, .class-grid > .class-card .class-subjects {
+      color: #fff;
+    }
+    .features-grid > .feat-card p, .persona-grid > .persona-card p,
+    .benefits-grid > .benefit-row p, .how-grid > .how-card p,
+    .class-grid > .class-card .class-subjects { color: rgba(255,255,255,0.88); }
+    .features-grid > .feat-card .feat-icon { background: rgba(255,255,255,0.22) !important; }
+    .persona-grid > .persona-card .pc-icon,
+    .benefits-grid > .benefit-row .benefit-icon { filter: brightness(0) invert(1); opacity: 0.95; }
+    .how-grid > .how-card .how-num { background: rgba(255,255,255,0.25); box-shadow: none; }
+    .class-grid > .class-card .class-num { color: #fff; -webkit-text-fill-color: #fff; }
+    .class-grid > .class-card:hover { filter: brightness(1.08); transform: translateY(-3px); }
 
     /* ══ RESPONSIVE ══ */
     @media (max-width: 600px) {
