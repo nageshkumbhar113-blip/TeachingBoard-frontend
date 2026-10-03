@@ -535,6 +535,49 @@ const APP = (() => {
     } catch (e) { console.warn('expiry sheet check failed', e); }
   }
 
+  // Free-plan students (never subscribed, or access_level still 'free') only
+  // ever saw a subscribe prompt once they hit a locked chapter — easy to
+  // never notice. Shown every app open on purpose (user-requested), right
+  // after the (mutually-exclusive, paid-and-expiring-only) expiry sheet.
+  async function _maybeShowBuyNowSheet() {
+    try {
+      const profile = await API.getStudentProfile().catch(() => null);
+      if (!profile || profile.access_level !== 'free') return;
+      if ($('expiry-sheet')?.classList.contains('hidden') === false) return; // don't stack sheets
+
+      const batchName = (profile.assigned_batches || [])[0];
+      if (!batchName) return;
+
+      const plans = await API.getBatchPlans().catch(() => []);
+      const plan = (plans || []).find(b => b.name === batchName);
+      const price = plan?.monthly_price > 0 ? plan.monthly_price : plan?.yearly_price;
+      if (!price) return; // no pricing configured for this batch yet — nothing to offer
+
+      $('buynow-sheet-batch').textContent = batchName;
+      $('btn-buynow').textContent = `💳 Buy Now — ₹${price}`;
+      $('buynow-sheet-backdrop')?.classList.remove('hidden');
+      $('buynow-sheet')?.classList.remove('hidden');
+
+      const closeSheet = () => {
+        $('buynow-sheet-backdrop')?.classList.add('hidden');
+        $('buynow-sheet')?.classList.add('hidden');
+      };
+      $('btn-buynow')?.addEventListener('click', async () => {
+        closeSheet();
+        const code = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
+        const pin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+        if (window.PAYMENT?.openPlanSelect && code) {
+          PAYMENT.openPlanSelect(
+            { student_code: code, pin, name: profile.name || '', contact: profile.mobile || '' },
+            () => refreshHome()
+          );
+        }
+      }, { once: true });
+      $('buynow-sheet-close')?.addEventListener('click', closeSheet, { once: true });
+      $('buynow-sheet-backdrop')?.addEventListener('click', closeSheet, { once: true });
+    } catch (e) { console.warn('buy-now sheet check failed', e); }
+  }
+
   // Same date-boundary semantics as the backend's isExpiredDate() (utils/
   // accountStatus.js) — normalize to a plain YYYY-MM-DD (UTC) string and
   // compare lexically, so expiry_date stays valid through the END of that
@@ -2307,7 +2350,8 @@ const APP = (() => {
       onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
     });
     await _renderHomeHierarchy();
-    _maybeShowExpirySheet();
+    await _maybeShowExpirySheet();
+    _maybeShowBuyNowSheet();
   }
 
   // Lightweight stats refresh — called after quiz end, admin changes, etc.
