@@ -266,6 +266,40 @@
       background: var(--p1); border-color: var(--p1); color: #fff;
     }
 
+    /* ══ PERSONA (Student / Teacher / Parent) ══ */
+    .persona-section { background: var(--bg2); }
+    .persona-toggle {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-top: 28px; margin-bottom: 8px;
+    }
+    .persona-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 20px; border-radius: 999px;
+      background: #fff; border: 1.5px solid var(--border);
+      color: var(--text2); font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; transition: all .15s;
+    }
+    .persona-btn.active {
+      background: linear-gradient(135deg, var(--p1), var(--p3));
+      border-color: transparent; color: #fff;
+      box-shadow: 0 8px 20px rgba(240,136,62,0.35);
+    }
+    .persona-panel { margin-top: 32px; }
+    .persona-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .persona-card {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px;
+      box-shadow: 0 2px 10px rgba(240,136,62,0.06);
+    }
+    .persona-card .pc-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 2px; }
+    .persona-card h4 { font-size: 0.92rem; font-weight: 700; margin-bottom: 4px; }
+    .persona-card p  { font-size: 0.82rem; color: var(--text2); line-height: 1.55; }
+
     /* ══ VOCAB FEATURE HIGHLIGHT ══ */
     .vocab-highlight {
       background: linear-gradient(135deg, rgba(240,136,62,0.15), rgba(6,182,212,0.08));
@@ -422,8 +456,8 @@
         <div class="stat-lbl">Classes Supported</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num gt">4</div>
-        <div class="stat-lbl">Vocab Test Sections</div>
+        <div class="stat-num gt">3</div>
+        <div class="stat-lbl">Student · Teacher · Parent</div>
       </div>
       <div class="stat-item">
         <div class="stat-num gt">∞</div>
@@ -491,6 +525,21 @@
           <h3>Offline Ready</h3>
           <p>Internet नसताना पण questions, lessons आणि notes वाचता येतात. Internet आल्यावर automatically sync होते.</p>
         </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(139,92,246,0.15)">💡</div>
+          <h3>🆕 प्रत्येक प्रश्नाचं Solution</h3>
+          <p>Quiz मध्ये चूक झाली की फक्त बरोबर उत्तर नाही — संपूर्ण स्पष्टीकरण दिसतं, सूत्रांसकट (Maths symbols योग्य प्रकारे render होतात).</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(6,182,212,0.15)">🗂️</div>
+          <h3>🆕 Study Plan</h3>
+          <p>कोणते Subject आणि नेमके कोणते Chapters/Lessons आधी पूर्ण करायचे ते स्वतः ठरवा — targeted अभ्यास, वेळ वाचतो.</p>
+        </div>
+        <div class="feat-card fade-up">
+          <div class="feat-icon" style="background:rgba(16,185,129,0.15)">🎁</div>
+          <h3>🆕 Refer &amp; Earn</h3>
+          <p>मित्रांना App सांगा, ते Join झाले की तुम्हाला रिवॉर्ड मिळतात — जितके जास्त मित्र तितके जास्त फायदे.</p>
+        </div>
       </div>
 
       <!-- Vocab Highlight -->
@@ -517,6 +566,90 @@
             <div class="vs-icon">✏️</div>
             <h4>Section 4 — Spelling</h4>
             <p>Phonics बघून spelling लिहा</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ PERSONA (Student / Teacher / Parent) ══ -->
+  <section class="persona-section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="section-label">👪 सगळ्यांसाठी एकच App</div>
+        <h2 class="section-title">Student, Teacher आणि <span class="gt2">Parent</span> — तिघांसाठी</h2>
+        <p class="section-sub">Nks EduOrbit फक्त अभ्यासासाठी नाही — शिकवणाऱ्यांसाठी आणि घरच्यांसाठीही तितकंच उपयोगी आहे.</p>
+      </div>
+
+      <div class="persona-toggle fade-up">
+        <button type="button" class="persona-btn active" data-persona="student">🎓 Student</button>
+        <button type="button" class="persona-btn" data-persona="teacher">👩‍🏫 Teacher</button>
+        <button type="button" class="persona-btn" data-persona="parent">👨‍👩‍👧 Parent</button>
+      </div>
+
+      <div class="persona-panel fade-up">
+        <div class="persona-grid" data-persona-view="student">
+          <div class="persona-card">
+            <div class="pc-icon">📝</div>
+            <div><h4>Quiz + संपूर्ण Solution</h4><p>चुकलेल्या प्रश्नाचं स्पष्टीकरण सूत्रांसकट, step-by-step दिसतं — फक्त बरोबर उत्तर नाही.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">📋</div>
+            <div><h4>Practice Tests &amp; Papers</h4><p>बोर्ड परीक्षेच्या pattern नुसार question papers आणि timed tests.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">📖</div>
+            <div><h4>Study Notes + Exercise Bank</h4><p>Diagram/figure सकट notes, आणि activity-type व solve-type प्रश्नांचा मोठा संग्रह.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">🗂️</div>
+            <div><h4>Study Plan</h4><p>कोणते lessons आधी पूर्ण करायचे ते स्वतः निवडून targeted अभ्यास करा.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">📚</div>
+            <div><h4>Vocabulary Tests</h4><p>Listen, Meaning, Picture, Spelling — 4 प्रकारे English शब्द शिका.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">📶</div>
+            <div><h4>Offline + Free Trial</h4><p>Internet शिवायही अभ्यास चालू राहतो; काही chapters मोफत — आवडलं तरच subscribe करा.</p></div>
+          </div>
+        </div>
+
+        <div class="persona-grid hidden" data-persona-view="teacher">
+          <div class="persona-card">
+            <div class="pc-icon">🎬</div>
+            <div><h4>🆕 YouTube Teacher Partner</h4><p>तुमचे स्वतःचे teaching videos Exercise/Notes ला जोडा — students ना दिसतात, तुम्हाला commission मिळतं.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">🧾</div>
+            <div><h4>🆕 स्वतःचा Paper Builder</h4><p>एकापेक्षा जास्त Subject/Chapter एकत्र करून question paper बनवा — तुमच्या शाळेच्या नावासकट PDF, मराठी किंवा इंग्रजीत.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">🗺️</div>
+            <div><h4>Teaching Areas Dashboard</h4><p>कोणता Exercise/Concept अजून cover केलेला नाही ते एका नजरेत दिसतं.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">🔔</div>
+            <div><h4>Students ना Instant Updates</h4><p>नवीन test/quiz publish केला की तुमच्या सगळ्या students ना लगेच notification जातो.</p></div>
+          </div>
+        </div>
+
+        <div class="persona-grid hidden" data-persona-view="parent">
+          <div class="persona-card">
+            <div class="pc-icon">🔑</div>
+            <div><h4>वेगळं Account नाही</h4><p>Student चाच Code + PIN वापरून "Parent" टॅब निवडा — नवीन registration लागत नाही.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">📊</div>
+            <div><h4>Progress आणि Scores</h4><p>Weekly/Monthly performance, कोणत्या विषयात मागे आहे हे लगेच कळतं.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">💳</div>
+            <div><h4>Subscription Status</h4><p>Plan कधी संपतंय, Renew कधी करायचं — सगळं एका ठिकाणी दिसतं.</p></div>
+          </div>
+          <div class="persona-card">
+            <div class="pc-icon">🔔</div>
+            <div><h4>Test नंतर लगेच Update</h4><p>मुलाने/मुलीने test दिला की लगेच score कळतो — घरी बसून follow-up करता येतं.</p></div>
           </div>
         </div>
       </div>
@@ -701,14 +834,45 @@
     <div class="container">
       <div class="fade-up">
         <div class="section-label">📥 Install Guide</div>
-        <h2 class="section-title">APK Install कसा करायचा?</h2>
+        <h2 class="section-title" id="install-title">App कसा Install करायचा?</h2>
       </div>
 
-      <div class="warn-box fade-up">
-        ⚠️ <strong>महत्त्वाचे:</strong> हा app Google Play Store वर नाही. खाली दिलेल्या 4 steps follow केल्यावर install होईल — 2 मिनिटांत!
+      <!-- Shown once the Play Store listing is detected (see fetchLatestApk) -->
+      <div class="warn-box hidden" id="install-warn-play" style="background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);color:#065f46">
+        ✅ <strong>Nks EduOrbit आता अधिकृतपणे Google Play वर उपलब्ध आहे!</strong> खाली दिलेले 3 steps follow करा — अगदी कोणत्याही extra setting शिवाय.
+      </div>
+      <!-- Default (APK sideload) warning — hidden the moment a Play Store link is found -->
+      <div class="warn-box fade-up" id="install-warn-apk">
+        ⚠️ <strong>महत्त्वाचे:</strong> खाली दिलेल्या 4 steps follow केल्यावर install होईल — 2 मिनिटांत!
       </div>
 
-      <div class="install-steps">
+      <!-- Play Store flow -->
+      <div class="install-steps hidden" data-install-view="play">
+        <div class="install-step fade-up visible">
+          <div class="install-step-num">1</div>
+          <div>
+            <h3>⭐ Google Play वर जा</h3>
+            <p>खालील <strong>"Google Play वर पहा"</strong> button वर click करा — अधिकृत Play Store page उघडेल.</p>
+          </div>
+        </div>
+        <div class="install-step fade-up visible">
+          <div class="install-step-num">2</div>
+          <div>
+            <h3>📥 Install करा</h3>
+            <p><strong>Install</strong> बटण दाबा — कोणतीही extra permission/setting बदलायची गरज नाही.</p>
+          </div>
+        </div>
+        <div class="install-step fade-up visible">
+          <div class="install-step-num">3</div>
+          <div>
+            <h3>🔑 Login किंवा Register करा</h3>
+            <p>Teacher कडून मिळालेला <strong>Student Code</strong> आणि <strong>PIN</strong> टाका, किंवा स्वतः नवीन Registration करून Free Trial सुरू करा.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- APK sideload fallback (shown until a Play Store link is confirmed) -->
+      <div class="install-steps" data-install-view="apk">
         <div class="install-step fade-up">
           <div class="install-step-num">1</div>
           <div>
@@ -784,19 +948,30 @@
         if (el) { el.style.opacity = '0.6'; el.style.pointerEvents = 'none'; }
       });
     }
-    function setDownloadLinks(url, version, size) {
+    function setDownloadLinks(url, version, size, isPlay) {
       dlBtnIds.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.href = url;
         el.style.opacity = '';
         el.style.pointerEvents = '';
+        if (isPlay && el.lastChild) el.lastChild.textContent = ' Google Play वर पहा';
       });
       const navBtn = document.getElementById('nav-dl-btn');
-      if (navBtn) navBtn.href = url;
+      if (navBtn) {
+        navBtn.href = url;
+        if (isPlay) navBtn.textContent = '⭐ Google Play';
+      }
       if (fileMeta && version) {
         const sizeTxt = size ? ` · ${(size / 1024 / 1024).toFixed(1)} MB` : '';
         fileMeta.textContent = `Android 7.0+ · Free · Nks EduOrbit v${version}${sizeTxt}`;
+      }
+      if (isPlay) {
+        document.getElementById('install-title').textContent = 'App कसा Install करायचा?';
+        document.getElementById('install-warn-apk')?.classList.add('hidden');
+        document.getElementById('install-warn-play')?.classList.remove('hidden');
+        document.querySelector('[data-install-view="apk"]')?.classList.add('hidden');
+        document.querySelector('[data-install-view="play"]')?.classList.remove('hidden');
       }
     }
     function setError() {
@@ -841,7 +1016,7 @@
       setLoading();
       const play = await playStoreLink();
       if (play) {
-        setDownloadLinks(play, '', 0);
+        setDownloadLinks(play, '', 0, true);
         if (fileMeta) fileMeta.textContent = 'Android · Google Play · Nks EduOrbit';
         return;
       }
@@ -934,6 +1109,17 @@
         document.querySelectorAll('.how-path-btn').forEach(b => b.classList.toggle('active', b === btn));
         document.querySelectorAll('[data-path-view]').forEach(view => {
           view.classList.toggle('hidden', view.dataset.pathView !== path);
+        });
+      });
+    });
+
+    // ── Persona toggle (Student / Teacher / Parent) ───────────────
+    document.querySelectorAll('.persona-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const persona = btn.dataset.persona;
+        document.querySelectorAll('.persona-btn').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('[data-persona-view]').forEach(view => {
+          view.classList.toggle('hidden', view.dataset.personaView !== persona);
         });
       });
     });
