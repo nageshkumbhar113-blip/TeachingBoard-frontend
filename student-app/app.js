@@ -554,7 +554,7 @@ const APP = (() => {
       if (!price) return; // no pricing configured for this batch yet — nothing to offer
 
       $('buynow-sheet-batch').textContent = batchName;
-      $('btn-buynow').textContent = `💳 Buy Now — ₹${price}`;
+      $('btn-buynow').textContent = `💳 आत्ता Subscribe करा — ₹${price}`;
       $('buynow-sheet-backdrop')?.classList.remove('hidden');
       $('buynow-sheet')?.classList.remove('hidden');
 
