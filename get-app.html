@@ -68,44 +68,43 @@
     /* ══ NAV ══ */
     .nav {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(255,253,251,0.78);
-      backdrop-filter: blur(14px) saturate(1.4);
-      -webkit-backdrop-filter: blur(14px) saturate(1.4);
-      border-bottom: 1px solid var(--border);
+      background: linear-gradient(100deg, #D4560F 0%, #F0883E 48%, #FFA85C 100%);
+      box-shadow: 0 4px 20px rgba(205,91,14,0.35);
       padding: 14px 24px;
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
     .nav-inner { max-width: 1120px; margin: 0 auto; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .nav-brand {
-      display: flex; align-items: center; gap: 9px;
-      font-family: var(--f-head); font-size: 1.12rem; font-weight: 800; letter-spacing: -.01em;
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--f-head); font-size: 1.14rem; font-weight: 800; letter-spacing: -.01em;
+      color: #fff;
     }
     .nav-brand-mark {
-      width: 30px; height: 30px; border-radius: 9px;
-      background: linear-gradient(135deg, var(--p1), var(--p2));
+      width: 32px; height: 32px; border-radius: 10px;
+      background: #fff;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 10px rgba(240,136,62,0.35);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
     }
-    .nav-brand-mark img { width: 20px; height: 20px; object-fit: contain; }
+    .nav-brand-mark img { width: 21px; height: 21px; object-fit: contain; }
     .nav-actions { display: flex; align-items: center; gap: 10px; }
     .nav-download {
       padding: 9px 20px; border-radius: 999px;
-      background: linear-gradient(135deg, var(--p1), var(--p3)); color: #fff;
-      font-size: 0.85rem; font-weight: 700;
-      box-shadow: 0 6px 16px rgba(240,136,62,0.3);
+      background: #fff; color: var(--p2);
+      font-size: 0.85rem; font-weight: 800;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.18);
       transition: transform .15s var(--ease), box-shadow .15s var(--ease);
       white-space: nowrap;
     }
-    .nav-download:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(240,136,62,0.4); }
+    .nav-download:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(0,0,0,0.22); }
     .nav-ghost {
       padding: 9px 18px; border-radius: 999px;
-      background: transparent; color: var(--p2);
-      border: 1.5px solid var(--border);
+      background: rgba(255,255,255,0.14); color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.45);
       font-size: 0.85rem; font-weight: 700;
       transition: border-color .15s, background .15s;
       white-space: nowrap;
     }
-    .nav-ghost:hover { border-color: var(--p1); background: rgba(240,136,62,0.06); }
+    .nav-ghost:hover { border-color: #fff; background: rgba(255,255,255,0.24); }
     @media (max-width: 480px) {
       .nav-ghost span.full { display: none; }
     }
@@ -632,7 +631,7 @@
     <div class="nav-inner">
       <div class="nav-brand">
         <span class="nav-brand-mark"><img src="/icons/icon-72.png" alt="" /></span>
-        <span class="gt">Nks EduOrbit</span>
+        <span>Nks EduOrbit</span>
       </div>
       <div class="nav-actions">
         <a href="/teachers" class="nav-ghost">👩‍🏫 <span class="full">For Teachers</span></a>
