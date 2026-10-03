@@ -670,6 +670,10 @@ const TEST_PLAYER = (() => {
     $('tp-feedback-text').textContent = isCorrect
       ? 'Correct!'
       : `Wrong — Answer: ${correctAns}${correctText ? ` (${correctText})` : ''}`;
+    // correctText (an option's own text) can itself contain $..$ math — e.g. a
+    // fraction option — so the feedback bar needs KaTeX too, not just the
+    // solution box below it.
+    if (window.MATH) MATH.renderElement(bar);
     _renderSolutionBox($('tp-feedback-solution'), explanation);
     bar.classList.remove('hidden');
   }
@@ -800,6 +804,8 @@ const TEST_PLAYER = (() => {
     $('tp-feedback-icon').textContent = '⏰';
     const answerText = _getAnswerFeedbackText(q, q?.answer);
     $('tp-feedback-text').textContent = `Time up! Answer: ${q?.answer || ''}${answerText ? ` (${answerText})` : ''}`;
+    if (window.MATH) MATH.renderElement(bar);
+    _renderSolutionBox($('tp-feedback-solution'), q?.explanation);
     bar.classList.remove('hidden');
 
     if (q) state.answers[q.q_id] = { given: null, correct: false, time_ms: 0, skipped: true };
@@ -1146,7 +1152,9 @@ const TEST_PLAYER = (() => {
         </div>
         ${q.explanation ? `<div class="feedback-solution">💡 ${_richSolution(q.explanation)}</div>` : ''}
       `;
-      if (q.explanation && window.MATH) MATH.renderElement(div.querySelector('.feedback-solution'));
+      // "Correct: ..." line can itself contain $..$ math (a fraction option
+      // etc.), not just the solution box - render the whole card.
+      if (window.MATH) MATH.renderElement(div);
       container.appendChild(div);
     });
   }

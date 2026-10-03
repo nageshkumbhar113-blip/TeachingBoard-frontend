@@ -539,6 +539,7 @@ const QUIZ = (() => {
     const answerText = _getAnswerFeedbackText(q, q.answer);
     _setText('feedback-text', `${I18N.t('wrong')} ${q.answer}${answerText ? ` — ${answerText}` : ''}`);
     feedback.classList.remove('hidden');
+    if (window.MATH) MATH.renderElement(feedback);
     _renderSolutionBox($('feedback-solution'), q.explanation);
   }
 
@@ -571,6 +572,7 @@ const QUIZ = (() => {
       ? I18N.t('correct')
       : `${I18N.t('wrong')} ${answer}${ansText ? ` — ${ansText}` : ''}`;
     feedback.classList.remove('hidden');
+    if (window.MATH) MATH.renderElement(feedback);
     _renderSolutionBox($('feedback-solution'), explanation);
   }
 
