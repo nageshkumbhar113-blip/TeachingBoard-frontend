@@ -28,6 +28,7 @@
   cursor: pointer; margin: 10px 0 16px;
 }
 .vts-videos-btn.hidden { display: none; }
+.tp-wrong-video-btn { padding: 7px 12px; font-size: 0.78rem; margin: 6px 0 2px; }
 
 .vts-container { padding: 12px 16px 32px; }
 .vts-list { display: flex; flex-direction: column; gap: 12px; }

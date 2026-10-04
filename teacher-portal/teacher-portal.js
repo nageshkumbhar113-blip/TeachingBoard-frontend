@@ -488,7 +488,7 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
   const preset = editVideo || presetTarget;
 
   main.innerHTML = `
-    <div class="dash-head"><div><h2>${editVideo ? 'Edit Video' : 'Add Exercise/Concept Video'}</h2><div class="sub">${editVideo ? 'The Batch/Subject/Chapter/Content/Part can\'t be changed here — delete and re-add if that\'s wrong. Change the link below and resubmit.' : 'Add a Teaching Area first if the batch you need isn\'t listed.'}</div></div></div>
+    <div class="dash-head"><div><h2>${editVideo ? 'Edit Video' : 'Add Exercise/Concept/Quiz Video'}</h2><div class="sub">${editVideo ? 'The Batch/Subject/Chapter/Content/Part can\'t be changed here — delete and re-add if that\'s wrong. Change the link below and resubmit.' : 'Add a Teaching Area first if the batch you need isn\'t listed.'}</div></div></div>
     ${batchesForPicker.length === 0 ? '<div class="empty-hint">Add a Teaching Area first (My Teaching Areas tab).</div>' : `
     ${editVideo && editVideo.status === 'approved' ? '<div id="av-callout" class="empty-hint" style="margin-bottom:10px;">Saving will send this edit for re-approval — your current approved video stays visible to students until it\'s approved.</div>' : ''}
     <div class="field"><label>Batch</label><select class="field-select" id="av-batch"><option value="">Select…</option>
@@ -499,9 +499,11 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     <div class="field"><label>Content Type</label><div>
       <span class="subj-tag ct-tag" data-type="exercise" id="av-type-exercise">📝 Exercise</span>
       <span class="subj-tag ct-tag" data-type="concept" id="av-type-concept">📓 Concept (Notes)</span>
+      <span class="subj-tag ct-tag" data-type="quiz_question" id="av-type-quiz">❓ Quiz Question</span>
     </div></div>
     <div class="field" id="av-exercise-field"><label>Exercise</label><select class="field-select" id="av-exercise" disabled><option>Select Chapter first</option></select></div>
     <div class="field hidden" id="av-concept-field"><label>Concept</label><select class="field-select" id="av-concept" disabled><option>Select Chapter first</option></select></div>
+    <div class="field hidden" id="av-question-field"><label>Quiz Question</label><select class="field-select" id="av-question" disabled><option>Select Chapter first</option></select></div>
 
     <div id="av-callout"></div>
     <div class="field"><label>YouTube URL</label><input id="av-url" placeholder="https://youtu.be/..."></div>
@@ -515,9 +517,11 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
 
   const batchSel = main.querySelector('#av-batch'), subjectSel = main.querySelector('#av-subject'),
         chapterSel = main.querySelector('#av-chapter'), exerciseSel = main.querySelector('#av-exercise'),
-        conceptSel = main.querySelector('#av-concept');
-  const exerciseField = main.querySelector('#av-exercise-field'), conceptField = main.querySelector('#av-concept-field');
-  const typeExBtn = main.querySelector('#av-type-exercise'), typeCoBtn = main.querySelector('#av-type-concept');
+        conceptSel = main.querySelector('#av-concept'), questionSel = main.querySelector('#av-question');
+  const exerciseField = main.querySelector('#av-exercise-field'), conceptField = main.querySelector('#av-concept-field'),
+        questionField = main.querySelector('#av-question-field');
+  const typeExBtn = main.querySelector('#av-type-exercise'), typeCoBtn = main.querySelector('#av-type-concept'),
+        typeQuBtn = main.querySelector('#av-type-quiz');
 
   let contentType = 'exercise';
   let typeLocked = false;
@@ -525,12 +529,15 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     contentType = t;
     typeExBtn.classList.toggle('on', t === 'exercise');
     typeCoBtn.classList.toggle('on', t === 'concept');
+    typeQuBtn.classList.toggle('on', t === 'quiz_question');
     exerciseField.classList.toggle('hidden', t !== 'exercise');
     conceptField.classList.toggle('hidden', t !== 'concept');
+    questionField.classList.toggle('hidden', t !== 'quiz_question');
   }
   setContentType('exercise');
   typeExBtn.addEventListener('click', () => { if (!typeLocked) setContentType('exercise'); });
   typeCoBtn.addEventListener('click', () => { if (!typeLocked) setContentType('concept'); });
+  typeQuBtn.addEventListener('click', () => { if (!typeLocked) setContentType('quiz_question'); });
 
   batchSel.addEventListener('change', () => {
     const b = tree.find(x => x.name === batchSel.value);
@@ -539,6 +546,7 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     chapterSel.innerHTML = '<option>Select Subject first</option>'; chapterSel.disabled = true;
     exerciseSel.innerHTML = '<option>Select Chapter first</option>'; exerciseSel.disabled = true;
     conceptSel.innerHTML = '<option>Select Chapter first</option>'; conceptSel.disabled = true;
+    questionSel.innerHTML = '<option>Select Chapter first</option>'; questionSel.disabled = true;
   });
   subjectSel.addEventListener('change', () => {
     const b = tree.find(x => x.name === batchSel.value);
@@ -547,16 +555,19 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     chapterSel.disabled = !s;
     exerciseSel.innerHTML = '<option>Select Chapter first</option>'; exerciseSel.disabled = true;
     conceptSel.innerHTML = '<option>Select Chapter first</option>'; conceptSel.disabled = true;
+    questionSel.innerHTML = '<option>Select Chapter first</option>'; questionSel.disabled = true;
   });
   chapterSel.addEventListener('change', () => _loadExercisesAndConcepts());
 
   async function _loadExercisesAndConcepts() {
     exerciseSel.innerHTML = '<option>Loading…</option>'; exerciseSel.disabled = true;
     conceptSel.innerHTML = '<option>Loading…</option>'; conceptSel.disabled = true;
+    questionSel.innerHTML = '<option>Loading…</option>'; questionSel.disabled = true;
     const qs = `batch=${encodeURIComponent(batchSel.value)}&subject=${encodeURIComponent(subjectSel.value)}&chapter=${encodeURIComponent(chapterSel.value)}`;
-    const [exRes, coRes] = await Promise.all([
+    const [exRes, coRes, quRes] = await Promise.all([
       api('GET', `/exercises?${qs}`).catch(() => ({ data: [] })),
       api('GET', `/concepts?${qs}`).catch(() => ({ data: [] })),
+      api('GET', `/quiz-questions?${qs}`).catch(() => ({ data: [] })),
     ]);
     exerciseSel.innerHTML = exRes.data.length
       ? '<option value="">Select…</option>' + exRes.data.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
@@ -566,6 +577,10 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
       ? '<option value="">Select…</option>' + coRes.data.map(c => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join('')
       : '<option value="">No concepts found for this chapter yet</option>';
     conceptSel.disabled = false;
+    questionSel.innerHTML = quRes.data.length
+      ? '<option value="">Select…</option>' + quRes.data.map(q => `<option value="${esc(q.q_id)}">${esc(q.question)}</option>`).join('')
+      : '<option value="">No quiz questions found for this chapter yet</option>';
+    questionSel.disabled = false;
   }
 
   // Live preview — the teacher (and, on the admin side, whoever approves
@@ -602,12 +617,13 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     setContentType(preset.content_type || 'exercise');
     await _loadExercisesAndConcepts();
     if (contentType === 'exercise') exerciseSel.value = preset.exercise_no || '';
+    else if (contentType === 'quiz_question') questionSel.value = preset.question_id || '';
     else conceptSel.value = preset.concept_id || '';
   }
 
   if (editVideo) {
     batchSel.disabled = true; subjectSel.disabled = true; chapterSel.disabled = true;
-    exerciseSel.disabled = true; conceptSel.disabled = true; typeLocked = true;
+    exerciseSel.disabled = true; conceptSel.disabled = true; questionSel.disabled = true; typeLocked = true;
     partInput.value = editVideo.part_label || '';
     partInput.readOnly = true;
 
@@ -620,9 +636,12 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     const errEl = main.querySelector('#av-error');
     errEl.classList.remove('show');
     const url = main.querySelector('#av-url').value.trim();
-    const contentOk = contentType === 'exercise' ? !!exerciseSel.value : !!conceptSel.value;
+    const contentOk = contentType === 'exercise' ? !!exerciseSel.value
+      : contentType === 'quiz_question' ? !!questionSel.value
+      : !!conceptSel.value;
     if (!batchSel.value || !subjectSel.value || !chapterSel.value || !contentOk || !url) {
-      errEl.textContent = `Please fill Batch, Subject, Chapter, ${contentType === 'exercise' ? 'Exercise' : 'Concept'} and YouTube URL.`; errEl.classList.add('show'); return;
+      const typeLabel = contentType === 'exercise' ? 'Exercise' : contentType === 'quiz_question' ? 'Quiz Question' : 'Concept';
+      errEl.textContent = `Please fill Batch, Subject, Chapter, ${typeLabel} and YouTube URL.`; errEl.classList.add('show'); return;
     }
     try {
       const payload = {
@@ -631,6 +650,7 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
         youtube_url: url, part_label: partInput.value.trim(),
       };
       if (contentType === 'exercise') payload.exercise_no = exerciseSel.value;
+      else if (contentType === 'quiz_question') { payload.question_id = questionSel.value; payload.question_text = questionSel.selectedOptions[0]?.textContent || ''; }
       else { payload.concept_id = conceptSel.value; payload.concept_title = conceptSel.selectedOptions[0]?.textContent || ''; }
       await api('POST', '/videos', payload);
       toast(editVideo ? 'Edit submitted for re-approval!' : 'Submitted for approval!');
@@ -645,7 +665,9 @@ async function renderVideos(main) {
     <div class="dash-head"><div><h2>My Videos</h2><div class="sub">All ${videos.length} · Pending ${videos.filter(v=>v.status==='pending').length} · Approved ${videos.filter(v=>v.status==='approved').length} · Rejected ${videos.filter(v=>v.status==='rejected').length}</div></div></div>
     ${videos.length ? videos.map(v => {
       const editPending = v.status === 'pending' && v.live_video_id;
-      const contentLabel = v.content_type === 'concept' ? `📓 ${esc(v.concept_title)}` : `📝 Exercise ${esc(v.exercise_no)}`;
+      const contentLabel = v.content_type === 'concept' ? `📓 ${esc(v.concept_title)}`
+        : v.content_type === 'quiz_question' ? `❓ ${esc(v.question_text)}`
+        : `📝 Exercise ${esc(v.exercise_no)}`;
       return `
       <div class="list-card"><div class="thumb">▶</div><div class="info">
         <strong>${esc(v.chapter_name)} — ${contentLabel}${v.part_label ? ' · ' + esc(v.part_label) : ''}</strong>

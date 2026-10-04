@@ -200,6 +200,7 @@ const QUIZ = (() => {
     _stopTimer();
     $('feedback-bar')?.classList.add('hidden');
     $('feedback-solution')?.classList.add('hidden');
+    $('qz-videos-btn')?.classList.add('hidden');
     state.answered = false;
 
     const q = state.questions[state.current];
@@ -313,7 +314,7 @@ const QUIZ = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    _showFeedback(isCorrect, correct, _getAnswerFeedbackText(q, correct), q.explanation);
+    _showFeedback(isCorrect, correct, _getAnswerFeedbackText(q, correct), q.explanation, q);
   }
 
   // ════════════════════════
@@ -344,7 +345,7 @@ const QUIZ = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    _showFeedback(isCorrect, correct, '', q.explanation);
+    _showFeedback(isCorrect, correct, '', q.explanation, q);
   }
 
   // ════════════════════════
@@ -383,7 +384,7 @@ const QUIZ = (() => {
     input.style.borderColor = isCorrect ? 'var(--correct)' : 'var(--wrong)';
 
     _recordAnswer(q, val, isCorrect);
-    _showFeedback(isCorrect, q.answer, '', q.explanation);
+    _showFeedback(isCorrect, q.answer, '', q.explanation, q);
   }
 
   // ════════════════════════
@@ -461,7 +462,7 @@ const QUIZ = (() => {
         state.answered = true;
         _stopTimer();
         _recordAnswer(q, 'all_matched', true);
-        _showFeedback(true);
+        _showFeedback(true, '', '', '', q);
       }
     }
   }
@@ -541,6 +542,7 @@ const QUIZ = (() => {
     feedback.classList.remove('hidden');
     if (window.MATH) MATH.renderElement(feedback);
     _renderSolutionBox($('feedback-solution'), q.explanation);
+    if (q?.q_id) VIDEO_TEACHER_SELECT?.checkAndShowButtonForQuizQuestion('qz-videos-btn', q.q_id, q.question);
   }
 
   // ════════════════════════
@@ -561,7 +563,7 @@ const QUIZ = (() => {
     }
   }
 
-  function _showFeedback(isCorrect, answer, ansText, explanation) {
+  function _showFeedback(isCorrect, answer, ansText, explanation, q) {
     const feedback = $('feedback-bar');
     const feedbackIcon = $('feedback-icon');
     const feedbackText = $('feedback-text');
@@ -574,6 +576,8 @@ const QUIZ = (() => {
     feedback.classList.remove('hidden');
     if (window.MATH) MATH.renderElement(feedback);
     _renderSolutionBox($('feedback-solution'), explanation);
+    if (q?.q_id) VIDEO_TEACHER_SELECT?.checkAndShowButtonForQuizQuestion('qz-videos-btn', q.q_id, q.question);
+    else $('qz-videos-btn')?.classList.add('hidden');
   }
 
   function _recordAnswer(q, given, isCorrect) {
