@@ -74,6 +74,9 @@
     $('pa-yt').value = c.youtube_flat;
     $('pa-school').value = c.school_percent;
     $('pa-delivery').value = c.prize_delivery_days || 10;
+    if ($('pa-disc-enabled')) $('pa-disc-enabled').checked = c.student_discount_enabled !== false;
+    if ($('pa-disc-percent')) $('pa-disc-percent').value = c.student_discount_percent ?? 50;
+    if ($('pa-disc-first-only')) $('pa-disc-first-only').checked = c.student_discount_first_payment_only !== false;
     _prizes = (c.prizes || []).map(p => ({ count: p.count, title: p.title }));
     _renderPrizes();
   }
@@ -162,6 +165,9 @@
         youtube_flat: Number($('pa-yt').value),
         school_percent: Number($('pa-school').value),
         prize_delivery_days: Number($('pa-delivery').value),
+        student_discount_enabled: !!$('pa-disc-enabled')?.checked,
+        student_discount_percent: Number($('pa-disc-percent')?.value || 0),
+        student_discount_first_payment_only: !!$('pa-disc-first-only')?.checked,
       });
       toast('Settings saved', 'success');
     } catch (err) {

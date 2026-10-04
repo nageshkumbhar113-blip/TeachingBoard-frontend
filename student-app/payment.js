@@ -64,7 +64,8 @@ const PAYMENT = (() => {
          <div class="admit-ledger-row"><span class="l">Batch</span><span class="v" id="pay-batch-label"></span></div>
          <div class="admit-ledger-row"><span class="l">Student</span><span class="v">${_esc(student.name || '')} · ${_esc(student.student_code || '')}</span></div>
          <div class="admit-gold-rule"></div>
-         <div id="pay-plans"></div>`
+         <div id="pay-plans"></div>
+         <div id="pay-yt-discount"></div>`
       : `<p style="color:var(--text2,#8b949e);text-align:center">अजून कोणतीही paid batch उपलब्ध नाही. Admin शी संपर्क करा.</p>`;
 
     _overlay.innerHTML = `
@@ -150,6 +151,95 @@ const PAYMENT = (() => {
     _overlay.querySelector('#pay-filter-medium')?.addEventListener('change', _applyFilters);
 
     _renderCarousel(paid);
+    _renderYtDiscountBlock(student);
+  }
+
+  // ── YouTube-subscriber discount: self-claim + teacher approval ──────────────
+
+  async function _renderYtDiscountBlock(student) {
+    const host = _overlay?.querySelector('#pay-yt-discount');
+    if (!host) return;
+    try {
+      const status = await API.getMySubscriberClaimStatus();
+      if (!host.isConnected) return;
+      if (status.state === 'verified') {
+        host.innerHTML = `<div class="admit-yt-verified">✅ YouTube Subscriber Discount Active${status.partner_name ? ` — ${_esc(status.partner_name)}` : ''}</div>`;
+        return;
+      }
+      if (status.state === 'pending') {
+        host.innerHTML = `<div class="admit-yt-pending">⏳ तुमची subscriber request pending आहे${status.partner_name ? ` (${_esc(status.partner_name)})` : ''} — approve झाल्यावर notification येईल.</div>`;
+        return;
+      }
+      host.innerHTML = `<button type="button" class="admit-yt-claim-btn" id="pay-yt-claim-open">📺 मी YouTube Subscriber आहे — 50% सूट मिळवा</button>`;
+      host.querySelector('#pay-yt-claim-open')?.addEventListener('click', () => _openYtClaimPanel(host, student));
+    } catch { host.innerHTML = ''; }
+  }
+
+  function _openYtClaimPanel(host, student) {
+    host.innerHTML = `
+      <div class="admit-yt-panel">
+        <p class="admit-yt-panel-title">📺 तुमचा YouTube Teacher शोधा</p>
+        <input type="text" id="pay-yt-search" class="admit-input admit-yt-search" placeholder="नाव टाईपा (किमान 1 अक्षर)…" autocomplete="off" />
+        <div id="pay-yt-results" class="admit-yt-results"></div>
+        <div id="pay-yt-selected" class="admit-yt-selected hidden">
+          <p id="pay-yt-selected-name"></p>
+          <input type="text" id="pay-yt-handle" class="admit-input" placeholder="तुमचं YouTube नाव काय आहे?" />
+          <button type="button" id="pay-yt-submit" class="admit-yt-claim-btn">Request पाठवा</button>
+          <p id="pay-yt-claim-err" class="pin-error hidden"></p>
+        </div>
+        <button type="button" id="pay-yt-cancel" class="admit-yt-cancel">रद्द करा</button>
+      </div>`;
+
+    let selectedPartner = null;
+    let searchTimer = null;
+    const searchInput = host.querySelector('#pay-yt-search');
+    const resultsEl = host.querySelector('#pay-yt-results');
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = searchInput.value.trim();
+      if (!q) { resultsEl.innerHTML = ''; return; }
+      searchTimer = setTimeout(async () => {
+        let results = [];
+        try { results = await API.searchYoutubeSubscriberPartners(q); } catch { /* ignore */ }
+        if (!host.isConnected) return;
+        resultsEl.innerHTML = results.length
+          ? results.map(p => `<div class="admit-yt-result" data-id="${_esc(p.id)}">${_esc(p.name)}${p.youtube_channel_name ? ` — ${_esc(p.youtube_channel_name)}` : ''}</div>`).join('')
+          : '<div class="admit-yt-result-empty">काही सापडलं नाही</div>';
+        resultsEl.querySelectorAll('[data-id]').forEach(el => {
+          el.addEventListener('click', () => {
+            selectedPartner = results.find(r => r.id === el.dataset.id);
+            if (!selectedPartner) return;
+            host.querySelector('#pay-yt-selected')?.classList.remove('hidden');
+            const nameEl = host.querySelector('#pay-yt-selected-name');
+            if (nameEl) nameEl.textContent = `निवडलं: ${selectedPartner.name}`;
+            resultsEl.innerHTML = '';
+            searchInput.value = selectedPartner.name;
+          });
+        });
+      }, 250);
+    });
+
+    host.querySelector('#pay-yt-submit')?.addEventListener('click', async () => {
+      const errEl = host.querySelector('#pay-yt-claim-err');
+      errEl?.classList.add('hidden');
+      if (!selectedPartner) { if (errEl) { errEl.textContent = 'आधी teacher निवडा'; errEl.classList.remove('hidden'); } return; }
+      const displayName = host.querySelector('#pay-yt-handle')?.value.trim() || '';
+      if (!displayName) { if (errEl) { errEl.textContent = 'तुमचं YouTube नाव टाका'; errEl.classList.remove('hidden'); } return; }
+
+      const btn = host.querySelector('#pay-yt-submit');
+      btn.disabled = true;
+      try {
+        await API.claimYoutubeSubscriber(selectedPartner.id, displayName);
+        _toast('Request पाठवली — Teacher approve केल्यावर कळेल', 'success');
+        _renderYtDiscountBlock(student);
+      } catch (err) {
+        if (errEl) { errEl.textContent = err?.message || 'काहीतरी चूक झाली'; errEl.classList.remove('hidden'); }
+        btn.disabled = false;
+      }
+    });
+
+    host.querySelector('#pay-yt-cancel')?.addEventListener('click', () => _renderYtDiscountBlock(student));
   }
 
   function _renderPlans(batch, student, onActivated) {
@@ -158,15 +248,15 @@ const PAYMENT = (() => {
 
     const btns = [];
     if (batch.monthly_price > 0) {
-      btns.push(`<button class="admit-plan-btn featured" data-plan="monthly">
+      btns.push(`<button class="admit-plan-btn featured" data-plan="monthly" data-price="${batch.monthly_price}">
         <span class="admit-plan-name">📅 Monthly <span class="admit-plan-badge">Popular</span></span>
-        <span class="admit-plan-price">₹${_esc(batch.monthly_price)}</span>
+        <span class="admit-plan-price" data-price-el>₹${_esc(batch.monthly_price)}</span>
       </button>`);
     }
     if (batch.yearly_price > 0) {
-      btns.push(`<button class="admit-plan-btn" data-plan="yearly">
+      btns.push(`<button class="admit-plan-btn" data-plan="yearly" data-price="${batch.yearly_price}">
         <span class="admit-plan-name">🗓️ Yearly</span>
-        <span class="admit-plan-price">₹${_esc(batch.yearly_price)}</span>
+        <span class="admit-plan-price" data-price-el>₹${_esc(batch.yearly_price)}</span>
       </button>`);
     }
     host.innerHTML = `${btns.join('')}<p id="pay-msg" class="pin-error hidden" role="alert" style="margin-top:6px"></p>`;
@@ -174,6 +264,29 @@ const PAYMENT = (() => {
     host.querySelectorAll('button[data-plan]').forEach(btn => {
       btn.addEventListener('click', () => _choosePlan(btn.dataset.plan, batch, student, onActivated, host));
     });
+
+    _applyDiscountToPlans(host, batch, student);
+  }
+
+  // Best-effort: if this student has an approved YouTube-subscriber claim,
+  // fetch the real discounted price (server-computed, same resolveStudentDiscount
+  // logic createOrder will use) and show it struck-through + a badge. Silently
+  // no-ops on any failure — the plan buttons already show the full price.
+  async function _applyDiscountToPlans(host, batch, student) {
+    const buttons = [...host.querySelectorAll('button[data-plan]')];
+    await Promise.all(buttons.map(async btn => {
+      try {
+        const period = btn.dataset.plan;
+        const preview = await API.previewPaymentPrice({
+          student_code: student.student_code, pin: student.pin, batch: batch.name, period,
+        });
+        if (!preview?.discount_percent) return;
+        const priceEl = btn.querySelector('[data-price-el]');
+        if (!priceEl || !host.isConnected) return;
+        priceEl.innerHTML = `<s class="admit-plan-price-orig">₹${_esc(preview.original_price)}</s> ₹${_esc(preview.discounted_price)}
+          <span class="admit-plan-discount-badge">🎓 ${preview.discount_percent}% OFF</span>`;
+      } catch { /* keep full price shown */ }
+    }));
   }
 
   function _msg(host, text, isErr = true) {

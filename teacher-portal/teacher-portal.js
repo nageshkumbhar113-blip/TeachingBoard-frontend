@@ -238,6 +238,7 @@ async function renderDashboardTab(tab) {
     if (tab === 'add-video')     return renderAddVideo(main);
     if (tab === 'videos')        return renderVideos(main);
     if (tab === 'missing')       return renderMissing(main);
+    if (tab === 'subscriber-claims') return renderSubscriberClaims(main);
     if (tab === 'subscription')  return renderSubscription(main);
     if (tab === 'payments')      return renderPayments(main);
   } catch (err) {
@@ -252,10 +253,12 @@ async function renderDashboardTab(tab) {
 }
 
 async function renderHome(main) {
-  const [profileRes, videosRes, missingRes, subRes] = await Promise.all([
+  const [profileRes, videosRes, missingRes, subRes, claimsRes] = await Promise.all([
     api('GET', '/profile'), api('GET', '/videos'), api('GET', '/missing-videos'), api('GET', '/subscription'),
+    api('GET', '/subscriber-claims?status=pending').catch(() => ({ data: [] })),
   ]);
   const profile = profileRes.data, videos = videosRes.data, missing = missingRes.data, sub = subRes.data;
+  const pendingClaims = claimsRes.data || [];
   const counts = { pending: 0, approved: 0, rejected: 0 };
   videos.forEach(v => { counts[v.status] = (counts[v.status] || 0) + 1; });
 
@@ -276,11 +279,16 @@ async function renderHome(main) {
     <div class="banner-row">
       <div class="banner warn"><span>⏳</span><div><strong>${missing.length} exercises still need videos</strong><span>in your Teaching Areas</span></div></div>
       <div class="banner ${sub ? 'ok' : 'warn'}"><span>${sub ? '✓' : '⚠️'}</span><div><strong>${sub ? `Renews in ${daysLeft} days` : 'No active subscription'}</strong><span>${sub ? `${sub.plan_type} plan` : 'Choose a plan to start adding videos'}</span></div></div>
+      ${pendingClaims.length ? `<div class="banner warn" data-tab="subscriber-claims" style="cursor:pointer"><span>📺</span><div><strong>${pendingClaims.length} subscriber request${pendingClaims.length === 1 ? '' : 's'} waiting</strong><span>Review and approve the 50% discount</span></div></div>` : ''}
     </div>
     <p class="section-label">Recent Videos</p>
     ${videos.slice(0, 5).map(videoRow).join('') || '<div class="empty-hint">No videos yet.</div>'}
   `;
   main.querySelector('[data-tab="add-video"]').addEventListener('click', () => renderDashboardTab('add-video'));
+  main.querySelector('[data-tab="subscriber-claims"]')?.addEventListener('click', () => {
+    document.querySelectorAll('#dash-sidebar .dash-nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === 'subscriber-claims'));
+    renderDashboardTab('subscriber-claims');
+  });
 }
 
 function videoRow(v) {
@@ -674,6 +682,45 @@ async function renderMissing(main) {
         <strong>${esc(g.chapter_name)} — ${esc(g.exercise_no)}</strong><small>${esc(g.batch_name)} · ${esc(g.subject_name)}</small></div></div>`).join('')
       : '<div class="empty-hint">No gaps — you\'ve covered every exercise in your Teaching Areas 🎉</div>'}
   `;
+}
+
+async function renderSubscriberClaims(main) {
+  const { data: claims } = await api('GET', '/subscriber-claims?status=pending');
+  main.innerHTML = `
+    <div class="dash-head"><div><h2>Subscriber Requests</h2>
+      <div class="sub">Students claiming to subscribe your YouTube channel — check your YouTube Studio → Recent Subscribers for this name before approving.</div></div></div>
+    ${claims.length ? claims.map(c => `
+      <div class="list-card" data-claim="${c.id}"><div class="thumb">📺</div><div class="info">
+        <strong>${esc(c.youtube_display_name)}</strong>
+        <small>${esc(c.student_code)} · requested ${new Date(c.claimed_at).toLocaleDateString()}</small>
+        <small style="display:block;color:var(--ink3,#777)">🔎 Look for "${esc(c.youtube_display_name)}" in your YouTube Studio → Recent Subscribers (See all) before approving.</small>
+      </div>
+        <button class="btn btn-primary" style="padding:6px 12px;font-size:.78rem;" data-approve="${c.id}">Approve — 50% off</button>
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:.78rem;" data-reject="${c.id}">Reject</button>
+      </div>`).join('')
+      : '<div class="empty-hint">No pending requests right now.</div>'}
+  `;
+  main.querySelectorAll('[data-approve]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await api('POST', `/subscriber-claims/${btn.dataset.approve}/approve`);
+        toast('Approved — student notified');
+        renderDashboardTab('subscriber-claims');
+      } catch (err) { btn.disabled = false; toast(err.message, true); }
+    });
+  });
+  main.querySelectorAll('[data-reject]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Reject this subscriber claim?')) return;
+      btn.disabled = true;
+      try {
+        await api('POST', `/subscriber-claims/${btn.dataset.reject}/reject`);
+        toast('Rejected');
+        renderDashboardTab('subscriber-claims');
+      } catch (err) { btn.disabled = false; toast(err.message, true); }
+    });
+  });
 }
 
 async function renderSubscription(main) {

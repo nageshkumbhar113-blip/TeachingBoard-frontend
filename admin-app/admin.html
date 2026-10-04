@@ -1751,6 +1751,14 @@ Marks: 1"></textarea>
                 <button type="button" id="pa-prize-add" class="admin-btn-secondary">+ Add prize</button>
                 <div style="margin-top:10px"><button type="button" id="pa-save-config" class="admin-btn-primary">Save settings</button></div>
                 <p class="import-hint">The YouTube and School values are the rate given to a new partner when they register; the rate that counts afterwards is the one on each teacher (Teachers tab). Prize changes apply to students from now on; requests already made keep their prize name.</p>
+
+                <h4 style="margin:16px 0 4px">🎓 Student YouTube-Subscriber Discount</h4>
+                <p class="import-hint">A student who claims to subscribe a YouTube Teacher Partner's channel, and whom that partner then approves (checked against their own YouTube Studio "Recent Subscribers" list), gets this discount on their subscription price.</p>
+                <div class="pa-grid">
+                  <label><input id="pa-disc-enabled" type="checkbox" /> Enabled</label>
+                  <label>Discount (%)<input id="pa-disc-percent" class="admin-input" type="number" min="0" max="100" /></label>
+                  <label><input id="pa-disc-first-only" type="checkbox" /> First payment only (not renewals)</label>
+                </div>
               </div>
 
               <div class="admin-card pa-section">

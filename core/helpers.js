@@ -2561,6 +2561,40 @@ const API = (() => {
     }).catch(() => null);
   }
 
+  // ── YouTube-subscriber discount (self-claim + teacher approval) ──────────────
+
+  async function searchYoutubeSubscriberPartners(q) {
+    const token = await ensureStudentSession();
+    const payload = await request(`/youtube-teacher/subscriber-search?q=${encodeURIComponent(q || '')}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || [];
+  }
+
+  async function getMySubscriberClaimStatus() {
+    const token = await ensureStudentSession();
+    const payload = await request('/youtube-teacher/subscriber-claim/status', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return payload?.data || { state: 'none' };
+  }
+
+  async function claimYoutubeSubscriber(partnerId, youtubeDisplayName) {
+    const token = await ensureStudentSession();
+    return request('/youtube-teacher/subscriber-claim', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ partner_id: partnerId, youtube_display_name: youtubeDisplayName }),
+    });
+  }
+
+  async function previewPaymentPrice({ student_code, pin, batch, period }) {
+    return request('/payment/preview', {
+      method: 'POST',
+      body: JSON.stringify({ student_code, pin, batch, period }),
+    });
+  }
+
   // ════════════════════════
 
   return {
@@ -2581,8 +2615,9 @@ const API = (() => {
     fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
-    getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment,
+    getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment, previewPaymentPrice,
     fetchPendingPayments, fetchRevenueSummary,
+    searchYoutubeSubscriberPartners, getMySubscriberClaimStatus, claimYoutubeSubscriber,
     fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,

@@ -1313,6 +1313,54 @@ body.student-app.mode-board.theme-board-light::before {
   background: var(--gold-grad); color: #3A2B08; padding: 2px 7px; border-radius: 8px; text-transform: uppercase;
 }
 
+/* YouTube-subscriber discount block (self-claim + teacher approval) */
+.admit-plan-price-orig { opacity: 0.55; font-weight: 500; margin-right: 4px; }
+.admit-plan-discount-badge {
+  display: inline-block; margin-left: 6px; font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  background: rgba(42,174,130,0.15); color: var(--admit-emerald, #2aae82);
+  padding: 2px 6px; border-radius: 7px;
+}
+#pay-yt-discount { margin-top: 14px; }
+.admit-yt-claim-btn {
+  width: 100%; padding: 11px 14px; border-radius: 12px;
+  border: 1.5px dashed var(--gold-1, #d4a94a); background: rgba(212,169,74,0.08);
+  color: var(--text, #e6edf3); font-family: 'Work Sans', 'Baloo 2', sans-serif;
+  font-weight: 700; font-size: 12.5px; cursor: pointer; text-align: center;
+}
+.admit-yt-verified {
+  padding: 10px 14px; border-radius: 12px; background: rgba(42,174,130,0.1);
+  border: 1px solid var(--admit-emerald, #2aae82); color: var(--admit-emerald, #2aae82);
+  font-family: 'Work Sans', 'Baloo 2', sans-serif; font-weight: 700; font-size: 12.5px; text-align: center;
+}
+.admit-yt-pending {
+  padding: 10px 14px; border-radius: 12px; background: rgba(212,169,74,0.08);
+  border: 1px solid var(--gold-1, #d4a94a); color: var(--text2, #8b949e);
+  font-family: 'Work Sans', 'Baloo 2', sans-serif; font-size: 12px; text-align: center; line-height: 1.5;
+}
+.admit-yt-panel {
+  border: 1px solid var(--border, #30363d); border-radius: 12px; padding: 12px;
+  background: var(--card, #161b22); font-family: 'Work Sans', 'Baloo 2', sans-serif;
+}
+.admit-yt-panel-title { font-size: 12.5px; font-weight: 700; color: var(--text, #e6edf3); margin: 0 0 8px; }
+.admit-yt-search { margin-bottom: 6px; }
+.admit-yt-results { max-height: 160px; overflow-y: auto; margin-bottom: 4px; }
+.admit-yt-result {
+  padding: 9px 10px; border-radius: 8px; font-size: 12.5px; color: var(--text, #e6edf3);
+  cursor: pointer; border: 1px solid transparent;
+}
+.admit-yt-result:hover { background: rgba(212,169,74,0.08); border-color: var(--gold-1, #d4a94a); }
+.admit-yt-result-empty { padding: 9px 10px; font-size: 12px; color: var(--text2, #8b949e); }
+.admit-yt-selected { margin-top: 8px; }
+.admit-yt-selected.hidden { display: none; }
+.admit-yt-selected p { font-size: 12.5px; font-weight: 600; color: var(--text, #e6edf3); margin: 0 0 8px; }
+.admit-yt-selected input { margin-bottom: 8px; }
+.admit-yt-cancel {
+  width: 100%; margin-top: 8px; padding: 8px; border-radius: 10px; border: none;
+  background: transparent; color: var(--text2, #8b949e); font-size: 12px;
+  font-family: 'Work Sans', 'Baloo 2', sans-serif; cursor: pointer; text-decoration: underline;
+}
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MOBILE UX â€” Student App Targeted Fixes
    â‰¤ 600px only. Desktop + Board mode unchanged.
