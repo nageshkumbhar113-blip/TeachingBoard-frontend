@@ -2567,25 +2567,32 @@ const API = (() => {
   }
 
   // ── YouTube-subscriber discount (self-claim + teacher approval) ──────────────
+  // All three take an optional {student_code, pin} — ensureStudentSession()
+  // falls back to locally-SAVED credentials when called with none, but right
+  // after self-registration (payment.js's openPlanSelect, called mid-flow
+  // with the brand-new code+pin still only in memory, not yet persisted via
+  // DB.setSetting) there is nothing saved yet to fall back to — these calls
+  // would silently fail and the button/panel would just never appear. Always
+  // pass the student's credentials through explicitly from the caller.
 
-  async function searchYoutubeSubscriberPartners(q) {
-    const token = await ensureStudentSession();
+  async function searchYoutubeSubscriberPartners(q, creds) {
+    const token = await ensureStudentSession(creds);
     const payload = await request(`/youtube-teacher/subscriber-search?q=${encodeURIComponent(q || '')}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return payload?.data || [];
   }
 
-  async function getMySubscriberClaimStatus() {
-    const token = await ensureStudentSession();
+  async function getMySubscriberClaimStatus(creds) {
+    const token = await ensureStudentSession(creds);
     const payload = await request('/youtube-teacher/subscriber-claim/status', {
       headers: { Authorization: `Bearer ${token}` },
     });
     return payload?.data || { state: 'none' };
   }
 
-  async function claimYoutubeSubscriber(partnerId, youtubeDisplayName) {
-    const token = await ensureStudentSession();
+  async function claimYoutubeSubscriber(partnerId, youtubeDisplayName, creds) {
+    const token = await ensureStudentSession(creds);
     return request('/youtube-teacher/subscriber-claim', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },

@@ -160,7 +160,7 @@ const PAYMENT = (() => {
     const host = _overlay?.querySelector('#pay-yt-discount');
     if (!host) return;
     try {
-      const status = await API.getMySubscriberClaimStatus();
+      const status = await API.getMySubscriberClaimStatus({ student_code: student.student_code, pin: student.pin });
       if (!host.isConnected) return;
       if (status.state === 'verified') {
         host.innerHTML = `<div class="admit-yt-verified">✅ YouTube Subscriber Discount Active${status.partner_name ? ` — ${_esc(status.partner_name)}` : ''}</div>`;
@@ -201,7 +201,7 @@ const PAYMENT = (() => {
       if (!q) { resultsEl.innerHTML = ''; return; }
       searchTimer = setTimeout(async () => {
         let results = [];
-        try { results = await API.searchYoutubeSubscriberPartners(q); } catch { /* ignore */ }
+        try { results = await API.searchYoutubeSubscriberPartners(q, { student_code: student.student_code, pin: student.pin }); } catch { /* ignore */ }
         if (!host.isConnected) return;
         resultsEl.innerHTML = results.length
           ? results.map(p => `<div class="admit-yt-result" data-id="${_esc(p.id)}">${_esc(p.name)}${p.youtube_channel_name ? ` — ${_esc(p.youtube_channel_name)}` : ''}</div>`).join('')
@@ -230,7 +230,7 @@ const PAYMENT = (() => {
       const btn = host.querySelector('#pay-yt-submit');
       btn.disabled = true;
       try {
-        await API.claimYoutubeSubscriber(selectedPartner.id, displayName);
+        await API.claimYoutubeSubscriber(selectedPartner.id, displayName, { student_code: student.student_code, pin: student.pin });
         _toast('Request पाठवली — Teacher approve केल्यावर कळेल', 'success');
         _renderYtDiscountBlock(student);
       } catch (err) {
