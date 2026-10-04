@@ -144,6 +144,7 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
             ${p.status === 'active'
               ? `<button class="btn-tiny btn-reject" data-suspend="${p.id}">Suspend</button>`
               : `<button class="btn-tiny btn-approve" data-activate="${p.id}">Activate</button>`}
+            <button class="btn-tiny" data-reset-pw="${p.id}">Reset Password</button>
           </div>
         </div>
       `).join('') : '<div style="text-align:center;padding:2rem;color:#999;">No teacher partners yet.</div>';
@@ -160,6 +161,17 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
       body.querySelectorAll('[data-activate]').forEach(b => b.addEventListener('click', async () => {
         try { await _req(`/admin/youtube-teacher-partners/${b.dataset.activate}/activate`, { method: 'POST' }); _toast('Activated', 'success'); _renderDirectory(); }
         catch (err) { _toast(err.message, 'error'); }
+      }));
+      // No self-serve "forgot password" exists for this account type yet
+      // (no email infra) — admin sets a new one directly and shares it with
+      // the locked-out teacher themselves (WhatsApp/call).
+      body.querySelectorAll('[data-reset-pw]').forEach(b => b.addEventListener('click', async () => {
+        const pw = await _prompt('या teacher साठी नवीन password टाका (किमान 6 अक्षरं) — हा त्यांना स्वतः कळवा:', '');
+        if (!pw) return;
+        try {
+          await _req(`/admin/youtube-teacher-partners/${b.dataset.resetPw}/reset-password`, { method: 'POST', body: JSON.stringify({ new_password: pw }), headers: { 'Content-Type': 'application/json' } });
+          _toast(`Password reset — teacher ला कळवा: ${pw}`, 'success');
+        } catch (err) { _toast(err.message, 'error'); }
       }));
     } catch (err) {
       body.innerHTML = `<div style="text-align:center;padding:2rem;color:#c82333;">${_esc(err.message)}</div>`;
