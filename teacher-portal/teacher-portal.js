@@ -577,8 +577,13 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
       ? '<option value="">Select…</option>' + coRes.data.map(c => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join('')
       : '<option value="">No concepts found for this chapter yet</option>';
     conceptSel.disabled = false;
+    // Grouped by Test (quiz title) — a chapter can have a dozen+ separate
+    // Tests at ~20 questions each, so a flat list was unusable.
     questionSel.innerHTML = quRes.data.length
-      ? '<option value="">Select…</option>' + quRes.data.map(q => `<option value="${esc(q.q_id)}">${esc(q.question)}</option>`).join('')
+      ? '<option value="">Select…</option>' + quRes.data.map(g => `
+          <optgroup label="${esc(g.quiz_title)}">
+            ${g.questions.map(q => `<option value="${esc(q.q_id)}">${esc(q.question)}</option>`).join('')}
+          </optgroup>`).join('')
       : '<option value="">No quiz questions found for this chapter yet</option>';
     questionSel.disabled = false;
   }
