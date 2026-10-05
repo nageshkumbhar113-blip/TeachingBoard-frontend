@@ -550,11 +550,30 @@ const APP = (() => {
 
       const plans = await API.getBatchPlans().catch(() => []);
       const plan = (plans || []).find(b => b.name === batchName);
+      const period = plan?.monthly_price > 0 ? 'monthly' : 'yearly';
       const price = plan?.monthly_price > 0 ? plan.monthly_price : plan?.yearly_price;
       if (!price) return; // no pricing configured for this batch yet — nothing to offer
 
+      // Real bug found live: this popup showed the plain listed price even
+      // for a YouTube-subscriber-discount-verified student — the discount
+      // only ever applied silently at actual checkout (createOrder), so a
+      // verified student saw no sign of their 50% off right here, where
+      // they'd actually decide to tap Subscribe. Preview (best-effort —
+      // never blocks the popup if it fails) and show the real price.
+      const code = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
+      const pin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
+      let btnLabel = `💳 आत्ता Subscribe करा — ₹${price}`;
+      if (code && pin) {
+        try {
+          const preview = await API.previewPaymentPrice({ student_code: code, pin, batch: batchName, period });
+          if (preview?.discount_percent) {
+            btnLabel = `💳 आत्ता Subscribe करा — ₹${preview.discounted_price} 🎓 ${preview.discount_percent}% OFF`;
+          }
+        } catch { /* keep the plain price */ }
+      }
+
       $('buynow-sheet-batch').textContent = batchName;
-      $('btn-buynow').textContent = `💳 आत्ता Subscribe करा — ₹${price}`;
+      $('btn-buynow').textContent = btnLabel;
       $('buynow-sheet-backdrop')?.classList.remove('hidden');
       $('buynow-sheet')?.classList.remove('hidden');
 
@@ -562,10 +581,8 @@ const APP = (() => {
         $('buynow-sheet-backdrop')?.classList.add('hidden');
         $('buynow-sheet')?.classList.add('hidden');
       };
-      $('btn-buynow')?.addEventListener('click', async () => {
+      $('btn-buynow')?.addEventListener('click', () => {
         closeSheet();
-        const code = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
-        const pin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
         if (window.PAYMENT?.openPlanSelect && code) {
           PAYMENT.openPlanSelect(
             { student_code: code, pin, name: profile.name || '', contact: profile.mobile || '' },
