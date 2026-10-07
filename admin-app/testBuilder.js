@@ -40,6 +40,11 @@ const TEST_BUILDER = (() => {
     paperMode         : 'manual',
   };
 
+  // Set while the Manual Add form is being reused to edit an EXISTING
+  // question already in the bank (not creating a new one) — see
+  // _startEditQuestion/_doManualAdd. null = normal "add new" mode.
+  let editingQId = null;
+
   // ════════════════════════
   // OPEN / CLOSE
   // ════════════════════════
@@ -65,6 +70,7 @@ const TEST_BUILDER = (() => {
     state.bankQuestions      = [];
     state.filters            = { subject: '', chapter: '', difficulty: '' };
     state.previewShowAnswers = true;
+    editingQId                = null;
 
     $('tb-heading').textContent = quiz_id ? 'Edit Quiz' : 'Create Quiz';
     $('test-builder-overlay').classList.remove('hidden');
@@ -769,7 +775,7 @@ Solution line is optional for every question — include it when a brief explana
 
           <!-- ── Manual Add ── -->
           <div class="tb-manual-add">
-            <p class="tb-sub-label">✏️ Quick Add Question</p>
+            <p class="tb-sub-label" id="tb-manual-add-label">✏️ Quick Add Question</p>
             <textarea id="tb-manual-q" class="admin-textarea" rows="2"
               placeholder="Type question text…"></textarea>
             <div class="tb-img-upload-row" style="margin-top:8px">
@@ -852,6 +858,7 @@ Solution line is optional for every question — include it when a brief explana
               placeholder="Solution / स्पष्टीकरण (optional) — उत्तर दिल्यावर student ला दिसेल"></textarea>
 
             <button class="admin-btn-secondary" id="tb-manual-submit">+ Add to Section</button>
+            <button class="admin-btn-secondary hidden" id="tb-manual-cancel-edit" style="margin-left:6px">✕ Cancel Edit</button>
           </div>
         </div>
 
@@ -898,6 +905,7 @@ Solution line is optional for every question — include it when a brief explana
 
     // Manual add — submit
     $('tb-manual-submit').addEventListener('click', _doManualAdd);
+    $('tb-manual-cancel-edit').addEventListener('click', _resetManualForm);
 
     // Image upload buttons
     _setupImgUpload('tb-q-img-file', 'btn-tb-q-img', 'tb-manual-q-image', 'tb-q-img-status');
@@ -1146,8 +1154,10 @@ Solution line is optional for every question — include it when a brief explana
         <span class="tb-sel-text">${q
           ? _esc(_questionSummary(q, 65))
           : qid}</span>
+        ${q ? `<button class="tb-edit-btn" data-id="${qid}" title="Edit" aria-label="Edit question">✏️</button>` : ''}
         <button class="tb-remove-btn" data-id="${qid}" title="Remove" aria-label="Remove question">✕</button>
       `;
+      item.querySelector('.tb-edit-btn')?.addEventListener('click', () => _startEditQuestion(qid));
       item.querySelector('.tb-remove-btn').addEventListener('click', () => _removeFromSection(qid));
       list.appendChild(item);
     });
@@ -1262,15 +1272,21 @@ Solution line is optional for every question — include it when a brief explana
 
     if (!qText && !qImage) { APP.toast('Question text or question image URL is required', 'error'); return; }
 
+    // Editing an existing question reuses its q_id/batch/subject/chapter
+    // (DB.saveQuestion upserts by q_id — same id in, same record updated in
+    // place, no duplicate) instead of minting a fresh one.
+    const existing = editingQId ? state.bankQuestions.find(bq => bq.q_id === editingQId) : null;
+
     const q = {
+      q_id       : existing?.q_id,
       question   : qText,
       image      : qImage,
       type,
       difficulty : diff,
-      batch      : state.quiz?.batch   || '',
-      subject    : state.quiz?.subject || '',
-      chapter    : state.quiz?.chapter || '',
-      tags       : [],
+      batch      : existing?.batch   || state.quiz?.batch   || '',
+      subject    : existing?.subject || state.quiz?.subject || '',
+      chapter    : existing?.chapter || state.quiz?.chapter || '',
+      tags       : existing?.tags || [],
       explanation: $('tb-manual-solution')?.value.trim() || '',
     };
 
@@ -1306,13 +1322,38 @@ Solution line is optional for every question — include it when a brief explana
       if (!q.answer) { APP.toast('Correct answer is required for FIB', 'error'); return; }
     }
 
+    const wasEditing = !!editingQId;
     const saved = await DB.saveQuestion(q);
     const sec   = state.sections[state.activeSection];
     if (!sec.question_ids.includes(saved.q_id)) sec.question_ids.push(saved.q_id);
 
-    // Reset form
+    _resetManualForm();
+
+    await _loadBankQuestions();
+    _renderBankList();
+    _renderSelectedList();
+    _renderSectionTabs();
+
+    if (wasEditing) {
+      // This only updates the local bank copy — a question embedded inside
+      // an already-PUBLISHED quiz is a separate snapshot on the server
+      // (Quiz.questions[]) until the quiz is republished, so an edit here
+      // is invisible to students until Preview → Publish is done again.
+      APP.toast('✅ Question updated — "Preview → Publish" करून students ना पाठवा', 'success');
+    } else {
+      APP.toast('✅ Question created and added to section', 'success');
+    }
+  }
+
+  function _resetManualForm() {
+    editingQId = null;
+    if ($('tb-manual-add-label'))    $('tb-manual-add-label').textContent = '✏️ Quick Add Question';
+    if ($('tb-manual-submit'))       $('tb-manual-submit').textContent    = '+ Add to Section';
+    if ($('tb-manual-cancel-edit'))  $('tb-manual-cancel-edit').classList.add('hidden');
     if ($('tb-manual-q'))       $('tb-manual-q').value       = '';
     if ($('tb-manual-q-image')) $('tb-manual-q-image').value = '';
+    if ($('tb-manual-type'))    $('tb-manual-type').value    = 'mcq';
+    if ($('tb-manual-diff'))    $('tb-manual-diff').value    = 'medium';
     if ($('tb-manual-a'))       $('tb-manual-a').value       = '';
     if ($('tb-manual-b'))       $('tb-manual-b').value       = '';
     if ($('tb-manual-c'))       $('tb-manual-c').value       = '';
@@ -1321,14 +1362,48 @@ Solution line is optional for every question — include it when a brief explana
     if ($('tb-manual-b-image')) $('tb-manual-b-image').value = '';
     if ($('tb-manual-c-image')) $('tb-manual-c-image').value = '';
     if ($('tb-manual-d-image')) $('tb-manual-d-image').value = '';
+    if ($('tb-manual-answer'))  $('tb-manual-answer').value  = 'A';
+    if ($('tb-manual-tf-ans'))  $('tb-manual-tf-ans').value  = 'True';
     if ($('tb-manual-fib-ans')) $('tb-manual-fib-ans').value = '';
     if ($('tb-manual-solution')) $('tb-manual-solution').value = '';
+    _updateManualTypeView();
+  }
 
-    await _loadBankQuestions();
-    _renderBankList();
-    _renderSelectedList();
-    _renderSectionTabs();
-    APP.toast('✅ Question created and added to section', 'success');
+  // Reuses the Manual Add form to edit an existing bank question in place —
+  // there was previously no way to fix a typo or add a missing Solution to
+  // a question once it had been added (only Remove existed), so an admin
+  // who needed to add an explanation after the fact had no path to do it.
+  function _startEditQuestion(qid) {
+    const q = state.bankQuestions.find(bq => bq.q_id === qid);
+    if (!q) return;
+    editingQId = qid;
+
+    if ($('tb-manual-add-label'))   $('tb-manual-add-label').textContent = '✏️ Edit Question';
+    if ($('tb-manual-submit'))      $('tb-manual-submit').textContent    = '💾 Update Question';
+    if ($('tb-manual-cancel-edit')) $('tb-manual-cancel-edit').classList.remove('hidden');
+
+    if ($('tb-manual-q'))       $('tb-manual-q').value       = q.question || '';
+    if ($('tb-manual-q-image')) $('tb-manual-q-image').value = q.image || '';
+    if ($('tb-manual-type'))    $('tb-manual-type').value    = q.type || 'mcq';
+    if ($('tb-manual-diff'))    $('tb-manual-diff').value    = q.difficulty || 'medium';
+
+    const opts = q.options || {};
+    const optImgs = q.option_images || {};
+    if ($('tb-manual-a'))       $('tb-manual-a').value       = opts.A || '';
+    if ($('tb-manual-b'))       $('tb-manual-b').value       = opts.B || '';
+    if ($('tb-manual-c'))       $('tb-manual-c').value       = opts.C || '';
+    if ($('tb-manual-d'))       $('tb-manual-d').value       = opts.D || '';
+    if ($('tb-manual-a-image')) $('tb-manual-a-image').value = optImgs.A || '';
+    if ($('tb-manual-b-image')) $('tb-manual-b-image').value = optImgs.B || '';
+    if ($('tb-manual-c-image')) $('tb-manual-c-image').value = optImgs.C || '';
+    if ($('tb-manual-d-image')) $('tb-manual-d-image').value = optImgs.D || '';
+    if ($('tb-manual-answer'))  $('tb-manual-answer').value  = q.answer || 'A';
+    if ($('tb-manual-tf-ans'))  $('tb-manual-tf-ans').value  = q.answer || 'True';
+    if ($('tb-manual-fib-ans')) $('tb-manual-fib-ans').value = q.type === 'fib' ? (q.answer || '') : '';
+    if ($('tb-manual-solution')) $('tb-manual-solution').value = q.explanation || '';
+
+    _updateManualTypeView();
+    $('tb-manual-q')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // ── Bulk Paste Parser ──────────────────────
