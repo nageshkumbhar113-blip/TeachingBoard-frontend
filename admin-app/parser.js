@@ -68,6 +68,13 @@ const PARSER = (() => {
   const RE_EXPL =
     /^(?:\*{0,2})(?:explanation|solution|reason|note|hint|rationale)(?:\*{0,2})\s*[:\.\-]\s*(?:\*{0,2})\s*(.+)/i;
 
+  /*
+   * Same as RE_EXPL but NOT anchored to the line start — used to catch an
+   * explanation marker appearing mid-line, e.g. "Ans: C Solution: ...".
+   */
+  const RE_EXPL_MID =
+    /(?:\*{0,2})(?:explanation|solution|reason|note|hint|rationale)(?:\*{0,2})\s*[:\.\-]\s*(?:\*{0,2})\s*/i;
+
   // ════════════════════════
   // PUBLIC: parse()
   // ════════════════════════
@@ -209,7 +216,18 @@ const PARSER = (() => {
       // ── Answer ───────────────────────────────
       const ansM = line.match(RE_ANSWER) || line.match(RE_ANSWER_SENT);
       if (ansM) {
-        rawAnswer = _stripMd(ansM[1]).trim();
+        let ansText = _stripMd(ansM[1]).trim();
+        // "Ans: C Solution: ..." on ONE line — RE_ANSWER's greedy capture
+        // otherwise swallows the trailing Solution text straight into the
+        // raw answer and silently drops it (real bug, found live: an
+        // explanation typed on the same line as the answer never saved).
+        // Split it back out before it gets truncated down to just "C".
+        const midM = ansText.match(RE_EXPL_MID);
+        if (midM && midM.index > 0) {
+          explanation = _stripMd(ansText.slice(midM.index + midM[0].length));
+          ansText     = ansText.slice(0, midM.index).trim();
+        }
+        rawAnswer = ansText;
         phase     = 'done';
         continue;
       }
