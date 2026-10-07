@@ -1,16 +1,16 @@
 @echo off
 echo ========================================
-echo  TeachingBoard — ADMIN APK Build
+echo  TeachingBoard â€” ADMIN APK Build
 echo ========================================
 
-:: ── Version — update BOTH values for every release ──────────────────────────
+:: â”€â”€ Version â€” update BOTH values for every release â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 set VERSION=8.5.0
 set VERSION_CODE=149
-:: ─────────────────────────────────────────────────────────────────────────────
+:: â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 :: [PRE] Stale .bak cleanup
 if exist capacitor.config.ts.bak (
-  echo [PRE] WARNING: stale .bak सापडला — cleanup...
+  echo [PRE] WARNING: stale .bak à¤¸à¤¾à¤ªà¤¡à¤²à¤¾ â€” cleanup...
   del capacitor.config.ts.bak >nul 2>&1
 )
 
@@ -22,13 +22,13 @@ echo [2/7] Preparing web assets...
 node tools/prepare-admin.mjs
 if errorlevel 1 ( echo ERROR: prepare failed & pause & exit /b 1 )
 
-echo [3/7] Switching config → ADMIN...
+echo [3/7] Switching config â†’ ADMIN...
 copy /Y capacitor-admin.config.ts capacitor.config.ts >nul 2>&1
 
-echo [4/7] Patching applicationId → com.teachingboard.admin ...
+echo [4/7] Patching applicationId â†’ com.teachingboard.admin ...
 node tools/patch-appid.mjs com.teachingboard.admin
 if errorlevel 1 (
-  echo ERROR: applicationId patch failed — restoring config
+  echo ERROR: applicationId patch failed â€” restoring config
   copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
   pause & exit /b 1
 )
@@ -37,7 +37,7 @@ echo [5/7] Setting Admin icon (red) + app name...
 copy /Y icons-admin\ic_launcher_background.xml android\app\src\main\res\values\ic_launcher_background.xml >nul 2>&1
 copy /Y icons-admin\strings.xml android\app\src\main\res\values\strings.xml >nul 2>&1
 
-:: compileSdk/targetSdk (currently 36) — android/ is gitignored/regenerable
+:: compileSdk/targetSdk (currently 36) â€” android/ is gitignored/regenerable
 :: with no backup, so android-shared\variables.gradle is the tracked
 :: source of truth (shared by both apps' builds, see build-student.bat's
 :: matching copy step for the full explanation).
@@ -46,7 +46,7 @@ copy /Y android-shared\variables.gradle android\variables.gradle >nul 2>&1
 echo [6/7] Capacitor sync...
 call npx cap sync android
 if errorlevel 1 (
-  echo ERROR: cap sync failed — restoring config
+  echo ERROR: cap sync failed â€” restoring config
   copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
   pause & exit /b 1
 )
@@ -62,7 +62,7 @@ call .\gradlew.bat assembleRelease
 set BUILD_ERR=%errorlevel%
 popd
 if %BUILD_ERR% neq 0 (
-  echo ERROR: Gradle build failed — खालील errors बघा
+  echo ERROR: Gradle build failed â€” à¤–à¤¾à¤²à¥€à¤² errors à¤¬à¤˜à¤¾
   copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
   pause & exit /b 1
 )
@@ -70,7 +70,7 @@ if %BUILD_ERR% neq 0 (
 :: APK rename + move to release folder
 if not exist android\app\release\ mkdir android\app\release\
 if not exist "android\app\build\outputs\apk\release\app-release.apk" (
-  echo ERROR: built APK not found ^(android\app\build\outputs\apk\release\app-release.apk^) — Gradle output missing
+  echo ERROR: built APK not found ^(android\app\build\outputs\apk\release\app-release.apk^) â€” Gradle output missing
   copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
   pause & exit /b 1
 )
@@ -84,7 +84,7 @@ if not exist "android\app\release\admin%VERSION%.apk" (
 :: ALWAYS restore student config
 copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
 
-:: Verify — applicationId confirm करा
+:: Verify â€” applicationId confirm à¤•à¤°à¤¾
 echo.
 echo  Verifying APK applicationId...
 "C:\Users\A\AppData\Local\Android\Sdk\build-tools\37.0.0\aapt.exe" dump badging "android\app\release\admin%VERSION%.apk" 2>nul | findstr "^package:"
