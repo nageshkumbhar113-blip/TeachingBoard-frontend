@@ -37,6 +37,11 @@ html{ scroll-behavior:smooth; }
 body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-ui); line-height:1.5; }
 img,svg{ max-width:100%; }
 .wrap{ max-width:1180px; margin:0 auto; padding:0 24px; }
+/* Dashboard uses the full window width instead of the landing page's 1180px
+   cap — the marketing page reads better narrow, but the dashboard (tables,
+   batch-tree pickers, video lists) just wastes space boxed in on a wide
+   screen. */
+.wrap-dash{ max-width:none; padding:0 24px; }
 a{ color:inherit; }
 
 .screen{ display:none; }
