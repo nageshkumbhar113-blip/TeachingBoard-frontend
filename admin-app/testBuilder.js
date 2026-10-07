@@ -683,6 +683,15 @@ SECTIONS:
       ? chapter
       : '';
 
+    const timerValue = parseInt($('tb-timer-value')?.value) || 30;
+
+    // Sections carry their own `timer` field (set to a 30s default at
+    // creation) and testPlayer.js prefers it over quiz.timer_value when
+    // present — but there is no per-section Timer UI anywhere, so that
+    // default silently overrode whatever Timer Value was set here. Keep
+    // every section's timer in lockstep with Step 1's value.
+    state.sections.forEach(sec => { sec.timer = timerValue; });
+
     state.quiz = {
       ...(state.quiz || {}),
       title,
@@ -691,7 +700,7 @@ SECTIONS:
       chapter: effectiveChapter,
       school_name   : $('tb-school')?.value.trim()        || '',
       timer_mode    : $('tb-timer-mode')?.value            || 'per_question',
-      timer_value   : parseInt($('tb-timer-value')?.value) || 30,
+      timer_value   : timerValue,
       positive_marks: parseFloat($('tb-pos-marks')?.value) ?? 1,
       negative_marks: parseFloat($('tb-neg-marks')?.value) ?? 0,
       shuffle       : $('tb-shuffle')?.checked             || false,
