@@ -763,7 +763,12 @@ Solution: [1-2 line explanation of why this answer is correct]
 
 For True/False questions write "(True/False)" after the question and use Ans: True or Ans: False
 For Fill in the blank put ___ in the question and Ans: [answer text]
-Solution line is optional for every question — include it when a brief explanation is useful.</pre>
+Solution line is optional for every question — include it when a brief explanation is useful.
+
+IMPORTANT formatting rules — follow exactly, do not deviate:
+- "Ans:" and "Solution:" must each be on their OWN separate line. Never write them on the same line (e.g. NOT "Ans: A Solution: ..." on one line) — the parser reads Ans and Solution as two separate lines and a combined line will silently drop the Solution text.
+- Leave one blank line between each question (after its Solution line) before the next "Q" starts.
+- Do not add any extra commentary, numbering style, or markdown outside this exact format.</pre>
               <button type="button" class="admin-btn-secondary" id="tb-copy-prompt">📋 Copy Prompt</button>
             </div>
             <textarea id="tb-bulk-text" class="admin-textarea" rows="5"
