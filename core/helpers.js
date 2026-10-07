@@ -2536,17 +2536,17 @@ const API = (() => {
   // parts). contentType defaults to 'exercise' (existing callers unchanged);
   // pass contentType:'concept' + conceptId instead of batch/subject/chapter/
   // exercise for a Notes concept — concept_id alone identifies it. Pass
-  // contentType:'quiz_question' + questionId (the bank Question's q_id) for
-  // an MCQ/Quiz Test question — q_id alone identifies it, same reasoning.
-  async function fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId, contentType, conceptId, questionId }) {
+  // contentType:'quiz_test' + quizId for a whole Quiz/Test — one video per
+  // test, not per question (quiz_id alone identifies it, same reasoning).
+  async function fetchYoutubeVideosForExercise({ batch, subject, chapter, exercise, teacherId, contentType, conceptId, quizId }) {
     const token = await ensureStudentSession();
     const qs = new URLSearchParams();
     if (contentType === 'concept') {
       qs.set('content_type', 'concept');
       qs.set('concept_id', conceptId || '');
-    } else if (contentType === 'quiz_question') {
-      qs.set('content_type', 'quiz_question');
-      qs.set('question_id', questionId || '');
+    } else if (contentType === 'quiz_test') {
+      qs.set('content_type', 'quiz_test');
+      qs.set('quiz_id', quizId || '');
     } else {
       qs.set('batch', batch); qs.set('subject', subject); qs.set('chapter', chapter); qs.set('exercise', exercise);
     }

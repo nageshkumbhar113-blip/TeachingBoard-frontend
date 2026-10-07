@@ -847,10 +847,17 @@ const UI = (() => {
             · ${totalQ} questions
           </div>
         </div>
+        <button class="quiz-portal-video-btn" aria-label="${_escHtml(quiz.title)} साठी Teacher Video" title="Teacher's Video">🎬</button>
         <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
       `;
       card.querySelector('.quiz-portal-btn').addEventListener('click', () => {
         if (onStart) onStart(quiz);
+      });
+      // No pre-check network call per card (would mean N calls for N tests on
+      // screen) — always show the button, Step 1's own empty-state handles
+      // the no-video case gracefully.
+      card.querySelector('.quiz-portal-video-btn').addEventListener('click', () => {
+        window.VIDEO_TEACHER_SELECT?.open({ type: 'quiz_test', quizId: quiz.quiz_id, quizTitle: quiz.title });
       });
       fragment.appendChild(card);
     });

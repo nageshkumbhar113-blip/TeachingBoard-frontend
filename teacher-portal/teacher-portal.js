@@ -499,11 +499,11 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     <div class="field"><label>Content Type</label><div>
       <span class="subj-tag ct-tag" data-type="exercise" id="av-type-exercise">📝 Exercise</span>
       <span class="subj-tag ct-tag" data-type="concept" id="av-type-concept">📓 Concept (Notes)</span>
-      <span class="subj-tag ct-tag" data-type="quiz_question" id="av-type-quiz">❓ Quiz Question</span>
+      <span class="subj-tag ct-tag" data-type="quiz_test" id="av-type-quiz">🎯 Quiz Test</span>
     </div></div>
     <div class="field" id="av-exercise-field"><label>Exercise</label><select class="field-select" id="av-exercise" disabled><option>Select Chapter first</option></select></div>
     <div class="field hidden" id="av-concept-field"><label>Concept</label><select class="field-select" id="av-concept" disabled><option>Select Chapter first</option></select></div>
-    <div class="field hidden" id="av-question-field"><label>Quiz Question</label><select class="field-select" id="av-question" disabled><option>Select Chapter first</option></select></div>
+    <div class="field hidden" id="av-question-field"><label>Quiz Test</label><select class="field-select" id="av-question" disabled><option>Select Chapter first</option></select></div>
 
     <div id="av-callout"></div>
     <div class="field"><label>YouTube URL</label><input id="av-url" placeholder="https://youtu.be/..."></div>
@@ -529,15 +529,15 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     contentType = t;
     typeExBtn.classList.toggle('on', t === 'exercise');
     typeCoBtn.classList.toggle('on', t === 'concept');
-    typeQuBtn.classList.toggle('on', t === 'quiz_question');
+    typeQuBtn.classList.toggle('on', t === 'quiz_test');
     exerciseField.classList.toggle('hidden', t !== 'exercise');
     conceptField.classList.toggle('hidden', t !== 'concept');
-    questionField.classList.toggle('hidden', t !== 'quiz_question');
+    questionField.classList.toggle('hidden', t !== 'quiz_test');
   }
   setContentType('exercise');
   typeExBtn.addEventListener('click', () => { if (!typeLocked) setContentType('exercise'); });
   typeCoBtn.addEventListener('click', () => { if (!typeLocked) setContentType('concept'); });
-  typeQuBtn.addEventListener('click', () => { if (!typeLocked) setContentType('quiz_question'); });
+  typeQuBtn.addEventListener('click', () => { if (!typeLocked) setContentType('quiz_test'); });
 
   batchSel.addEventListener('change', () => {
     const b = tree.find(x => x.name === batchSel.value);
@@ -567,7 +567,7 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     const [exRes, coRes, quRes] = await Promise.all([
       api('GET', `/exercises?${qs}`).catch(() => ({ data: [] })),
       api('GET', `/concepts?${qs}`).catch(() => ({ data: [] })),
-      api('GET', `/quiz-questions?${qs}`).catch(() => ({ data: [] })),
+      api('GET', `/quiz-tests?${qs}`).catch(() => ({ data: [] })),
     ]);
     exerciseSel.innerHTML = exRes.data.length
       ? '<option value="">Select…</option>' + exRes.data.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
@@ -577,14 +577,10 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
       ? '<option value="">Select…</option>' + coRes.data.map(c => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join('')
       : '<option value="">No concepts found for this chapter yet</option>';
     conceptSel.disabled = false;
-    // Grouped by Test (quiz title) — a chapter can have a dozen+ separate
-    // Tests at ~20 questions each, so a flat list was unusable.
+    // One video per whole Test — flat list of this chapter's published Tests.
     questionSel.innerHTML = quRes.data.length
-      ? '<option value="">Select…</option>' + quRes.data.map(g => `
-          <optgroup label="${esc(g.quiz_title)}">
-            ${g.questions.map(q => `<option value="${esc(q.q_id)}">${esc(q.question)}</option>`).join('')}
-          </optgroup>`).join('')
-      : '<option value="">No quiz questions found for this chapter yet</option>';
+      ? '<option value="">Select…</option>' + quRes.data.map(t => `<option value="${esc(t.quiz_id)}">${esc(t.title)}</option>`).join('')
+      : '<option value="">No tests found for this chapter yet</option>';
     questionSel.disabled = false;
   }
 
@@ -622,7 +618,7 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     setContentType(preset.content_type || 'exercise');
     await _loadExercisesAndConcepts();
     if (contentType === 'exercise') exerciseSel.value = preset.exercise_no || '';
-    else if (contentType === 'quiz_question') questionSel.value = preset.question_id || '';
+    else if (contentType === 'quiz_test') questionSel.value = preset.quiz_id || '';
     else conceptSel.value = preset.concept_id || '';
   }
 
@@ -642,10 +638,10 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
     errEl.classList.remove('show');
     const url = main.querySelector('#av-url').value.trim();
     const contentOk = contentType === 'exercise' ? !!exerciseSel.value
-      : contentType === 'quiz_question' ? !!questionSel.value
+      : contentType === 'quiz_test' ? !!questionSel.value
       : !!conceptSel.value;
     if (!batchSel.value || !subjectSel.value || !chapterSel.value || !contentOk || !url) {
-      const typeLabel = contentType === 'exercise' ? 'Exercise' : contentType === 'quiz_question' ? 'Quiz Question' : 'Concept';
+      const typeLabel = contentType === 'exercise' ? 'Exercise' : contentType === 'quiz_test' ? 'Quiz Test' : 'Concept';
       errEl.textContent = `Please fill Batch, Subject, Chapter, ${typeLabel} and YouTube URL.`; errEl.classList.add('show'); return;
     }
     try {
@@ -655,7 +651,7 @@ async function renderAddVideo(main, editVideo = null, presetTarget = null) {
         youtube_url: url, part_label: partInput.value.trim(),
       };
       if (contentType === 'exercise') payload.exercise_no = exerciseSel.value;
-      else if (contentType === 'quiz_question') { payload.question_id = questionSel.value; payload.question_text = questionSel.selectedOptions[0]?.textContent || ''; }
+      else if (contentType === 'quiz_test') { payload.quiz_id = questionSel.value; payload.quiz_title = questionSel.selectedOptions[0]?.textContent || ''; }
       else { payload.concept_id = conceptSel.value; payload.concept_title = conceptSel.selectedOptions[0]?.textContent || ''; }
       await api('POST', '/videos', payload);
       toast(editVideo ? 'Edit submitted for re-approval!' : 'Submitted for approval!');
@@ -671,7 +667,7 @@ async function renderVideos(main) {
     ${videos.length ? videos.map(v => {
       const editPending = v.status === 'pending' && v.live_video_id;
       const contentLabel = v.content_type === 'concept' ? `📓 ${esc(v.concept_title)}`
-        : v.content_type === 'quiz_question' ? `❓ ${esc(v.question_text)}`
+        : v.content_type === 'quiz_test' ? `🎯 ${esc(v.quiz_title)}`
         : `📝 Exercise ${esc(v.exercise_no)}`;
       return `
       <div class="list-card"><div class="thumb">▶</div><div class="info">

@@ -35,12 +35,13 @@ const VIDEO_TEACHER_SELECT = (() => {
       cards => `🎬 ${cards.length} Video${cards.length > 1 ? 's' : ''} Available`);
   }
 
-  // ── Quiz/Test-question inline button (practice-mode feedback bar) ───────
-  // Called by testPlayer.js/quiz.js right after a question is answered. Same
-  // best-effort contract — never blocks the feedback/solution UI.
-  async function checkAndShowButtonForQuizQuestion(btnId, questionId, questionText) {
-    return _checkAndShowButton(btnId, { type: 'quiz_question', questionId, questionText },
-      cards => `🎬 ${cards.length} Video${cards.length > 1 ? 's' : ''} Available`);
+  // ── Quiz/Test inline button (test listing, next to "Start") ─────────────
+  // One video per whole Test (quiz_id), not per question — called by
+  // ui.js's renderAvailableQuizzes for each test card. Same best-effort
+  // contract — never blocks the test list.
+  async function checkAndShowButtonForQuizTest(btnId, quizId, quizTitle) {
+    return _checkAndShowButton(btnId, { type: 'quiz_test', quizId, quizTitle },
+      cards => `🎬 ${cards.length} Video${cards.length > 1 ? 's' : ''}`);
   }
 
   async function _checkAndShowButton(btnId, ctx, labelFor) {
@@ -61,7 +62,7 @@ const VIDEO_TEACHER_SELECT = (() => {
 
   function _fetchCards(ctx, teacherId) {
     if (ctx.type === 'concept') return API.fetchYoutubeVideosForExercise({ contentType: 'concept', conceptId: ctx.conceptId, teacherId });
-    if (ctx.type === 'quiz_question') return API.fetchYoutubeVideosForExercise({ contentType: 'quiz_question', questionId: ctx.questionId, teacherId });
+    if (ctx.type === 'quiz_test') return API.fetchYoutubeVideosForExercise({ contentType: 'quiz_test', quizId: ctx.quizId, teacherId });
     return API.fetchYoutubeVideosForExercise({ batch: ctx.batch, subject: ctx.subject, chapter: ctx.chapter, exercise: ctx.exercise, teacherId });
   }
 
@@ -76,7 +77,7 @@ const VIDEO_TEACHER_SELECT = (() => {
     _ctx = ctx;
     APP?.navigate?.('video-teachers');
     $('vts-title').textContent = ctx.type === 'concept' ? `🎬 ${ctx.conceptTitle || 'Concept'} — Videos`
-      : ctx.type === 'quiz_question' ? '🎬 या प्रश्नाचे Videos'
+      : ctx.type === 'quiz_test' ? `🎬 ${ctx.quizTitle || 'Test'} — Videos`
       : `🎬 Exercise ${ctx.exercise} — Videos`;
     const list = $('vts-list');
     list.innerHTML = '<p class="vts-empty">Loading…</p>';
@@ -189,7 +190,7 @@ const VIDEO_TEACHER_SELECT = (() => {
     _playerObserver.observe(screenEl, { attributes: true, attributeFilter: ['class'] });
   }
 
-  return { checkAndShowButton, checkAndShowButtonForConcept, checkAndShowButtonForQuizQuestion, open };
+  return { checkAndShowButton, checkAndShowButtonForConcept, checkAndShowButtonForQuizTest, open };
 })();
 
 window.VIDEO_TEACHER_SELECT = VIDEO_TEACHER_SELECT;

@@ -466,7 +466,7 @@ const TEST_PLAYER = (() => {
     if (prev) {
       state.answered = true;
       if (state.mode === 'practice' && !prev.skipped) {
-        _showFeedback(prev.correct, q.answer, _getAnswerFeedbackText(q, q.answer), q.explanation, q);
+        _showFeedback(prev.correct, q.answer, _getAnswerFeedbackText(q, q.answer), q.explanation);
       }
     }
 
@@ -491,7 +491,6 @@ const TEST_PLAYER = (() => {
     $('tp-fib-wrap')?.classList.add('hidden');
     $('tp-feedback-bar')?.classList.add('hidden');
     $('tp-feedback-solution')?.classList.add('hidden');
-    $('tp-videos-btn')?.classList.add('hidden');
   }
 
   // ════════════════════════
@@ -537,7 +536,7 @@ const TEST_PLAYER = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, _getAnswerFeedbackText(q, q.answer), q.explanation, q);
+    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, _getAnswerFeedbackText(q, q.answer), q.explanation);
     if (state.mode === 'exam')     setTimeout(_nextQ, 700);
   }
 
@@ -578,7 +577,7 @@ const TEST_PLAYER = (() => {
     });
 
     _recordAnswer(q, selected, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, tfAnswerText, '', q.explanation, q);
+    if (state.mode === 'practice') _showFeedback(isCorrect, tfAnswerText, '', q.explanation);
     if (state.mode === 'exam')     setTimeout(_nextQ, 700);
   }
 
@@ -623,7 +622,7 @@ const TEST_PLAYER = (() => {
     inp.style.borderColor = isCorrect ? 'var(--correct)' : 'var(--wrong)';
 
     _recordAnswer(q, val, isCorrect);
-    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, '', q.explanation, q);
+    if (state.mode === 'practice') _showFeedback(isCorrect, q.answer, '', q.explanation);
   }
 
   // ════════════════════════
@@ -661,7 +660,7 @@ const TEST_PLAYER = (() => {
     return updatedQuestion;
   }
 
-  function _showFeedback(isCorrect, correctAns, correctText, explanation, q) {
+  function _showFeedback(isCorrect, correctAns, correctText, explanation) {
     const bar = $('tp-feedback-bar');
     const icon = $('tp-feedback-icon');
     const text = $('tp-feedback-text');
@@ -677,8 +676,6 @@ const TEST_PLAYER = (() => {
     if (window.MATH) MATH.renderElement(bar);
     _renderSolutionBox($('tp-feedback-solution'), explanation);
     bar.classList.remove('hidden');
-    if (q?.q_id) VIDEO_TEACHER_SELECT?.checkAndShowButtonForQuizQuestion('tp-videos-btn', q.q_id, q.question);
-    else $('tp-videos-btn')?.classList.add('hidden');
   }
 
   function _updateLiveScore() {
@@ -809,7 +806,6 @@ const TEST_PLAYER = (() => {
     $('tp-feedback-text').textContent = `Time up! Answer: ${q?.answer || ''}${answerText ? ` (${answerText})` : ''}`;
     if (window.MATH) MATH.renderElement(bar);
     _renderSolutionBox($('tp-feedback-solution'), q?.explanation);
-    if (q?.q_id) VIDEO_TEACHER_SELECT?.checkAndShowButtonForQuizQuestion('tp-videos-btn', q.q_id, q.question);
     bar.classList.remove('hidden');
 
     if (q) state.answers[q.q_id] = { given: null, correct: false, time_ms: 0, skipped: true };
@@ -1155,14 +1151,10 @@ const TEST_PLAYER = (() => {
           </span>
         </div>
         ${q.explanation ? `<div class="feedback-solution">💡 ${_richSolution(q.explanation)}</div>` : ''}
-        ${q.q_id ? `<button type="button" class="vts-videos-btn tp-wrong-video-btn" data-video-qid="${q.q_id}">🎬 Teacher's Video</button>` : ''}
       `;
       // "Correct: ..." line can itself contain $..$ math (a fraction option
       // etc.), not just the solution box - render the whole card.
       if (window.MATH) MATH.renderElement(div);
-      div.querySelector('[data-video-qid]')?.addEventListener('click', () => {
-        VIDEO_TEACHER_SELECT?.open({ type: 'quiz_question', questionId: q.q_id, questionText: q.question });
-      });
       container.appendChild(div);
     });
   }

@@ -4277,6 +4277,17 @@ body.modal-open {
   transition: opacity 0.15s;
 }
 .quiz-portal-btn:hover { opacity: 0.85; }
+.quiz-portal-video-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.quiz-portal-video-btn:hover { border-color: var(--accent); }
 .offline-badge {
   display: inline-block;
   font-size: 0.7rem;

@@ -86,7 +86,7 @@ const YOUTUBE_TEACHER_ADMIN = (() => {
           // OLD approved video while approving a DIFFERENT new one).
           const previewId = v.pending_video_id || (status !== 'pending' ? v.live_video_id : '');
           const contentLabel = v.content_type === 'concept' ? `📓 ${_esc(v.concept_title)}`
-            : v.content_type === 'quiz_question' ? `❓ ${_esc(v.question_text)}`
+            : v.content_type === 'quiz_test' ? `🎯 ${_esc(v.quiz_title)}`
             : `📝 Exercise ${_esc(v.exercise_no)}`;
           return `
           <div class="ytt-row" data-id="${v.id}" style="flex-direction:column;align-items:stretch;gap:8px">
