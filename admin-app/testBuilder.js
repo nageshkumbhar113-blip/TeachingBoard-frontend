@@ -1628,6 +1628,10 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
   // ════════════════════════
 
   async function _saveQuiz(status = 'draft') {
+    if ($('tb-timer-value')) {
+      const ok = await _commitStep1();
+      if (!ok) return;
+    }
     _syncSectionsToQuiz();
 
     if (!state.quiz?.title) {
