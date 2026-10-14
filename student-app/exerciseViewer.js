@@ -104,8 +104,20 @@ const EXERCISE_VIEWER = (() => {
       // NOTE: APP is a top-level `const` in app.js, not `window.APP` — using
       // the bare identifier here (same convention as vocabPlayer.js etc).
       APP?.navigate?.('exercise');
+      _showPickers(true);
       _populateBatches();
     });
+  }
+
+  // From a chapter (Chapter screen, Study Plan, search) the class/subject/
+  // chapter are already chosen: show them as one line instead of three
+  // dropdowns asking again. The Exercise tab shows the dropdowns.
+  function _showPickers(show, subject = '', chapter = '') {
+    ['ev-batch-sel', 'ev-subject-sel', 'ev-chapter-sel'].forEach(id => $(id)?.classList.toggle('hidden', !show));
+    const picked = $('ev-picked');
+    if (!picked) return;
+    picked.textContent = show ? '' : [subject, chapter].filter(Boolean).join(' › ');
+    picked.classList.toggle('hidden', show);
   }
 
   async function _populateBatches() {
@@ -198,6 +210,7 @@ const EXERCISE_VIEWER = (() => {
   // handlers the manual dropdowns call; nothing about them changes.
   async function openChapter(batch, subject, chapter) {
     APP?.navigate?.('exercise');
+    _showPickers(false, subject, chapter);
     await _populateBatches();
 
     const batchSel = $('ev-batch-sel');

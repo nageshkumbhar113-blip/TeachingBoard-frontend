@@ -5230,3 +5230,11 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .skel-w40 { width: 40%; }
 @keyframes skel-shine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skel-line { animation: none; } }
+
+/* Exercise opened from a chapter: "Science › Light" instead of three dropdowns. */
+.ev-picked {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text2, #6b7280);
+}
