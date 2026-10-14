@@ -376,6 +376,24 @@ const API = (() => {
     return payload;
   }
 
+  // The phone's per-student local data (attempt history, stats, notes and
+  // exercise caches) belongs to whoever last logged in. Every student login
+  // passes through loginStudent, so this is the one place that guarantees a
+  // different student never sees or inherits the previous one's data — no
+  // matter which screen the switch happened from. The upload queue is kept:
+  // its results are owner-tagged and wait for their own student (core/sync.js).
+  const LOCAL_DATA_OWNER_KEY = 'local_data_owner';
+
+  async function _claimLocalDataFor(studentCode) {
+    const code = String(studentCode || '').trim().toUpperCase();
+    if (!code) return;
+    const owner = String(await DB.getSetting(LOCAL_DATA_OWNER_KEY, '').catch(() => '') || '');
+    if (owner && owner !== code) {
+      await DB.clearStudentLocalData?.({ keepQueue: true }).catch(() => {});
+    }
+    if (owner !== code) await DB.setSetting(LOCAL_DATA_OWNER_KEY, code).catch(() => {});
+  }
+
   async function loginStudent(input = {}) {
     const credentials = await _resolveStudentCredentials(input);
     if (!credentials.student_code) throw new Error('Student code is required');
@@ -386,6 +404,7 @@ const API = (() => {
       body: JSON.stringify({ role: 'student', student_code: credentials.student_code, pin: credentials.pin, device_id: input.device_id || '' }),
     });
     clearExpiredState();
+    await _claimLocalDataFor(payload?.user?.student_code || credentials.student_code);
     if (payload?.token) setStudentToken(payload.token);
     await Promise.all([
       DB.setSetting('student_pin', credentials.pin).catch(() => {}),

@@ -956,8 +956,13 @@ const DB = (() => {
   }
 
   // Clear all IDB stores that hold per-student data (call on account switch)
-  async function clearStudentLocalData() {
-    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts', 'exercise_questions_cache', 'words_cache', 'teacher_dashboard_cache', 'parent_dashboard_cache'];
+  // keepQueue: leave the offline upload queue alone — its result entries are
+  // tagged with the student who made them (core/sync.js _enqueue) and only
+  // upload while that student is logged in, so another student's login must
+  // not throw them away.
+  async function clearStudentLocalData({ keepQueue = false } = {}) {
+    const stores = ['sessions', 'test_attempts', 'sync_queue', 'notes_cache', 'sls_chapters', 'sls_concepts', 'word_test_attempts', 'exercise_questions_cache', 'words_cache', 'teacher_dashboard_cache', 'parent_dashboard_cache']
+      .filter(name => !(keepQueue && name === 'sync_queue'));
     const db = await open();
     for (const name of stores) {
       try {

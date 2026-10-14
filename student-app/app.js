@@ -896,23 +896,15 @@ const APP = (() => {
         screen.classList.add('hidden');
         _isTeacherOrParentMode = false;
         _dashboardRole = null;
-        // Stop sync before clearing session so cycle doesn't fire with empty credentials
-        window.SYNC?.stopStudentAutoSync?.();
-        // Clear all per-student IDB data (sessions, attempts, sync queue, notes cache)
-        await DB.clearStudentLocalData?.().catch(() => {});
-        // Clear current session regardless of role
-        await API.clearStudentProfile?.().catch(() => {});
+        await _clearStudentForSwitch();
+        // Clear the other roles' sessions too
         await API.clearTeacherProfile?.().catch(() => {});
         await API.clearParentProfile?.().catch(() => {});
-        API.clearStudentToken?.();
         API.clearTeacherToken?.();
         API.clearParentToken?.();
         API.clearAdminToken?.();
         resolve(false);
-        setTimeout(() => _showOnboarding(async () => {
-          await _refreshProfileAfterLogin();
-          loadHome();
-        }, { force: true }), 50);
+        _restartForNextStudent();
       }
 
       submitBtn?.addEventListener('click', () => _attempt().catch(console.error), { signal: ac.signal });
@@ -922,6 +914,30 @@ const APP = (() => {
       history.pushState(null, '');
       window.addEventListener('popstate', () => { history.pushState(null, ''); }, { signal: ac.signal });
     });
+  }
+
+  // Shared by both "Switch account" buttons (PIN lock screen and Profile), so
+  // they can never drift apart again: the Profile one used to keep the previous
+  // student's attempts, stats and caches for the next student to see.
+  // Stops sync first so no cycle fires with half-cleared credentials. Results
+  // still waiting to upload are kept — they are owner-tagged and upload when
+  // their own student logs in again (core/sync.js), never under someone else.
+  async function _clearStudentForSwitch() {
+    window.SYNC?.stopStudentAutoSync?.();
+    await DB.clearStudentLocalData?.({ keepQueue: true }).catch(() => {});
+    await DB.setSetting?.('local_data_owner', '').catch(() => {});
+    await API.clearStudentProfile?.().catch(() => {});
+    API.clearStudentToken?.();
+  }
+
+  // After a switch, start the app afresh instead of reusing this page: many
+  // modules keep per-student state in memory (Study Plan's batch, the Notes
+  // viewer's chapters and locks, the free-chapter list, the once-per-session
+  // class hierarchy sync, the stopped background sync). A reload with the
+  // session cleared lands on the normal first-login flow, so the next student
+  // gets exactly what a fresh install would.
+  function _restartForNextStudent() {
+    window.location.reload();
   }
 
   // Refresh profile + allowed batches from server after any login
@@ -1748,17 +1764,8 @@ const APP = (() => {
 
     overlay.querySelector('#ps-switch-btn')?.addEventListener('click', async () => {
       _close();
-      // Stop sync before clearing session so cycle doesn't fire with empty credentials
-      window.SYNC?.stopStudentAutoSync?.();
-      // Clear current session; show login for new student
-      await API.clearStudentProfile?.().catch(() => {});
-      API.clearStudentToken?.();
-      _updateProfileButton('');
-      _screenHistory = [];
-      _showOnboarding(async () => {
-        await _refreshProfileAfterLogin();
-        loadHome();
-      }, { force: true });
+      await _clearStudentForSwitch();
+      _restartForNextStudent();
     });
   }
 

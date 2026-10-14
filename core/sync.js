@@ -157,6 +157,23 @@ const SYNC = (() => {
     return _queueCache || [];
   }
 
+  // Queue ops that carry one student's test result.
+  const RESULT_OPS = new Set(['submitAttempt', 'submitWordTestAttempt']);
+
+  async function _currentStudentCode() {
+    const p = await API.getStudentProfile?.().catch(() => null);
+    return String(p?.student_code || '').trim().toUpperCase();
+  }
+
+  // A queued result made by a different student than the one now logged in
+  // (account switched on this phone while it was still waiting to upload).
+  // It stays queued — untouched, retries not counted — until its owner logs
+  // in again, instead of being uploaded under the wrong student's name.
+  // Items queued before owner tagging existed have no owner and drain as before.
+  function _isForeignResult(item, currentCode) {
+    return RESULT_OPS.has(item.op) && !!item.owner && item.owner !== currentCode;
+  }
+
   /**
    * Add an operation to the IDB-backed offline queue.
    * Deduplicates by stable ID (attempt_id / quiz_id) when available,
@@ -170,6 +187,9 @@ const SYNC = (() => {
       : _loadQueue().some(i => i.op === op && JSON.stringify(i.payload) === JSON.stringify(payload));
     if (!dupe) {
       const item = { id: `q_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`, op, payload, at: Date.now(), attempts: 0 };
+      // A student's result must only ever upload under that student's own
+      // login — tag it with its owner (see _isForeignResult).
+      if (RESULT_OPS.has(op)) item.owner = await _currentStudentCode();
       await DB.enqueueSyncItem(item).catch(err => console.warn('SYNC enqueue failed:', err.message));
       _queueCache = await DB.getSyncQueue().catch(() => _queueCache || []);
       console.info(`SYNC queue: +${op}`);
@@ -597,8 +617,10 @@ const SYNC = (() => {
     if (!queue.length) return { drained: 0, remaining: 0 };
 
     let drained = 0;
+    const currentCode = await _currentStudentCode();
 
     for (const item of queue) {
+      if (_isForeignResult(item, currentCode)) continue;
       if (item.attempts >= MAX_RETRY) {
         console.warn(`SYNC queue: dropping "${item.op}" after ${MAX_RETRY} failures`);
         await DB.removeSyncItem(item.id).catch(() => {});
