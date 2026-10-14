@@ -416,6 +416,14 @@ const TEST_PLAYER = (() => {
     _setText('tp-progress-text', `${state.current + 1} / ${total}`);
     _setText('tp-q-number', `Q${state.current + 1}`);
 
+    // The last question's button submits — say so, it used to read "Next →".
+    const nextBtn = $('tp-next');
+    if (nextBtn) {
+      const last = state.current === total - 1;
+      nextBtn.textContent = last ? '✅ Submit' : 'Next →';
+      nextBtn.setAttribute('aria-label', last ? 'Submit test' : 'Next question');
+    }
+
     // Section + marks
     _setText('tp-section-label', q._secLabel || '');
     $('tp-q-marks').textContent       = `+${q._posMarks} / −${q._negMarks}`;
@@ -736,7 +744,30 @@ const TEST_PLAYER = (() => {
       state.current++;
       _renderQuestion();
     } else {
-      _submitTest();
+      _confirmAndSubmit().catch(err => console.warn('submit confirm failed', err));
+    }
+  }
+
+  // Next/Skip on the last question used to submit at once, with no chance to
+  // go back to questions left blank. Timer and exam-rule submits stay instant.
+  async function _confirmAndSubmit() {
+    const total = state.questions.length;
+    const answered = state.questions.filter(q => {
+      const a = state.answers[q.q_id];
+      return a && !a.skipped && a.given !== null && a.given !== undefined;
+    }).length;
+    const left = total - answered;
+    const msg = left > 0
+      ? `Test submit करायचा?\nउत्तर दिलेले: ${answered} / ${total}\nसोडलेले: ${left}`
+      : `Test submit करायचा?\nसगळ्या ${total} प्रश्नांची उत्तरं दिली आहेत.`;
+    const ok = await UI.confirmAsync(msg, { yes: 'Submit करा', no: 'परत जा' });
+    if (!state.quiz || $('tp-quiz-view')?.classList.contains('hidden')) return;   // already submitted (timer)
+    if (ok) { _submitTest(); return; }
+    // Stay on the last question. A skip recorded just now must not lock it.
+    const q = state.questions[state.current];
+    if (q && state.answers[q.q_id]?.skipped) {
+      delete state.answers[q.q_id];
+      _renderQuestion();
     }
   }
 
@@ -816,8 +847,12 @@ const TEST_PLAYER = (() => {
     if (q) state.answers[q.q_id] = { given: null, correct: false, time_ms: 0, skipped: true };
 
     // Strict timer: in exam mode auto-advance after showing the time-up message
+    // (time is up, so the last question submits without asking)
     if (state.mode === 'exam') {
-      setTimeout(_advanceToNext, 1500);
+      setTimeout(() => {
+        if (state.current < state.questions.length - 1) _advanceToNext();
+        else _submitTest();
+      }, 1500);
     }
   }
 

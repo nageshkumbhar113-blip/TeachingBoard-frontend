@@ -907,7 +907,8 @@ const UI = (() => {
   // CONFIRM / PROMPT (no native dialogs — safe on Android WebView)
   // ════════════════════════
 
-  function confirmAsync(message) {
+  // labels: optional { yes, no } button texts (default होय / रद्द करा).
+  function confirmAsync(message, labels = {}) {
     return new Promise(resolve => {
       const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const overlay = document.createElement('div');
@@ -915,8 +916,8 @@ const UI = (() => {
       overlay.innerHTML = `<div class="td-dialog-box">
         <p class="td-dialog-msg">${esc(message)}</p>
         <div class="td-dialog-btns">
-          <button class="td-dialog-no">रद्द करा</button>
-          <button class="td-dialog-yes">होय</button>
+          <button class="td-dialog-no">${esc(labels.no || 'रद्द करा')}</button>
+          <button class="td-dialog-yes">${esc(labels.yes || 'होय')}</button>
         </div></div>`;
       document.body.appendChild(overlay);
       const done = r => { overlay.remove(); resolve(r); };
