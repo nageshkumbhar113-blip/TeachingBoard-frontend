@@ -803,6 +803,20 @@ const DB = (() => {
     return _getAllKeys('images');
   }
 
+  // Everything stored for offline notes and exercises, decrypted — for the
+  // offline picture cache (core/imageCache.js) to find picture links in.
+  async function getAllOfflineStudyContent() {
+    const [concepts, exercises] = await Promise.all([_getAll('sls_concepts'), _getAll('exercise_questions_cache')]);
+    const open = rows => Promise.all(rows.map(r => CRYPTO.decrypt(r).catch(() => null)));
+    return { concepts: (await open(concepts)).filter(Boolean), exercises: (await open(exercises)).filter(Boolean) };
+  }
+
+  // Offline image cache (core/imageCache.js) drops old pictures when full.
+  async function deleteImage(name) {
+    if (!name) return;
+    return _del('images', name);
+  }
+
   // ════════════════════════
   // LESSONS
   // ════════════════════════
@@ -1301,6 +1315,8 @@ const DB = (() => {
     saveImage,
     getImage,
     getAllImageNames,
+    deleteImage,
+    getAllOfflineStudyContent,
 
     // Lessons
     saveLesson,

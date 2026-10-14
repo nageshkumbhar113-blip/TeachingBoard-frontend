@@ -23,6 +23,7 @@ const CORE_ASSETS = [
   './js/vendor/katex/contrib/auto-render.min.js',
   './icons/nk-logo.png',
   './core/db.js',
+  './core/imageCache.js',
   './core/helpers.js',
   './core/fileExport.js',
   './core/math.js',

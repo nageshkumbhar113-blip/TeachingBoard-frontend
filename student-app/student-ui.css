@@ -5309,3 +5309,15 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 
 /* Bottom nav has five tabs now: room for readable labels. */
 .bnav-label { font-size: 0.72rem; letter-spacing: 0.02em; }
+
+/* A picture that can't load offline (core/imageCache.js) — a note, not a broken icon. */
+.img-offline-note {
+  display: inline-block;
+  margin: 6px 0;
+  padding: 8px 12px;
+  border: 1px dashed var(--border, #d1d5db);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text2, #6b7280);
+  background: var(--surface2, rgba(127,127,127,0.06));
+}

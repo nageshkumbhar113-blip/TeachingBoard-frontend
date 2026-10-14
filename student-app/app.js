@@ -209,6 +209,7 @@ const APP = (() => {
       ));
 
       await DB.setSetting(FULL_SYNC_FLAG_KEY, { batchesKey, at: Date.now() }).catch(() => {});
+      _fillOfflineImagesSoon(0);   // the pictures of what was just stored
       const dsub = $('dsync-sub');
       if (dsub) dsub.textContent = `${(sync.concepts || []).length} Notes आणि ${(sync.exerciseQuestions || []).length} Exercise प्रश्न तयार झाले ✅`;
       console.log(`✅ Full offline sync done — ${(sync.concepts || []).length} notes, ${(sync.exerciseQuestions || []).length} exercise questions`);
@@ -2635,6 +2636,21 @@ const APP = (() => {
     }).catch(() => {});
   }
 
+  // Pictures for offline use (core/imageCache.js): in the background, a few
+  // seconds after Home so it never competes with what the student opens
+  // first; again after the first full download and whenever internet returns.
+  let _imagesFillTimer = null;
+  function _fillOfflineImagesSoon(delayMs = 6000) {
+    if (_isTeacherOrParentMode || !window.IMAGE_CACHE) return;
+    clearTimeout(_imagesFillTimer);
+    _imagesFillTimer = setTimeout(() => {
+      IMAGE_CACHE.fillFromContent()
+        .then(n => { if (n) console.log(`🖼️ ${n} pictures saved for offline use`); })
+        .catch(err => console.warn('offline pictures failed', err));
+    }, delayMs);
+  }
+  window.addEventListener('online', () => _fillOfflineImagesSoon(3000));
+
   async function loadHome() {
     _screenHistory = [];   // clear back-stack when going to home
     showScreen('home', { addToHistory: false });
@@ -2680,6 +2696,7 @@ const APP = (() => {
     });
     await _renderHomeHierarchy();
     _renderContinueCard().catch(err => console.warn('continue card failed', err));
+    _fillOfflineImagesSoon();
     await _maybeShowExpirySheet();
     _maybeShowBuyNowSheet();
   }
