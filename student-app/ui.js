@@ -359,6 +359,36 @@ const UI = (() => {
   // BATCH GRID
   // ════════════════════════
 
+  const BATCH_COVERS_KEY = 'batch_covers_cache';
+  let _batchCoversChecked = false;
+
+  const _batchVisual = c => (c.cover_image
+    ? `<div class="batch-cover"><img src="${c.cover_image}" alt="" loading="lazy"></div>`
+    : `<div class="batch-icon">${c.icon || '📚'}</div>`);
+
+  // Background, once per session: fetch the admin's class icons/covers, save
+  // them on the phone, and update the cards already on screen if they differ.
+  function _refreshBatchCoversOnce(grid) {
+    if (_batchCoversChecked || !navigator.onLine) return;
+    _batchCoversChecked = true;
+    API.getBatchPlans().then(async remote => {
+      const fresh = {};
+      (remote || []).forEach(rb => {
+        const name = String(rb?.name || '').trim();
+        if (name) fresh[name] = { icon: rb.icon || '📚', cover_image: rb.cover_image || '' };
+      });
+      const saved = await DB.getSetting(BATCH_COVERS_KEY, {}).catch(() => ({})) || {};
+      if (JSON.stringify(saved) === JSON.stringify(fresh)) return;
+      await DB.setSetting(BATCH_COVERS_KEY, fresh).catch(() => {});
+      grid.querySelectorAll('.batch-card').forEach(card => {
+        const name = card.querySelector('.batch-name')?.textContent.trim();
+        const c = fresh[name];
+        const visual = card.querySelector('.batch-cover, .batch-icon');
+        if (c && visual) visual.outerHTML = _batchVisual(c);
+      });
+    }).catch(e => { _batchCoversChecked = false; console.warn('batch cover fetch failed', e); });
+  }
+
   async function renderBatchGrid(onBatchClick) {
     const grid = $('batch-grid');
     if (!grid) return;
@@ -382,24 +412,22 @@ const UI = (() => {
     // The locally-cached `batches` table is built incrementally from synced
     // question/quiz content (core/db.js's _ensureHierarchyEntry), which only
     // ever writes a generic 📚 icon — it never carries the admin's real
-    // icon/cover_image. Those live on the backend Batch catalog and were,
-    // until now, only ever fetched for the payment/plan-select screen. Merge
-    // them in here too (best-effort — offline just keeps the generic icon).
-    if (navigator.onLine) {
-      try {
-        const remoteBatches = await API.getBatchPlans();
-        remoteBatches.forEach(rb => {
-          const name = String(rb?.name || '').trim();
-          const existing = batchMeta.get(name);
-          if (existing) {
-            existing.icon = rb.icon || existing.icon;
-            existing.cover_image = rb.cover_image || '';
-          } else {
-            batchMeta.set(name, { name, icon: rb.icon || '📚', cover_image: rb.cover_image || '' });
-          }
-        });
-      } catch (e) { console.warn('batch cover fetch failed', e); }
-    }
+    // icon/cover_image. Those live on the backend Batch catalog. They are
+    // kept on the phone and used at once; the server copy is checked in the
+    // background once per session (the grid used to wait for it on every
+    // Home visit, a full server round trip before any class showed).
+    const covers = await DB.getSetting(BATCH_COVERS_KEY, {}).catch(() => ({})) || {};
+    const applyCover = (name, c) => {
+      const existing = batchMeta.get(name);
+      if (existing) {
+        existing.icon = c.icon || existing.icon;
+        existing.cover_image = c.cover_image || '';
+      } else {
+        batchMeta.set(name, { name, icon: c.icon || '📚', cover_image: c.cover_image || '' });
+      }
+    };
+    Object.entries(covers).forEach(([name, c]) => applyCover(name, c));
+    _refreshBatchCoversOnce(grid);
 
     const visibleQuestions = _filterByAllowedBatches(questions, allowedBatches);
     const questionCounts = visibleQuestions.reduce((counts, q) => {
@@ -416,9 +444,7 @@ const UI = (() => {
       card.setAttribute('role', 'listitem');
       makeFocusable(card);
       card.innerHTML = `
-        ${meta.cover_image
-          ? `<div class="batch-cover"><img src="${meta.cover_image}" alt="" loading="lazy"></div>`
-          : `<div class="batch-icon">${meta.icon || '📚'}</div>`}
+        ${_batchVisual(meta)}
         <div class="batch-name">${batchName}</div>
         <div class="batch-count">${count} questions</div>
       `;

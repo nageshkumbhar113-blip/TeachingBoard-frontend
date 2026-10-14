@@ -259,35 +259,63 @@ const APP = (() => {
     try {
       _updateProfileButton(profile.name || profile.student_code);
       let _serverConfirmedOk = false;
-      if (navigator.onLine && window.API?.fetchStudentMe) {
+      // The server's answer (renewed / expired / blocked, new classes) used
+      // to be awaited here, so Home waited a full round trip after the PIN —
+      // half a minute or more while the free server wakes up. Now Home opens
+      // from the phone's data and the answer is applied when it arrives;
+      // only a plan that has already run out on the phone's clock still
+      // waits for it (the server decides between renewal and the gate).
+      const serverCheck = navigator.onLine && window.API?.fetchStudentMe ? API.fetchStudentMe() : null;
+      const onServerError = async (err, { inline }) => {
+        const msg = String(err?.message || '').toLowerCase();
+        // Expired → markExpired() already fired teachingboard:expired, which
+        // drives the renewal flow. Don't also force a re-login here.
+        if (msg.includes('expired')) {
+          window.SYNC?.stopStudentAutoSync?.();
+          return 'stop';
+        }
+        const isAuthError = msg.includes('unauthorized') || msg.includes('blocked') || msg.includes('pending');
+        if (isAuthError) {
+          // खरोखर auth fail (401/403) — forced re-login mandatory. Hide
+          // this overlay first so it doesn't sit on top of the onboarding
+          // screen that's about to show.
+          window.SYNC?.stopStudentAutoSync?.();
+          await API.clearStudentProfile?.().catch(() => {});
+          overlay?.classList.add('hidden');
+          if (inline) {
+            return new Promise(resolve => _showOnboarding(async () => {
+              await _refreshProfileAfterLogin();
+              resolve('stop');
+            }, { force: true, onOtherRole: () => resolve('stop') }));
+          }
+          // A 401 also fires teachingboard:unauthorized, whose listener may
+          // already have opened the login screen — never open it twice.
+          if ($('onboarding-screen')?.classList.contains('hidden')) {
+            _showOnboarding(async () => { await _refreshProfileAfterLogin(); loadHome(); }, { force: true });
+          }
+          return 'stop';
+        }
+        // Network error / server sleeping / timeout — cached profile वापरत राहा
+        console.warn('fetchStudentMe failed (network/server), continuing with cached profile', err?.message);
+        return 'go';
+      };
+      if (serverCheck && _isLocallyExpired(profile)) {
         try {
-          const refreshed = await API.fetchStudentMe();
+          const refreshed = await serverCheck;
           _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
           _serverConfirmedOk = true;
         } catch (err) {
-          const msg = String(err?.message || '').toLowerCase();
-          // Expired → markExpired() already fired teachingboard:expired, which
-          // drives the renewal flow. Don't also force a re-login here.
-          if (msg.includes('expired')) {
-            window.SYNC?.stopStudentAutoSync?.();
-            return;
-          }
-          const isAuthError = msg.includes('unauthorized') || msg.includes('blocked') || msg.includes('pending');
-          if (isAuthError) {
-            // खरोखर auth fail (401/403) — forced re-login mandatory. Hide
-            // this overlay first so it doesn't sit on top of the onboarding
-            // screen that's about to show.
-            window.SYNC?.stopStudentAutoSync?.();
-            await API.clearStudentProfile?.().catch(() => {});
-            overlay?.classList.add('hidden');
-            return new Promise(resolve => _showOnboarding(async () => {
-              await _refreshProfileAfterLogin();
-              resolve();
-            }, { force: true, onOtherRole: resolve }));
-          }
-          // Network error / server sleeping / timeout — cached profile वापरत राहा
-          console.warn('fetchStudentMe failed (network/server), continuing with cached profile', err?.message);
+          if (await onServerError(err, { inline: true }) === 'stop') return;
         }
+      } else if (serverCheck) {
+        const classesBefore = JSON.stringify(profile.assigned_batches || []);
+        serverCheck.then(refreshed => {
+          _updateProfileButton(refreshed?.name || refreshed?.student_code || profile.student_code);
+          // New / removed classes or plan: redraw Home with them.
+          const changed = JSON.stringify(refreshed?.assigned_batches || []) !== classesBefore
+            || refreshed?.access_level !== profile.access_level || refreshed?.expiry_date !== profile.expiry_date;
+          if (changed && _currentScreen === 'home' && !_isTeacherOrParentMode) refreshHome().catch(() => {});
+        }).catch(err => onServerError(err, { inline: false }).catch(() => {}));
       }
 
       // Real gap fixed: markExpired() only ever fired from an actual server
@@ -2596,6 +2624,17 @@ const APP = (() => {
     _activateHomeChoice('.chapter-item', _homeChapter, '.chapter-name');
   }
 
+  // Server class/subject/chapter list (once per session inside the API):
+  // Home shows the phone's copy at once and redraws when this adds anything.
+  function _syncServerHierarchyInBackground() {
+    if (!API.syncServerBatchesForStudent) return;
+    API.syncServerBatchesForStudent().then(async batches => {
+      if (!batches || _currentScreen !== 'home' || _isTeacherOrParentMode) return;
+      await DB.syncHierarchyFromExisting?.();
+      await _renderHomeHierarchy({ preserveSelection: true });
+    }).catch(() => {});
+  }
+
   async function loadHome() {
     _screenHistory = [];   // clear back-stack when going to home
     showScreen('home', { addToHistory: false });
@@ -2613,7 +2652,8 @@ const APP = (() => {
     // Real bug fix: subjects/chapters that only have Notes/Exercise content
     // (no legacy MCQ quiz) never appeared in any Subject/Chapter dropdown —
     // see syncServerBatchesForStudent's own doc-comment. Best-effort/offline-safe.
-    await API.syncServerBatchesForStudent?.().catch(() => {});
+    // In the background: Home used to wait for this server round trip.
+    _syncServerHierarchyInBackground();
     // Not awaited on purpose — see _runFullOfflineSyncIfNeeded's own
     // doc-comment (student keeps using the app while this runs in the background).
     _runFullOfflineSyncIfNeeded().catch(() => {});
@@ -2652,7 +2692,7 @@ const APP = (() => {
       _updateProfileButton(_latestProfile.name || _latestProfile.student_code);
     }
     await DB.syncHierarchyFromExisting?.();
-    await API.syncServerBatchesForStudent?.().catch(() => {});
+    _syncServerHierarchyInBackground();
     _runFullOfflineSyncIfNeeded().catch(() => {}); // not awaited — see its own doc-comment
     _loadHomeBanners().catch(() => {}); // not awaited — see its own doc-comment
     await UI.renderHomeStats();
