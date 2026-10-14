@@ -2334,10 +2334,10 @@ const APP = (() => {
 
   // Step 4: one level up inside the current screen. True if it moved.
   function _backInsideScreen(screen) {
-    if (screen === 'notes') return !!window.NOTES_VIEWER?.closeOpenNote?.();
+    if (screen === 'notes') return !!window.NOTES_VIEWER?.backOneLevel?.();
     if (screen === 'vocab') return !!window.VOCAB?.backOneLevel?.();
     if (screen === 'word-test') return !!window.WORD_TEST_PLAYER?.backOneLevel?.();
-    if (screen === 'exercise') return _clickIfShown('#ev-back-btn');
+    if (screen === 'exercise') return !!window.EXERCISE_VIEWER?.backOneLevel?.();
     if (screen === 'parent-dashboard') return _clickIfShown('#pd-back-btn');
     if (screen === 'teacher-dashboard') {
       if (_isShown($('td-tab-row'))) { $('td-tab-drawer-toggle')?.click(); return true; }

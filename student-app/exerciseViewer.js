@@ -100,7 +100,6 @@ const EXERCISE_VIEWER = (() => {
     $('ev-batch-sel')?.addEventListener('change', e => _onBatchChange(e.target.value));
     $('ev-subject-sel')?.addEventListener('change', e => _onSubjectChange(e.target.value));
     $('ev-chapter-sel')?.addEventListener('change', e => _onChapterChange(e.target.value));
-    $('ev-back-btn')?.addEventListener('click', () => _showGroupList());
     $('bnav-exercise')?.addEventListener('click', () => {
       // NOTE: APP is a top-level `const` in app.js, not `window.APP` — using
       // the bare identifier here (same convention as vocabPlayer.js etc).
@@ -462,7 +461,15 @@ const EXERCISE_VIEWER = (() => {
     _showQuestions(no);
   }
 
-  return { init, openChapter, openQuestion, __test: { setGroups: _setTestGroups } };
+  // Phone Back / top ‹ (APP.handleBack): an exercise's questions go back to
+  // the exercise list (this replaced the in-page "‹ मागे" button).
+  function backOneLevel() {
+    if ($('ev-questions-section')?.style.display === 'none') return false;
+    _showGroupList();
+    return true;
+  }
+
+  return { init, openChapter, openQuestion, backOneLevel, __test: { setGroups: _setTestGroups } };
 })();
 
 window.EXERCISE_VIEWER = EXERCISE_VIEWER;

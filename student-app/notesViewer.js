@@ -65,6 +65,10 @@ const NOTES_VIEWER = (() => {
     currentSubject: null,
     currentChapter: null,
     currentConcept: null,
+    // How Notes was entered: 'chapter' (a chapter's Notes button, Study Plan,
+    // search) or 'root' (the Notes tab, browsing subjects). Back only walks
+    // up the levels the student walked down.
+    entry: 'chapter',
     concepts: [],
     language: localStorage.getItem('nv_language') || 'english',
     studyMode: localStorage.getItem('nv_study_mode') || 'read',
@@ -105,7 +109,6 @@ const NOTES_VIEWER = (() => {
     $('nv-mode-revision')?.addEventListener('click', () => _setStudyMode('revision'));
 
     $('nv-search-input')?.addEventListener('input', e => _searchConcepts(e.target.value));
-    $('nv-back-btn')?.addEventListener('click', () => _goBack());
     $('nv-next-btn')?.addEventListener('click', () => _goNext());
   }
 
@@ -559,7 +562,6 @@ const NOTES_VIEWER = (() => {
     // Subject picked but no chapter open yet -> viewing that subject's
     // chapters grid, one level below the top Subjects grid.
     const hasCurrentSubject = !hasCurrentConcept && !hasCurrentChapter && !!state.currentSubject;
-    const showBack = hasCurrentConcept || hasCurrentChapter || hasCurrentSubject;
 
     // "Next" — only while a concept is open, and only if there's another
     // one after it in this chapter's list (state.concepts, same order as
@@ -572,7 +574,6 @@ const NOTES_VIEWER = (() => {
       <!-- Header with controls -->
       <div class="nv-toolbar">
         <div class="nv-toolbar-left">
-          ${showBack ? `<button class="nv-btn-back" id="nv-back-btn">← Back</button>` : ''}
           ${hasNext ? `<button class="nv-btn-back" id="nv-next-btn">Next →</button>` : ''}
         </div>
         <div class="nv-toolbar-center">
@@ -699,6 +700,7 @@ const NOTES_VIEWER = (() => {
   // this chapter has no notes yet, shows a clear empty state rather than
   // silently falling back to whatever chapter was open before.
   async function openChapter(batch, subject, chapter) {
+    state.entry = 'chapter';
     await init();
     const match = state.chapters.find(c => c.subject === subject && c.name === chapter);
     if (match) {
@@ -775,12 +777,20 @@ const NOTES_VIEWER = (() => {
     _renderUI();
   }
 
-  // Phone Back / top ← (APP.handleBack): an open note closes to its
-  // chapter's list; otherwise Back leaves Notes to the previous screen.
-  function closeOpenNote() {
-    if (!state.currentConcept) return false;
-    _goBack();
-    return true;
+  // Phone Back / top ‹ (APP.handleBack) — the one Back for Notes (the
+  // second, in-page "← Back" was removed): an open note closes to its list;
+  // when browsing from the Notes tab, chapter -> subject -> all subjects;
+  // otherwise Back leaves Notes. True if it moved inside Notes.
+  function backOneLevel() {
+    if (state.currentConcept) { _goBack(); return true; }
+    if (state.entry === 'root' && (state.currentChapter || state.currentSubject)) { _goBack(); return true; }
+    return false;
+  }
+
+  // Notes tab (bottom nav): browsing from the top.
+  function openFromTab() {
+    state.entry = 'root';
+    return init();
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -881,7 +891,8 @@ const NOTES_VIEWER = (() => {
     selectSubject,
     selectChapter,
     openChapter,
-    closeOpenNote
+    backOneLevel,
+    openFromTab
   };
 })();
 
@@ -900,7 +911,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // identifier is visible to other classic scripts on the same page (same
   // convention as init()'s own APP.toast(...) call above).
   document.getElementById('bnav-notes')?.addEventListener('click', () => {
-    window.NOTES_VIEWER?.init();
+    window.NOTES_VIEWER?.openFromTab();
     APP?.navigate?.('notes');
   });
 });

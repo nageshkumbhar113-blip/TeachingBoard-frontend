@@ -87,7 +87,6 @@ const ANALYTICS = (() => {
 
     root.innerHTML = `
       <div class="an-header">
-        <button class="an-back-btn" id="an-back">← Back</button>
         <h2 class="an-title">📊 Analytics</h2>
       </div>
       <nav class="an-tabs" id="an-tab-bar" role="tablist">
@@ -100,7 +99,8 @@ const ANALYTICS = (() => {
       <div class="an-body" id="an-tab-body"></div>
     `;
 
-    $('an-back').addEventListener('click', () => { APP.showScreen('home'); APP.loadHome(); });
+    // No in-page "← Back": the top ‹ and the phone's Back do it (two back
+    // buttons on one screen confused students).
 
     $('an-tab-bar').addEventListener('click', e => {
       const btn = e.target.closest('[data-tab]');
