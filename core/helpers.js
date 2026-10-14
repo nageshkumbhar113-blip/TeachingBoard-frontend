@@ -1637,7 +1637,30 @@ const API = (() => {
     if (!token) return [];
     const payload = await request('/questions', { headers: { Authorization: `Bearer ${token}` } });
     const rows    = payload?.data || [];
-    return cacheQuizQuestions(rows);
+    const cached  = await cacheQuizQuestions(rows);
+    await _pruneStudentQuestions(payload, cached, profile).catch(err => console.warn('question prune skipped:', err?.message));
+    return cached;
+  }
+
+  // The bank cache only ever grew: a question the admin deleted, or one the
+  // student may no longer see (plan expired, chapter no longer free), stayed
+  // on the phone and kept appearing in MCQ practice. Remove cached questions
+  // the server no longer returns — but only when that is certain:
+  //   • the server answered successfully with a real list,
+  //   • the list is complete (under the server's page limit, default 1000 —
+  //     a full page may simply be truncated),
+  //   • only questions that came from the server (source 'api') and belong to
+  //     this student's own classes; anything else on the device is untouched.
+  async function _pruneStudentQuestions(payload, cachedRows, profile) {
+    if (payload?.success !== true || !Array.isArray(payload.data)) return;
+    const limit = Number(payload.limit) || 1000;
+    if (payload.data.length >= limit) return;
+    const batches = new Set((profile?.assigned_batches || []).map(b => String(b || '').trim()).filter(Boolean));
+    if (!batches.size) return;
+    const keep = new Set((cachedRows || []).map(q => q.q_id));
+    const local = await DB.getAllQuestions();
+    const stale = local.filter(q => q.source === 'api' && batches.has(String(q.batch || '').trim()) && !keep.has(q.q_id));
+    for (const q of stale) await DB.deleteQuestion(q.q_id);
   }
 
   // Tiny "has anything changed?" fingerprint for the student background sync
