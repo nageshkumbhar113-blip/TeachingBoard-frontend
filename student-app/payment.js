@@ -117,7 +117,7 @@ const PAYMENT = (() => {
       slidesHost.innerHTML = list.map((b, i) => `
         <div class="admit-batch-slide${i === 0 ? ' active' : ''}" data-name="${_esc(b.name)}">
           <div class="admit-slide-dot"></div>
-          <div class="admit-slide-cover">${b.cover_image ? `<img src="${_esc(b.cover_image)}" alt="">` : _esc(b.icon || '📚')}</div>
+          <div class="admit-slide-cover">${b.cover_image ? `<img src="${_esc((window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(b.cover_image) : b.cover_image))}" alt="">` : _esc(b.icon || '📚')}</div>
           <div class="admit-slide-name">${_esc(b.name)}</div>
         </div>`).join('');
 

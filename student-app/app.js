@@ -2052,7 +2052,7 @@ const APP = (() => {
 
     track.innerHTML = _bannerList.map((b, i) => {
       const gradClass = _BANNER_GRADIENT_CLASSES[i % _BANNER_GRADIENT_CLASSES.length];
-      const bgAttr = b.imageUrl ? ` style="background-image:url('${_escBanner(b.imageUrl)}')"` : '';
+      const bgAttr = b.imageUrl ? ` style="background-image:url('${_escBanner((window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(b.imageUrl) : b.imageUrl))}')"` : '';
       return `<div class="home-banner ${gradClass}" data-idx="${i}"${bgAttr} role="button" tabindex="0">
         <div class="home-banner-title">${_escBanner(b.title)}</div>
         ${b.subtitle ? `<div class="home-banner-subtitle">${_escBanner(b.subtitle)}</div>` : ''}

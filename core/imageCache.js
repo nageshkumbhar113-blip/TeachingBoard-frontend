@@ -7,13 +7,17 @@
    text: a picture showed offline only if the WebView's small HTTP cache still
    happened to have it, so a diagram question could not be answered offline.
 
-   - fillFromContent(): in the background (online, not in data-saver mode),
-     collects the picture links in this student's stored content and saves
-     a phone-sized copy of each in IndexedDB ('images' store, keyed by the
-     ORIGINAL link — testPlayer/quiz already look pictures up that way).
    - Every <img> the app shows (and banner backgrounds) is watched: a saved
-     copy is used when there is one; a picture seen online is saved too; a
-     picture that can't load shows a short note instead of a broken icon.
+     copy is used when there is one; otherwise a lighter copy is asked from
+     Cloudinary (max 1000 px, WebP, auto quality) and, once it has loaded,
+     kept on the phone (from the browser's cache — no second download) in
+     IndexedDB, encrypted, keyed by the ORIGINAL link (testPlayer/quiz look
+     pictures up that way). A picture that can't load shows a short note.
+   - Only pictures the student opens are kept (mode 'viewed', the default),
+     so Cloudinary sends each picture only when it is actually looked at.
+     Setting 'img_prefetch_mode' to 'wifi' or 'all' switches ahead-of-time
+     downloads back on — fillFromContent() then fetches the rest of the
+     stored content's pictures in the background.
    - At most MAX_BYTES; the least recently used pictures go first.
 ════════════════════════════════════════ */
 
@@ -33,14 +37,34 @@ const IMAGE_CACHE = (() => {
 
   const _isRemote = u => /^https?:\/\//i.test(String(u || ''));
 
-  // Cloudinary: ask for a phone-sized, compressed copy (max 1000 px wide).
-  // Links that already carry their own size/quality settings are left alone.
+  // Cloudinary: ask for a phone-sized, compressed copy (max 1000 px wide,
+  // WebP, automatic quality) — shown and saved alike, so far fewer bytes per
+  // picture. Links that already carry their own settings are left alone.
   function _downloadUrl(url) {
     const m = String(url).match(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(.*)$/i);
     if (!m) return url;
     const rest = m[2];
     if (/^(?:[a-z]{1,3}_[^/,]+,?)+\//i.test(rest) && !/^v\d+\//.test(rest)) return url;
-    return `${m[1]}c_limit,w_1000,q_auto/${rest}`;
+    return `${m[1]}${LIGHT_SEG}${rest}`;
+  }
+
+  const LIGHT_SEG = 'c_limit,w_1000,f_webp,q_auto/';
+  // The link a picture is saved under: the original, even when the screen
+  // shows the light copy.
+  const _originalOf = url => String(url).replace(`/image/upload/${LIGHT_SEG}`, '/image/upload/');
+
+  // For screens building <img> / backgrounds: the light Cloudinary copy, so
+  // the full-size original is never downloaded at all.
+  const lightUrl = url => (_isRemote(url) ? _downloadUrl(String(url).trim()) : url);
+
+  // 'viewed' (default): keep only opened pictures. 'wifi' / 'all': also
+  // download the stored content's pictures ahead of time (set on the server).
+  async function _prefetchAllowed() {
+    const mode = (await DB.getSetting('img_prefetch_mode', 'viewed').catch(() => 'viewed')) || 'viewed';
+    if (mode === 'all') return true;
+    if (mode !== 'wifi') return false;
+    const type = navigator.connection?.type;
+    return type === 'wifi' || type === 'ethernet';
   }
 
   async function _loadIndex() {
@@ -146,6 +170,7 @@ const IMAGE_CACHE = (() => {
    */
   async function fillFromContent() {
     if (_filling || !navigator.onLine || navigator.connection?.saveData) return 0;
+    if (!(await _prefetchAllowed())) return 0;
     _filling = true;
     let saved = 0;
     try {
@@ -190,12 +215,21 @@ const IMAGE_CACHE = (() => {
     const src = img.getAttribute('src');
     if (!_isRemote(src) || img.dataset.icSrc === src) return;
     img.dataset.icSrc = src;
+    // The link the picture is saved under (the original, also for a light copy).
+    const key = _originalOf(src);
     img.addEventListener('error', () => {
-      if (img.getAttribute('src') === src) _showOfflineNote(img);
+      if (img.getAttribute('src') !== src) return;
+      // The lighter copy failed but we are online: fall back to the original once.
+      if (src !== key && navigator.onLine && !img.dataset.icTriedOrig) {
+        img.dataset.icTriedOrig = '1';
+        img.src = key;
+        return;
+      }
+      _showOfflineNote(img);
     }, { once: true });
-    const local = await urlFor(src);
+    const local = await urlFor(key);
     if (local && img.getAttribute('src') === src) {
-      img.dataset.icOrig = src;
+      img.dataset.icOrig = key;
       img.dataset.icSrc = local;
       img.src = local;
       return;
@@ -205,19 +239,31 @@ const IMAGE_CACHE = (() => {
       _showOfflineNote(img);
       return;
     }
-    if (!local && navigator.onLine) {
-      // Seen online: keep it for later (usually straight from the HTTP cache).
-      img.addEventListener('load', () => { save(src).catch(() => {}); }, { once: true });
+    if (local || !navigator.onLine) return;
+    const light = _downloadUrl(key);
+    if (light !== src && !img.dataset.icTriedOrig) {
+      // A screen that set the original link: ask for the light copy instead
+      // (this re-enters here). Screens normally use lightUrl() from the start.
+      img.dataset.icOrig = key;
+      img.src = light;
+      return;
     }
+    // Opened online: keep it (straight from the browser's cache).
+    img.addEventListener('load', () => { save(key).catch(() => {}); }, { once: true });
   }
 
   async function _handleBg(el) {
     const m = (el.getAttribute('style') || '').match(/background-image:\s*url\(['"]?(https?:[^'")]+)['"]?\)/i);
-    if (!m || el.dataset.icBg === m[1]) return;
+    if (!m || el.dataset.icBg === m[1] || el.dataset.icBgLight === m[1]) return;
     el.dataset.icBg = m[1];
-    const local = await urlFor(m[1]);
-    if (local) el.style.backgroundImage = `url('${local}')`;
-    else if (navigator.onLine) save(m[1]).catch(() => {});
+    const key = _originalOf(m[1]);
+    const local = await urlFor(key);
+    if (local) { el.style.backgroundImage = `url('${local}')`; return; }
+    if (!navigator.onLine) return;
+    // Show the lighter copy, and keep it (one download serves both).
+    const light = _downloadUrl(key);
+    if (light !== m[1]) { el.dataset.icBgLight = light; el.style.backgroundImage = `url('${light}')`; }
+    save(key).catch(() => {});
   }
 
   function _scan(node) {
@@ -241,7 +287,7 @@ const IMAGE_CACHE = (() => {
 
   document.addEventListener('DOMContentLoaded', init);
 
-  return { fillFromContent, save, urlFor, __test: { downloadUrl: _downloadUrl, contentLinks: _contentLinks, setMaxBytes: n => { _maxBytes = n; } } };
+  return { fillFromContent, save, urlFor, lightUrl, __test: { downloadUrl: _downloadUrl, contentLinks: _contentLinks, setMaxBytes: n => { _maxBytes = n; } } };
 })();
 
 window.IMAGE_CACHE = IMAGE_CACHE;

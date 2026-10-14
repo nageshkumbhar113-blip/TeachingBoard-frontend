@@ -89,7 +89,7 @@ const VIDEO_TEACHER_SELECT = (() => {
       }
       list.innerHTML = cards.map(c => `
         <button type="button" class="vts-card" data-teacher="${_esc(c.teacher_id)}" data-name="${_esc(c.name)}">
-          <span class="vts-thumb">${c.profile_photo ? `<img src="${_esc(c.profile_photo)}" alt="">` : '👤'}</span>
+          <span class="vts-thumb">${c.profile_photo ? `<img src="${_esc((window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(c.profile_photo) : c.profile_photo))}" alt="">` : '👤'}</span>
           <span class="vts-info">
             <strong>${_esc(c.name)}${c.is_premium ? ' ⭐' : ''}</strong>
             <small>${_esc(c.teaching_subject || '')}${c.teaching_subject ? ' · ' : ''}${c.video_count} video${c.video_count > 1 ? 's' : ''}${c.open_count ? ` · ${c.open_count} वेळा पाहिलं` : ''}</small>

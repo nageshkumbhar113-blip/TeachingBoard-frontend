@@ -610,7 +610,7 @@ const VOCAB = (() => {
 
     if (vt === 'image' && word.image_url) {
       const img = document.createElement('img');
-      img.src = word.image_url;
+      img.src = (window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(word.image_url) : word.image_url);
       img.className = 'vocab-word-img';
       img.alt = word.word;
       img.onerror = () => {

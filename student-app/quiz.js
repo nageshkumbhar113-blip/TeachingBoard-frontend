@@ -74,7 +74,9 @@ const QUIZ = (() => {
   async function _resolveImageSrc(ref) {
     if (!ref) return null;
     const localSrc = await DB.getImage(ref).catch(() => null);
-    return localSrc || String(ref || '').trim() || null;
+    // Not on the phone: Cloudinary's light copy (core/imageCache.js lightUrl).
+    const remote = String(ref || '').trim();
+    return localSrc || (remote ? (window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(remote) : remote) : null);
   }
 
   function _getOptionText(q, key) {

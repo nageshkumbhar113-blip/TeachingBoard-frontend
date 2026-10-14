@@ -479,7 +479,7 @@ const NOTES_VIEWER = (() => {
           const sizeWidth = { small: '40%', medium: '70%', large: '100%' }[block.data?.size] || '70%';
           return `
             <figure class="nv-figure">
-              <img src="${_esc(block.data?.url || '')}" alt="${_esc(block.data?.caption || '')}" class="nv-image" style="width:${sizeWidth}">
+              <img src="${_esc((window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl((block.data?.url || '')) : (block.data?.url || '')))}" alt="${_esc(block.data?.caption || '')}" class="nv-image" style="width:${sizeWidth}">
               ${block.data?.caption ? `<figcaption>${_esc(block.data.caption)}</figcaption>` : ''}
             </figure>
           `;

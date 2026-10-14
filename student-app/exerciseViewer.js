@@ -73,7 +73,7 @@ const EXERCISE_VIEWER = (() => {
     if (!diagrams || !diagrams.length) return '';
     return diagrams.map(d => `
       <div class="ev-diagram">
-        <img src="${_esc(d.url)}" alt="${_esc(d.caption || '')}">
+        <img src="${_esc((window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(d.url) : d.url))}" alt="${_esc(d.caption || '')}">
         ${d.caption ? `<div class="ev-diagram-caption">${_esc(d.caption)}</div>` : ''}
       </div>`).join('');
   }

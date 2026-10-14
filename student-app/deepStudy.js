@@ -101,7 +101,7 @@ const DEEP_STUDY = (() => {
     const imgWrap = $('ds-q-img-wrap');
     const img     = $('ds-q-img');
     if (q.image && img && imgWrap) {
-      img.src = q.image;
+      img.src = (window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(q.image) : q.image);
       imgWrap.classList.remove('hidden');
     } else {
       imgWrap?.classList.add('hidden');

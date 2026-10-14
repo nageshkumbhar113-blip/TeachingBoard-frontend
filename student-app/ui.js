@@ -363,7 +363,7 @@ const UI = (() => {
   let _batchCoversChecked = false;
 
   const _batchVisual = c => (c.cover_image
-    ? `<div class="batch-cover"><img src="${c.cover_image}" alt="" loading="lazy"></div>`
+    ? `<div class="batch-cover"><img src="${(window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(c.cover_image) : c.cover_image)}" alt="" loading="lazy"></div>`
     : `<div class="batch-icon">${c.icon || '📚'}</div>`);
 
   // Background, once per session: fetch the admin's class icons/covers, save
