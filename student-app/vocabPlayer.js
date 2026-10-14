@@ -37,17 +37,9 @@ const VOCAB = (() => {
     _batch   = batch   || '';
     _subject = subject || '';
 
-    const screen = $id('screen-vocab');
-    if (screen) {
-      screen.classList.remove('hidden');
-      document.querySelectorAll('.screen').forEach(s => {
-        if (s.id !== 'screen-vocab') s.classList.add('hidden');
-      });
-    }
-
-    // Highlight vocab bottom nav button
-    document.querySelectorAll('.bnav-btn').forEach(btn => btn.classList.remove('bnav-active'));
-    $id('bnav-vocab')?.classList.add('bnav-active');
+    // Through APP.showScreen so Back knows this screen (it used to be
+    // switched by hand, and Back then acted as if still on the old screen).
+    APP.showScreen('vocab');
 
     await _loadTestList();
   }
@@ -811,7 +803,14 @@ const VOCAB = (() => {
     });
   }
 
-  return { init, openVocabScreen, startTest: _startTest };
+  // Phone Back / top ←: a test or its score goes back to the Words list first.
+  function backOneLevel() {
+    if (_currentView === 'test-list') return false;
+    _showView('test-list');
+    return true;
+  }
+
+  return { init, openVocabScreen, startTest: _startTest, backOneLevel };
 })();
 
 window.VOCAB = VOCAB;

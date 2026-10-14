@@ -20,15 +20,9 @@ const WORD_TEST_PLAYER = (() => {
 
   // ─── Screen / view helpers ───────────────────────────────────────────────────
 
+  // Through APP's screen switching, so Back knows where the student is.
   function _showScreen() {
-    const screen = $id('screen-word-test');
-    if (!screen) return;
-    screen.classList.remove('hidden');
-    document.querySelectorAll('.screen').forEach(s => {
-      if (s.id !== 'screen-word-test') s.classList.add('hidden');
-    });
-    document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('bnav-active'));
-    $id('bnav-vocab')?.classList.add('bnav-active');
+    APP.showScreen('word-test');
   }
 
   function _showView(view) {
@@ -39,15 +33,9 @@ const WORD_TEST_PLAYER = (() => {
     });
   }
 
+  // Word tests open from the Words screen, so one step back is Words.
   function _backToVocab() {
-    const vocab = $id('screen-vocab');
-    if (!vocab) return;
-    vocab.classList.remove('hidden');
-    document.querySelectorAll('.screen').forEach(s => {
-      if (s.id !== 'screen-vocab') s.classList.add('hidden');
-    });
-    document.querySelectorAll('.bnav-btn').forEach(b => b.classList.remove('bnav-active'));
-    $id('bnav-vocab')?.classList.add('bnav-active');
+    APP.goBack();
   }
 
   // ─── Public entry ──────────────────────────────────────────────────────────
@@ -429,7 +417,15 @@ const WORD_TEST_PLAYER = (() => {
     _init();
   }
 
-  return { openWordTestScreen };
+  // Phone Back / top ←: the test (asks if answered) or its score goes back to
+  // the word-test list first; from the list, Back leaves to Words.
+  function backOneLevel() {
+    if (!$id('wtp-player-view')?.classList.contains('hidden')) { $id('wtp-player-back')?.click(); return true; }
+    if (!$id('wtp-score-view')?.classList.contains('hidden')) { _loadList(); return true; }
+    return false;
+  }
+
+  return { openWordTestScreen, backOneLevel };
 })();
 
 window.WORD_TEST_PLAYER = WORD_TEST_PLAYER;

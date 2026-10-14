@@ -2237,7 +2237,7 @@ const APP = (() => {
       home: 'Home', quiz: 'Practice', results: 'Results',
       'test-player': 'Test', analytics: 'Analytics', 'deep-study': 'Deep Study',
       exercise: 'Exercise', 'chapter-hub': 'Chapter', 'test-list': 'Tests',
-      notes: 'Notes',
+      notes: 'Notes', vocab: 'Words', 'word-test': 'Word Tests',
     };
     UI.setBreadcrumb(labels[name] || name);
     _updateBottomNav(name);
@@ -2253,6 +2253,7 @@ const APP = (() => {
       results: 'bnav-home',
       'deep-study': 'bnav-home',
       vocab: 'bnav-vocab',
+      'word-test': 'bnav-vocab',
       exercise: 'bnav-exercise',
       notes: 'bnav-notes',
     };
@@ -2334,6 +2335,8 @@ const APP = (() => {
   // Step 4: one level up inside the current screen. True if it moved.
   function _backInsideScreen(screen) {
     if (screen === 'notes') return !!window.NOTES_VIEWER?.closeOpenNote?.();
+    if (screen === 'vocab') return !!window.VOCAB?.backOneLevel?.();
+    if (screen === 'word-test') return !!window.WORD_TEST_PLAYER?.backOneLevel?.();
     if (screen === 'exercise') return _clickIfShown('#ev-back-btn');
     if (screen === 'parent-dashboard') return _clickIfShown('#pd-back-btn');
     if (screen === 'teacher-dashboard') {
