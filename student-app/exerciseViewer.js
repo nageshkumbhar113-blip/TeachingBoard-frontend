@@ -85,6 +85,7 @@ const EXERCISE_VIEWER = (() => {
   let _exerciseGroups = new Map(); // exerciseNo -> questions[]
   let _activeExerciseNo = '';
   let _passageBlocks = []; // this chapter's Passage Blocks (comprehension/poetry/nonverbal/writing) — see models/PassageBlock.js
+  let _chapterLocked = false; // current chapter is paid and the student is on the free plan
   let _activePassageBlock = null;
   let _initialized = false;
 
@@ -169,10 +170,11 @@ const EXERCISE_VIEWER = (() => {
     if (!_batch || !subject) return;
     try {
       const chapters = await DB.getChaptersByBatchSubject(_batch, subject);
+      const freeIds = await APP.getFreeChapterIds?.().catch(() => null) ?? null; // null = full access
       chapters.forEach(ch => {
         const opt = document.createElement('option');
         opt.value = _makeChapterId(_batch, subject, ch.name);
-        opt.textContent = ch.name;
+        opt.textContent = freeIds && !freeIds.has(opt.value) ? `🔒 ${ch.name}` : ch.name;
         opt.dataset.name = ch.name;
         chapterSel.appendChild(opt);
       });
@@ -219,6 +221,7 @@ const EXERCISE_VIEWER = (() => {
   // then scrolls to and briefly highlights the matching question card.
   async function openQuestion(batch, subject, chapter, exerciseNo, questionId) {
     await openChapter(batch, subject, chapter);
+    if (_chapterLocked) return; // keep the lock message, don't open the (empty) questions view
     _showQuestions(exerciseNo);
     requestAnimationFrame(() => {
       const card = $('ev-questions-list')?.querySelector(`[data-id="${CSS.escape(questionId)}"]`);
@@ -242,6 +245,16 @@ const EXERCISE_VIEWER = (() => {
     const section = $('ev-groups-section');
     const list = $('ev-groups-list');
     section.style.display = '';
+    // Paid chapter on a free/expired plan: show nothing from the phone's
+    // cache (it may still hold this chapter from when the plan was active).
+    // Every way in — the dropdowns, Study Plan, Home search — lands here.
+    const freeIds = await APP.getFreeChapterIds?.().catch(() => null) ?? null;
+    _chapterLocked = !!(freeIds && !freeIds.has(_chapterId));
+    if (_chapterLocked) {
+      list.innerHTML = '<p class="empty-hint">🔒 हा chapter Subscribe केल्यावर उघडेल.</p>';
+      APP.offerSubscribe?.();
+      return;
+    }
     list.innerHTML = '<p class="empty-hint">Loading…</p>';
     try {
       const [questions, blocks] = await Promise.all([
