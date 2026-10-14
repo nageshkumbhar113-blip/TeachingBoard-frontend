@@ -352,6 +352,15 @@ const APP = (() => {
       _offerSubscribe().catch(err => console.warn('subscribe offer failed', err));
     });
 
+    // Full sync refreshed the free-chapter list (core/sync.js): drop the
+    // in-memory copy so lock checks use the new one — admin changes to free
+    // chapters and a plan change mid-session apply without an app restart.
+    window.addEventListener('teachingboard:access-refresh', () => {
+      _freeChapterKeys = null;
+      _freeChapterIds = null;
+      window.NOTES_VIEWER?.updateLocksQuietly?.().catch(() => {});
+    });
+
     window.addEventListener('teachingboard:expired', event => {
       // Subscription expired → offer renewal (pay) instead of a dead-end.
       _offerRenewal(event?.detail || {}).catch(err => console.warn('renewal offer failed', err));

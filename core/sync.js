@@ -1119,6 +1119,20 @@ const SYNC = (() => {
     return _studentFp;
   }
 
+  // Free-chapter list, saved for EVERY student (not only free-plan ones) so a
+  // phone whose subscription runs out while offline still knows which
+  // chapters stay open. Refreshed on each full sync (launch, hourly, access
+  // change); the running app is told so cached lock decisions (app.js
+  // free-chapter keys, Notes lock icons) update without a restart.
+  async function _refreshFreeChapters() {
+    try {
+      const list = await API.fetchStudentFreeChapters?.();
+      if (!Array.isArray(list)) return;
+      await DB.setSetting('free_chapters', list);
+      window.dispatchEvent(new CustomEvent('teachingboard:access-refresh'));
+    } catch { /* keep the previously saved list */ }
+  }
+
   async function _studentSyncOnce(force) {
     const fp = await _loadStudentFp();
     let state = null;
@@ -1160,6 +1174,7 @@ const SYNC = (() => {
       fp.access = smart ? state.access : undefined;
       _forceFullNext = false;
     }
+    if (full) await _refreshFreeChapters();
     DB.setSetting(STUDENT_FP_KEY, fp).catch(() => {});
     return { changed: tasks.length > 0, full, smart };
   }

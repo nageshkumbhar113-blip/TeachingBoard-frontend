@@ -830,6 +830,14 @@ const NOTES_VIEWER = (() => {
   // PUBLIC API
   // ════════════════════════════════════════════════════════════════════════════
 
+  // Background access refresh (sync): update the lock guard only, without
+  // re-rendering, so a student reading a note is never disturbed. Lock icons
+  // follow on the next normal render of the chapter list.
+  async function updateLocksQuietly() {
+    if (!state.initialized) return;
+    state.freeIds = await APP.getFreeChapterIds?.().catch(() => state.freeIds) ?? null;
+  }
+
   // Called after a payment upgrades the student, so lock icons/guards refresh.
   async function refreshLocks() {
     state.freeIds = await APP.getFreeChapterIds?.().catch(() => null) ?? null;
@@ -839,6 +847,7 @@ const NOTES_VIEWER = (() => {
   return {
     init,
     refreshLocks,
+    updateLocksQuietly,
     viewConcept,
     selectSubject,
     selectChapter,
