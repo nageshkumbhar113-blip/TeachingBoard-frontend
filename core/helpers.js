@@ -1621,6 +1621,18 @@ const API = (() => {
     return cacheQuizQuestions(rows);
   }
 
+  // Tiny "has anything changed?" fingerprint for the student background sync
+  // (backend controllers/syncStateController.js). Returns null when there is
+  // no student session; throws on network/404 so the caller can fall back to
+  // the old full sync.
+  async function fetchSyncState() {
+    const profile = await getStudentProfile();
+    if (!profile?.student_code) return null;
+    const token = await ensureStudentSession().catch(() => '');
+    if (!token) return null;
+    return request('/student/sync-state', { headers: { Authorization: `Bearer ${token}` } });
+  }
+
   async function syncServerLessons() {
     const lessons = await fetchLessons();
     return cacheLessons(lessons);
@@ -2661,7 +2673,7 @@ const API = (() => {
     safeFetch,
     toFrontendQuestion, toBackendQuestion,
     cacheQuizQuestions, cacheLessons,
-    syncServerQuestions, syncStudentQuestions, syncServerLessons, syncServerBatches,
+    syncServerQuestions, syncStudentQuestions, fetchSyncState, syncServerLessons, syncServerBatches,
     syncServerBatchesForStudent,
     fetchMyAttempts, syncMyAttempts,
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,

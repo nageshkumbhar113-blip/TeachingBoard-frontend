@@ -1050,27 +1050,90 @@ const SYNC = (() => {
       });
   }
 
-  function _runStudentCycle() {
-    if (_studentSyncing || !_isOnline()) return;
-    if (!API.getStudentToken()) return; // no student logged in — skip silently
+  // ── Student change-fingerprint sync ──────────────────────────────
+  // Each cycle first asks GET /student/sync-state (~180 bytes) and only
+  // downloads the parts whose fingerprint changed, instead of re-downloading
+  // every quiz (with questions), every question and the profile each time.
+  // A FULL sync (all three) still happens: on the first cycle of each app
+  // launch, when forced (requestFullSync / Refresh button), when the server's
+  // `access` marker changes (payment, expiry, class change), and at least every
+  // `fullEverySec` (safety net). If sync-state is unavailable — old backend,
+  // SYNC_STATE_DISABLED, or any error — the cycle is a full sync exactly as before.
+  // A fingerprint is only stored after its download succeeded, so a failed
+  // fetch is retried on the next cycle.
+  const STUDENT_FP_KEY = 'student_sync_fp'; // { student_code, quizzes, questions, access, fullAt }
+  let _studentFp      = null;
+  let _forceFullNext  = true;               // first cycle after launch is full
+  let _lastStudentCheckAt = 0;
+  let _studentHints   = null;               // { checkEverySec, resumeMinSec, fullEverySec } from server
+
+  async function _loadStudentFp() {
+    const code = (await API.getStudentProfile?.().catch(() => null))?.student_code || '';
+    if (!_studentFp) _studentFp = await DB.getSetting(STUDENT_FP_KEY, null).catch(() => null) || {};
+    if (_studentFp.student_code !== code) _studentFp = { student_code: code }; // other account: start over
+    return _studentFp;
+  }
+
+  async function _studentSyncOnce(force) {
+    const fp = await _loadStudentFp();
+    let state = null;
+    try { state = await API.fetchSyncState?.(); } catch { state = null; } // old server / offline → legacy full
+    _lastStudentCheckAt = Date.now();
+    const smart = !!(state && state.enabled);
+    _studentHints = smart ? {
+      checkEverySec: Number(state.checkEverySec) || 600,
+      resumeMinSec:  Number(state.resumeMinSec)  || 120,
+      fullEverySec:  Number(state.fullEverySec)  || 3600,
+    } : null;
+
+    const fullEveryMs = (_studentHints?.fullEverySec || 3600) * 1000;
+    const full = force || !smart || !fp.fullAt || (Date.now() - fp.fullAt) >= fullEveryMs || state.access !== fp.access;
+    const doQuizzes   = full || state.quizzes !== fp.quizzes;
+    const doQuestions = full || state.questions !== fp.questions;
+
+    let okQuizzes = false, okQuestions = false, okMe = false;
+    const tasks = [];
+    if (doQuizzes) tasks.push(fetchQuizzes({ silent: true, status: 'published' })
+      .then(() => { okQuizzes = true; })
+      .catch(err => console.warn('SYNC quizzes (student cycle):', err.message)));
+    if (doQuestions) tasks.push(API.syncStudentQuestions()
+      .then(() => { okQuestions = true; })
+      .catch(err => console.warn('SYNC questions (student cycle):', err.message)));
+    if (full) tasks.push(API.fetchStudentMe()
+      .then(() => { okMe = true; })
+      .catch(err => console.warn('SYNC profile (student cycle):', err.message)));
+    await Promise.all(tasks);
+
+    if (smart) {
+      if (okQuizzes)   fp.quizzes   = state.quizzes;
+      if (okQuestions) fp.questions = state.questions;
+    } else {
+      delete fp.quizzes; delete fp.questions; // unknown — compare afresh once sync-state is back
+    }
+    if (full && okQuizzes && okQuestions && okMe) {
+      fp.fullAt = Date.now();
+      fp.access = smart ? state.access : undefined;
+      _forceFullNext = false;
+    }
+    DB.setSetting(STUDENT_FP_KEY, fp).catch(() => {});
+    return { changed: tasks.length > 0, full, smart };
+  }
+
+  function _runStudentCycle(opts) {
+    if (_studentSyncing || !_isOnline()) return Promise.resolve(null);
+    if (!API.getStudentToken()) return Promise.resolve(null); // no student logged in — skip silently
     _studentSyncing = true;
     _setStatus('syncing');
+    const force = !!(opts && opts.force) || _forceFullNext;
+    let result = null;
 
-    Promise.resolve()
+    return Promise.resolve()
       .then(() => _drainQueue())
-      .then(() => Promise.all([
-        fetchQuizzes({ silent: true, status: 'published' }),
-        API.syncStudentQuestions().catch(err => {
-          console.warn('SYNC questions (student cycle):', err.message);
-          return [];
-        }),
-        API.fetchStudentMe().catch(err => {
-          console.warn('SYNC profile (student cycle):', err.message);
-          return null;
-        }),
-      ]))
-      .then(() => {
-        if (typeof APP !== 'undefined' && typeof APP.refreshHome === 'function') {
+      .then(() => _studentSyncOnce(force))
+      .then(r => {
+        result = r;
+        // Nothing downloaded → nothing on Home can have changed; skip the re-render.
+        if (r.changed && typeof APP !== 'undefined' && typeof APP.refreshHome === 'function') {
           return Promise.resolve(APP.refreshHome()).catch(() => {});
         }
         return null;
@@ -1079,7 +1142,8 @@ const SYNC = (() => {
       .finally(() => {
         _studentSyncing = false;
         _setStatus(_isOnline() ? 'online' : 'offline');
-      });
+      })
+      .then(() => result);
   }
 
   // ════════════════════════
