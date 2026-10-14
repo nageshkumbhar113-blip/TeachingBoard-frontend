@@ -147,8 +147,16 @@ const STUDY_PLAN = (() => {
       APP.showScreen('notes');
       window.NOTES_VIEWER?.openChapter?.(batch, t.subjectId, t.chapterName);
     } else if (t.itemType === 'mcq') {
-      APP.showScreen('home');
-      toast(`Open ${t.subjectId} > ${t.chapterName} > Test`, 'info');
+      // refId is a quiz_id for a published chapter test; a "batch::subject::chapter" id means the
+      // chapter's Question-bank practice pool (no published test for that chapter).
+      if (!String(t.refId || '').includes('::') && window.TEST_PLAYER?.startTest) {
+        await TEST_PLAYER.startTest(t.refId, 'practice');
+      } else if (window.QUIZ?.startQuiz) {
+        await QUIZ.startQuiz(batch, t.subjectId, t.chapterName, 'practice');
+      } else {
+        APP.showScreen('home');
+        toast(`Open ${t.subjectId} > ${t.chapterName} > Test`, 'info');
+      }
     } else {
       window.EXERCISE_VIEWER?.openChapter?.(batch, t.subjectId, t.chapterName);
     }
