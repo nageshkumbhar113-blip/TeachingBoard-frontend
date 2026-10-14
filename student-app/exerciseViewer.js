@@ -254,7 +254,7 @@ const EXERCISE_VIEWER = (() => {
       APP.offerSubscribe?.();
       return;
     }
-    list.innerHTML = '<p class="empty-hint">Loading…</p>';
+    list.innerHTML = UI.skeletonHTML(4);
     try {
       const [questions, blocks] = await Promise.all([
         _resolveExerciseQuestions(_chapterId),

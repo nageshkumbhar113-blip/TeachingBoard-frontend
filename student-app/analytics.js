@@ -647,7 +647,7 @@ const ANALYTICS = (() => {
     const body = $('an-tab-body');
     if (!body) return;
 
-    body.innerHTML = `<div class="an-empty"><div class="an-empty-icon">📝</div><p>Loading word test analytics…</p></div>`;
+    body.innerHTML = UI.skeletonHTML(4);
 
     // Fetch with 15-min IDB cache
     const CACHE_KEY = 'wt_analytics_cache_v1';

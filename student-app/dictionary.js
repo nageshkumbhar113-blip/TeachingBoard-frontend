@@ -49,7 +49,7 @@ const DICT = (() => {
       return;
     }
 
-    if (listEl)  listEl.innerHTML = '<div class="dict-loading">Loading...</div>';
+    if (listEl)  listEl.innerHTML = UI.skeletonHTML(5);
     if (emptyEl) emptyEl.classList.add('hidden');
     if (pagEl)   pagEl.classList.add('hidden');
 

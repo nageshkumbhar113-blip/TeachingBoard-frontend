@@ -181,7 +181,7 @@ const STUDY_PLAN = (() => {
     // "all chapters" (that's also what the backend treats [] as), so every chapter starts checked.
     const preChapters = new Map((pre?.subjects || []).map(x => [x.subjectId, x.chapterIds || []]));
     const m = _sheet();
-    m.innerHTML = '<div class="re-sheet"><p class="re-hint">Loading subjects…</p></div>';
+    m.innerHTML = `<div class="re-sheet">${UI.skeletonHTML(3)}</div>`;
     const batch = await _batchName();
     let subjects = [];
     let chaptersBySubject = new Map();

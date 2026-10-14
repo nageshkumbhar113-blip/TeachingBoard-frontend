@@ -64,7 +64,7 @@ const WORD_TEST_PLAYER = (() => {
       return;
     }
 
-    if (grid)  grid.innerHTML = '<div class="wtp-loading">Loading...</div>';
+    if (grid)  grid.innerHTML = UI.skeletonHTML(4);
     if (empty) empty.classList.add('hidden');
 
     try {

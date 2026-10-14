@@ -80,7 +80,7 @@ const VIDEO_TEACHER_SELECT = (() => {
       : ctx.type === 'quiz_test' ? `🎬 ${ctx.quizTitle || 'Test'} — Videos`
       : `🎬 Exercise ${ctx.exercise} — Videos`;
     const list = $('vts-list');
-    list.innerHTML = '<p class="vts-empty">Loading…</p>';
+    list.innerHTML = UI.skeletonHTML(3);
     try {
       const cards = await _fetchCards(ctx);
       if (!cards.length) {

@@ -185,6 +185,8 @@ const NOTES_VIEWER = (() => {
         return;
       }
       if (navigator.onLine) {
+        const box = $('nv-container');
+        if (box && !box.children.length) box.innerHTML = UI.skeletonHTML(5);
         // Chapters come from the server (SLS concept library), not the local
         // quiz question-bank cache — the two are unrelated data sets.
         const chapters = await API.fetchSlsChapters();
@@ -213,6 +215,7 @@ const NOTES_VIEWER = (() => {
         return;
       }
       if (navigator.onLine) {
+        if ($('nv-content')) $('nv-content').innerHTML = UI.skeletonHTML(4);
         state.concepts = await API.fetchSlsConcepts(chapterId);
         await DB.saveConceptsCache(chapterId, state.concepts).catch(() => {});
         state.currentChapter = state.chapters.find(ch => ch.chapter_id === chapterId);
@@ -277,6 +280,7 @@ const NOTES_VIEWER = (() => {
         state.currentConcept = cached;
         if (navigator.onLine) SYNC.refreshSlsConcept(conceptId).catch(() => {});
       } else if (navigator.onLine) {
+        if ($('nv-content')) $('nv-content').innerHTML = UI.skeletonHTML(5);
         state.currentConcept = await API.fetchSlsConcept(conceptId);
         await DB.saveConceptCache(state.currentConcept).catch(() => {});
       } else {

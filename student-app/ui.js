@@ -267,6 +267,17 @@ const UI = (() => {
     }
   }
 
+  /**
+   * Placeholder rows with a soft moving shine, shown while content loads
+   * from the server (a plain "Loading…" line looked like an empty page).
+   * @param {number} [rows=4]
+   * @returns {string} HTML
+   */
+  function skeletonHTML(rows = 4) {
+    const row = '<div class="skel-row"><span class="skel-line skel-w70"></span><span class="skel-line skel-w40"></span></div>';
+    return `<div class="skel-list" role="status" aria-label="लोड होत आहे">${row.repeat(rows)}</div>`;
+  }
+
   // ════════════════════════
   // GENERIC LIST RENDERER
   // ════════════════════════
@@ -1026,6 +1037,7 @@ const UI = (() => {
     showLoader,
     hideLoader,
     withBusy,
+    skeletonHTML,
     // Generic list
     renderList,
     // Splash

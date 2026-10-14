@@ -71,7 +71,7 @@ const VOCAB = (() => {
       return;
     }
 
-    if (grid) grid.innerHTML = '<div class="vocab-loading">Loading...</div>';
+    if (grid) grid.innerHTML = UI.skeletonHTML(4);
     if (empty) empty.classList.add('hidden');
 
     try {
