@@ -1153,8 +1153,15 @@ const SYNC = (() => {
     return { changed: tasks.length > 0, full, smart };
   }
 
+  // A request that arrives while a cycle is already running (e.g. the
+  // internet-back event, with offline results waiting to upload) used to be
+  // dropped and wait for the next 10-min tick. It now schedules one more
+  // cycle right after the current one finishes.
+  let _studentRerunPending = false;
+
   function _runStudentCycle(opts) {
-    if (_studentSyncing || !_isOnline()) return Promise.resolve(null);
+    if (_studentSyncing) { _studentRerunPending = true; return Promise.resolve(null); }
+    if (!_isOnline()) return Promise.resolve(null);
     if (!API.getStudentToken()) return Promise.resolve(null); // no student logged in — skip silently
     _studentSyncing = true;
     _setStatus('syncing');
@@ -1176,6 +1183,10 @@ const SYNC = (() => {
       .finally(() => {
         _studentSyncing = false;
         _setStatus(_isOnline() ? 'online' : 'offline');
+        if (_studentRerunPending) {
+          _studentRerunPending = false;
+          setTimeout(() => _runStudentCycle(), 0);
+        }
       })
       .then(() => result);
   }
