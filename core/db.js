@@ -791,11 +791,22 @@ const DB = (() => {
     return _put('images', { name, blob });
   }
 
+  // Pictures saved for offline use are kept encrypted like the notes
+  // (CRYPTO, per-device key); the admin app's own images stay plain blobs.
+  async function saveImageEncrypted(name, blob) {
+    const enc = await CRYPTO.encryptBytes(await blob.arrayBuffer());
+    return _put('images', { name, enc, type: blob.type || 'image/*', size: blob.size });
+  }
+
   async function getImage(name) {
     if (!name) return null;
     const rec = await _get('images', name);
     if (!rec) return null;
     if (rec.blob instanceof Blob) return URL.createObjectURL(rec.blob);
+    if (rec.enc) {
+      const plain = await CRYPTO.decryptBytes(rec.enc);
+      return plain ? URL.createObjectURL(new Blob([plain], { type: rec.type || 'image/*' })) : null;
+    }
     return null;
   }
 
@@ -1313,6 +1324,7 @@ const DB = (() => {
 
     // Images
     saveImage,
+    saveImageEncrypted,
     getImage,
     getAllImageNames,
     deleteImage,

@@ -106,7 +106,7 @@ const IMAGE_CACHE = (() => {
       const blob = await res.blob();
       if (!blob.size || !/^image\//.test(blob.type || 'image/')) return false;
       if (!(await _evictFor(blob.size))) return false;
-      await DB.saveImage(url, blob);
+      await DB.saveImageEncrypted(url, blob);   // encrypted at rest, like the notes
       idx[url] = { s: blob.size, t: Date.now() };
       _saveIndexSoon();
       return true;

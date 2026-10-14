@@ -113,7 +113,29 @@ const CRYPTO = (() => {
     }
   }
 
-  return { encrypt, decrypt };
+  // Binary variant for pictures saved for offline use (core/imageCache.js):
+  // same key, raw bytes in and out (no base64, so no size growth).
+  // -> { iv: base64, bytes: ArrayBuffer }
+  async function encryptBytes(buffer) {
+    const key = await _getKey();
+    const iv = self.crypto.getRandomValues(new Uint8Array(12));
+    const bytes = await self.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, buffer);
+    return { iv: _b64FromBytes(iv), bytes };
+  }
+
+  // -> ArrayBuffer, or null (never throws) on corruption/key mismatch.
+  async function decryptBytes(packed) {
+    if (!packed || !packed.iv || !packed.bytes) return null;
+    try {
+      const key = await _getKey();
+      return await self.crypto.subtle.decrypt({ name: 'AES-GCM', iv: _bytesFromB64(packed.iv) }, key, packed.bytes);
+    } catch (err) {
+      console.warn('CRYPTO.decryptBytes failed (treating as cache miss):', err.message);
+      return null;
+    }
+  }
+
+  return { encrypt, decrypt, encryptBytes, decryptBytes };
 })();
 
 window.CRYPTO = CRYPTO;
