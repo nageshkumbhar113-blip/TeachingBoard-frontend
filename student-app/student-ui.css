@@ -5274,3 +5274,35 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .home-continue-text strong { font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-continue-text small { font-size: 0.75rem; color: var(--text2, #6b7280); }
 .home-continue-arrow { font-size: 1.4rem; color: var(--text2, #6b7280); }
+
+/* Test: numbered question dots (practice) — tap to jump. */
+.tp-palette {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  margin-bottom: 6px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tp-palette::-webkit-scrollbar { display: none; }
+.tp-dot {
+  flex: 0 0 auto;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 6px;
+  border-radius: 18px;
+  border: 1px solid var(--border, #d1d5db);
+  background: transparent;
+  color: var(--text2, #6b7280);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tp-dot.answered { background: var(--correct, #16a34a); border-color: var(--correct, #16a34a); color: #fff; }
+.tp-dot.skipped  { border-style: dashed; color: var(--medium, #d97706); border-color: var(--medium, #d97706); }
+.tp-dot.current  { outline: 2px solid var(--accent, #e16b13); outline-offset: 2px; color: var(--text, #111827); }
+.tp-dot.answered.current { color: #fff; }
+.tp-dot:active { transform: scale(0.94); }
+/* First question: Prev has nothing to go back to. */
+.nav-arrow:disabled { opacity: 0.38; cursor: default; transform: none; }

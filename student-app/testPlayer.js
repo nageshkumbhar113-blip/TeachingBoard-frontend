@@ -424,6 +424,11 @@ const TEST_PLAYER = (() => {
     _setText('tp-progress-text', `${state.current + 1} / ${total}`);
     _setText('tp-q-number', `Q${state.current + 1}`);
 
+    // First question: nothing to go back to — show Prev as off.
+    const prevBtn = $('tp-prev');
+    if (prevBtn) prevBtn.disabled = state.current === 0;
+    _renderPalette();
+
     // The last question's button submits — say so, it used to read "Next →".
     const nextBtn = $('tp-next');
     if (nextBtn) {
@@ -434,7 +439,10 @@ const TEST_PLAYER = (() => {
 
     // Section + marks
     _setText('tp-section-label', q._secLabel || '');
-    $('tp-q-marks').textContent       = `+${q._posMarks} / −${q._negMarks}`;
+    // Plain words instead of "+1 / −0".
+    $('tp-q-marks').textContent = q._negMarks > 0
+      ? `बरोबर +${q._posMarks} · चूक −${q._negMarks}`
+      : `बरोबर +${q._posMarks}`;
 
     // Difficulty badge
     const diff = $('tp-diff-badge');
@@ -703,6 +711,7 @@ const TEST_PLAYER = (() => {
     const score = _calcRawScore();
     const el    = $('tp-live-score');
     if (el) el.textContent = `${score} pts`;
+    _renderPalette();   // the answered/skipped dot follows the answer
   }
 
   function _calcRawScore() {
@@ -754,6 +763,30 @@ const TEST_PLAYER = (() => {
     } else {
       _confirmAndSubmit().catch(err => console.warn('submit confirm failed', err));
     }
+  }
+
+  // Practice only (an exam goes strictly forward): numbered dots for every
+  // question — answered, skipped, current — tap one to jump straight to it.
+  function _renderPalette() {
+    const box = $('tp-palette');
+    if (!box) return;
+    const show = state.mode === 'practice' && state.questions.length > 1;
+    box.classList.toggle('hidden', !show);
+    if (!show) return;
+    box.innerHTML = state.questions.map((q, i) => {
+      const a = state.answers[q.q_id];
+      const kind = a ? (a.skipped || a.given === null ? 'skipped' : 'answered') : '';
+      const cur = i === state.current;
+      return `<button type="button" class="tp-dot ${kind}${cur ? ' current' : ''}" data-i="${i}" aria-label="प्रश्न ${i + 1}"${cur ? ' aria-current="step"' : ''}>${i + 1}</button>`;
+    }).join('');
+    box.querySelector('.tp-dot.current')?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+  }
+
+  function _jumpTo(i) {
+    if (state.mode !== 'practice' || i === state.current || !state.questions[i]) return;
+    if (_beginActionLock()) return;
+    state.current = i;
+    _renderQuestion();
   }
 
   // Next/Skip on the last question used to submit at once, with no chance to
@@ -1305,6 +1338,10 @@ const TEST_PLAYER = (() => {
     $('tp-next')?.addEventListener('click', _nextQ);
     $('tp-prev')?.addEventListener('click', _prevQ);
     $('tp-skip')?.addEventListener('click', _skipQ);
+    $('tp-palette')?.addEventListener('click', e => {
+      const dot = e.target.closest('.tp-dot');
+      if (dot) _jumpTo(Number(dot.dataset.i));
+    });
     // The top 🏠 goes through APP's leave-test check, which calls abandon()
     // only once leaving is allowed (it used to drop the exam lock and timers
     // on every tap, even when the student stayed in the exam).
