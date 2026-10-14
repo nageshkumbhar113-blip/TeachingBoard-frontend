@@ -70,13 +70,32 @@ function toast(msg, isError) {
 
 // ── Screen switching (same convention as student-app/app.js showScreen) ─────
 
-function showScreen(name) {
+// Each screen / dashboard tab is a browser history entry, so the browser's
+// Back steps back inside the portal instead of leaving it.
+let _navState = null;   // { screen, tab }
+function _remember(screen, tab, fromHistory) {
+  const next = { portal: true, screen, tab: tab || null };
+  const same = _navState && _navState.screen === next.screen && _navState.tab === next.tab;
+  if (!fromHistory && !same) history[_navState ? 'pushState' : 'replaceState'](next, '');
+  _navState = next;
+}
+
+function showScreen(name, { fromHistory = false, tab = 'home' } = {}) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = $('screen-' + name);
   if (el) el.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'instant' });
-  if (name === 'dashboard') renderDashboardTab('home');
+  if (name === 'dashboard') { renderDashboardTab(tab, { fromHistory }); return; }
+  _remember(name, null, fromHistory);
 }
+
+window.addEventListener('popstate', e => {
+  const s = e.state;
+  if (!s?.portal) return;
+  // Logged out since: the dashboard entries lead to the login screen.
+  if (s.screen === 'dashboard' && !getToken()) { showScreen('login'); return; }
+  showScreen(s.screen, { fromHistory: true, tab: s.tab || 'home' });
+});
 
 document.addEventListener('click', e => {
   const nav = e.target.closest('[data-nav]');
@@ -227,7 +246,8 @@ document.querySelectorAll('#dash-sidebar .dash-nav-item').forEach(btn => {
   });
 });
 
-async function renderDashboardTab(tab) {
+async function renderDashboardTab(tab, { fromHistory = false } = {}) {
+  _remember('dashboard', tab, fromHistory);
   document.querySelectorAll('#dash-sidebar .dash-nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   const main = $('dash-main');
   main.innerHTML = '<div class="empty-hint">Loading…</div>';
@@ -790,5 +810,7 @@ function extractVideoIdClient(url) {
 (function boot() {
   if (getToken()) {
     showScreen('dashboard');
+  } else {
+    _remember(document.querySelector('.screen.active')?.id.replace('screen-', '') || 'landing', null, false);
   }
 })();
