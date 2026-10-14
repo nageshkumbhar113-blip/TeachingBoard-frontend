@@ -300,9 +300,12 @@ const PAYMENT = (() => {
     buttons.forEach(b => b.disabled = true);
 
     try {
-      // monthly / yearly → Razorpay
-      if (typeof window.Razorpay !== 'function') {
-        _msg(host, 'Payment system load झाले नाही. Internet तपासा.');
+      // monthly / yearly → Razorpay, which runs on pay.html in the phone's
+      // browser (see _openCheckout). The app itself no longer loads
+      // Razorpay's script: it was a blocking download on every app start,
+      // used here only as an "is there internet" check.
+      if (!navigator.onLine) {
+        _msg(host, 'Internet नाही. Internet चालू करून पुन्हा प्रयत्न करा.');
         return;
       }
       const order = await API.createPaymentOrder({
