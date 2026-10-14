@@ -1271,14 +1271,9 @@ const TEST_PLAYER = (() => {
     $('tp-next')?.addEventListener('click', _nextQ);
     $('tp-prev')?.addEventListener('click', _prevQ);
     $('tp-skip')?.addEventListener('click', _skipQ);
-
-    // Cleanup timers + exam lock if user navigates away mid-test via the top Home button
-    $('btn-home')?.addEventListener('click', () => {
-      if (APP.currentScreen() === 'test-player') {
-        _stopAllTimers();
-        _unlockExamMode();
-      }
-    });
+    // The top 🏠 goes through APP's leave-test check, which calls abandon()
+    // only once leaving is allowed (it used to drop the exam lock and timers
+    // on every tap, even when the student stayed in the exam).
   }
 
   // ════════════════════════

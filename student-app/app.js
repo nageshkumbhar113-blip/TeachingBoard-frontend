@@ -2121,7 +2121,7 @@ const APP = (() => {
     // hidden on Home and covered by any popup).
     $('btn-back')?.addEventListener('click', () => handleBack({ fromButton: true }));
 
-    $('btn-home')?.addEventListener('click', () => _goHomeRoleAware());
+    $('btn-home')?.addEventListener('click', () => { _goHomeGuarded().catch(err => console.warn('home failed', err)); });
 
     $('home-share-app-btn')?.addEventListener('click', () => _shareApp());
 
@@ -2177,7 +2177,7 @@ const APP = (() => {
     });
 
     // ── Bottom Navigation ────────────────────────────
-    $('bnav-home')?.addEventListener('click', () => _goHomeRoleAware());
+    $('bnav-home')?.addEventListener('click', () => { _goHomeGuarded().catch(err => console.warn('home failed', err)); });
     $('bnav-analytics')?.addEventListener('click', () => window.ANALYTICS?.open());
     $('bnav-mode')?.addEventListener('click', async () => {
       const next = _activeUiMode() === 'board' ? 'normal' : 'board';
@@ -2379,17 +2379,7 @@ const APP = (() => {
 
     const screen = _currentScreen;
     if (screen === 'test-player' || screen === 'quiz') {
-      if (window.TEST_PLAYER?.isExamRunning?.() && screen === 'test-player') {
-        toast('⚠️ Exam चालू आहे — Submit केल्याशिवाय बाहेर पडता येत नाही', 'error');
-        return;
-      }
-      const halfDone = screen === 'quiz' || window.TEST_PLAYER?.isInProgress?.();
-      if (halfDone) {
-        if (!(await UI.confirmAsync('Test अर्धवट सोडायचा? आत्तापर्यंतची उत्तरं save होणार नाहीत.'))) return;
-        if (_currentScreen !== screen) return;   // moved on while the question was open
-        if (screen === 'test-player') window.TEST_PLAYER?.abandon?.();
-      }
-      goBack();
+      if (await _mayLeaveTest()) goBack();
       return;
     }
 
@@ -2398,6 +2388,28 @@ const APP = (() => {
     const atRoot = screen === 'home' || (screen === _dashboardScreen() && !!_dashboardRole);
     if (atRoot) { if (!fromButton) _armOrLeave(); return; }
     goBack();
+  }
+
+  // Steps 2-3, shared with the Home buttons: false while an exam runs; asks
+  // before a half-done test is left (and then stops it). True = may leave.
+  async function _mayLeaveTest() {
+    const screen = _currentScreen;
+    if (screen !== 'test-player' && screen !== 'quiz') return true;
+    if (screen === 'test-player' && window.TEST_PLAYER?.isExamRunning?.()) {
+      toast('⚠️ Exam चालू आहे — Submit केल्याशिवाय बाहेर पडता येत नाही', 'error');
+      return false;
+    }
+    const halfDone = screen === 'quiz' || window.TEST_PLAYER?.isInProgress?.();
+    if (!halfDone) return true;
+    if (!(await UI.confirmAsync('Test अर्धवट सोडायचा? आत्तापर्यंतची उत्तरं save होणार नाहीत.'))) return false;
+    if (_currentScreen !== screen) return false;   // moved on while the question was open
+    if (screen === 'test-player') window.TEST_PLAYER?.abandon?.();
+    return true;
+  }
+
+  // The top 🏠 stays visible during a test: it must obey the same rules.
+  async function _goHomeGuarded() {
+    if (await _mayLeaveTest()) _goHomeRoleAware();
   }
 
   // Installed first thing in init(), so Back is handled on the login and PIN
