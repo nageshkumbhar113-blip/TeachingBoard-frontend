@@ -2472,6 +2472,7 @@ const APP = (() => {
         return;
       }
       _homeChapter = chapter;
+      _rememberChapter(batchName, subject, chapter).catch(() => {});
 
       // Show Deep Study launch button for this chapter
       const dsBtn = $('btn-deep-study');
@@ -2510,6 +2511,43 @@ const APP = (() => {
       });
       UI.fillChapterHubFacts?.(batchName, subject, chapter).catch(err => console.warn('chapter facts failed', err));
     };
+  }
+
+  // ── "पुढे सुरू ठेवा" — the chapter this student opened last ──────────
+  // Saved per student (a switched account never sees someone else's), shown
+  // at the top of Home while that chapter still belongs to their classes.
+  async function _lastChapterKey() {
+    const p = await API.getStudentProfile().catch(() => null);
+    return p?.student_code ? `last_chapter_${String(p.student_code).toUpperCase()}` : null;
+  }
+
+  async function _rememberChapter(batch, subject, chapter) {
+    const key = await _lastChapterKey();
+    if (key) await DB.setSetting(key, { batch, subject, chapter, at: Date.now() });
+  }
+
+  async function _renderContinueCard() {
+    const card = $('home-continue');
+    if (!card) return;
+    const key = await _lastChapterKey();
+    const last = key ? await DB.getSetting(key, null).catch(() => null) : null;
+    const profile = await API.getStudentProfile().catch(() => null);
+    const myBatches = (profile?.assigned_batches || []).map(b => String(b).toLowerCase());
+    const chapters = last ? await DB.getChaptersByBatchSubject(last.batch, last.subject).catch(() => []) : [];
+    const stillThere = last && myBatches.includes(String(last.batch).toLowerCase())
+      && chapters.some(c => String(c.name || '').trim() === String(last.chapter).trim());
+    if (!stillThere) { card.classList.add('hidden'); return; }
+    card.innerHTML = `
+      <span class="home-continue-icon" aria-hidden="true">▶</span>
+      <span class="home-continue-text">
+        <small>पुढे सुरू ठेवा</small>
+        <strong>${_escHtml(last.chapter)}</strong>
+        <small>${_escHtml(last.subject)} · ${_escHtml(last.batch)}</small>
+      </span>
+      <span class="home-continue-arrow" aria-hidden="true">›</span>`;
+    card.setAttribute('aria-label', `पुढे सुरू ठेवा: ${last.chapter}`);
+    card.onclick = () => { _bindChapterFlow(last.batch, last.subject)(last.chapter).catch(err => console.warn('continue failed', err)); };
+    card.classList.remove('hidden');
   }
 
   function _bindSubjectFlow(batchName) {
@@ -2594,6 +2632,7 @@ const APP = (() => {
       onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
     });
     await _renderHomeHierarchy();
+    _renderContinueCard().catch(err => console.warn('continue card failed', err));
     await _maybeShowExpirySheet();
     _maybeShowBuyNowSheet();
   }
@@ -2612,6 +2651,7 @@ const APP = (() => {
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
     await _renderHomeHierarchy({ preserveSelection: true });
+    _renderContinueCard().catch(err => console.warn('continue card failed', err));
     if (!_homeBatch?.name || !_homeSubject || !_homeChapter) {
       await UI.renderAvailableQuizzes({
         showAll: false,

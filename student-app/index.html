@@ -462,14 +462,16 @@
              an empty box. Replaces the old static "Select Class & Subject /
              Choose your batch to begin" hero text, which is now redundant
              (this carousel occupies that same space, taller). -->
+        <!-- "पुढे सुरू ठेवा": the chapter this student opened last (app.js
+             _renderContinueCard). Home's main job — reaching a chapter — now
+             comes first: search and Classes sit right under the banner; today's
+             study plan stays above Classes; refer / share and the counts follow. -->
+        <button type="button" id="home-continue" class="home-continue hidden"></button>
+
         <div id="home-banners" class="home-banners hidden" aria-label="जाहिराती / सूचना">
           <div class="home-banners-track" id="home-banners-track"></div>
           <div class="home-banners-dots" id="home-banners-dots"></div>
         </div>
-
-        <button type="button" id="home-share-app-btn" class="home-share-btn">📤 मित्रांना App Share करा</button>
-        <div id="home-plan-card" class="re-card hidden" aria-label="Study plan"></div>
-        <div id="home-refer-card" class="re-card hidden" aria-label="Refer and earn"></div>
 
         <!-- Search — Notes concepts + Exercise questions together (homeSearch.js) -->
         <div class="home-search-bar">
@@ -481,11 +483,8 @@
         </div>
         <div id="home-search-results" class="home-search-results hidden"></div>
 
-        <div class="stats-grid" role="group" aria-label="Summary statistics">
-          <div class="stat-card"><span class="stat-num" id="home-total-q">0</span><span class="stat-label">Questions</span></div>
-          <div class="stat-card"><span class="stat-num" id="home-total-batch">0</span><span class="stat-label">Classes</span></div>
-          <div class="stat-card"><span class="stat-num" id="home-total-tests">0</span><span class="stat-label">Attempts</span></div>
-        </div>
+        <!-- Today's study-plan tasks: a daily action, so it stays above Classes. -->
+        <div id="home-plan-card" class="re-card hidden" aria-label="Study plan"></div>
 
         <section class="home-section" aria-label="Classes">
           <h3 class="section-label">📚 Classes</h3>
@@ -519,6 +518,15 @@
             <span class="ds-launch-arrow">→</span>
           </button>
         </section>
+
+        <button type="button" id="home-share-app-btn" class="home-share-btn">📤 मित्रांना App Share करा</button>
+        <div id="home-refer-card" class="re-card hidden" aria-label="Refer and earn"></div>
+
+        <div class="stats-grid" role="group" aria-label="Summary statistics">
+          <div class="stat-card"><span class="stat-num" id="home-total-q">0</span><span class="stat-label">Questions</span></div>
+          <div class="stat-card"><span class="stat-num" id="home-total-batch">0</span><span class="stat-label">Classes</span></div>
+          <div class="stat-card"><span class="stat-num" id="home-total-tests">0</span><span class="stat-label">Attempts</span></div>
+        </div>
 
         <section class="home-section hidden" id="lesson-section" aria-label="Latest Lessons">
           <h3 class="section-label">📖 Latest Lessons</h3>
