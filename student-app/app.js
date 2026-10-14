@@ -393,9 +393,15 @@ const APP = (() => {
   }
 
   function _startBackground() {
-    _runWhenIdle(() => {
-      _primeQuizCache().catch(err => console.warn('initial quiz cache warm failed', err));
-    });
+    // A student's first autoSyncStudent cycle (below) already downloads the
+    // published quizzes, so warming the cache here as well fetched the full
+    // list twice on every launch. Only warm it where that cycle doesn't run.
+    const studentCycleRuns = !_isTeacherOrParentMode && !!window.SYNC?.autoSyncStudent;
+    if (!studentCycleRuns) {
+      _runWhenIdle(() => {
+        _primeQuizCache().catch(err => console.warn('initial quiz cache warm failed', err));
+      });
+    }
 
     // Version check — runs 3 seconds after app ready so it doesn't block startup
     setTimeout(() => {
