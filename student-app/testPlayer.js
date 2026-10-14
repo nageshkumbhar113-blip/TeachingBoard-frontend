@@ -126,7 +126,6 @@ const TEST_PLAYER = (() => {
 
     locked          : false,
     _lockBefore     : null,
-    _lockPop        : null,
     _lockKeydown    : null,
     _lockVis        : null,
     _lockContext    : null,
@@ -258,7 +257,6 @@ const TEST_PLAYER = (() => {
     state.fullRemaining   = 0;
     state.fullTotal       = 0;
     state._lockBefore     = null;
-    state._lockPop        = null;
     state._lockKeydown    = null;
     state._lockVis        = null;
     state._lockContext    = null;
@@ -884,11 +882,8 @@ const TEST_PLAYER = (() => {
       return e.returnValue;
     };
 
-    // 2. Trap browser back button — re-push the current URL each time
-    state._lockPop = () => {
-      history.pushState(null, '', window.location.href);
-      APP.toast('⚠️ Back navigation is locked during exam', 'error');
-    };
+    // 2. Back (phone or browser) is refused by APP.handleBack while
+    //    isExamRunning() — one handler, so it can't also leave the screen.
 
     // 3. Block F5, Ctrl+R (keyboard reload) and devtools shortcuts
     state._lockKeydown = e => {
@@ -932,13 +927,9 @@ const TEST_PLAYER = (() => {
     state._lockContext = e => e.preventDefault();
 
     window.addEventListener('beforeunload',       state._lockBefore);
-    window.addEventListener('popstate',           state._lockPop);
     document.addEventListener('keydown',          state._lockKeydown, true);
     document.addEventListener('visibilitychange', state._lockVis);
     document.addEventListener('contextmenu',      state._lockContext);
-
-    // Seed the history stack so the first back press is trapped
-    history.pushState(null, '', window.location.href);
   }
 
   function _unlockExamMode() {
@@ -948,7 +939,6 @@ const TEST_PLAYER = (() => {
       document.exitFullscreen?.().catch(() => {});
     }
     if (state._lockBefore)  window.removeEventListener('beforeunload',       state._lockBefore);
-    if (state._lockPop)     window.removeEventListener('popstate',           state._lockPop);
     if (state._lockKeydown) document.removeEventListener('keydown',          state._lockKeydown, true);
     if (state._lockVis)     document.removeEventListener('visibilitychange', state._lockVis);
     if (state._lockContext) document.removeEventListener('contextmenu',      state._lockContext);
@@ -1260,7 +1250,20 @@ const TEST_PLAYER = (() => {
   // PUBLIC API
   // ════════════════════════
 
-  return { init, startTest };
+  // For APP.handleBack: Back is refused during an exam, and asks before
+  // leaving a half-done practice test.
+  function isExamRunning() { return !!state.locked; }
+  function isInProgress() {
+    return !!state.quiz && !$('tp-quiz-view')?.classList.contains('hidden');
+  }
+  // Leaving a half-done test: its timers must not keep running (and later
+  // auto-submit) behind another screen.
+  function abandon() {
+    _stopAllTimers();
+    _unlockExamMode();
+  }
+
+  return { init, startTest, isExamRunning, isInProgress, abandon };
 })();
 
 window.TEST_PLAYER = TEST_PLAYER;

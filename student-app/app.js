@@ -72,6 +72,7 @@ const APP = (() => {
 
     _installGlobalGuards();
     _applyDeviceFlags();
+    _installBackHandling();
     console.log('🚀 Nks EduOrbit starting…');
 
     try {
@@ -926,9 +927,7 @@ const APP = (() => {
       submitBtn?.addEventListener('click', () => _attempt().catch(console.error), { signal: ac.signal });
       input?.addEventListener('keydown', e => { if (e.key === 'Enter') _attempt().catch(console.error); }, { signal: ac.signal });
       switchBtn?.addEventListener('click', _switchAccount, { signal: ac.signal });
-      // Block Android back button on PIN screen
-      history.pushState(null, '');
-      window.addEventListener('popstate', () => { history.pushState(null, ''); }, { signal: ac.signal });
+      // Back on this screen never gets past it — see handleBack (2nd press leaves the app).
     });
   }
 
@@ -1701,6 +1700,9 @@ const APP = (() => {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-teacher-dashboard');
     if (screen) screen.classList.remove('hidden');
+    _currentScreen = 'teacher-dashboard';   // Back works from here (handleBack)
+    _screenHistory = [];
+    $('btn-back')?.classList.add('hidden');
     _setBottomNavVisible(false);
     window.TEACHER_DASHBOARD?.init?.();
     if (window.TEACHER_DASHBOARD?.loadDashboard) {
@@ -1715,6 +1717,9 @@ const APP = (() => {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = $('screen-parent-dashboard');
     if (screen) screen.classList.remove('hidden');
+    _currentScreen = 'parent-dashboard';   // Back works from here (handleBack)
+    _screenHistory = [];
+    $('btn-back')?.classList.add('hidden');
     _setBottomNavVisible(false);
     if (window.PARENT_DASHBOARD?.loadDashboard) {
       PARENT_DASHBOARD.loadDashboard().catch(err => console.warn('parent dashboard load failed', err));
@@ -2112,17 +2117,9 @@ const APP = (() => {
   // ════════════════════════
 
   function _bindNav() {
-    $('btn-back')?.addEventListener('click', goBack);
-
-    // Android hardware/gesture back button
-    window.addEventListener('popstate', e => {
-      e.preventDefault();
-      goBack();
-    });
-    // Push a dummy state so popstate fires on Android back
-    if (typeof history.pushState === 'function') {
-      history.pushState({ tb: true }, '');
-    }
+    // Same rules as the phone's Back, minus popups/leaving (the button is
+    // hidden on Home and covered by any popup).
+    $('btn-back')?.addEventListener('click', () => handleBack({ fromButton: true }));
 
     $('btn-home')?.addEventListener('click', () => _goHomeRoleAware());
 
@@ -2266,10 +2263,159 @@ const APP = (() => {
     _setBottomNavVisible(!['quiz', 'test-player'].includes(screen));
   }
 
+  // Back never lands inside a test that was already left or finished.
+  const _TEST_SCREENS = new Set(['quiz', 'results', 'test-player']);
+
   function goBack() {
-    if (_screenHistory.length === 0) { showScreen('home', { addToHistory: false }); return; }
-    const prev = _screenHistory.pop();
+    let prev = _screenHistory.pop();
+    while (prev && _TEST_SCREENS.has(prev)) prev = _screenHistory.pop();
+    // Teachers/parents go back to their own dashboard (opened its own way,
+    // without the student bottom bar), never the student Home.
+    if (_dashboardRole && (!prev || prev === _dashboardScreen())) { _screenHistory = []; _goHomeRoleAware(); return; }
+    if (!prev) prev = 'home';
     showScreen(prev, { addToHistory: false });
+  }
+
+  // ════════════════════════
+  // BACK (phone Back button / gesture, browser Back)
+  // ════════════════════════
+  // One place decides what Back does, in this order:
+  //   1. a popup is open            -> close it, as tapping outside it does
+  //   2. an exam is running         -> stay (exam rules)
+  //   3. a test is half-done        -> ask before leaving it
+  //   4. the screen has an inner level open (a note, exercise questions,
+  //      a student's details...)    -> up one level
+  //   5. any other screen           -> previous screen
+  //   6. Home, dashboard, login, PIN -> a 2nd Back within 2 s leaves the app
+  // Android's Back reaches this only through @capacitor/app's backButton
+  // event: with no listener, Capacitor closed the app on the first press.
+  const _EXIT_WINDOW_MS = 2000;
+  let _exitArmedAt = 0;
+  let _webLeaving = false;
+  const _dashboardScreen = () => (_dashboardRole ? `${_dashboardRole}-dashboard` : 'home');
+
+  const _isShown = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+
+  // Popups are fixed layers covering the screen; the top one has the highest
+  // z-index (later in the page wins a tie). Login and PIN are not popups.
+  function _topPopup() {
+    const skip = new Set(['onboarding-screen', 'pin-lock-screen', 'app-splash', 'splash']);
+    let top = null, topZ = -Infinity;
+    for (const el of document.body.querySelectorAll('*')) {
+      if (skip.has(el.id) || el.classList.contains('screen')) continue;
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') continue;
+      if (el.offsetWidth < innerWidth * 0.9 || el.offsetHeight < innerHeight * 0.9) continue;
+      const z = Number(cs.zIndex) || 0;
+      if (z >= topZ) { top = el; topZ = z; }
+    }
+    return top;
+  }
+
+  // Closes the popup the way its own UI does. False when it can't be closed
+  // (e.g. the download-progress cover), so Back must not reach the screen below.
+  function _closePopup(el) {
+    if (el.classList.contains('modal-overlay') && el.id) { UI.closeModal(el.id); return true; }
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));   // "tap outside"
+    if (!_isShown(el)) return true;
+    const x = el.querySelector('[aria-label="Close"], .re-x, [id$="-close"], [id$="-close-btn"], .modal-close');
+    if (x && _isShown(x)) { x.click(); return !_isShown(el); }
+    return false;
+  }
+
+  function _clickIfShown(...selectors) {
+    for (const s of selectors) {
+      const b = document.querySelector(s);
+      if (_isShown(b)) { b.click(); return true; }
+    }
+    return false;
+  }
+
+  // Step 4: one level up inside the current screen. True if it moved.
+  function _backInsideScreen(screen) {
+    if (screen === 'notes') return !!window.NOTES_VIEWER?.closeOpenNote?.();
+    if (screen === 'exercise') return _clickIfShown('#ev-back-btn');
+    if (screen === 'parent-dashboard') return _clickIfShown('#pd-back-btn');
+    if (screen === 'teacher-dashboard') {
+      if (_isShown($('td-tab-row'))) { $('td-tab-drawer-toggle')?.click(); return true; }
+      if (_clickIfShown('#td-fee-back-btn', '#td-back-btn')) return true;
+      const students = document.querySelector('[data-tdtab="students"]');
+      if (students && !students.classList.contains('active')) { students.click(); return true; }
+    }
+    return false;
+  }
+
+  function _leaveApp() {
+    _exitArmedAt = 0;
+    const App = window.Capacitor?.Plugins?.App;
+    if (window.Capacitor?.isNativePlatform?.() && App) {
+      // Same as Android's own Back on a home screen: the app goes to the background.
+      (App.minimizeApp?.() || Promise.reject()).catch(() => App.exitApp?.());
+      return;
+    }
+    // Step back past every entry of this app (a reload leaves older ones
+    // behind) to whatever page came before it.
+    _webLeaving = true;
+    history.back();
+    setTimeout(() => {               // nothing came before: stay, guarded again
+      if (!_webLeaving) return;
+      _webLeaving = false;
+      history.pushState({ tbBack: true }, '');
+    }, 1000);
+  }
+
+  function _armOrLeave() {
+    if (Date.now() - _exitArmedAt < _EXIT_WINDOW_MS) { _leaveApp(); return; }
+    _exitArmedAt = Date.now();
+    toast('बाहेर पडण्यासाठी पुन्हा Back दाबा', 'info', _EXIT_WINDOW_MS);
+  }
+
+  async function handleBack({ fromButton = false } = {}) {
+    if (!fromButton) {
+      const popup = _topPopup();
+      if (popup) { if (!_closePopup(popup)) _armOrLeave(); return; }
+      if (_isShown($('onboarding-screen')) || _isShown($('pin-lock-screen'))) { _armOrLeave(); return; }
+    }
+
+    const screen = _currentScreen;
+    if (screen === 'test-player' || screen === 'quiz') {
+      if (window.TEST_PLAYER?.isExamRunning?.() && screen === 'test-player') {
+        toast('⚠️ Exam चालू आहे — Submit केल्याशिवाय बाहेर पडता येत नाही', 'error');
+        return;
+      }
+      const halfDone = screen === 'quiz' || window.TEST_PLAYER?.isInProgress?.();
+      if (halfDone) {
+        if (!(await UI.confirmAsync('Test अर्धवट सोडायचा? आत्तापर्यंतची उत्तरं save होणार नाहीत.'))) return;
+        if (_currentScreen !== screen) return;   // moved on while the question was open
+        if (screen === 'test-player') window.TEST_PLAYER?.abandon?.();
+      }
+      goBack();
+      return;
+    }
+
+    if (_backInsideScreen(screen)) return;
+
+    const atRoot = screen === 'home' || (screen === _dashboardScreen() && !!_dashboardRole);
+    if (atRoot) { if (!fromButton) _armOrLeave(); return; }
+    goBack();
+  }
+
+  // Installed first thing in init(), so Back is handled on the login and PIN
+  // screens too.
+  function _installBackHandling() {
+    const App = window.Capacitor?.Plugins?.App;
+    if (window.Capacitor?.isNativePlatform?.() && App?.addListener) {
+      App.addListener('backButton', () => { handleBack().catch(err => console.warn('back failed', err)); });
+      return;
+    }
+    // Browser / installed web app: keep one guard entry on top of the
+    // history, so every Back press arrives here instead of leaving the app.
+    history.pushState({ tbBack: true }, '');
+    window.addEventListener('popstate', () => {
+      if (_webLeaving) { history.back(); return; }
+      history.pushState({ tbBack: true }, '');
+      handleBack().catch(err => console.warn('back failed', err));
+    });
   }
 
   // Alias kept for backward compat (quiz.js, etc.)

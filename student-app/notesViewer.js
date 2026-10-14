@@ -775,6 +775,14 @@ const NOTES_VIEWER = (() => {
     _renderUI();
   }
 
+  // Phone Back / top ← (APP.handleBack): an open note closes to its
+  // chapter's list; otherwise Back leaves Notes to the previous screen.
+  function closeOpenNote() {
+    if (!state.currentConcept) return false;
+    _goBack();
+    return true;
+  }
+
   // ════════════════════════════════════════════════════════════════════════════
   // STUDY MODE & LANGUAGE
   // ════════════════════════════════════════════════════════════════════════════
@@ -872,7 +880,8 @@ const NOTES_VIEWER = (() => {
     viewConcept,
     selectSubject,
     selectChapter,
-    openChapter
+    openChapter,
+    closeOpenNote
   };
 })();
 
