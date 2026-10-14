@@ -215,6 +215,13 @@ const TEST_PLAYER = (() => {
 
     if (!quiz) { APP.toast('Quiz not found', 'error'); return; }
 
+    // Paid test on a free/expired plan: offer the subscription, never start
+    // it from whatever copy is still cached on the phone.
+    if (await APP.isQuizLocked?.(quiz)) {
+      APP.offerSubscribe?.();
+      return;
+    }
+
     const hasEmbeddedQuestions = Array.isArray(quiz.questions) && quiz.questions.length > 0;
     const hasSectionRefs = (quiz.sections || []).some(section => section.question_ids?.length);
     if (!hasEmbeddedQuestions && !hasSectionRefs) {

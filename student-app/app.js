@@ -1039,16 +1039,37 @@ const APP = (() => {
   // has full access (nothing is locked).
   async function getFreeChapterIds() {
     const profile = await API.getStudentProfile().catch(() => null);
-    if (!profile || profile.access_level !== 'free') return null;
+    if (!_isFreePlan(profile)) return null;
     await _loadFreeChapterKeys();
     return _freeChapterIds;
   }
 
   async function isChapterLocked(batch, subject, chapter) {
     const profile = await API.getStudentProfile().catch(() => null);
-    if (!profile || profile.access_level !== 'free') return false;
+    if (!_isFreePlan(profile)) return false;
     const keys = await _loadFreeChapterKeys();
     return !keys.has(_lockKey(batch, subject, chapter));
+  }
+
+  // Free plan = the server says so, or the saved expiry date has passed (the
+  // phone may not have reached the server since the subscription ended).
+  function _isFreePlan(profile) {
+    if (!profile) return false;
+    return profile.access_level === 'free' || _isLocallyExpired(profile);
+  }
+
+  // The one check every way of starting a test goes through (testPlayer.js
+  // startTest): Home lists, Mixed tests, Study Plan, deep links. `locked` is
+  // the server's own verdict saved with the quiz; the rest covers a phone
+  // that hasn't synced since the plan changed. Mirrors the server rule in
+  // utils/contentAccess.js isQuizLocked (mixed papers are paid-only).
+  async function isQuizLocked(quiz) {
+    if (!quiz) return false;
+    if (quiz.locked === true) return true;
+    const profile = await API.getStudentProfile().catch(() => null);
+    if (!_isFreePlan(profile)) return false;
+    if (quiz.paper_mode === 'mixed') return true;
+    return isChapterLocked(quiz.batch, quiz.subject, quiz.chapter);
   }
 
   let _lastSubscribeAt = 0;
@@ -2725,6 +2746,7 @@ const APP = (() => {
     isTouchDevice,
     // Free-chapter locks
     isChapterLocked,
+    isQuizLocked,
     getFreeChapterIds,
     offerSubscribe: _offerSubscribe,
     // Profile

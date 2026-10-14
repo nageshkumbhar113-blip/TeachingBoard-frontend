@@ -475,19 +475,29 @@ const SYNC = (() => {
           .filter(Boolean)
       : [];
 
-    const resolvedQuestions = remoteQuestions.length
-      ? remoteQuestions
-      : Array.isArray(existing?.questions)
-        ? existing.questions
-        : [];
+    // The server sends a quiz the student may not open (free/expired plan)
+    // as metadata only, flagged `locked`. Its content must then leave the
+    // phone too — keeping the previously cached questions let an expired
+    // student keep taking paid tests. A later unlocked copy restores it.
+    const locked = remoteQuiz?.locked === true;
 
-    const resolvedSections = Array.isArray(remoteQuiz?.sections) && remoteQuiz.sections.length
-      ? remoteQuiz.sections
-      : resolvedQuestions.length
-        ? _buildFallbackSections(localId, resolvedQuestions, remoteQuiz?.timer_value)
-        : Array.isArray(existing?.sections)
-          ? existing.sections
+    const resolvedQuestions = locked
+      ? []
+      : remoteQuestions.length
+        ? remoteQuestions
+        : Array.isArray(existing?.questions)
+          ? existing.questions
           : [];
+
+    const resolvedSections = locked
+      ? []
+      : Array.isArray(remoteQuiz?.sections) && remoteQuiz.sections.length
+        ? remoteQuiz.sections
+        : resolvedQuestions.length
+          ? _buildFallbackSections(localId, resolvedQuestions, remoteQuiz?.timer_value)
+          : Array.isArray(existing?.sections)
+            ? existing.sections
+            : [];
 
     return DB.saveQuiz({
       ...(existing || {}),
@@ -511,6 +521,7 @@ const SYNC = (() => {
       ...((remoteQuiz?.paper_mode || existing?.paper_mode)
         ? { paper_mode: remoteQuiz?.paper_mode || existing?.paper_mode }
         : {}),
+      locked,
       source         : 'api',
       synced         : true,
       synced_at      : Date.now(),
