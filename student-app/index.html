@@ -21,9 +21,11 @@
   <link rel="stylesheet" href="student-ui.css" />
   <link rel="stylesheet" href="notesViewer.css" />
   <link rel="stylesheet" href="videoTeacherSelect.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+  <!-- KaTeX 0.16.11 shipped with the app (js/vendor/katex, MIT): from the CDN,
+       formulas showed as raw "$\pi r^2$" whenever the phone was offline. -->
+  <link rel="stylesheet" href="../js/vendor/katex/katex.min.css" />
+  <script defer src="../js/vendor/katex/katex.min.js"></script>
+  <script defer src="../js/vendor/katex/contrib/auto-render.min.js"></script>
 </head>
 <body class="theme-dark student-app" data-lang="en">
   <noscript>
