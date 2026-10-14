@@ -59,7 +59,7 @@ const APP = (() => {
   // ════════════════════════
   // BACK (phone Back button / gesture, browser Back)
   // ════════════════════════
-  // Order: close the side menu -> close the top popup (as tapping outside
+  // Order: close the side menu or the "More" sheet -> close the top popup (as tapping outside
   // it does) -> from any tab go to Dashboard -> on Dashboard or the PIN
   // screen a 2nd Back within 2 s leaves the app. Android's Back reaches
   // this only through @capacitor/app's backButton event: with no listener,
@@ -119,6 +119,8 @@ const APP = (() => {
   function handleBack() {
     const sidebar = $('admin-sidebar');
     if (sidebar?.classList.contains('sidebar-open')) { $('admin-menu-btn')?.click(); return; }
+    // Phone "More" sheet: close it the way tapping outside it does.
+    if (_isShown($('admin-more-drawer'))) { $('admin-more-backdrop')?.click(); return; }
 
     const popup = _topPopup();
     if (popup) { if (!_closePopup(popup)) _armOrLeave(); return; }

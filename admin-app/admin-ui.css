@@ -1679,6 +1679,13 @@ body.admin-app {
   padding: 8px 0 max(20px, env(safe-area-inset-bottom));
   transform: translateY(100%);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  /* More items than fit on a phone: the sheet ran off the top of the
+     screen and could not be scrolled. */
+  max-height: 85vh;
+  max-height: 85dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .admin-more-drawer:not(.hidden) { transform: translateY(0); }
 
