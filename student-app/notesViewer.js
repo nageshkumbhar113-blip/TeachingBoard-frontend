@@ -323,9 +323,9 @@ const NOTES_VIEWER = (() => {
           </div>
         </div>
         <div class="nv-controls">
-          <button class="nv-btn-icon ${lang === 'english' ? 'active' : ''}" id="nv-lang-en-btn" title="English">🇬🇧</button>
-          <button class="nv-btn-icon ${lang === 'marathi' ? 'active' : ''}" id="nv-lang-mr-btn" title="मराठी">🇮🇳</button>
-          <button class="nv-btn-icon" id="nv-bookmark-btn" title="Bookmark">🔖</button>
+          <button class="nv-btn-icon ${lang === 'english' ? 'active' : ''}" id="nv-lang-en-btn" title="English">English</button>
+          <button class="nv-btn-icon ${lang === 'marathi' ? 'active' : ''}" id="nv-lang-mr-btn" title="मराठी">मराठी</button>
+          <button class="nv-btn-icon" id="nv-bookmark-btn" title="Bookmark" aria-label="Bookmark">🔖</button>
         </div>
       </div>
       <button type="button" id="nv-videos-btn" class="vts-videos-btn hidden"></button>
@@ -586,9 +586,9 @@ const NOTES_VIEWER = (() => {
         <div class="nv-toolbar-right">
           ${hasCurrentConcept ? `
             <div class="nv-mode-selector">
-              <button class="nv-mode-btn ${state.studyMode === 'read' ? 'active' : ''}" id="nv-mode-read" title="Full Content">📖</button>
-              <button class="nv-mode-btn ${state.studyMode === 'exam' ? 'active' : ''}" id="nv-mode-exam" title="Exam Prep">🎯</button>
-              <button class="nv-mode-btn ${state.studyMode === 'revision' ? 'active' : ''}" id="nv-mode-revision" title="Quick Revision">⚡</button>
+              <button class="nv-mode-btn ${state.studyMode === 'read' ? 'active' : ''}" id="nv-mode-read" title="Full Content" aria-label="पूर्ण notes">📖 <span class="nv-mode-label">पूर्ण</span></button>
+              <button class="nv-mode-btn ${state.studyMode === 'exam' ? 'active' : ''}" id="nv-mode-exam" title="Exam Prep" aria-label="परीक्षेसाठी">🎯 <span class="nv-mode-label">परीक्षा</span></button>
+              <button class="nv-mode-btn ${state.studyMode === 'revision' ? 'active' : ''}" id="nv-mode-revision" title="Quick Revision" aria-label="झटपट उजळणी">⚡ <span class="nv-mode-label">उजळणी</span></button>
             </div>
           ` : ''}
         </div>

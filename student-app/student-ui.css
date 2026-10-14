@@ -5188,3 +5188,18 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .bnav-btn:active {
   transform: scale(0.96);
 }
+
+/* Touch-sized buttons (min 44px tall) for tests and the top back / analytics. */
+.quiz-portal-btn,
+.quiz-portal-video-btn {
+  min-height: 44px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.quiz-portal-video-btn { font-size: 0.82rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+#btn-back.nav-back {
+  min-width: 44px;
+  min-height: 44px;
+}
+#btn-back .nav-btn-icon { font-size: 1.6rem; line-height: 1; }
+#btn-analytics { min-height: 44px; }

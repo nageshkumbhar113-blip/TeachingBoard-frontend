@@ -759,3 +759,27 @@
 .theme-dark .nv-outcomes li, .theme-contrast .nv-outcomes li,
 .theme-dark .nv-revision-section li, .theme-contrast .nv-revision-section li { color: #ffffff; }
 .theme-dark .nv-content-body strong, .theme-contrast .nv-content-body strong { color: var(--nv-yellow); }
+
+/* Touch-sized controls (min 44px) that say what they do, not just icons. */
+.nv-mode-btn {
+  width: auto;
+  min-width: 44px;
+  height: auto;
+  min-height: 44px;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--nv-text, inherit);
+}
+.nv-btn-icon {
+  width: auto;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--nv-text, inherit);
+}
+#nv-bookmark-btn { font-size: 18px; }
