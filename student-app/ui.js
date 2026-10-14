@@ -849,6 +849,36 @@ const UI = (() => {
     APP?.showScreen?.('chapter-hub');
   }
 
+  // Chapter screen: replace the generic line under Test / Notes / Exercise
+  // with what this chapter actually has ("3 tests · 1 दिली", "5 notes",
+  // "2 exercises"). Only facts known on the phone; otherwise the generic
+  // line stays. Runs after the screen is shown, so it never delays it.
+  async function fillChapterHubFacts(batch, subject, chapter) {
+    const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, '-');
+    const chapterId = `${norm(batch)}::${norm(subject)}::${norm(chapter)}`;
+    const setMeta = (label, text) => {
+      const el = document.querySelector(`#chapter-hub-grid .chapter-hub-btn[aria-label="${label}"] small`);
+      if (el && text) el.textContent = text;
+    };
+    const [published, best, concepts, exercise] = await Promise.all([
+      _getAllowedBatches().then(async allowed => _filterByAllowedBatches(await DB.getQuizzesByStatus('published'), allowed)).catch(() => []),
+      _bestPercentByQuiz().catch(() => new Map()),
+      DB.getCachedConcepts?.(chapterId).catch(() => null),
+      DB.getExerciseQuestionsCache?.(chapterId).catch(() => null),
+    ]);
+    if ($('chapter-hub-title')?.textContent !== chapter) return;   // student moved on
+    const tests = published.filter(q => q.batch === batch && q.subject === subject && q.chapter === chapter);
+    if (tests.length) {
+      const done = tests.filter(q => best.has(q.quiz_id)).length;
+      setMeta('Test', `${tests.length} test${tests.length === 1 ? '' : 's'}${done ? ` · ${done} दिली` : ''}`);
+    }
+    if (Array.isArray(concepts) && concepts.length) setMeta('Notes', `${concepts.length} note${concepts.length === 1 ? '' : 's'}`);
+    if (Array.isArray(exercise) && exercise.length) {
+      const groups = new Set(exercise.map(q => q.exerciseNo ?? q.exercise_no ?? '')).size;
+      setMeta('Exercise', `${groups} exercise${groups === 1 ? '' : 's'} · ${exercise.length} प्रश्न`);
+    }
+  }
+
   async function renderAvailableQuizzes({
     batch = '',
     subject = '',
@@ -1053,6 +1083,7 @@ const UI = (() => {
     renderLessons,
     renderRecentAttempts,
     renderAvailableQuizzes,
+    fillChapterHubFacts,
     // Nav
     updateNavScore,
     resetNavScore,

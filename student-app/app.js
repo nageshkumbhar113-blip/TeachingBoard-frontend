@@ -2508,6 +2508,7 @@ const APP = (() => {
           window.EXERCISE_VIEWER?.openChapter?.(batchName, subject, chapter);
         },
       });
+      UI.fillChapterHubFacts?.(batchName, subject, chapter).catch(err => console.warn('chapter facts failed', err));
     };
   }
 
