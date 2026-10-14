@@ -961,15 +961,41 @@ const TEST_PLAYER = (() => {
     // 5. Block right-click context menu
     state._lockContext = e => e.preventDefault();
 
+    // 6. Keep the screen on: a phone screen timing out while the student
+    //    reads a long question counted as a "tab switch" (3 = auto-submit).
+    _keepScreenOn();
+
     window.addEventListener('beforeunload',       state._lockBefore);
     document.addEventListener('keydown',          state._lockKeydown, true);
     document.addEventListener('visibilitychange', state._lockVis);
+    document.addEventListener('visibilitychange', _onVisibleAgain);
     document.addEventListener('contextmenu',      state._lockContext);
+  }
+
+  // Screen Wake Lock: released by the system whenever the app is hidden, so
+  // it is asked for again on return. Not supported -> nothing changes.
+  async function _keepScreenOn() {
+    if (!state.locked || document.hidden || !navigator.wakeLock?.request) return;
+    if (state._wakeLock && !state._wakeLock.released) return;   // already held
+    try {
+      state._wakeLock = await navigator.wakeLock.request('screen');
+      if (!state.locked) _releaseScreen();   // exam ended while waiting
+    } catch { /* low battery / not allowed: screen may still time out */ }
+  }
+  function _releaseScreen() {
+    state._wakeLock?.release?.().catch(() => {});
+    state._wakeLock = null;
+  }
+  function _onVisibleAgain() {
+    if (document.hidden || !state.locked) return;
+    if (!state._wakeLock || state._wakeLock.released) _keepScreenOn();
   }
 
   function _unlockExamMode() {
     if (!state.locked) return;
     state.locked = false;
+    _releaseScreen();
+    document.removeEventListener('visibilitychange', _onVisibleAgain);
     if (document.fullscreenElement) {
       document.exitFullscreen?.().catch(() => {});
     }
