@@ -282,7 +282,7 @@ const APP = (() => {
             return new Promise(resolve => _showOnboarding(async () => {
               await _refreshProfileAfterLogin();
               resolve();
-            }, { force: true }));
+            }, { force: true, onOtherRole: resolve }));
           }
           // Network error / server sleeping / timeout — cached profile वापरत राहा
           console.warn('fetchStudentMe failed (network/server), continuing with cached profile', err?.message);
@@ -405,8 +405,10 @@ const APP = (() => {
     // A student's first autoSyncStudent cycle (below) already downloads the
     // published quizzes, so warming the cache here as well fetched the full
     // list twice on every launch. Only warm it where that cycle doesn't run.
+    // Teachers/parents have no student login: the call only failed with a 401,
+    // and that 401 put "Please log in again" over their dashboard.
     const studentCycleRuns = !_isTeacherOrParentMode && !!window.SYNC?.autoSyncStudent;
-    if (!studentCycleRuns) {
+    if (!studentCycleRuns && !_isTeacherOrParentMode) {
       _runWhenIdle(() => {
         _primeQuizCache().catch(err => console.warn('initial quiz cache warm failed', err));
       });
@@ -778,11 +780,15 @@ const APP = (() => {
       return;
     }
     beforePrompt?.();
+    // A teacher/parent login shows its own dashboard, but app start-up
+    // (nav buttons, Back, module set-up) must still go on: it used to wait
+    // here for the whole session, so e.g. the parent's "‹ Back" did nothing
+    // until the app was restarted.
     return new Promise(resolve => _showOnboarding(async () => {
       await _refreshProfileAfterLogin();
       await _syncOfflineContentWithOverlay();
       resolve();
-    }));
+    }, { onOtherRole: resolve }));
   }
 
   // ── PIN LOCK SCREEN ─────────────────────────────────────────
@@ -1573,6 +1579,7 @@ const APP = (() => {
           ac.abort();
           screen.classList.add('hidden');
           _showTeacherDashboard();
+          opts.onOtherRole?.();
           return;
         }
 
@@ -1582,6 +1589,7 @@ const APP = (() => {
           ac.abort();
           screen.classList.add('hidden');
           _showParentDashboard();
+          opts.onOtherRole?.();
           return;
         }
 
