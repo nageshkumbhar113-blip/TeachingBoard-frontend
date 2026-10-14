@@ -784,22 +784,21 @@ const VOCAB = (() => {
     // Notes moved out of this Words tab bar to its own bottom-nav tab
     // (bnav-notes, wired in notesViewer.js) — no longer nested here.
 
-    // Bottom nav Words button — always fetch fresh profile from server so
-    // batch is correct even if assigned after last login
+    // Bottom nav Words button — opens at once with the saved profile's class
+    // (it used to wait for the server first, so the tap seemed to do
+    // nothing), then checks the server and reopens if the class changed
+    // since the last login.
     $id('bnav-vocab')?.addEventListener('click', async () => {
-      let batches = [];
-      if (navigator.onLine && window.API?.fetchStudentMe) {
-        try {
-          const fresh = await API.fetchStudentMe();
-          batches = Array.isArray(fresh?.assigned_batches) ? fresh.assigned_batches : [];
-        } catch {}
-      }
-      if (!batches.length) {
-        const profile = await API.getStudentProfile().catch(() => null);
-        batches = Array.isArray(profile?.assigned_batches) ? profile.assigned_batches : [];
-      }
-      const batch = batches[0] || '';
+      const firstBatch = p => (Array.isArray(p?.assigned_batches) ? p.assigned_batches[0] : '') || '';
+      const saved = await API.getStudentProfile().catch(() => null);
+      const batch = firstBatch(saved);
       await openVocabScreen(batch, _subject || '');
+      if (!navigator.onLine || !window.API?.fetchStudentMe) return;
+      try {
+        const freshBatch = firstBatch(await API.fetchStudentMe());
+        const stillHere = typeof APP !== 'undefined' && APP.currentScreen?.() === 'vocab' && _currentView === 'test-list';
+        if (freshBatch && freshBatch !== batch && stillHere) await openVocabScreen(freshBatch, '');
+      } catch {}
     });
   }
 
