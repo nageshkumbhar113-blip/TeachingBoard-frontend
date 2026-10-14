@@ -892,6 +892,7 @@ const APP = (() => {
       }
 
       async function _switchAccount() {
+        if (!(await _confirmSwitchWithPendingResults())) return; // stay on the PIN screen
         ac.abort();
         screen.classList.add('hidden');
         _isTeacherOrParentMode = false;
@@ -928,6 +929,17 @@ const APP = (() => {
     await DB.setSetting?.('local_data_owner', '').catch(() => {});
     await API.clearStudentProfile?.().catch(() => {});
     API.clearStudentToken?.();
+  }
+
+  // Before either "Switch account": upload this student's waiting results if
+  // online; if some still can't go (offline), say so and let them cancel.
+  // Nothing is lost if they continue — the results upload the next time this
+  // student logs in on this phone — but they should know why their marks
+  // aren't on the teacher's dashboard yet.
+  async function _confirmSwitchWithPendingResults() {
+    const { pending } = await (window.SYNC?.flushOwnResults?.() ?? Promise.resolve({ pending: 0 })).catch(() => ({ pending: 0 }));
+    if (!pending) return true;
+    return UI.confirmAsync(`तुमचे ${pending} test result${pending > 1 ? 's' : ''} अजून upload झाले नाहीत (Internet नाही). ते याच phone वर तुम्ही पुन्हा login केल्यावर upload होतील. Account switch करायचं?`);
   }
 
   // After a switch, start the app afresh instead of reusing this page: many
@@ -1764,6 +1776,7 @@ const APP = (() => {
 
     overlay.querySelector('#ps-switch-btn')?.addEventListener('click', async () => {
       _close();
+      if (!(await _confirmSwitchWithPendingResults())) return;
       await _clearStudentForSwitch();
       _restartForNextStudent();
     });

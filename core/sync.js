@@ -813,6 +813,18 @@ const SYNC = (() => {
     }
   }
 
+  // Before an account switch: try to upload the current student's waiting
+  // results (if online) and report how many are still waiting. Those are not
+  // lost on a switch — they upload when this student logs in again here.
+  async function flushOwnResults() {
+    if (!_queueReady) await _initQueue();
+    if (_isOnline()) await retryQueue().catch(() => {});
+    const code = await _currentStudentCode();
+    _queueCache = await DB.getSyncQueue().catch(() => _queueCache || []);
+    const pending = _loadQueue().filter(i => RESULT_OPS.has(i.op) && (!i.owner || i.owner === code) && i.attempts < MAX_RETRY).length;
+    return { pending };
+  }
+
   // ════════════════════════
   // SUBMIT ATTEMPT
   // ════════════════════════
@@ -1399,6 +1411,7 @@ const SYNC = (() => {
     startStudentAutoSync,
     stopStudentAutoSync,
     requestFullSync,
+    flushOwnResults,
 
     // Sync status
     getSyncStatus,
