@@ -1055,7 +1055,7 @@ const SYNC = (() => {
   // downloads the parts whose fingerprint changed, instead of re-downloading
   // every quiz (with questions), every question and the profile each time.
   // A FULL sync (all three) still happens: on the first cycle of each app
-  // launch, when forced (requestFullSync / Refresh button), when the server's
+  // launch, when forced (requestFullSync after a payment), when the server's
   // `access` marker changes (payment, expiry, class change), and at least every
   // `fullEverySec` (safety net). If sync-state is unavailable — old backend,
   // SYNC_STATE_DISABLED, or any error — the cycle is a full sync exactly as before.
@@ -1276,7 +1276,17 @@ const SYNC = (() => {
   function requestFullSync() {
     _forceFullNext = true;
     startStudentAutoSync();
-    setTimeout(() => _runStudentCycle({ force: true }), 1500);
+    // If a regular cycle happens to be running at that moment, the forced one
+    // would be skipped and wait for the next 10-min tick — retry a few times.
+    let tries = 0;
+    const attempt = () => {
+      tries++;
+      const busy = _studentSyncing;
+      Promise.resolve(_runStudentCycle({ force: true })).then(r => {
+        if (!r && busy && _forceFullNext && tries < 10) setTimeout(attempt, 2000);
+      });
+    };
+    setTimeout(attempt, 1500);
   }
 
   // Coming back to the app re-checks right away only if the last check is
