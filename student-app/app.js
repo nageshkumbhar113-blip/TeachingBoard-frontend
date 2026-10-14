@@ -2748,8 +2748,11 @@ const APP = (() => {
     return _activeUiMode() === 'board' ? 'board_theme' : 'theme';
   }
 
+  // Normal mode starts light everywhere: the study screens (test, notes,
+  // exercise) used to turn dark on their own while the rest stayed light.
+  // A student who picks 🌙 keeps it (saved setting). Board mode stays dark.
   function _themeFallbackForMode(mode = _activeUiMode()) {
-    return mode === 'board' ? 'theme-board-dark' : 'theme-dark';
+    return mode === 'board' ? 'theme-board-dark' : 'theme-light';
   }
 
   function _themeButtonMeta(theme) {
