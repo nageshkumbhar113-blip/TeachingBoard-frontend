@@ -5140,3 +5140,51 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .sp-sub { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 8px 0 3px; }
 .sp-row { display: flex; gap: 8px; margin-top: 12px; }
 .sp-primary { background: var(--accent, #e16b13); color: #fff; }
+
+/* ── Busy button (UI.withBusy): turning spinner + "उघडत आहे…" ─────────── */
+.is-busy {
+  cursor: progress;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-spinner {
+  width: 0.95em;
+  height: 0.95em;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: btn-spin 0.7s linear infinite;
+}
+.btn-busy-label { white-space: nowrap; }
+.btn-busy-label::after {
+  content: '';
+  display: inline-block;
+  width: 1.1em;
+  text-align: left;
+  animation: btn-dots 1.2s steps(1, end) infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@keyframes btn-dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner { animation-duration: 1.6s; }
+  .btn-busy-label::after { animation: none; content: '…'; }
+}
+
+/* ── Tap feedback: buttons visibly press in under the finger ─────────── */
+.quiz-portal-btn:active:not(:disabled),
+.quiz-portal-video-btn:active:not(:disabled),
+.chapter-hub-btn:active:not(:disabled),
+.nav-arrow:active:not(:disabled),
+.skip-btn:active:not(:disabled),
+.td-dialog-btns button:active,
+.bnav-btn:active {
+  transform: scale(0.96);
+}

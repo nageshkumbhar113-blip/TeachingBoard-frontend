@@ -232,6 +232,41 @@ const UI = (() => {
     if (el) el.classList.add('hidden');
   }
 
+  /**
+   * Runs an action started by a button tap. The button is locked at once (no
+   * double start); if the action takes longer than a blink it shows a turning
+   * spinner and the label (default "उघडत आहे"), then the original look returns.
+   * @param {HTMLElement} btn
+   * @param {() => any} action  may return a promise
+   * @param {string} [label]
+   */
+  async function withBusy(btn, action, label = 'उघडत आहे') {
+    if (!btn) return action();
+    if (btn.dataset.busy === '1') return undefined;
+    btn.dataset.busy = '1';
+    btn.setAttribute('aria-busy', 'true');
+    const original = btn.innerHTML;
+    const width = btn.offsetWidth;
+    const showTimer = setTimeout(() => {
+      if (btn.dataset.busy !== '1') return;
+      btn.style.minWidth = width ? `${width}px` : '';
+      btn.classList.add('is-busy');
+      btn.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span class="btn-busy-label">${_escHtml(label)}</span>`;
+    }, 150);
+    try {
+      return await action();
+    } finally {
+      clearTimeout(showTimer);
+      if (btn.classList.contains('is-busy')) {
+        btn.classList.remove('is-busy');
+        btn.innerHTML = original;
+        btn.style.minWidth = '';
+      }
+      btn.removeAttribute('aria-busy');
+      delete btn.dataset.busy;
+    }
+  }
+
   // ════════════════════════
   // GENERIC LIST RENDERER
   // ════════════════════════
@@ -558,12 +593,12 @@ const UI = (() => {
         </div>
         <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
       `;
-      card.querySelector('.quiz-portal-btn').addEventListener('click', () => {
+      card.querySelector('.quiz-portal-btn').addEventListener('click', e => {
         if (!navigator.onLine && !isOfflineReady) {
           APP.toast('Internet नाही! एकदा online होऊन हा quiz उघडा, मग offline पण चालेल.', 'error');
           return;
         }
-        if (onStart) onStart(quiz);
+        if (onStart) withBusy(e.currentTarget, () => onStart(quiz));
       });
       fragment.appendChild(card);
     });
@@ -657,8 +692,8 @@ const UI = (() => {
         </div>
         <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
       `;
-      card.querySelector('.quiz-portal-btn').addEventListener('click', () => {
-        if (onStart) onStart(quiz);
+      card.querySelector('.quiz-portal-btn').addEventListener('click', e => {
+        if (onStart) withBusy(e.currentTarget, () => onStart(quiz));
       });
       fragment.appendChild(card);
     });
@@ -829,7 +864,7 @@ const UI = (() => {
         </div>
         <button class="quiz-portal-btn" aria-label="Start practice">Practice</button>
       `;
-      practiceCard.querySelector('.quiz-portal-btn').addEventListener('click', () => onPractice());
+      practiceCard.querySelector('.quiz-portal-btn').addEventListener('click', e => withBusy(e.currentTarget, () => onPractice()));
       fragment.appendChild(practiceCard);
     }
 
@@ -850,8 +885,8 @@ const UI = (() => {
         <button class="quiz-portal-video-btn" aria-label="${_escHtml(quiz.title)} साठी Teacher Video" title="Teacher's Video">🎬</button>
         <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
       `;
-      card.querySelector('.quiz-portal-btn').addEventListener('click', () => {
-        if (onStart) onStart(quiz);
+      card.querySelector('.quiz-portal-btn').addEventListener('click', e => {
+        if (onStart) withBusy(e.currentTarget, () => onStart(quiz));
       });
       // No pre-check network call per card (would mean N calls for N tests on
       // screen) — always show the button, Step 1's own empty-state handles
@@ -962,6 +997,7 @@ const UI = (() => {
     // Loader
     showLoader,
     hideLoader,
+    withBusy,
     // Generic list
     renderList,
     // Splash

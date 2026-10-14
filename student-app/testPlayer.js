@@ -188,8 +188,15 @@ const TEST_PLAYER = (() => {
       ackBox.checked = false;
       startBtn.disabled = true;
 
+      const modal = $('instructions-gate-modal');
       const onAckChange = () => { startBtn.disabled = !ackBox.checked; };
+      // Closed without Start (phone Back closes it): resolve false, so the
+      // caller (and its busy "उघडत आहे" button) is not left waiting forever.
+      const closedWatch = modal && new MutationObserver(() => {
+        if (modal.classList.contains('hidden')) { cleanup(); resolve(false); }
+      });
       const cleanup = () => {
+        closedWatch?.disconnect();
         ackBox.removeEventListener('change', onAckChange);
         startBtn.removeEventListener('click', onStart);
         UI.closeModal('instructions-gate-modal');
@@ -199,6 +206,7 @@ const TEST_PLAYER = (() => {
       ackBox.addEventListener('change', onAckChange);
       startBtn.addEventListener('click', onStart);
       UI.openModal('instructions-gate-modal');
+      closedWatch?.observe(modal, { attributes: true, attributeFilter: ['class'] });
     });
   }
 
