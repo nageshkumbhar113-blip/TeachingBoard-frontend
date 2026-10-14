@@ -20,6 +20,7 @@ const APP = (() => {
 
   async function init() {
     _installGlobalGuards();
+    _installBackHandling();
 
     try {
       await DB.open();
@@ -52,6 +53,99 @@ const APP = (() => {
     window.addEventListener('unhandledrejection', e => {
       console.error('PROMISE ERROR:', e.reason);
       toast('Background task failed. Retrying when possible...', 'error');
+    });
+  }
+
+  // ════════════════════════
+  // BACK (phone Back button / gesture, browser Back)
+  // ════════════════════════
+  // Order: close the side menu -> close the top popup (as tapping outside
+  // it does) -> from any tab go to Dashboard -> on Dashboard or the PIN
+  // screen a 2nd Back within 2 s leaves the app. Android's Back reaches
+  // this only through @capacitor/app's backButton event: with no listener,
+  // Capacitor closed the app on the first press.
+  const EXIT_WINDOW_MS = 2000;
+  let _exitArmedAt = 0;
+  let _webLeaving = false;
+
+  const _isShown = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+
+  // Popups are fixed layers covering the screen (the admin shell itself is
+  // one too, so it is skipped); the top one has the highest z-index.
+  function _topPopup() {
+    const skip = new Set(['admin-overlay', 'admin-sidebar-backdrop', 'app-splash', 'splash']);
+    let top = null, topZ = -Infinity;
+    for (const el of document.body.querySelectorAll('*')) {
+      if (skip.has(el.id)) continue;
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') continue;
+      if (el.offsetWidth < innerWidth * 0.9 || el.offsetHeight < innerHeight * 0.9) continue;
+      const z = Number(cs.zIndex) || 0;
+      if (z >= topZ) { top = el; topZ = z; }
+    }
+    return top;
+  }
+
+  function _closePopup(el) {
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));   // "tap outside"
+    if (!_isShown(el)) return true;
+    const x = el.querySelector('[aria-label="Close"], [aria-label="close"], [id$="-close"], [id$="-close-btn"], .modal-close, .cm-preview-close');
+    if (x && _isShown(x)) { x.click(); return !_isShown(el); }
+    return false;
+  }
+
+  function _leaveApp() {
+    _exitArmedAt = 0;
+    const App = window.Capacitor?.Plugins?.App;
+    if (window.Capacitor?.isNativePlatform?.() && App) {
+      (App.minimizeApp?.() || Promise.reject()).catch(() => App.exitApp?.());
+      return;
+    }
+    _webLeaving = true;
+    history.back();
+    setTimeout(() => {
+      if (!_webLeaving) return;
+      _webLeaving = false;
+      history.pushState({ tbBack: true }, '');
+    }, 1000);
+  }
+
+  function _armOrLeave() {
+    if (Date.now() - _exitArmedAt < EXIT_WINDOW_MS) { _leaveApp(); return; }
+    _exitArmedAt = Date.now();
+    toast('बाहेर पडण्यासाठी पुन्हा Back दाबा', 'info', EXIT_WINDOW_MS);
+  }
+
+  function handleBack() {
+    const sidebar = $('admin-sidebar');
+    if (sidebar?.classList.contains('sidebar-open')) { $('admin-menu-btn')?.click(); return; }
+
+    const popup = _topPopup();
+    if (popup) { if (!_closePopup(popup)) _armOrLeave(); return; }
+
+    if (_isShown($('admin-pin-gate'))) { _armOrLeave(); return; }
+
+    const dashboardTab = document.querySelector('.atab[data-tab="dashboard"]');
+    if (dashboardTab && !dashboardTab.classList.contains('active')) {
+      dashboardTab.click();
+      window.scrollTo?.(0, 0);
+      return;
+    }
+    _armOrLeave();
+  }
+
+  function _installBackHandling() {
+    const App = window.Capacitor?.Plugins?.App;
+    if (window.Capacitor?.isNativePlatform?.() && App?.addListener) {
+      App.addListener('backButton', () => handleBack());
+      return;
+    }
+    // Browser: one guard entry on top of the history, so Back arrives here.
+    history.pushState({ tbBack: true }, '');
+    window.addEventListener('popstate', () => {
+      if (_webLeaving) { history.back(); return; }
+      history.pushState({ tbBack: true }, '');
+      handleBack();
     });
   }
 
@@ -254,6 +348,7 @@ const APP = (() => {
     openStudentQuiz,
     confirmAsync,
     promptAsync,
+    handleBack,
   };
 })();
 
