@@ -258,6 +258,18 @@ const NOTES_VIEWER = (() => {
   async function viewConcept(conceptId) {
     try {
       const cached = await DB.getCachedConcept(conceptId).catch(() => null);
+      // A note of a paid chapter on a free/expired plan — never open it from
+      // the phone's cache. selectChapter() has the same guard, but Home
+      // search calls viewConcept() right after it, so the guard must live
+      // here too. (Uncached notes are refused by the server itself.)
+      if (cached?.chapterId) {
+        const freeIds = await APP.getFreeChapterIds?.().catch(() => null) ?? null;
+        if (freeIds && !freeIds.has(cached.chapterId)) {
+          _leaveLockedContent();
+          APP.offerSubscribe?.();
+          return;
+        }
+      }
       if (cached) {
         state.currentConcept = cached;
         if (navigator.onLine) SYNC.refreshSlsConcept(conceptId).catch(() => {});
@@ -661,8 +673,17 @@ const NOTES_VIEWER = (() => {
     `;
   }
 
+  // A refused (locked) note/chapter must not leave whatever was rendered
+  // before on screen — e.g. a paid note opened while the plan was active.
+  function _leaveLockedContent() {
+    state.currentConcept = null;
+    state.currentChapter = null;
+    _renderUI();
+  }
+
   async function selectChapter(chapterId) {
     if (state.freeIds && !state.freeIds.has(chapterId)) {
+      _leaveLockedContent();
       APP.offerSubscribe?.();
       return;
     }
