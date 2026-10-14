@@ -1808,6 +1808,8 @@ const APP = (() => {
         <h2 style="margin:0 0 4px;font-size:1.1rem;color:var(--text1);text-align:center">${_escHtml(name)}</h2>
         <p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">Code: <b>${_escHtml(code)}</b></p>
         <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">Classes: <b>${_escHtml(batches)}</b></p>
+        <button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>
+        <button id="ps-board-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🖥️ Board Mode ${_activeUiMode() === 'board' ? 'बंद करा' : 'चालू करा'}</button>
         <button id="ps-switch-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">↔ Switch Account</button>
         <button id="ps-close-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent,#e74c3c);color:#fff;font-weight:600;cursor:pointer">Close</button>
       </div>
@@ -1817,6 +1819,15 @@ const APP = (() => {
     function _close() { overlay.remove(); }
     overlay.querySelector('#ps-close-btn')?.addEventListener('click', _close);
     overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
+
+    overlay.querySelector('#ps-analytics-btn')?.addEventListener('click', () => {
+      _close();
+      window.ANALYTICS?.open();
+    });
+    overlay.querySelector('#ps-board-btn')?.addEventListener('click', async () => {
+      _close();
+      await _toggleBoardMode();
+    });
 
     overlay.querySelector('#ps-switch-btn')?.addEventListener('click', async () => {
       _close();
@@ -2116,6 +2127,14 @@ const APP = (() => {
   // NAV BINDINGS
   // ════════════════════════
 
+  // Board Mode on/off: top 🖥️ on big screens, Me → Board Mode on phones.
+  async function _toggleBoardMode() {
+    const next = _activeUiMode() === 'board' ? 'normal' : 'board';
+    setUiMode(next);
+    await DB.setSetting('ui_mode', next);
+    await _applyStoredThemeForMode({ silent: true });
+  }
+
   function _bindNav() {
     // Same rules as the phone's Back, minus popups/leaving (the button is
     // hidden on Home and covered by any popup).
@@ -2161,12 +2180,7 @@ const APP = (() => {
       window.ANALYTICS?.open();
     });
 
-    $('btn-ui-mode')?.addEventListener('click', async () => {
-      const next = _activeUiMode() === 'board' ? 'normal' : 'board';
-      setUiMode(next);
-      await DB.setSetting('ui_mode', next);
-      await _applyStoredThemeForMode({ silent: true });
-    });
+    $('btn-ui-mode')?.addEventListener('click', () => _toggleBoardMode());
 
     $('btn-board-zoom-out')?.addEventListener('click', async () => {
       await setBoardZoom(_boardZoom - BOARD_ZOOM_STEP);
@@ -2178,13 +2192,6 @@ const APP = (() => {
 
     // ── Bottom Navigation ────────────────────────────
     $('bnav-home')?.addEventListener('click', () => { _goHomeGuarded().catch(err => console.warn('home failed', err)); });
-    $('bnav-analytics')?.addEventListener('click', () => window.ANALYTICS?.open());
-    $('bnav-mode')?.addEventListener('click', async () => {
-      const next = _activeUiMode() === 'board' ? 'normal' : 'board';
-      setUiMode(next);
-      await DB.setSetting('ui_mode', next);
-      await _applyStoredThemeForMode({ silent: true });
-    });
     $('bnav-me')?.addEventListener('click', () => _openProfileSettings());
   }
 

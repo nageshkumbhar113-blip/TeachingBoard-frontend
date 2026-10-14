@@ -5306,3 +5306,6 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .tp-dot:active { transform: scale(0.94); }
 /* First question: Prev has nothing to go back to. */
 .nav-arrow:disabled { opacity: 0.38; cursor: default; transform: none; }
+
+/* Bottom nav has five tabs now: room for readable labels. */
+.bnav-label { font-size: 0.72rem; letter-spacing: 0.02em; }
