@@ -1323,6 +1323,16 @@ const SYNC = (() => {
     setTimeout(attempt, 1500);
   }
 
+  // After any student login: make sure background sync is running. Several
+  // flows stop it (expired→renew, auth error → re-login) and nothing restarted
+  // it until the app was relaunched. No-op when it is already running, so it
+  // never adds a duplicate download.
+  function ensureStudentSync() {
+    if (_studentAutoRunning || !API.getStudentToken()) return;
+    startStudentAutoSync();
+    setTimeout(() => _runStudentCycle(), 0);
+  }
+
   // Coming back to the app re-checks right away only if the last check is
   // older than `resumeMinSec` (default 2 min) — a quick hop to WhatsApp and
   // back no longer costs a sync. Without sync-state hints it re-checks every
@@ -1412,6 +1422,7 @@ const SYNC = (() => {
     stopStudentAutoSync,
     requestFullSync,
     flushOwnResults,
+    ensureStudentSync,
 
     // Sync status
     getSyncStatus,

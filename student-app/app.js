@@ -954,6 +954,7 @@ const APP = (() => {
 
   // Refresh profile + allowed batches from server after any login
   async function _refreshProfileAfterLogin() {
+    window.SYNC?.ensureStudentSync?.();
     _updateProfileButton('');
     if (navigator.onLine && window.API?.fetchStudentMe) {
       try {
