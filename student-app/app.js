@@ -2485,10 +2485,10 @@ const APP = (() => {
       const dsBtn = $('btn-deep-study');
       if (dsBtn) {
         dsBtn.classList.remove('hidden');
-        dsBtn.onclick = null;
-        dsBtn.addEventListener('click', () => {
-          window.DEEP_STUDY?.open(batchName, subject, chapter);
-        }, { once: false });
+        // One handler, replaced per chapter (addEventListener here added one
+        // more per chapter opened, so a single tap opened Deep Study again
+        // for every earlier chapter and Back then needed as many presses).
+        dsBtn.onclick = () => window.DEEP_STUDY?.open(batchName, subject, chapter);
       }
 
       // Chapter Hub — one clear choice screen (Test / Notes / Exercise)
