@@ -1,5 +1,6 @@
 package com.nkseduorbit.student;
 
+import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -36,10 +37,12 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(InstallReferrerPlugin.class);
 
     super.onCreate(savedInstanceState);
-    // Enables chrome://inspect remote debugging even on release builds —
-    // used for automated QA/testing. Only exploitable with physical/adb
-    // access to the device, which already implies full device access.
-    WebView.setWebContentsDebuggingEnabled(true);
+    // chrome://inspect remote debugging only in debug builds. On a release
+    // (Play Store) build anyone with USB debugging on the phone could read
+    // the app's login token, decrypted paid notes and test answers through
+    // it. Automated QA runs on a debug build instead (assembleDebug).
+    boolean debuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    WebView.setWebContentsDebuggingEnabled(debuggable);
 
     // Real HTML5 fullscreen (the ⛶ button inside an embedded video player —
     // e.g. student-app/videoTeacherSelect.js's YouTube IFrame) needs the
