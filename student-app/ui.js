@@ -657,6 +657,35 @@ const UI = (() => {
   // normal Subject → Chapter drill-down's exact-subject filter and would
   // otherwise be unreachable. Shown as its own section right under the
   // Batch grid, hidden entirely when the selected batch has none.
+  // ── Test cards: what the button does, and the facts a student decides by ──
+  // "Start" never said whether it opens an exam or practice; the line under
+  // the title now does (and time limit / best earlier score when known).
+  const _isExamQuiz = quiz => (quiz.default_mode || 'practice') === 'exam';
+  const _startLabel = quiz => (_isExamQuiz(quiz) ? 'Exam द्या' : 'सुरू करा');
+
+  function _quizFacts(quiz, totalQ, bestPct, extra = []) {
+    const mins = quiz.timer_mode === 'full_test' && quiz.timer_value > 0 ? Math.max(1, Math.round(quiz.timer_value / 60)) : 0;
+    return [
+      ...extra,
+      `${totalQ} प्रश्न`,
+      _isExamQuiz(quiz) ? '🔒 Exam' : '📖 Practice',
+      mins ? `⏱ ${mins} मि.` : (quiz.timer_mode === 'per_question' ? '⏱ प्रत्येक प्रश्नाला वेळ' : ''),
+      bestPct != null ? `✔ आधी: ${bestPct}%` : '',
+    ].filter(Boolean).map(_escHtml).join(' · ');
+  }
+
+  // Best % per quiz from this student's own attempts on this phone.
+  async function _bestPercentByQuiz() {
+    const [all, profile] = await Promise.all([DB.getAllAttempts().catch(() => []), _getCurrentStudentProfile()]);
+    const best = new Map();
+    for (const a of _filterAttemptsForCurrentStudent(all, profile)) {
+      const pct = Number(a.percent);
+      if (!a.quiz_id || !Number.isFinite(pct)) continue;
+      best.set(a.quiz_id, Math.max(best.get(a.quiz_id) ?? -1, Math.round(pct)));
+    }
+    return best;
+  }
+
   async function renderMixedTestsSection(batchName, onStart) {
     const section = $('mixed-tests-section');
     const list    = $('mixed-tests-list');
@@ -674,6 +703,7 @@ const UI = (() => {
     }
 
     list.innerHTML = '';
+    const best = await _bestPercentByQuiz();
     const fragment = document.createDocumentFragment();
     published.forEach(quiz => {
       const totalQ = Array.isArray(quiz.questions) && quiz.questions.length
@@ -685,12 +715,9 @@ const UI = (() => {
       card.innerHTML = `
         <div class="quiz-portal-info">
           <div class="quiz-portal-title">${_escHtml(quiz.title || 'Untitled Quiz')}</div>
-          <div class="quiz-portal-meta">
-            ${_escHtml(quiz.batch || '')} · ${sectionCount} section${sectionCount === 1 ? '' : 's'}
-            · ${totalQ} questions
-          </div>
+          <div class="quiz-portal-meta">${_quizFacts(quiz, totalQ, best.get(quiz.quiz_id), [`${sectionCount} section${sectionCount === 1 ? '' : 's'}`])}</div>
         </div>
-        <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
+        <button class="quiz-portal-btn" aria-label="${_escHtml(_startLabel(quiz))}: ${_escHtml(quiz.title)}">${_startLabel(quiz)}</button>
       `;
       card.querySelector('.quiz-portal-btn').addEventListener('click', e => {
         if (onStart) withBusy(e.currentTarget, () => onStart(quiz));
@@ -852,6 +879,7 @@ const UI = (() => {
 
     section.classList.remove('hidden');
     list.innerHTML = '';
+    const best = await _bestPercentByQuiz();
 
     const fragment = document.createDocumentFragment();
     if (chapterQuestions.length && onPractice) {
@@ -860,9 +888,9 @@ const UI = (() => {
       practiceCard.innerHTML = `
         <div class="quiz-portal-info">
           <div class="quiz-portal-title">Practice Questions</div>
-          <div class="quiz-portal-meta">${chapterQuestions.length} questions · chapter practice</div>
+          <div class="quiz-portal-meta">${chapterQuestions.length} प्रश्न · 📖 chapter चा सराव</div>
         </div>
-        <button class="quiz-portal-btn" aria-label="Start practice">Practice</button>
+        <button class="quiz-portal-btn" aria-label="सराव करा">सराव करा</button>
       `;
       practiceCard.querySelector('.quiz-portal-btn').addEventListener('click', e => withBusy(e.currentTarget, () => onPractice()));
       fragment.appendChild(practiceCard);
@@ -874,16 +902,16 @@ const UI = (() => {
         : (quiz.sections || []).reduce((s, sec) => s + (sec.question_ids?.length || 0), 0);
       const card   = document.createElement('div');
       card.className = 'quiz-portal-card';
+      // Inside one chapter its name is already the heading; a wider list
+      // still says where each test belongs.
+      const where = chapter ? [] : [quiz.subject, quiz.chapter].filter(Boolean);
       card.innerHTML = `
         <div class="quiz-portal-info">
           <div class="quiz-portal-title">${_escHtml(quiz.title || 'Untitled Quiz')}</div>
-          <div class="quiz-portal-meta">
-            ${_escHtml(quiz.batch || '')}${quiz.subject ? ' · ' + _escHtml(quiz.subject) : ''}${quiz.chapter ? ' · ' + _escHtml(quiz.chapter) : ''}
-            · ${totalQ} questions
-          </div>
+          <div class="quiz-portal-meta">${_quizFacts(quiz, totalQ, best.get(quiz.quiz_id), where)}</div>
         </div>
-        <button class="quiz-portal-video-btn" aria-label="${_escHtml(quiz.title)} साठी Teacher Video" title="Teacher's Video">🎬</button>
-        <button class="quiz-portal-btn" aria-label="Start ${_escHtml(quiz.title)}">Start</button>
+        <button class="quiz-portal-video-btn" aria-label="${_escHtml(quiz.title)} साठी Teacher Video" title="Teacher's Video">▶ Video</button>
+        <button class="quiz-portal-btn" aria-label="${_escHtml(_startLabel(quiz))}: ${_escHtml(quiz.title)}">${_startLabel(quiz)}</button>
       `;
       card.querySelector('.quiz-portal-btn').addEventListener('click', e => {
         if (onStart) withBusy(e.currentTarget, () => onStart(quiz));
