@@ -1237,16 +1237,46 @@ const SYNC = (() => {
     if (_autoInterval) { clearInterval(_autoInterval); _autoInterval = null; }
   }
 
+  // Student ticks are a self-rescheduling timeout rather than a fixed
+  // setInterval, so the gap follows the server's `checkEverySec` hint
+  // (default 10 min) once sync-state answers, and stays at the old 2 min
+  // while it doesn't (old backend / kill switch — each tick is then a full sync).
+  let _studentAutoRunning = false;
+
+  function _studentTickMs() {
+    return _studentHints ? _studentHints.checkEverySec * 1000 : STUDENT_AUTO_MS;
+  }
+
+  function _scheduleStudentTick() {
+    clearTimeout(_studentAutoInterval);
+    _studentAutoInterval = setTimeout(() => {
+      _studentAutoInterval = null;
+      Promise.resolve(_runStudentCycle()).finally(() => {
+        if (_studentAutoRunning) _scheduleStudentTick();
+      });
+    }, _studentTickMs());
+  }
+
   function startStudentAutoSync() {
-    if (_studentAutoInterval) return;
-    _studentAutoInterval = setInterval(_runStudentCycle, STUDENT_AUTO_MS);
+    if (_studentAutoRunning) return;
+    _studentAutoRunning = true;
+    _scheduleStudentTick();
   }
 
   function stopStudentAutoSync() {
-    if (_studentAutoInterval) {
-      clearInterval(_studentAutoInterval);
-      _studentAutoInterval = null;
-    }
+    _studentAutoRunning = false;
+    clearTimeout(_studentAutoInterval);
+    _studentAutoInterval = null;
+  }
+
+  // Coming back to the app re-checks right away only if the last check is
+  // older than `resumeMinSec` (default 2 min) — a quick hop to WhatsApp and
+  // back no longer costs a sync. Without sync-state hints it re-checks every
+  // time, as before.
+  function _resumeStudentSync() {
+    startStudentAutoSync();
+    const minMs = _studentHints ? _studentHints.resumeMinSec * 1000 : 0;
+    if (Date.now() - _lastStudentCheckAt >= minMs) setTimeout(_runStudentCycle, 0);
   }
 
   // Pause both auto-sync intervals while the app is backgrounded (Home
@@ -1262,12 +1292,12 @@ const SYNC = (() => {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         _wasAutoRunning = !!_autoInterval;
-        _wasStudentAutoRunning = !!_studentAutoInterval;
+        _wasStudentAutoRunning = _studentAutoRunning;
         stopAutoSync();
         stopStudentAutoSync();
       } else {
         if (_wasAutoRunning) { startAutoSync(); setTimeout(_runCycle, 0); }
-        if (_wasStudentAutoRunning) { startStudentAutoSync(); setTimeout(_runStudentCycle, 0); }
+        if (_wasStudentAutoRunning) _resumeStudentSync();
       }
     });
   }
