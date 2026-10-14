@@ -147,6 +147,13 @@ const QUIZ = (() => {
       return;
     }
 
+    // Practice of a paid chapter on a free/expired plan (reachable from Study
+    // Plan without going through the locked chapter list) → subscribe instead.
+    if (await APP.isChapterLocked?.(batch, subject, chapter)) {
+      APP.offerSubscribe?.();
+      return;
+    }
+
     let qs = await DB.getQuestionsByChapter(batch, subject, chapter);
 
     if (qs.length === 0 && navigator.onLine && batch === API.REMOTE_BATCH) {
