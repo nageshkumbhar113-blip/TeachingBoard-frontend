@@ -1269,6 +1269,16 @@ const SYNC = (() => {
     _studentAutoInterval = null;
   }
 
+  // Payment activated / renewed: the next cycle must be a FULL sync so newly
+  // unlocked tests and questions arrive at once. Runs one shortly (callers may
+  // still be re-logging in) and keeps the flag until a full sync succeeds.
+  // Also restarts the timer, which the expired→renew flow stops.
+  function requestFullSync() {
+    _forceFullNext = true;
+    startStudentAutoSync();
+    setTimeout(() => _runStudentCycle({ force: true }), 1500);
+  }
+
   // Coming back to the app re-checks right away only if the last check is
   // older than `resumeMinSec` (default 2 min) — a quick hop to WhatsApp and
   // back no longer costs a sync. Without sync-state hints it re-checks every
@@ -1356,6 +1366,7 @@ const SYNC = (() => {
     stopAutoSync,
     startStudentAutoSync,
     stopStudentAutoSync,
+    requestFullSync,
 
     // Sync status
     getSyncStatus,

@@ -376,6 +376,7 @@ const PAYMENT = (() => {
       if (res?.student?.status === 'active') {
         _toast('✅ Account active! आता login करा.', 'success');
         _close();
+        window.SYNC?.requestFullSync?.(); // newly unlocked tests/questions download right away
         onActivated?.();
         return;
       }
