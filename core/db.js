@@ -932,6 +932,11 @@ const DB = (() => {
     }
   }
 
+  async function deleteAttempt(attemptId) {
+    if (attemptId == null) return;
+    return _del('test_attempts', attemptId);
+  }
+
   async function getAttemptsByQuiz(quiz_id) {
     return _getAll('test_attempts', 'quiz_id', quiz_id);
   }
@@ -1346,6 +1351,7 @@ const DB = (() => {
     // Test Attempts
     saveTestAttempt,
     saveAttempt: saveTestAttempt,   // alias
+    deleteAttempt,
     getAttemptsByQuiz,
     getAttempts: getAllAttempts,     // alias — returns all, sorted newest-first
     getAllAttempts,

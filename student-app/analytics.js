@@ -390,7 +390,7 @@ const ANALYTICS = (() => {
             <div class="an-hist-meta">
               ${a.subject ? `<span>${_esc(a.subject)}</span>` : ''}
               ${a.chapter ? `<span>${_esc(a.chapter)}</span>` : ''}
-              <span class="an-mode-badge an-mode-${a.mode || 'practice'}">${a.mode || 'practice'}</span>
+              ${a.mode ? `<span class="an-mode-badge an-mode-${_esc(a.mode)}">${_esc(a.mode)}</span>` : ''}
               <span>${_fmtDate(a.date)}</span>
             </div>
           </div>
@@ -402,7 +402,7 @@ const ANALYTICS = (() => {
             <span class="an-stat-chip correct">✓${a.correct  ?? 0}</span>
             <span class="an-stat-chip wrong">✗${a.wrong    ?? 0}</span>
             <span class="an-stat-chip skip">→${a.skipped   ?? 0}</span>
-            <span class="an-stat-chip time">⏱${_fmtTime(a.time_taken)}</span>
+            ${a.time_taken ? `<span class="an-stat-chip time">⏱${_fmtTime(a.time_taken)}</span>` : ''}
           </div>
           <button class="an-del-btn" data-idx="${idx}" title="Delete this attempt" aria-label="Delete attempt">🗑</button>
         </div>
@@ -434,6 +434,7 @@ const ANALYTICS = (() => {
           tx.oncomplete = res;
           tx.onerror    = () => rej(tx.error);
         });
+        await API.forgetAttempt?.(attempt);   // a server copy must not come back with the next sync
         _data.attempts.splice(idx, 1);
         APP.toast('Attempt deleted', 'info');
         _renderHistory();

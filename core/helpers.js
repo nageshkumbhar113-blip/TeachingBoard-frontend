@@ -1697,17 +1697,80 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // A server attempt in the shape this app stores and shows. They used to be
+  // saved as they came, so every one read 0 % / ✓0 ✗0 / ⏱0s, dated today.
+  function _attemptFromServer(a) {
+    const total   = Number(a.total_questions) || 0;
+    const correct = Number(a.correct_answers) || 0;
+    const marked  = Number(a.max_marks) > 0;
+    const score   = marked ? (Number(a.marks_obtained) || 0) : correct;
+    const max     = marked ? Number(a.max_marks) : total;
+    return {
+      attempt_id  : a.attempt_id,
+      quiz_id     : a.quiz_id,
+      quiz_title  : a.quiz_title,
+      subject     : a.subject,
+      chapter     : a.chapter,
+      batch       : a.batch,
+      student_name: a.student_name,
+      student_code: a.student_code,
+      score, max_score: max,
+      percent     : max > 0 ? Math.round((score / max) * 100) : 0,
+      correct,
+      wrong       : Number(a.wrong_answers) || 0,
+      skipped     : Number(a.skipped_answers) || 0,
+      time_taken  : Number(a.time_taken) || 0,   // the server does not keep it
+      date        : a.submitted_at || a.createdAt || new Date().toISOString(),
+      answers     : [],
+      synced      : true,
+      from_server : true,
+    };
+  }
+
+  const DELETED_ATTEMPTS_KEY = 'deleted_attempt_ids';
+
+  // The server's copy of a test taken on this phone: same server id (kept as
+  // backend_result.attempt_id when it was uploaded) or, for uploads from
+  // older app versions, same test + same result within a few minutes.
+  function _sameAttempt(local, server) {
+    if (local.backend_result?.attempt_id && local.backend_result.attempt_id === server.attempt_id) return true;
+    if (local.from_server || local.quiz_id !== server.quiz_id) return false;
+    const gap = Math.abs(Date.parse(local.date) - Date.parse(server.submitted_at));
+    return gap < 10 * 60 * 1000 && (Number(local.correct) || 0) === (Number(server.correct_answers) || 0);
+  }
+
   async function syncMyAttempts() {
     const remote = await fetchMyAttempts();
     if (!remote.length) return [];
-    // Save remote attempts that aren't in local DB yet
+    const deleted = new Set(await DB.getSetting(DELETED_ATTEMPTS_KEY, []).catch(() => []) || []);
     const local = await DB.getAllAttempts().catch(() => []);
-    const localIds = new Set(local.map(a => a.attempt_id).filter(Boolean));
-    const toSave = remote.filter(a => a.attempt_id && !localIds.has(a.attempt_id));
-    for (const a of toSave) {
-      await DB.saveAttempt(a).catch(() => {});
+    const own = local.filter(a => !a.from_server && a.correct_answers === undefined);
+
+    // Repair earlier raw copies: drop the ones that duplicate a test taken
+    // here (each such test showed twice, once at 0 %), convert the rest.
+    for (const a of local.filter(x => x.correct_answers !== undefined && !x.from_server)) {
+      await DB.deleteAttempt(a.attempt_id).catch(() => {});
+      if (!own.some(o => _sameAttempt(o, a)) && !deleted.has(a.attempt_id)) {
+        await DB.saveAttempt(_attemptFromServer(a)).catch(() => {});
+      }
+    }
+
+    const known = new Set((await DB.getAllAttempts().catch(() => [])).map(a => String(a.attempt_id)));
+    for (const a of remote) {
+      if (!a.attempt_id || known.has(String(a.attempt_id)) || deleted.has(a.attempt_id)) continue;
+      if (own.some(o => _sameAttempt(o, a))) continue;   // already here as the phone's own record
+      await DB.saveAttempt(_attemptFromServer(a)).catch(() => {});
     }
     return remote;
+  }
+
+  // Deleting a history row on the phone: a server attempt must not come back
+  // with the next sync.
+  async function forgetAttempt(attempt) {
+    const ids = [attempt?.from_server ? attempt.attempt_id : null, attempt?.backend_result?.attempt_id].filter(Boolean);
+    if (!ids.length) return;
+    const list = await DB.getSetting(DELETED_ATTEMPTS_KEY, []).catch(() => []) || [];
+    await DB.setSetting(DELETED_ATTEMPTS_KEY, [...new Set([...list, ...ids])].slice(-500)).catch(() => {});
   }
 
   // Shared by syncServerBatches (admin/teacher) and syncServerBatchesForStudent
@@ -2717,7 +2780,7 @@ const API = (() => {
     cacheQuizQuestions, cacheLessons,
     syncServerQuestions, syncStudentQuestions, fetchSyncState, syncServerLessons, syncServerBatches,
     syncServerBatchesForStudent,
-    fetchMyAttempts, syncMyAttempts,
+    fetchMyAttempts, syncMyAttempts, forgetAttempt,
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,
     addCatalogSubject, renameCatalogSubject, deleteCatalogSubject,
     addCatalogChapter, renameCatalogChapter, deleteCatalogChapter, reorderCatalogChapters,
