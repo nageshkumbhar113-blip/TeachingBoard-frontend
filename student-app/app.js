@@ -942,13 +942,7 @@ const APP = (() => {
         screen.classList.add('hidden');
         _isTeacherOrParentMode = false;
         _dashboardRole = null;
-        await _clearStudentForSwitch();
-        // Clear the other roles' sessions too
-        await API.clearTeacherProfile?.().catch(() => {});
-        await API.clearParentProfile?.().catch(() => {});
-        API.clearTeacherToken?.();
-        API.clearParentToken?.();
-        API.clearAdminToken?.();
+        await _clearAllSessionsForSwitch();
         resolve(false);
         _restartForNextStudent();
       }
@@ -983,6 +977,17 @@ const APP = (() => {
     const { pending } = await (window.SYNC?.flushOwnResults?.() ?? Promise.resolve({ pending: 0 })).catch(() => ({ pending: 0 }));
     if (!pending) return true;
     return UI.confirmAsync(`तुमचे ${pending} test result${pending > 1 ? 's' : ''} अजून upload झाले नाहीत (Internet नाही). ते याच phone वर तुम्ही पुन्हा login केल्यावर upload होतील. Account switch करायचं?`);
+  }
+
+  // Both "Switch account" buttons sign out every role, so a parent or teacher
+  // who switches from Profile really reaches the login screen.
+  async function _clearAllSessionsForSwitch() {
+    await _clearStudentForSwitch();
+    await API.clearTeacherProfile?.().catch(() => {});
+    await API.clearParentProfile?.().catch(() => {});
+    API.clearTeacherToken?.();
+    API.clearParentToken?.();
+    API.clearAdminToken?.();
   }
 
   // After a switch, start the app afresh instead of reusing this page: many
@@ -1820,10 +1825,32 @@ const APP = (() => {
   async function _openProfileSettings() {
     document.getElementById('profile-settings-overlay')?.remove();
 
-    const profile = await API.getStudentProfile().catch(() => null);
-    const name    = profile?.name || profile?.student_code || 'Student';
-    const code    = profile?.student_code || '';
-    const batches = (profile?.assigned_batches || []).join(', ') || 'None';
+    const role = _dashboardRole;   // 'teacher' | 'parent' | null (student)
+    let name, infoHtml;
+    if (role === 'parent') {
+      // The parent signs in with the child's code, so show the children, not a blank student.
+      const parent   = await API.getParentProfile?.().catch(() => null);
+      let cached     = window.PARENT_DASHBOARD?.children?.() || [];
+      if (!cached.length) cached = await DB.getGenericCache('parent_dashboard_cache', 'children').catch(() => null);
+      const children = Array.isArray(cached) && cached.length
+        ? cached.map(c => ({ name: c.name || '', code: c.student_code || '' }))
+        : (parent?.children || []).map(c => ({ name: '', code: typeof c === 'string' ? c : (c?.student_code || '') }));
+      name = (children.length === 1 && children[0].name) || parent?.name || 'Parent';
+      const list = children.map(c => c.name ? `${_escHtml(c.name)} (${_escHtml(c.code)})` : _escHtml(c.code)).join(', ');
+      infoHtml = `<p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">👨‍👩‍👧 Parent</p>
+        <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">${children.length > 1 ? 'मुले' : 'मूल'}: <b>${list || '—'}</b></p>`;
+    } else if (role === 'teacher') {
+      const t = await API.getTeacherProfile?.().catch(() => null);
+      name = t?.name || t?.teacher_code || 'Teacher';
+      infoHtml = `<p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">Teacher Code: <b>${_escHtml(t?.teacher_code || '')}</b></p>
+        <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">${_escHtml(t?.institute_name || '')}</p>`;
+    } else {
+      const profile = await API.getStudentProfile().catch(() => null);
+      name = profile?.name || profile?.student_code || 'Student';
+      const batches = (profile?.assigned_batches || []).join(', ') || 'None';
+      infoHtml = `<p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">Code: <b>${_escHtml(profile?.student_code || '')}</b></p>
+        <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">Classes: <b>${_escHtml(batches)}</b></p>`;
+    }
 
     // Profile info modal with Switch Account option
     const overlay = document.createElement('div');
@@ -1835,9 +1862,8 @@ const APP = (() => {
           ${_escHtml((name[0] || 'S').toUpperCase())}
         </div>
         <h2 style="margin:0 0 4px;font-size:1.1rem;color:var(--text1);text-align:center">${_escHtml(name)}</h2>
-        <p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">Code: <b>${_escHtml(code)}</b></p>
-        <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">Classes: <b>${_escHtml(batches)}</b></p>
-        <button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>
+        ${infoHtml}
+        ${role ? '' : `<button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>`}
         <button id="ps-board-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🖥️ Board Mode ${_activeUiMode() === 'board' ? 'बंद करा' : 'चालू करा'}</button>
         <button id="ps-switch-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">↔ Switch Account</button>
         <button id="ps-close-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent,#e74c3c);color:#fff;font-weight:600;cursor:pointer">Close</button>
@@ -1861,7 +1887,7 @@ const APP = (() => {
     overlay.querySelector('#ps-switch-btn')?.addEventListener('click', async () => {
       _close();
       if (!(await _confirmSwitchWithPendingResults())) return;
-      await _clearStudentForSwitch();
+      await _clearAllSessionsForSwitch();
       _restartForNextStudent();
     });
   }

@@ -363,7 +363,7 @@ const PARENT_DASHBOARD = (() => {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  return { init, loadDashboard };
+  return { init, loadDashboard, children: () => _children.slice() };
 })();
 
 window.PARENT_DASHBOARD = PARENT_DASHBOARD;
