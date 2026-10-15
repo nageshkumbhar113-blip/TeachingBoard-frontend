@@ -53,9 +53,25 @@ const IMAGE_CACHE = (() => {
   // shows the light copy.
   const _originalOf = url => String(url).replace(`/image/upload/${LIGHT_SEG}`, '/image/upload/');
 
-  // For screens building <img> / backgrounds: the light Cloudinary copy, so
-  // the full-size original is never downloaded at all.
-  const lightUrl = url => (_isRemote(url) ? _downloadUrl(String(url).trim()) : url);
+  // Pictures already on the phone (filled from the index at start-up, kept
+  // up to date by save/evict) — lightUrl() needs to know synchronously.
+  const _savedKeys = new Set();
+  // 1x1 transparent GIF carrying the original link after '#ic='. A screen
+  // given this never touches the network; the watcher below swaps in the
+  // phone's copy.
+  const PHONE_COPY = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==#ic=';
+  const _phoneCopyKey = src => (String(src).startsWith(PHONE_COPY) ? decodeURIComponent(String(src).slice(PHONE_COPY.length)) : null);
+
+  // For screens building <img> / backgrounds. Saved on the phone: a marker
+  // for the phone's copy (no request at all — not even to the browser cache,
+  // which the phone may have cleared). Otherwise the light Cloudinary copy,
+  // so the full-size original is never downloaded.
+  function lightUrl(url) {
+    if (!_isRemote(url)) return url;
+    const key = _originalOf(String(url).trim());
+    if (_savedKeys.has(key)) return PHONE_COPY + encodeURIComponent(key);
+    return _downloadUrl(key);
+  }
 
   // 'viewed' (default): keep only opened pictures. 'wifi' / 'all': also
   // download the stored content's pictures ahead of time (set on the server).
@@ -70,6 +86,7 @@ const IMAGE_CACHE = (() => {
   async function _loadIndex() {
     if (_index) return _index;
     _index = (await DB.getSetting(INDEX_KEY, {}).catch(() => ({}))) || {};
+    Object.keys(_index).forEach(k => _savedKeys.add(k));
     return _index;
   }
 
@@ -96,7 +113,7 @@ const IMAGE_CACHE = (() => {
     const idx = await _loadIndex();
     if (!idx[url]) return null;
     const local = await DB.getImage(url).catch(() => null);
-    if (!local) { delete idx[url]; _saveIndexSoon(); return null; }
+    if (!local) { delete idx[url]; _savedKeys.delete(url); _saveIndexSoon(); return null; }
     _objectUrls.set(url, local);
     _touch(url);
     return local;
@@ -111,6 +128,7 @@ const IMAGE_CACHE = (() => {
       if (total + bytes <= _maxBytes) break;
       await DB.deleteImage(url).catch(() => {});
       delete idx[url];
+      _savedKeys.delete(url);
       const obj = _objectUrls.get(url);
       if (obj) { URL.revokeObjectURL(obj); _objectUrls.delete(url); }
       total -= e.s || 0;
@@ -132,6 +150,7 @@ const IMAGE_CACHE = (() => {
       if (!(await _evictFor(blob.size))) return false;
       await DB.saveImageEncrypted(url, blob);   // encrypted at rest, like the notes
       idx[url] = { s: blob.size, t: Date.now() };
+      _savedKeys.add(url);
       _saveIndexSoon();
       return true;
     } catch {
@@ -213,7 +232,21 @@ const IMAGE_CACHE = (() => {
 
   async function _handleImg(img) {
     const src = img.getAttribute('src');
-    if (!_isRemote(src) || img.dataset.icSrc === src) return;
+    if (img.dataset.icSrc === src) return;
+    const phoneKey = _phoneCopyKey(src);
+    if (phoneKey) {
+      // Built with lightUrl() for a picture on the phone: show that copy.
+      img.dataset.icSrc = src;
+      img.dataset.icOrig = phoneKey;
+      const local = await urlFor(phoneKey);
+      if (img.getAttribute('src') !== src) return;
+      if (local) { img.dataset.icSrc = local; img.src = local; return; }
+      // The copy is gone (e.g. dropped when the store was full).
+      if (navigator.onLine) img.src = _downloadUrl(phoneKey);
+      else _showOfflineNote(img);
+      return;
+    }
+    if (!_isRemote(src)) return;
     img.dataset.icSrc = src;
     // The link the picture is saved under (the original, also for a light copy).
     const key = _originalOf(src);
@@ -248,12 +281,24 @@ const IMAGE_CACHE = (() => {
       img.src = light;
       return;
     }
-    // Opened online: keep it (straight from the browser's cache).
-    img.addEventListener('load', () => { save(key).catch(() => {}); }, { once: true });
+    // Opened online: keep it (straight from the browser's cache). The picture
+    // may have finished loading while we looked the phone up — a quick load
+    // fired before this listener and the picture was never kept.
+    if (img.complete && img.naturalWidth > 0) save(key).catch(() => {});
+    else img.addEventListener('load', () => { save(key).catch(() => {}); }, { once: true });
   }
 
   async function _handleBg(el) {
-    const m = (el.getAttribute('style') || '').match(/background-image:\s*url\(['"]?(https?:[^'")]+)['"]?\)/i);
+    const style = el.getAttribute('style') || '';
+    const pm = style.match(/url\(['"]?(data:image\/gif;base64,[^'")]*#ic=[^'")]+)['"]?\)/i);
+    if (pm && el.dataset.icBg !== pm[1]) {
+      el.dataset.icBg = pm[1];
+      const key = _phoneCopyKey(pm[1]);
+      const local = await urlFor(key);
+      el.style.backgroundImage = `url('${local || (navigator.onLine ? _downloadUrl(key) : '')}')`;
+      return;
+    }
+    const m = style.match(/background-image:\s*url\(['"]?(https?:[^'")]+)['"]?\)/i);
     if (!m || el.dataset.icBg === m[1] || el.dataset.icBgLight === m[1]) return;
     el.dataset.icBg = m[1];
     const key = _originalOf(m[1]);
@@ -276,6 +321,7 @@ const IMAGE_CACHE = (() => {
 
   function init() {
     if (typeof DB === 'undefined' || !document.body) return;
+    _loadIndex().catch(() => {});   // fills _savedKeys for lightUrl()
     _scan(document.body);
     new MutationObserver(records => {
       for (const r of records) {
