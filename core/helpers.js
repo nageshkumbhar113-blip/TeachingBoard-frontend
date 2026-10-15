@@ -1108,7 +1108,8 @@ const API = (() => {
   async function fetchChildAttempts(studentCode) {
     const token = await ensureParentSession();
     const code  = encodeURIComponent(String(studentCode || '').trim().toUpperCase());
-    const payload = await request(`/parent/children/${code}/attempts`, {
+    // 200 (the server's maximum): the default 50 made "Tests दिले" stop at 50.
+    const payload = await request(`/parent/children/${code}/attempts?limit=200`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return payload?.data || [];

@@ -197,18 +197,25 @@ const PARENT_DASHBOARD = (() => {
         return;
       }
 
-      body.innerHTML = _buildAnalytics(attempts);
+      body.innerHTML = _buildAnalytics(attempts, _children.find(c => c.student_code === studentCode));
     } catch (err) {
       body.innerHTML = `<p class="td-hint" style="color:var(--error)">${_esc(err.message || 'Failed to load')}</p>`;
     }
   }
 
-  function _buildAnalytics(attempts) {
-    // Overall stats
-    const totalTests  = attempts.length;
-    const totalQ      = attempts.reduce((s, a) => s + (a.total_questions || 0), 0);
-    const totalScore  = attempts.reduce((s, a) => s + (a.score || 0), 0);
-    const overallPct  = totalQ > 0 ? Math.round((totalScore / totalQ) * 100) : 0;
+  // Marks, as the student and the teacher see them (negative marking and
+  // multi-mark questions included); attempts from before marks were stored
+  // fall back to correct answers / questions.
+  const _got = a => (Number(a.max_marks) > 0 ? Number(a.marks_obtained) || 0 : Number(a.score) || 0);
+  const _max = a => (Number(a.max_marks) > 0 ? Number(a.max_marks) : Number(a.total_questions) || 0);
+
+  function _buildAnalytics(attempts, child) {
+    // Overall stats — the child card's figures cover every attempt (this list
+    // holds the latest 200), so the two screens always agree.
+    const totalTests  = child?.total_attempts ?? attempts.length;
+    const totalQ      = attempts.reduce((s, a) => s + _max(a), 0);
+    const totalScore  = Math.round(attempts.reduce((s, a) => s + _got(a), 0) * 100) / 100;
+    const overallPct  = child?.avg_score_pct ?? (totalQ > 0 ? Math.round((totalScore / totalQ) * 100) : 0);
     const overallCls  = overallPct >= 70 ? 'td-score-good' : overallPct >= 40 ? 'td-score-avg' : 'td-score-low';
 
     // Subject breakdown
@@ -216,8 +223,8 @@ const PARENT_DASHBOARD = (() => {
     attempts.forEach(a => {
       const key = a.subject || 'General';
       if (!subMap[key]) subMap[key] = { total: 0, correct: 0, count: 0 };
-      subMap[key].total   += a.total_questions || 0;
-      subMap[key].correct += a.score || 0;
+      subMap[key].total   += _max(a);
+      subMap[key].correct += _got(a);
       subMap[key].count   += 1;
     });
 
@@ -234,7 +241,7 @@ const PARENT_DASHBOARD = (() => {
 
     // Recent attempts (latest 10)
     const recentRows = attempts.slice(0, 10).map(a => {
-      const pct  = a.total_questions > 0 ? Math.round((a.score / a.total_questions) * 100) : 0;
+      const pct  = _max(a) > 0 ? Math.round((_got(a) / _max(a)) * 100) : 0;
       const cls  = pct >= 70 ? 'td-score-good' : pct >= 40 ? 'td-score-avg' : 'td-score-low';
       const date = new Date(a.submitted_at).toLocaleString('mr-IN', { dateStyle: 'short', timeStyle: 'short' });
       return `<div class="td-attempt-row">
@@ -242,7 +249,7 @@ const PARENT_DASHBOARD = (() => {
           <span class="td-attempt-title">${_esc(a.quiz_title || a.quiz_id)}</span>
           <span class="td-attempt-date">${_esc(date)}</span>
         </div>
-        <div class="td-attempt-score ${cls}">${a.score}/${a.total_questions} (${pct}%)</div>
+        <div class="td-attempt-score ${cls}">${_got(a)}/${_max(a)} (${pct}%)</div>
       </div>`;
     }).join('');
 
