@@ -250,8 +250,12 @@ const IMAGE_CACHE = (() => {
     img.dataset.icSrc = src;
     // The link the picture is saved under (the original, also for a light copy).
     const key = _originalOf(src);
-    img.addEventListener('error', () => {
+    img.addEventListener('error', async () => {
       if (img.getAttribute('src') !== src) return;
+      // Failed (e.g. offline) before the phone was checked: use its copy if any.
+      const copy = await urlFor(key);
+      if (img.getAttribute('src') !== src) return;
+      if (copy) { img.dataset.icOrig = key; img.dataset.icSrc = copy; img.src = copy; return; }
       // The lighter copy failed but we are online: fall back to the original once.
       if (src !== key && navigator.onLine && !img.dataset.icTriedOrig) {
         img.dataset.icTriedOrig = '1';
@@ -321,7 +325,12 @@ const IMAGE_CACHE = (() => {
 
   function init() {
     if (typeof DB === 'undefined' || !document.body) return;
-    _loadIndex().catch(() => {});   // fills _savedKeys for lightUrl()
+    // Fill _savedKeys for lightUrl(), and get the decryption key ready now
+    // (deriving it takes a moment on a slow phone) so the first saved
+    // picture on screen — e.g. a class cover offline — appears at once.
+    _loadIndex()
+      .then(idx => { if (Object.keys(idx).length && typeof CRYPTO !== 'undefined') return CRYPTO.encrypt(0); })
+      .catch(() => {});
     _scan(document.body);
     new MutationObserver(records => {
       for (const r of records) {
