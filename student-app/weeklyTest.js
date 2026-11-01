@@ -97,13 +97,89 @@ const WEEKLY = (() => {
       card.innerHTML = `${head}<div class="wk-ok">🎉 Result आला आहे!</div>
         <button type="button" class="gx-btn gx-shine wk-btn" data-act="result">🏆 Result आणि क्रमांक बघा</button>`;
     }
-    card.querySelector('[data-act="reg"]')?.addEventListener('click', async e => {
-      e.target.disabled = true;
-      try { await API.weeklyRegister(ev.event_id); ev.me.registered = true; _toast('✅ Registered! वेळेवर आठवण ठेवा', 'success'); _paintCard(card, ev); _ensurePaper(ev).catch(() => {}); }
-      catch (err) { e.target.disabled = false; _toast(err?.message || 'Register झालं नाही', 'error'); }
+    card.querySelector('[data-act="reg"]')?.addEventListener('click', async () => {
+      if (!(await _registerSheet(ev))) return;
+      ev.me.registered = true;
+      _paintCard(card, ev);
+      _ensurePaper(ev).catch(() => {});
     });
     card.querySelector('[data-act="start"]')?.addEventListener('click', () => start(ev));
     card.querySelector('[data-act="result"]')?.addEventListener('click', () => showResult(ev));
+  }
+
+  // ── Registration: name + parent's mobile (free visitors), confirm (students) ──
+  async function _registerSheet(ev) {
+    const guest = !!window.GUEST?.isActive?.();
+    const gs = guest ? await API.getGuestState().catch(() => ({})) : {};
+    const profile = guest ? null : await API.getStudentProfile?.().catch(() => null);
+    const needMobile = guest && !gs.has_parent_mobile;
+    const name0 = guest ? (gs.name || '') : (profile?.name || '');
+    return new Promise(resolve => {
+      const el = document.createElement('div');
+      el.className = 'gx-layer gx-dim';
+      el.setAttribute('role', 'dialog');
+      el.innerHTML = `
+        <div class="gx-card">
+          <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
+          <div class="gx-logo" aria-hidden="true">🏆</div>
+          <h2 class="gx-title">महा-Test <span class="gx-grad-text">Registration</span></h2>
+          <p class="gx-sub">${_esc(ev.subject)} · ${_esc(_when(ev.starts_at))} · ${ev.question_count} प्रश्न · Free</p>
+          <label class="gx-field"><span>विद्यार्थ्याचं नाव</span>
+            <input class="gx-input" id="wk-r-name" maxlength="30" autocomplete="name" value="${_esc(name0)}" ${guest ? '' : 'readonly'} placeholder="उदा. राहुल" /></label>
+          ${guest
+            ? (needMobile ? `<label class="gx-field"><span>पालकांचा WhatsApp नंबर</span>
+                 <input class="gx-input" id="wk-r-mob" type="tel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="98XXXXXXXX" /></label>
+                 <label class="gx-check"><input type="checkbox" id="wk-r-ok" /> <span>Test ची आठवण आणि result साठी NKs EduOrbit कडून संपर्कास पालकांची संमती आहे</span></label>` : '')
+            : `<label class="gx-field"><span>Mobile</span><input class="gx-input" value="${_esc(profile?.mobile || '—')}" readonly /></label>`}
+          <p class="gx-msg" id="wk-r-msg" role="alert"></p>
+          <button type="button" class="gx-btn gx-big gx-shine" id="wk-r-go">✍️ Register करा</button>
+          ${guest && !window.Capacitor?.isNativePlatform?.() ? `
+          <div class="wk-appbox">
+            <b>📱 महा-Test App मध्ये सोडवायचा आहे?</b>
+            <ol>
+              <li>खालील button ने <b>App download</b> करा</li>
+              <li>App मध्ये <b>🆕 Register</b> करून तुमचा <b>Student Code</b> तयार करा</li>
+              <li>त्या code ने login करा — Home वर 🏆 महा-Test दिसेल</li>
+            </ol>
+            <button type="button" class="gx-btn gx-cool" id="wk-r-app">📲 App download करा</button>
+          </div>` : ''}
+        </div>`;
+      document.body.appendChild(el);
+      const done = v => { el.remove(); resolve(v); };
+      el.querySelector('.gx-close').onclick = () => done(false);
+      el.querySelector('#wk-r-app')?.addEventListener('click', () => {
+        const site = /^https?:$/.test(location.protocol) && !/localhost$/.test(location.hostname) ? location.origin : 'https://teachingboard-frontend.vercel.app';
+        const q = new URLSearchParams(gs.gid ? { guest: gs.gid } : {});
+        if (gs.src === 'teacher' && gs.ref) q.set('teacher', gs.ref);
+        window.open(`${site}/get-app.html${q.toString() ? '?' + q : ''}`, '_blank', 'noopener');
+      });
+      const mob = el.querySelector('#wk-r-mob');
+      mob?.addEventListener('focus', async () => {
+        if (mob.value.trim() || mob.dataset.hinted) return;
+        mob.dataset.hinted = '1';
+        const phone = await window.GUEST?.phoneHint?.().catch?.(() => '');
+        if (phone && !mob.value.trim()) mob.value = phone;
+      });
+      el.querySelector('#wk-r-go').onclick = async e => {
+        const msg = el.querySelector('#wk-r-msg');
+        const name = el.querySelector('#wk-r-name').value.trim();
+        if (guest && name.length < 2) { msg.textContent = 'नाव लिहा'; return; }
+        if (needMobile && !el.querySelector('#wk-r-ok').checked) { msg.textContent = 'पालकांच्या संमतीवर ✓ करा'; return; }
+        e.target.disabled = true; msg.style.color = ''; msg.textContent = '⏳ …';
+        try {
+          if (guest && name !== gs.name) { await API.startGuestSession({ name }); await API.setGuestState({ name }); }
+          if (needMobile) await API.saveGuestContact(mob.value);
+          await API.weeklyRegister(ev.event_id);
+          await window.GUEST?.refresh?.();
+          _toast('✅ Registered! वेळेवर इथे "सुरू करा" येईल', 'success');
+          window.GUEST?.fireworks?.(.5);
+          done(true);
+        } catch (err) {
+          e.target.disabled = false;
+          msg.textContent = err?.message || 'Register झालं नाही';
+        }
+      };
+    });
   }
 
   // ── Player ──────────────────────────────────────────────────────

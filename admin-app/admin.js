@@ -2165,8 +2165,8 @@ const ADMIN = (() => {
       const r = (await API.adminWeekly('GET', `/events/${id}`))?.data;
       const rows = (r.entries || []).filter(x => x.submitted_at);
       box.innerHTML = `<h4 class="admin-section-title">🏆 ${_esc(r.event.subject)} · ${_esc(r.event.batch)} — ${rows.length} जणांनी दिला</h4>
-        <table class="wka-table"><thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead><tbody>
-        ${rows.map(x => `<tr><td>${x.rank ?? '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.score}/${x.total}</td><td>${Math.round(x.time_taken / 60)} मि</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`).join('')}
+        <table class="wka-table"><thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>Mobile</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead><tbody>
+        ${rows.map(x => `<tr><td>${x.rank ?? '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${x.score}/${x.total}</td><td>${Math.round(x.time_taken / 60)} मि</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`).join('')}
         </tbody></table>`;
       box.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { box.innerHTML = `<p class="import-hint">${_esc(err?.message || '')}</p>`; }
