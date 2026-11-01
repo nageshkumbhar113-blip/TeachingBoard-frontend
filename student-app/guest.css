@@ -237,3 +237,6 @@
   content: '👉 इथून सुरू करा'; position: absolute; top: -11px; right: 14px; padding: 2px 10px; border-radius: 999px;
   background: var(--gx-grad); color: #fff; font: 800 .78rem var(--gx-font); animation: gxBounce 1.6s ease-in-out infinite;
 }
+
+/* Exam countdown line in the guide */
+.gx-guide-exam { display: inline-block; margin: 0 0 10px; padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, .22); font-weight: 700; font-size: .92rem; }

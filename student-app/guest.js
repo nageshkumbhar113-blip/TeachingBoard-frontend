@@ -467,6 +467,7 @@ const GUEST = (() => {
           <li style="animation-delay:.2s">👨‍👩‍👧 पालकांना weekly progress report</li>
         </ul>
         ${perDay ? `<p class="gx-sub" style="margin:6px 0 0">दिवसाला फक्त <b class="gx-grad-text" style="font-size:1.4rem">₹${perDay}</b>${yearly ? ' (Yearly)' : ''}</p>` : ''}
+        <p class="gx-sub" id="gx-exam" style="margin:6px 0 0"></p>
         <div id="gx-offer-box"></div>
         <button type="button" class="gx-btn gx-big" id="gx-yes">हो, सगळे हवेत 🚀</button>
         <button type="button" class="gx-btn gx-wa" id="gx-ask">👨‍👩‍👧 पालकांना विचारा</button>
@@ -478,6 +479,7 @@ const GUEST = (() => {
     el.querySelector('#gx-yes').onclick = () => { close(); openPay(); };
     el.querySelector('#gx-ask').onclick = () => shareAskParents(info);
     if (offer) _renderOfferBox(el.querySelector('#gx-offer-box'), offer, { button: false });
+    _examLine().then(line => { const x = el.querySelector('#gx-exam'); if (x && line) x.innerHTML = line; });
     API.guestEvent('offer_seen');
   }
 
@@ -749,6 +751,16 @@ const GUEST = (() => {
     showOffer('done');
   }
 
+  // Real exam date from the admin → "📅 सहामाही: 23 दिवस बाकी" (nothing if none).
+  async function _examLine() {
+    try {
+      const e = await API.fetchNextExam(_state.batch || '');
+      if (!e) return '';
+      const days = Math.max(0, Math.ceil((new Date(e.date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 864e5));
+      return `📅 ${_esc(e.title)}: ${days ? `<b>${days} दिवस</b> बाकी` : '<b>आज!</b>'}`;
+    } catch { return ''; }
+  }
+
   async function renderHomeGuide() {
     const home = $('screen-home');
     if (!home) return;
@@ -770,6 +782,13 @@ const GUEST = (() => {
       </div>
       ${!_isNative() && Object.keys(done).length >= 2 ? '<button type="button" class="gx-link" id="gx-app" style="color:#fff">📱 App मध्ये पुढे चला — tests offline पण चालतात</button>' : ''}`;
     home.insertBefore(strip, home.firstElementChild);
+    _examLine().then(line => {
+      if (!line || !strip.isConnected) return;
+      const el = document.createElement('div');
+      el.className = 'gx-guide-exam';
+      el.innerHTML = line;
+      strip.querySelector('.gx-guide-next')?.after(el);
+    });
     strip.querySelector('#gx-next')?.addEventListener('click', () => { API.guestEvent('engaged'); goNext(); });
     strip.querySelector('#gx-all').addEventListener('click', () => showOffer('locked'));
     strip.querySelector('#gx-app')?.addEventListener('click', () => {

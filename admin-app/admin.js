@@ -236,7 +236,7 @@ const ADMIN = (() => {
         const content = $('atab-' + tab.dataset.tab);
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
         if (tab.dataset.tab === 'words')       _loadWordBank();
-        if (tab.dataset.tab === 'sync')        _loadGuestFunnel();
+        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); }
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
@@ -2005,6 +2005,44 @@ const ADMIN = (() => {
         `आणखी सराव केला तर गुण नक्की वाढतील.\nपूर्ण अभ्यासक्रम (सगळे tests + notes): ${pay}`;
     }
     return `${name}ने आत्तापर्यंत ${l.tests} free tests दिले 👏\nसगळ्या chapters साठी इथे पाहा: ${pay}\nकाही प्रश्न असल्यास याच नंबरवर विचारा.`;
+  }
+
+  async function _loadExamDates() {
+    const list = $('exam-dates-list');
+    if (!list) return;
+    try {
+      const exams = await API.fetchExamDates();
+      if (!exams.length) { list.innerHTML = '<p class="import-hint">अजून तारखा नाहीत.</p>'; return; }
+      list.innerHTML = '';
+      exams.forEach(e => {
+        const days = Math.ceil((new Date(e.date) - Date.now()) / 864e5);
+        const item = document.createElement('div');
+        item.className = 'batch-admin-item';
+        item.innerHTML = `
+          <div>
+            <div class="batch-admin-name">📅 ${_esc(e.title)}</div>
+            <div class="batch-admin-meta">${_esc(new Date(e.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }))} · ${_esc(e.batch || 'सगळे classes')} · ${days >= 0 ? days + ' दिवस बाकी' : 'झाली'}</div>
+          </div>
+          <div class="batch-admin-actions"><button class="admin-btn-secondary" type="button">🗑️ काढा</button></div>`;
+        item.querySelector('button').addEventListener('click', async () => {
+          try { await API.deleteExamDate(e._id); _loadExamDates(); } catch (err) { APP.toast(err?.message || 'काढता आलं नाही', 'error'); }
+        });
+        list.appendChild(item);
+      });
+    } catch (err) {
+      list.innerHTML = `<p class="import-hint">तारखा आणता आल्या नाहीत: ${_esc(err?.message || '')}</p>`;
+    }
+  }
+
+  async function _addExamDate() {
+    const title = $('ex-title')?.value.trim(), date = $('ex-date')?.value, batch = $('ex-batch')?.value.trim();
+    if (!title || !date) { APP.toast('नाव आणि तारीख दोन्ही लागतात', 'error'); return; }
+    try {
+      await API.addExamDate({ title, date, batch });
+      $('ex-title').value = ''; $('ex-date').value = ''; $('ex-batch').value = '';
+      APP.toast('तारीख जोडली', 'success');
+      _loadExamDates();
+    } catch (err) { APP.toast(err?.message || 'जोडता आलं नाही', 'error'); }
   }
 
   async function _loadGuestFunnel() {
@@ -3806,6 +3844,7 @@ const ADMIN = (() => {
     // Sync
     _renderFreeLink();
     $('btn-gl-refresh')?.addEventListener('click', _loadGuestFunnel);
+    $('btn-ex-add')?.addEventListener('click', _addExamDate);
     $('gl-days')?.addEventListener('change', _loadGuestFunnel);
     $('gl-status')?.addEventListener('change', _loadGuestFunnel);
     _renderQuickLinks();

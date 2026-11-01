@@ -2108,6 +2108,25 @@ const API = (() => {
     return Array.isArray(payload?.data) ? payload.data : [];
   }
 
+  // Real exam dates (admin) → the free part's countdown.
+  async function fetchNextExam(batch = '') {
+    const payload = await request(`/guest/exams?batch=${encodeURIComponent(batch)}`);
+    return payload?.data || null;
+  }
+  async function fetchExamDates() {
+    const token = await ensureAdminSession();
+    const payload = await request('/guest/admin/exams', { headers: { Authorization: `Bearer ${token}` } });
+    return Array.isArray(payload?.data) ? payload.data : [];
+  }
+  async function addExamDate(exam) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/exams', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(exam) });
+  }
+  async function deleteExamDate(id) {
+    const token = await ensureAdminSession();
+    return request(`/guest/admin/exams/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  }
+
   async function fetchGuestFunnel(days = 30) {
     const token = await ensureAdminSession();
     return request(`/guest/admin/funnel?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -2858,7 +2877,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel,
+    fetchGuestLeads, fetchGuestFunnel, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
