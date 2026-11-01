@@ -2012,6 +2012,12 @@ const ADMIN = (() => {
   let _wkEditing = null;
   let _wkSchedules = [];
 
+  function _wkEnd(s) {
+    const [h, m] = String(s.start_time || '18:00').split(':').map(Number);
+    const t = h * 60 + m + (Number(s.window_minutes) || 0);
+    return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+  }
+
   function _wkTypes() { return [...document.querySelectorAll('.wk-type')].filter(c => c.checked).map(c => c.value); }
 
   async function _loadWeeklySubjects(preselect) {
@@ -2035,7 +2041,8 @@ const ADMIN = (() => {
     $('wk-day').value = String(s?.day_of_week ?? 0);
     $('wk-time').value = s?.start_time || '18:00';
     $('wk-dur').value = s?.duration_minutes || 30;
-    $('wk-win').value = s?.window_minutes || 120;
+    $('wk-win').value = s?.window_minutes || 30;
+    $('wk-result').value = s?.result_time || '20:00';
     $('wk-count').value = s?.question_count || 30;
     $('wk-source').value = s?.question_source || 'both';
     $('wk-open').value = s?.open_to || 'all';
@@ -2048,7 +2055,7 @@ const ADMIN = (() => {
   async function _saveWeekly() {
     const body = {
       batch: $('wk-batch').value, title: $('wk-title').value.trim() || 'महा-Test',
-      day_of_week: Number($('wk-day').value), start_time: $('wk-time').value || '18:00',
+      day_of_week: Number($('wk-day').value), start_time: $('wk-time').value || '18:00', result_time: $('wk-result').value || '',
       duration_minutes: Number($('wk-dur').value), window_minutes: Number($('wk-win').value),
       question_count: Number($('wk-count').value), question_source: $('wk-source').value, open_to: $('wk-open').value,
       question_types: _wkTypes(), subjects: [...document.querySelectorAll('.wk-subj')].filter(c => c.checked).map(c => c.value), enabled: true,
@@ -2056,7 +2063,9 @@ const ADMIN = (() => {
     if (!body.batch) { APP.toast('Class निवडा', 'error'); return; }
     if (!body.question_types.length) { APP.toast('किमान एक प्रश्न प्रकार निवडा', 'error'); return; }
     if (!body.subjects.length) { APP.toast('किमान एक विषय निवडा (ज्यात प्रश्न आहेत)', 'error'); return; }
-    if (body.window_minutes < body.duration_minutes) { APP.toast('खिडकी test च्या वेळेपेक्षा मोठी हवी', 'error'); return; }
+    if (body.window_minutes < body.duration_minutes) { APP.toast('खिडकी test च्या वेळेइतकी किंवा जास्त हवी', 'error'); return; }
+    const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+    if (body.result_time && toMin(body.result_time) < toMin(body.start_time) + body.window_minutes) { APP.toast('Result ची वेळ test संपल्यानंतरची हवी', 'error'); return; }
     try {
       if (_wkEditing) await API.adminWeekly('PUT', `/schedules/${_wkEditing}`, body);
       else await API.adminWeekly('POST', '/schedules', body);
@@ -2086,7 +2095,7 @@ const ADMIN = (() => {
         item.innerHTML = `
           <div>
             <div class="batch-admin-name">${s.enabled ? '🟢' : '⏸️'} ${_esc(s.title)} · ${_esc(s.batch)}</div>
-            <div class="batch-admin-meta">दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} · ${s.duration_minutes} मि test · खिडकी ${s.window_minutes} मि · ${s.question_count} प्रश्न · ${_esc((s.question_types || []).join(', '))} · ${s.open_to === 'paid' ? 'फक्त paid' : 'सगळे'}</div>
+            <div class="batch-admin-meta">दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} ते ${_esc(_wkEnd(s))} · Result ${_esc(s.result_time || _wkEnd(s))} · ${s.duration_minutes} मि test · ${s.question_count} प्रश्न · ${_esc((s.question_types || []).join(', '))} · ${s.open_to === 'paid' ? 'फक्त paid' : 'सगळे'}</div>
             <div class="batch-admin-meta">${next}</div>
           </div>
           <div class="batch-admin-actions">

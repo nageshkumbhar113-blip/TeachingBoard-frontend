@@ -286,3 +286,6 @@
 .wk-rv.bad { border-left: 4px solid #e11d48; }
 .wk-rv.skip { border-left: 4px solid #cbd5e1; }
 .wk-rv small { display: block; color: var(--gx-muted); margin-top: 4px; }
+.wk-board { max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+.wk-board li.podium { background: linear-gradient(90deg, #fff7d6, #fff) !important; }
+.wk-board li.wk-gap { display: block; text-align: center; color: var(--gx-muted); padding: 2px; }

@@ -59,7 +59,7 @@ const WEEKLY = (() => {
     // the most relevant one: live > upcoming > a closed one with my result
     const pick = _events.find(e => e.state === 'live')
       || _events.filter(e => e.state === 'upcoming').sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0]
-      || _events.filter(e => e.state === 'closed' && e.me.submitted).sort((a, b) => new Date(b.ends_at) - new Date(a.ends_at))[0];
+      || _events.filter(e => e.state === 'closed' && (e.me.submitted || e.results)).sort((a, b) => new Date(b.ends_at) - new Date(a.ends_at))[0];
     if (!pick) return;
     const card = document.createElement('div');
     card.className = 'wk-card';
@@ -67,7 +67,8 @@ const WEEKLY = (() => {
     _paintCard(card, pick);
     _tick = setInterval(() => {
       if (!card.isConnected) return clearInterval(_tick);
-      const ms = new Date(pick.state === 'upcoming' ? pick.starts_at : pick.ends_at) - Date.now();
+      const target = pick.state === 'upcoming' ? pick.starts_at : pick.state === 'live' ? pick.ends_at : pick.reveal_at;
+      const ms = new Date(target) - Date.now();
       const t = card.querySelector('.wk-count');
       if (t) t.textContent = _left(ms);
       if (ms <= 0) { clearInterval(_tick); renderHomeCard(); }
@@ -87,9 +88,11 @@ const WEEKLY = (() => {
         ${ev.me.registered ? '<div class="wk-ok">✅ तुम्ही registered आहात — वेळ झाली की इथे "सुरू करा" येईल</div>' : '<button type="button" class="gx-btn gx-shine wk-btn" data-act="reg">✍️ Register करा (Free)</button>'}`;
     } else if (ev.state === 'live') {
       card.innerHTML = ev.me.submitted
-        ? `${head}<div class="wk-ok">✅ जमा झालं! तुमचे गुण ${ev.me.score}/${ev.me.total}. Rank आणि उत्तरं <b class="wk-count">${_left(new Date(ev.ends_at) - Date.now())}</b> नंतर</div>`
+        ? `${head}<div class="wk-ok">✅ जमा झालं! तुमचे गुण ${ev.me.score}/${ev.me.total}. 🏆 Rank list ${_esc(_when(ev.reveal_at))} ला</div>`
         : `${head}<div class="wk-live">🔴 LIVE · संपायला <b class="wk-count">${_left(new Date(ev.ends_at) - Date.now())}</b></div>
            <button type="button" class="gx-btn gx-big gx-shine wk-btn" data-act="start">▶ आत्ता सुरू करा</button>`;
+    } else if (!ev.results) {
+      card.innerHTML = `${head}<div class="wk-ok">${ev.me.submitted ? `✅ तुमचे गुण ${ev.me.score}/${ev.me.total}. ` : ''}🏆 Rank list ${_esc(_when(ev.reveal_at))} ला · <b class="wk-count">${_left(new Date(ev.reveal_at) - Date.now())}</b></div>`;
     } else {
       card.innerHTML = `${head}<div class="wk-ok">🎉 Result आला आहे!</div>
         <button type="button" class="gx-btn gx-shine wk-btn" data-act="result">🏆 Result आणि क्रमांक बघा</button>`;
@@ -213,7 +216,7 @@ const WEEKLY = (() => {
         <div class="gx-logo">✅</div>
         <h2 class="gx-title">Test जमा झालं!</h2>
         ${res ? `<p class="gx-sub">तुमचे गुण: <b class="gx-grad-text" style="font-size:1.6rem">${res.score} / ${res.total}</b></p>` : '<p class="gx-sub">Internet आल्यावर आपोआप जमा होईल.</p>'}
-        <p class="gx-sub">🏆 Rank list आणि बरोबर उत्तरं <b>${_esc(_when(ev.ends_at))}</b> ला</p>
+        <p class="gx-sub">🏆 Rank list आणि बरोबर उत्तरं <b>${_esc(_when(ev.reveal_at || ev.ends_at))}</b> ला</p>
         <button type="button" class="gx-btn gx-big" id="wk-done">🏠 Home</button>
       </div>`;
     window.GUEST?.fireworks?.(.8);
@@ -248,9 +251,13 @@ const WEEKLY = (() => {
           <div class="gx-sub">${d.participants} students पैकी तुमचा क्रमांक</div>
           <div class="gx-stats"><div class="gx-stat">🎯 ${me.score}/${me.total}<small>गुण</small></div><div class="gx-stat">✅ ${me.correct}<small>बरोबर</small></div><div class="gx-stat">⏱ ${me.time_taken < 60 ? me.time_taken + ' से' : Math.round(me.time_taken / 60) + ' मि'}<small>वेळ</small></div></div>`
           : '<p class="gx-sub">तुम्ही हा test दिला नाही. पुढच्या आठवड्यात नक्की द्या!</p>'}
-        <h3 class="wk-h">🏅 Top 10</h3>
-        <ol class="wk-top10">${d.top.map(t => `<li class="${t.me ? 'me' : ''}"><span>${medal(t.rank)}</span><span>${_esc(t.name)}${t.me ? ' (तुम्ही)' : ''}</span><b>${t.score}/${t.total}</b></li>`).join('')}</ol>
-        <button type="button" class="gx-btn gx-wa" id="wk-share">📤 Result share करा</button>
+        <h3 class="wk-h">🏆 Rank Board · ${d.participants} students</h3>
+        <ol class="wk-top10 wk-board">${d.top.map(t => `<li class="${t.me ? 'me' : ''}${t.rank <= 3 ? ' podium' : ''}"><span>${medal(t.rank)}</span><span>${_esc(t.name)}${t.me ? ' (तुम्ही)' : ''}</span><b>${t.score}/${t.total}</b></li>`).join('')}
+          ${me?.rank && !d.top.some(t => t.me) ? `<li class="wk-gap">⋯</li><li class="me"><span>#${me.rank}</span><span>तुम्ही</span><b>${me.score}/${me.total}</b></li>` : ''}</ol>
+        <div class="gx-row">
+          <button type="button" class="gx-btn gx-wa" id="wk-share">📤 Share करा</button>
+          ${me ? '<button type="button" class="gx-btn gx-cool" id="wk-photo">📸 Status photo</button>' : ''}
+        </div>
         <details class="wk-review"><summary>📖 बरोबर उत्तरं बघा</summary>
           ${d.review.map((q, i) => {
             const ok = q.given && (q.given === q.answer || String((q.options || {})[q.given] ?? q.given).trim().toLowerCase() === String((q.options || {})[q.answer] ?? q.answer).trim().toLowerCase());
@@ -263,6 +270,7 @@ const WEEKLY = (() => {
     document.body.appendChild(el);
     if (me?.rank && me.rank <= 10) window.GUEST?.fireworks?.(me.rank <= 3 ? 1.6 : 1); else window.GUEST?.fireworks?.(.6);
     el.querySelector('.gx-close').onclick = () => el.remove();
+    el.querySelector('#wk-photo')?.addEventListener('click', () => _sharePhoto(d).catch(() => _toast('Photo तयार करता आला नाही', 'error')));
     el.querySelector('#wk-share').onclick = () => {
       const text = me
         ? `🏆 NKs EduOrbit महा-Test (${d.subject}) मध्ये ${d.participants} students पैकी माझा क्रमांक *${me.rank ? '#' + me.rank : '-'}* — गुण ${me.score}/${me.total}!\nपुढच्या आठवड्यात तू पण ये 👉 https://teachingboard-frontend.vercel.app/student-app/?free=1`
@@ -272,7 +280,60 @@ const WEEKLY = (() => {
     };
   }
 
-  return { renderHomeCard, start, showResult };
+  // महा-Test result as a picture (1080×1350) for WhatsApp Status.
+  async function _photoCanvas(d) {
+    const me = d.me || {};
+    const name = (await API.getStudentProfile?.().catch(() => null))?.name || (await API.getGuestState?.().catch(() => ({})))?.name || '';
+    const W = 1080, H = 1350;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const bg = g.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#1b1340'); bg.addColorStop(.55, '#3b1d86'); bg.addColorStop(1, '#7b2ff7');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    const cols = ['#ffc83d', '#ff7a18', '#ff3d77', '#38bdf8', '#ffffff'];
+    for (let i = 0; i < 80; i++) { g.save(); g.globalAlpha = .5; g.fillStyle = cols[i % cols.length]; g.translate((i * 157) % W, (i * 263) % H); g.rotate(i); g.fillRect(-9, -4, 18, 8); g.restore(); }
+    const font = (w, px) => `${w} ${px}px "Baloo 2", "Noto Sans Devanagari", sans-serif`;
+    g.textAlign = 'center';
+    // gold ribbon title
+    g.fillStyle = '#ffc83d'; g.beginPath(); if (g.roundRect) g.roundRect(240, 70, 600, 96, 48); else g.rect(240, 70, 600, 96); g.fill();
+    g.fillStyle = '#3b1d00'; g.font = font(800, 58); g.fillText('🏆 महा-Test', W / 2, 138);
+    g.fillStyle = '#fff'; g.font = font(700, 46); g.fillText(`${name ? name + ' · ' : ''}${d.subject}`.slice(0, 40), W / 2, 240);
+    // medal / rank
+    const rank = me.rank || 0;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+    g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.arc(W / 2, 520, 220, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#ffc83d'; g.lineWidth = 14; g.beginPath(); g.arc(W / 2, 520, 220, 0, Math.PI * 2); g.stroke();
+    if (medal) { g.fillStyle = '#ffffff'; g.font = font(800, 230); g.fillText(medal, W / 2, 600); }
+    else { g.fillStyle = '#ffc83d'; g.font = font(800, 190); g.fillText(`#${rank || '—'}`, W / 2, 585); }
+    g.fillStyle = '#fff'; g.font = font(800, 60);
+    g.fillText(`${d.participants} students मध्ये #${rank || '—'}`, W / 2, 830);
+    g.font = font(700, 50); g.fillStyle = '#ffd27a';
+    g.fillText(`गुण ${me.score}/${me.total}`, W / 2, 905);
+    g.fillStyle = '#ff9ec0'; g.font = font(800, 56);
+    g.fillText('पुढच्या आठवड्यात मला हरवून दाखव! 😎', W / 2, 1030);
+    g.fillStyle = '#fff'; g.font = font(800, 50);
+    g.fillText('दर आठवड्याला Free महा-Test', W / 2, 1180);
+    g.font = font(700, 40); g.fillText('teachingboard-frontend.vercel.app', W / 2, 1255);
+    return cv;
+  }
+
+  async function _sharePhoto(d) {
+    await document.fonts?.ready;
+    const cv = await _photoCanvas(d);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    if (!blob) throw new Error('no image');
+    const text = `🏆 महा-Test (${d.subject}) मध्ये ${d.participants} students पैकी माझा क्रमांक #${d.me?.rank || '-'}! 👉 https://teachingboard-frontend.vercel.app/student-app/?free=1`;
+    if (!window.Capacitor?.isNativePlatform?.()) {
+      const file = new File([blob], 'maha-test.png', { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file], text }); return; } catch (e) { if (e?.name === 'AbortError') return; }
+      }
+    }
+    await window.FILE_EXPORT?.saveAndShare(blob, 'maha-test.png');
+    if (!window.Capacitor?.isNativePlatform?.()) _toast('📸 Photo save झाला — WhatsApp Status ला टाका', 'success');
+  }
+
+  return { renderHomeCard, start, showResult, __photoCanvas: _photoCanvas };
 })();
 
 window.WEEKLY = WEEKLY;
