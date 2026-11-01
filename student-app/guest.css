@@ -181,6 +181,7 @@
 .gx-offer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .18) 50%, transparent 70%); background-size: 200% 100%; animation: gxShine 2.8s linear infinite; pointer-events: none; }
 .gx-offer-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--gx-gold); color: #3b1d00; font-size: .8rem; font-weight: 800; }
 .gx-offer-head { font-size: 1.25rem; font-weight: 800; margin: 6px 0 2px; }
+.gx-offer-fine { margin-top: 4px; font-size: .78rem; font-weight: 600; opacity: .85; }
 .gx-offer-price { font-size: 1.05rem; }
 .gx-offer-price s { opacity: .65; margin-right: 6px; }
 .gx-offer-price b { font-size: 1.6rem; color: var(--gx-gold); }

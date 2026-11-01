@@ -452,6 +452,7 @@ const GUEST = (() => {
         ${monthly ? `<div class="gx-offer-price">Monthly: <s>₹${monthly}</s><b>₹${cut(monthly)}</b></div>` : ''}
         ${yearly ? `<div class="gx-offer-price">Yearly: <s>₹${yearly}</s><b>₹${cut(yearly)}</b></div>` : ''}
         <div>⏳ फक्त <span class="gx-timer" id="gx-timer"></span> बाकी</div>
+        <div class="gx-offer-fine">फक्त पहिल्या payment वर. नंतरचे payments पूर्ण किमतीत${monthly ? ` (Monthly ₹${monthly}` : ''}${monthly && yearly ? ',' : ''}${yearly ? `${monthly ? '' : ' ('} Yearly ₹${yearly}` : ''}${monthly || yearly ? ')' : ''}.</div>
         ${button ? '<button type="button" class="gx-btn gx-shine" id="gx-unlock">🔓 सगळे tests उघडा</button>' : ''}
       </div>`;
     _timer(host.querySelector('#gx-timer'), offer.expires_at, () => { host.innerHTML = ''; });

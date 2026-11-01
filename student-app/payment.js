@@ -285,6 +285,13 @@ const PAYMENT = (() => {
         if (!priceEl || !host.isConnected) return;
         priceEl.innerHTML = `<s class="admit-plan-price-orig">₹${_esc(preview.original_price)}</s> ₹${_esc(preview.discounted_price)}
           <span class="admit-plan-discount-badge">🎓 ${preview.discount_percent}% OFF</span>`;
+        // Who gets it, how it was checked, and the price afterwards (Play policy on eligibility discounts).
+        if (!host.querySelector('.admit-plan-discount-note')) {
+          const note = document.createElement('p');
+          note.className = 'admit-plan-discount-note';
+          note.textContent = `🎓 ही सवलत YouTube teacher चा channel subscribe केल्याबद्दल आहे — तुमच्या teacher ने subscribe तपासून मंजूर केलं आहे.${preview.discount_first_payment_only ? ' फक्त पहिल्या payment वर; नंतरचे payments पूर्ण किमतीत.' : ''} Teacher चं partner खातं बंद झालं तर सवलत संपते.`;
+          host.querySelector('#pay-msg')?.before(note);
+        }
       } catch { /* keep full price shown */ }
     }));
   }

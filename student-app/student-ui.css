@@ -1315,6 +1315,7 @@ body.student-app.mode-board.theme-board-light::before {
 
 /* YouTube-subscriber discount block (self-claim + teacher approval) */
 .admit-plan-price-orig { opacity: 0.55; font-weight: 500; margin-right: 4px; }
+.admit-plan-discount-note { margin: 8px 2px 0; font-size: .8rem; line-height: 1.35; opacity: .85; }
 .admit-plan-discount-badge {
   display: inline-block; margin-left: 6px; font-family: 'JetBrains Mono', monospace;
   font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
