@@ -432,13 +432,14 @@ const GUEST = (() => {
   async function _renderOfferBox(host, offer, { button = true } = {}) {
     if (!host || !offer?.active) return;
     const info = await _prices();
-    const monthly = info?.prices?.monthly || 0;
-    const half = Math.round(monthly * (1 - (offer.percent || 50) / 100));
+    const monthly = info?.prices?.monthly || 0, yearly = info?.prices?.yearly || 0;
+    const cut = v => Math.round(v * (1 - (offer.percent || 50) / 100));
     host.innerHTML = `
       <div class="gx-offer">
         <span class="gx-offer-tag">🎁 Test पूर्ण केल्याबद्दल</span>
-        <div class="gx-offer-head">पहिल्या महिन्यावर ${offer.percent}% सवलत!</div>
-        ${monthly ? `<div class="gx-offer-price"><s>₹${monthly}</s><b>₹${half}</b> पहिला महिना</div>` : ''}
+        <div class="gx-offer-head">पहिल्या payment वर ${offer.percent}% सवलत!</div>
+        ${monthly ? `<div class="gx-offer-price">Monthly: <s>₹${monthly}</s><b>₹${cut(monthly)}</b></div>` : ''}
+        ${yearly ? `<div class="gx-offer-price">Yearly: <s>₹${yearly}</s><b>₹${cut(yearly)}</b></div>` : ''}
         <div>⏳ फक्त <span class="gx-timer" id="gx-timer"></span> बाकी</div>
         ${button ? '<button type="button" class="gx-btn gx-shine" id="gx-unlock">🔓 सगळे tests उघडा</button>' : ''}
       </div>`;

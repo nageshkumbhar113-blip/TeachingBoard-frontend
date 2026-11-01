@@ -263,3 +263,6 @@ Regression after every step: full Playwright suite (123) + backend tests.
 - Render load: guest gets only the chosen batch's free content, cached in the browser.
 - Abuse: guest session limit per IP; guests can only submit attempts / contact.
 - DPDP: only first name from the child; parent number with consent; delete leads on request.
+
+
+**Change 2026-11-01 (owner):** the 50 % test-completion offer applies to the FIRST PAYMENT, monthly or yearly (was: first month only). Renewals are full price.

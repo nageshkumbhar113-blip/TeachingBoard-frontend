@@ -118,7 +118,7 @@
     <div class="card">
       <div id="offer" class="offer hidden">
         <span class="tag">🎁 Test पूर्ण केल्याबद्दल</span>
-        <div class="offer-head" id="offer-head">पहिल्या महिन्यावर 50% सवलत!</div>
+        <div class="offer-head" id="offer-head">पहिल्या payment वर 50% सवलत!</div>
         <div>⏳ फक्त <span class="timer" id="timer"></span> बाकी</div>
       </div>
       <div class="plans">
@@ -210,9 +210,10 @@
     var off = info.offer && info.offer.active ? info.offer.percent : 0;
     $('m-price').innerHTML = off && mp ? '<s>' + rupee(mp) + '</s>' + rupee(Math.round(mp * (1 - off / 100))) : (mp ? rupee(mp) : '—');
     $('m-note').textContent = off ? 'पहिला महिना ' + off + '% सवलत, नंतर ' + rupee(mp) + '/महिना' : 'दर महिना';
-    $('y-price').textContent = yp ? rupee(yp) : '—';
-    var save = mp && yp ? mp * 12 - yp : 0;
-    $('y-note').textContent = yp ? 'दिवसाला फक्त ' + rupee(Math.max(1, Math.round(yp / 365))) : 'पूर्ण वर्ष';
+    var yNow = off && yp ? Math.round(yp * (1 - off / 100)) : yp;
+    $('y-price').innerHTML = off && yp ? '<s>' + rupee(yp) + '</s>' + rupee(yNow) : (yp ? rupee(yp) : '—');
+    var save = mp && yp ? mp * 12 - yNow : 0;
+    $('y-note').textContent = yp ? (off ? 'पहिलं वर्ष ' + off + '% सवलत · दिवसाला ' : 'दिवसाला फक्त ') + rupee(Math.max(1, Math.round(yNow / 365))) : 'पूर्ण वर्ष';
     if (save > 0) { $('y-badge').textContent = rupee(save) + ' वाचवा'; $('y-badge').classList.remove('hidden'); }
     $('p-monthly').classList.toggle('hidden', !mp);
     $('p-yearly').classList.toggle('hidden', !yp);
@@ -242,7 +243,7 @@
       var k = 0, ring = $('c-ring');
       var t = setInterval(function () { k = Math.min(pct, k + Math.max(1, Math.round(pct / 25))); ring.style.setProperty('--p', k); $('c-pct').textContent = k + '%'; if (k >= pct) clearInterval(t); }, 30);
       if (info.offer && info.offer.active) {
-        $('offer-head').textContent = 'पहिल्या महिन्यावर ' + info.offer.percent + '% सवलत!';
+        $('offer-head').textContent = 'पहिल्या payment वर ' + info.offer.percent + '% सवलत!';
         $('offer').classList.remove('hidden');
         timer($('timer'), info.offer.expires_at, function () { info.offer.active = false; $('offer').classList.add('hidden'); renderPrices(); });
       }
