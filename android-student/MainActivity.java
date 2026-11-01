@@ -35,6 +35,8 @@ public class MainActivity extends BridgeActivity {
 
     // Reads the Play Store install referrer (teacher / friend code from a share link)
     registerPlugin(InstallReferrerPlugin.class);
+    // Phone Number Hint: the phone's own number in one tap (parent mobile, registration)
+    registerPlugin(PhoneHintPlugin.class);
 
     super.onCreate(savedInstanceState);
     // chrome://inspect remote debugging only in debug builds. On a release

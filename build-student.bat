@@ -46,6 +46,7 @@ copy /Y icons-student\strings.xml android\app\src\main\res\values\strings.xml >n
 if not exist android\app\src\main\java\com\nkseduorbit\student\ mkdir android\app\src\main\java\com\nkseduorbit\student\ >nul 2>&1
 copy /Y android-student\MainActivity.java android\app\src\main\java\com\nkseduorbit\student\MainActivity.java >nul 2>&1
 copy /Y android-student\InstallReferrerPlugin.java android\app\src\main\java\com\nkseduorbit\student\InstallReferrerPlugin.java >nul 2>&1
+copy /Y android-student\PhoneHintPlugin.java android\app\src\main\java\com\nkseduorbit\student\PhoneHintPlugin.java >nul 2>&1
 :: Play Install Referrer dependency (build.gradle is gitignored, so it is ensured here)
 node tools/ensure-install-referrer.mjs
 if errorlevel 1 ( echo ERROR: install referrer dependency patch failed & pause & exit /b 1 )

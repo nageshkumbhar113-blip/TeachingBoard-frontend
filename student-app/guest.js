@@ -660,6 +660,26 @@ const GUEST = (() => {
     if (!_isNative()) _toast('📸 Photo save झाला — WhatsApp Status ला टाका', 'success');
   }
 
+  // ── Phone Number Hint (app only): the SIM's number in one tap ───────
+  function _phonePlugin() {
+    if (!_isNative()) return null;
+    return window.Capacitor?.Plugins?.PhoneHint || window.Capacitor?.registerPlugin?.('PhoneHint') || null;
+  }
+  async function phoneHint() {
+    const plugin = _phonePlugin();
+    if (!plugin?.pick) return '';
+    try { return String((await plugin.pick())?.phone || ''); } catch { return ''; }
+  }
+  // Offer it once when an empty mobile box gets focus (guest contact, registration).
+  async function _tryHint(input) {
+    if (!input || input.value.trim() || input.dataset.gxHinted || !_phonePlugin()) return;
+    input.dataset.gxHinted = '1';
+    const phone = await phoneHint();
+    if (phone && !input.value.trim()) { input.value = phone; input.dispatchEvent(new Event('input', { bubbles: true })); }
+  }
+  function _hintOnFocus(input) { input?.addEventListener('focus', () => _tryHint(input)); }
+  document.addEventListener('focusin', e => { if (e.target?.id === 'reg-mobile') _tryHint(e.target); }, true);
+
   // ── Parent mobile (unlocks the detailed analysis) ──────────────────
   function contactGate() {
     return new Promise(resolve => {
@@ -679,6 +699,7 @@ const GUEST = (() => {
           <button type="button" class="gx-link" id="gx-later">नंतर</button>
         </div>`);
       const mob = el.querySelector('#gx-mob'), msg = el.querySelector('#gx-msg');
+      _hintOnFocus(mob);
       const done = v => { _close(el); resolve(v); };
       el.querySelector('.gx-close').onclick = () => done(false);
       el.querySelector('#gx-later').onclick = () => done(false);
@@ -796,7 +817,7 @@ const GUEST = (() => {
     refresh, isActive, wantsEntry, entryParams, start, resume, ensureName, onResult,
     showOffer, openPay, goNext, renderHomeGuide, onSignupRequired, contactGate, fireworks,
     __resultCanvas: _resultCanvas,
-    decorateHub,
+    decorateHub, phoneHint,
   };
 })();
 
