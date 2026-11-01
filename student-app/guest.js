@@ -124,6 +124,7 @@ const GUEST = (() => {
       fp: parseInt(q.get('fp'), 10) || 0,
       ref: (q.get('ref') || '').slice(0, 40),
       teacher: (q.get('teacher') || '').slice(0, 40),
+      shop: (q.get('shop') || '').slice(0, 40),
     };
   }
   function wantsEntry() { return entryParams().free; }
@@ -146,8 +147,9 @@ const GUEST = (() => {
     const p = entryParams();
     const challenge = p.quiz && p.batch ? { quiz: p.quiz, batch: p.batch, from: p.from, fp: p.fp, ref: p.ref } : null;
     // ?ref=CODE without a test = a student's own share link (Refer & Earn)
-    const src = challenge ? 'friend' : p.teacher ? 'teacher' : p.ref ? 'student' : p.free ? 'admin' : '';
-    const ref = challenge ? p.ref : p.teacher || p.ref;
+    // ?shop=CODE = a guide / book shop's link or QR poster
+    const src = challenge ? 'friend' : p.shop ? 'shop' : p.teacher ? 'teacher' : p.ref ? 'student' : p.free ? 'admin' : '';
+    const ref = challenge ? p.ref : p.shop || p.teacher || p.ref;
 
     return new Promise(resolve => {
       const floaters = ['📚', '🏆', '✏️', '🎯', '⭐', '🚀', '🧠', '📝', '🎉', '💡']
@@ -159,6 +161,7 @@ const GUEST = (() => {
           <h1 class="gx-title gx-welcome-title">NKs EduOrbit<b>Free अभ्यास!</b></h1>
           ${challenge && challenge.from ? `<div class="gx-challenge">🏁 ${_esc(challenge.from)} चे ${challenge.fp}% — त्याला मागे टाका!</div>` : ''}
           ${!challenge && p.teacher ? '<div class="gx-challenge">👩‍🏫 तुमच्या सरांनी सुचवलेले Free tests</div>' : ''}
+          ${!challenge && p.shop ? '<div class="gx-challenge">🏪 तुमच्या पुस्तक दुकानाकडून Free tests</div>' : ''}
           <p class="gx-sub">4थी पासून पुढे आणि स्पर्धा परीक्षा: सगळ्या विषयांचे Free Tests, Notes आणि सराव</p>
           <div class="gx-chips">
             <span class="gx-chip" style="animation-delay:.1s">✅ Login नाही</span>
@@ -384,7 +387,7 @@ const GUEST = (() => {
     el.querySelector('#gx-photo').onclick = () => shareResultImage(ctx).catch(() => _toast('Photo तयार करता आला नाही', 'error'));
     el.querySelector('#gx-getapp')?.addEventListener('click', () => {
       const q = new URLSearchParams({ guest: _state.gid || '' });
-      if (_state.src === 'teacher' && _state.ref) q.set('teacher', _state.ref);
+      if ((_state.src === 'teacher' || _state.src === 'shop') && _state.ref) q.set('teacher', _state.ref);
       window.open(`${_site()}/get-app.html?${q.toString()}`, '_blank', 'noopener');
     });
     el.querySelector('#gx-analysis').onclick = async () => {
@@ -809,7 +812,7 @@ const GUEST = (() => {
     strip.querySelector('#gx-all').addEventListener('click', () => showOffer('locked'));
     strip.querySelector('#gx-app')?.addEventListener('click', () => {
       const q = new URLSearchParams({ guest: _state.gid || '' });
-      if (_state.src === 'teacher' && _state.ref) q.set('teacher', _state.ref);
+      if ((_state.src === 'teacher' || _state.src === 'shop') && _state.ref) q.set('teacher', _state.ref);
       window.open(`${_site()}/get-app.html?${q.toString()}`, '_blank', 'noopener');
     });
     API.guestEvent('browsed');

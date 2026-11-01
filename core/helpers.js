@@ -1308,6 +1308,15 @@ const API = (() => {
   }
   async function closePartnerMonth(month = '') { return _partnerReq('/statements/close', { method: 'POST', body: JSON.stringify(month ? { month } : {}) }); }
   async function markPartnerStatementPaid(id, utr) { return _partnerReq(`/statements/${encodeURIComponent(id)}/paid`, { method: 'POST', body: JSON.stringify({ utr }) }); }
+  // ── Shops (Admin > Partners > Shops) ──────────────────────────────────
+  async function _shopReq(path, options = {}) {
+    const token = await ensureAdminSession();
+    return request(`/shop/admin/shops${path}`, { ...options, headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function fetchShops() { return (await _shopReq(''))?.data || []; }
+  async function createShop(body) { return _shopReq('', { method: 'POST', body: JSON.stringify(body) }); }
+  async function updateShop(id, body) { return _shopReq(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }); }
+  async function fetchShopStudents(id) { return (await _shopReq(`/${encodeURIComponent(id)}/students`))?.data || []; }
   async function fetchReferralSummary() {
     const token = await ensureAdminSession();
     const p = await request('/referrals/summary', { headers: { Authorization: `Bearer ${token}` } });
@@ -2925,6 +2934,7 @@ const API = (() => {
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
+    fetchShops, createShop, updateShop, fetchShopStudents,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
     fetchPassageBlocks, fetchPassageBlock, updatePassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
     registerTeacher,

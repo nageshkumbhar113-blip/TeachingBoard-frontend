@@ -2447,6 +2447,21 @@ body.admin-app {
 .pa-utr { max-width: 220px; }
 .pa-badge { font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; background: rgba(128,128,128,.2); white-space: nowrap; }
 .pa-badge.ok { background: rgba(249,115,22,.2); color: #c2410c; font-weight: 700; }
+/* Admin > Partners > Shops */
+.sh-form { border: 1px dashed rgba(249,115,22,.5); border-radius: 12px; padding: 12px; margin: 10px 0; }
+.sh-card { border: 1px solid rgba(128,128,128,.3); border-radius: 12px; padding: 12px; margin-top: 10px; }
+.sh-card.sh-blocked { opacity: .6; }
+.sh-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.sh-rate { text-align: right; font-size: 1.4rem; font-weight: 800; color: #c2410c; white-space: nowrap; }
+.sh-rate small { display: block; font-size: .72rem; font-weight: 600; color: inherit; opacity: .8; }
+.sh-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.sh-chips span { font-size: .78rem; padding: 3px 9px; border-radius: 999px; background: rgba(128,128,128,.15); }
+.sh-chips span.ok { background: rgba(22,163,74,.15); color: #15803d; font-weight: 700; }
+.sh-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sh-actions .sh-size { max-width: 230px; }
+.sh-pin-box { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(249,115,22,.1); border: 1px solid rgba(249,115,22,.4); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sh-pin-box code, .sh-card code { font-weight: 800; letter-spacing: .04em; }
+.sh-students { margin-top: 10px; }
 .pa-badge.done { background: rgba(16,185,129,.2); color: #047857; font-weight: 700; }
 .pa-warn { color: #dc2626; font-size: 0.8rem; }
 

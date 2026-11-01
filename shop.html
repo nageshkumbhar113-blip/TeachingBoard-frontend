@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#2a0f5c" />
+<title>दुकान Panel — NKs EduOrbit</title>
+<meta name="description" content="पुस्तक दुकानांसाठी: पालकांना Free Test पाठवा, QR poster, students आणि कमाई — NKs EduOrbit" />
+<link rel="icon" href="/icons/icon-72.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&family=JetBrains+Mono:wght@700&display=swap" />
+<style>
+  :root {
+    --grad: linear-gradient(135deg, #ff7a18 0%, #ff3d77 50%, #7b2ff7 100%);
+    --ink: #1b1340; --muted: #6b6690; --gold: #ffc83d; --green: #16a34a; --red: #e11d48; --line: #ece6ff;
+    --font: 'Baloo 2', 'Noto Sans Devanagari', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; min-height: 100dvh; padding: 16px 16px 40px;
+    font-family: var(--font); color: var(--ink);
+    background: radial-gradient(120% 70% at 0% 0%, #ff9a3d 0%, transparent 55%),
+                radial-gradient(110% 70% at 100% 0%, #ff3d77 0%, transparent 55%),
+                radial-gradient(120% 90% at 50% 100%, #7b2ff7 0%, transparent 60%), #2a0f5c;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .brand { text-align: center; color: #fff; margin: 6px 0 14px; animation: rise .5s ease both; }
+  .brand b { display: block; font-size: 1.6rem; font-weight: 800; }
+  .brand span { opacity: .9; font-weight: 600; }
+  .card { background: #fff; border-radius: 24px; padding: 18px 16px; margin-bottom: 14px; box-shadow: 0 18px 50px rgba(43, 14, 110, .3); animation: pop .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+  .card:nth-of-type(2) { animation-delay: .06s } .card:nth-of-type(3) { animation-delay: .12s } .card:nth-of-type(4) { animation-delay: .18s } .card:nth-of-type(5) { animation-delay: .24s }
+  h2 { margin: 0 0 6px; font-size: 1.3rem; line-height: 1.2; }
+  h3 { margin: 0 0 6px; font-size: 1.1rem; }
+  .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .muted { color: var(--muted); font-weight: 600; }
+  .center { text-align: center; }
+  .hidden { display: none !important; }
+  label { display: block; margin-top: 10px; font-weight: 700; }
+  input, select { width: 100%; min-height: 50px; margin-top: 6px; padding: 10px 14px; border-radius: 14px; border: 2px solid #e7e1ff; background: #faf8ff; font: 700 1.1rem var(--font); color: var(--ink); }
+  input:focus, select:focus { outline: none; border-color: #7b2ff7; background: #fff; }
+  .hint { font-size: .85rem; color: var(--muted); font-weight: 600; margin-top: 4px; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; margin-top: 12px; border: 0; border-radius: 16px; cursor: pointer;
+         font: 800 1.12rem var(--font); color: #fff; background: var(--grad); box-shadow: 0 10px 24px rgba(255, 61, 119, .35); position: relative; overflow: hidden; text-decoration: none; }
+  .btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.4) 50%, transparent 65%); background-size: 250% 100%; animation: shine 2.4s linear infinite; pointer-events: none; }
+  .btn:disabled { filter: grayscale(.4); }
+  .btn.wa { background: #25d366; box-shadow: 0 10px 22px rgba(37, 211, 102, .35); }
+  .btn.ghost { background: #f3efff; color: #7b2ff7; box-shadow: none; }
+  .btn.ghost::after, .btn.wa::after { display: none; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row .btn { margin-top: 10px; font-size: 1rem; }
+  .msg { min-height: 1.2em; margin-top: 8px; text-align: center; color: var(--red); font-weight: 700; }
+  .msg.ok { color: var(--green); }
+  .code-chip { display: inline-block; padding: 4px 14px; border-radius: 12px; background: #faf8ff; border: 2px dashed #7b2ff7; font: 800 1.2rem 'JetBrains Mono', monospace; letter-spacing: .06em; }
+  .head { display: flex; align-items: center; gap: 12px; }
+  .head .shop-ico { font-size: 2.6rem; animation: bounce 2.2s ease-in-out infinite; }
+  .rule { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: linear-gradient(135deg, #1b1340, #3b1d86); color: #fff; font-weight: 700; }
+  .rule b { color: var(--gold); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { padding: 10px 6px; border-radius: 16px; background: #faf8ff; border: 1px solid var(--line); text-align: center; }
+  .stat b { display: block; font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+  .stat small { color: var(--muted); font-weight: 700; font-size: .78rem; }
+  .stat.money { grid-column: span 3; background: linear-gradient(135deg, #fff7d6, #ffe9f1); border-color: #ffd27a; }
+  .stat.money b { font-size: 1.9rem; color: #b45309; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; }
+  .tab { flex: 1 0 auto; padding: 8px 12px; border-radius: 999px; border: 2px solid var(--line); background: #fff; font: 800 .92rem var(--font); color: var(--muted); cursor: pointer; }
+  .tab.on { border-color: #ff3d77; color: #ff3d77; background: #fff3f7; }
+  .list { display: grid; gap: 8px; }
+  .item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); animation: rise .35s ease both; }
+  .item b { display: block; }
+  .item small { color: var(--muted); font-weight: 600; }
+  .pill { flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; font-size: .8rem; font-weight: 800; white-space: nowrap; }
+  .pill.paid { background: #dcfce7; color: #166534; }
+  .pill.free { background: #f1f5f9; color: #475569; }
+  .pill.tested { background: #ede9fe; color: #6d28d9; }
+  .pill.sent { background: #fef3c7; color: #92400e; }
+  .empty { text-align: center; color: var(--muted); font-weight: 600; padding: 14px 6px; }
+  .preview { display: block; width: 46%; margin: 10px auto 0; border-radius: 10px; box-shadow: 0 8px 22px rgba(27, 19, 64, .25); }
+  details summary { cursor: pointer; font-weight: 800; color: #7b2ff7; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 8px; }
+  td, th { padding: 6px 4px; border-bottom: 1px dashed var(--line); text-align: left; }
+  .logout { display: block; margin: 6px auto 0; background: none; border: 0; color: #fff; font: 700 .95rem var(--font); text-decoration: underline; cursor: pointer; opacity: .9; }
+  .loading-dots::after { content: ''; animation: dots 1.2s steps(4) infinite; }
+  @keyframes dots { 0% { content: '' } 25% { content: '.' } 50% { content: '..' } 75% { content: '...' } }
+  @keyframes pop { 0% { opacity: 0; transform: translateY(24px) scale(.94) } 70% { opacity: 1; transform: translateY(-3px) scale(1.01) } 100% { transform: none } }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+  @keyframes shine { from { background-position: -150% 0 } to { background-position: 150% 0 } }
+  @keyframes bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+  @media (max-width: 360px) { .stats { grid-template-columns: repeat(2, 1fr); } .stat.money { grid-column: span 2; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><b>🏪 NKs EduOrbit</b><span>पुस्तक दुकानांसाठी Panel</span></div>
+
+  <div id="v-loading" class="card center"><p class="muted">⏳ उघडत आहे<span class="loading-dots"></span></p></div>
+
+  <div id="v-login" class="card hidden">
+    <h2>दुकान <span class="grad">Login</span></h2>
+    <p class="muted">Admin ने दिलेला mobile नंबर आणि PIN टाका.</p>
+    <label for="l-mobile">Mobile नंबर</label>
+    <input id="l-mobile" type="tel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="98XXXXXXXX" />
+    <label for="l-pin">PIN</label>
+    <input id="l-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••" />
+    <p class="msg" id="l-msg" role="alert"></p>
+    <button class="btn" id="l-go" type="button">🔓 Login करा</button>
+  </div>
+
+  <div id="v-main" class="hidden">
+    <div class="card">
+      <div class="head">
+        <div class="shop-ico" aria-hidden="true">🏪</div>
+        <div>
+          <h2 id="s-name">—</h2>
+          <div class="muted" id="s-area"></div>
+          <div style="margin-top:4px">Code: <span class="code-chip" id="s-code">—</span></div>
+        </div>
+      </div>
+      <div class="rule" id="s-rule"></div>
+    </div>
+
+    <div class="card">
+      <h3>📊 तुमचे students</h3>
+      <div class="stats">
+        <div class="stat"><b data-k="invites">0</b><small>📨 पाठवले</small></div>
+        <div class="stat"><b data-k="tested">0</b><small>📝 Test दिली</small></div>
+        <div class="stat"><b data-k="paid">0</b><small>✅ Paid</small></div>
+        <div class="stat money"><b data-k="earned">₹0</b><small>💰 आतापर्यंतची कमाई</small></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>💬 पालकांना Free Test पाठवा</h3>
+      <p class="muted">दुकानात आलेल्या पालकांचा नंबर टाका. Message तुमच्याच WhatsApp वरून जाईल.</p>
+      <label for="i-mobile">पालकांचा WhatsApp नंबर</label>
+      <input id="i-mobile" type="tel" inputmode="tel" autocomplete="off" maxlength="16" placeholder="98XXXXXXXX" />
+      <p class="msg" id="i-msg" role="alert"></p>
+      <button class="btn wa" id="i-send" type="button">💬 WhatsApp वर पाठवा</button>
+      <button class="btn ghost" id="i-any" type="button">📤 Status / Group ला share करा</button>
+    </div>
+
+    <div class="card">
+      <h3>🖨️ QR Poster</h3>
+      <p class="muted">Counter वर लावा. पालक scan करून लगेच Free Test देतील, आणि त्याचं credit तुम्हाला.</p>
+      <label for="p-size">Size</label>
+      <select id="p-size"></select>
+      <div class="row">
+        <button class="btn" id="p-down" type="button">⬇️ Download</button>
+        <button class="btn ghost" id="p-print" type="button">🖨️ Print</button>
+      </div>
+      <img id="p-preview" class="preview hidden" alt="Poster preview" />
+      <p class="msg" id="p-msg" role="alert"></p>
+    </div>
+
+    <div class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab on" type="button" data-tab="students">👨‍🎓 Students</button>
+        <button class="tab" type="button" data-tab="visitors">📝 Free test दिली</button>
+        <button class="tab" type="button" data-tab="invites">📨 पाठवलेले</button>
+      </div>
+      <div class="list" id="list"></div>
+    </div>
+
+    <div class="card">
+      <h3>💰 कमाई आणि Payment</h3>
+      <div class="stats" style="margin-top:6px">
+        <div class="stat"><b id="e-hold">₹0</b><small>⏳ थांबलेली</small></div>
+        <div class="stat"><b id="e-ready">₹0</b><small>✅ पक्की झालेली</small></div>
+        <div class="stat"><b id="e-min">₹0</b><small>किमान payout</small></div>
+      </div>
+      <p class="hint" id="e-note"></p>
+      <div id="e-statements"></div>
+      <details id="e-upi-box">
+        <summary>🏦 UPI माहिती (payment इथे येईल)</summary>
+        <label for="u-id">UPI ID</label>
+        <input id="u-id" autocomplete="off" placeholder="name@bank" />
+        <label for="u-id2">UPI ID पुन्हा</label>
+        <input id="u-id2" autocomplete="off" placeholder="name@bank" />
+        <label for="u-name">UPI वरचं नाव</label>
+        <input id="u-name" autocomplete="name" maxlength="80" />
+        <label for="u-pan">PAN (वर्षाला ₹15,000 पेक्षा जास्त कमाई असल्यास)</label>
+        <input id="u-pan" autocomplete="off" maxlength="10" placeholder="ABCDE1234F" style="text-transform:uppercase" />
+        <p class="msg" id="u-msg" role="alert"></p>
+        <button class="btn" id="u-save" type="button">💾 Save करा</button>
+      </details>
+    </div>
+    <button class="logout" id="logout" type="button">Logout</button>
+  </div>
+</div>
+
+<script src="/core/fileExport.js" defer></script>
+<script src="/core/shopPoster.js" defer></script>
+<script>
+(function () {
+  'use strict';
+  var API = (function () {
+    try { return localStorage.getItem('teachingboard_api_url') || 'https://teachingboard-backend.onrender.com/api'; }
+    catch (e) { return 'https://teachingboard-backend.onrender.com/api'; }
+  })();
+  var TOKEN_KEY = 'tb_shop_token';
+  var $ = function (id) { return document.getElementById(id); };
+  var token = '';
+  try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { /* private mode */ }
+  var data = null, tab = 'students';
+
+  function show(id) { ['v-loading', 'v-login', 'v-main'].forEach(function (v) { $(v).classList.toggle('hidden', v !== id); }); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function rupee(n) { return '₹' + (Math.round(Number(n || 0) * 100) / 100).toLocaleString('en-IN'); }
+  function mobile10(v) {
+    var d = String(v || '').replace(/\D/g, '');
+    if (d.length === 12 && d.indexOf('91') === 0) d = d.slice(2);
+    if (d.length === 11 && d[0] === '0') d = d.slice(1);
+    return /^[6-9]\d{9}$/.test(d) ? d : '';
+  }
+  function setToken(t) { token = t || ''; try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignore */ } }
+  function call(method, path, body) {
+    return fetch(API + path, {
+      method: method,
+      headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (b) {
+        if (r.status === 401 && path !== '/auth/login') { setToken(''); show('v-login'); }
+        if (!r.ok || b.success === false) { var e = new Error(b.message || 'काहीतरी चूक झाली, पुन्हा प्रयत्न करा'); e.status = r.status; throw e; }
+        return b;
+      });
+    });
+  }
+  function dateText(d) { try { return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); } catch (e) { return ''; } }
+
+  // ── login ────────────────────────────────────────────
+  $('l-go').onclick = function () {
+    var m = mobile10($('l-mobile').value), pin = $('l-pin').value.trim(), msg = $('l-msg');
+    if (!m) { msg.textContent = 'योग्य 10 अंकी mobile नंबर लिहा'; return; }
+    if (!/^\d{4}$/.test(pin)) { msg.textContent = '4 अंकी PIN लिहा'; return; }
+    var btn = this; btn.disabled = true; msg.textContent = '';
+    call('POST', '/auth/login', { role: 'teacher', mobile: m, pin: pin }).then(function (b) {
+      if (b.user && b.user.partner_type !== 'shop') throw new Error('हे page फक्त दुकानांसाठी आहे. Teacher login app मध्ये करा.');
+      setToken(b.token); load();
+    }).catch(function (e) {
+      msg.textContent = e.status === 401 ? 'Mobile किंवा PIN चुकीचा आहे' : e.message;
+    }).then(function () { btn.disabled = false; });
+  };
+  $('l-pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('l-go').click(); });
+  $('logout').onclick = function () { setToken(''); data = null; show('v-login'); };
+
+  // ── main ─────────────────────────────────────────────
+  function countUp(el, to, money) {
+    var t0 = performance.now(), dur = 700;
+    (function step(t) {
+      var p = Math.min(1, (t - t0) / dur), v = to * (1 - Math.pow(1 - p, 3));
+      el.textContent = money ? rupee(Math.round(v)) : String(Math.round(v));
+      if (p < 1) requestAnimationFrame(step); else el.textContent = money ? rupee(to) : String(to);
+    })(t0);
+  }
+
+  function shareText() {
+    var s = data.shop;
+    return [
+      'नमस्कार 🙏 ' + s.shop_name + (s.area ? ', ' + s.area : '') + ' कडून.',
+      '',
+      'तुमच्या मुलासाठी *Free Test* 📝 — login नको, लगेच result आणि rank 🏆',
+      '👉 ' + SHOP_POSTER.freeLink(s.code),
+      '',
+      '📲 App (offline पण चालतं): ' + SHOP_POSTER.appLink(s.code),
+      'Register करताना हा code टाका: *' + s.code + '*',
+    ].join('\n');
+  }
+
+  function render() {
+    var s = data.shop, sum = data.summary;
+    $('s-name').textContent = s.shop_name;
+    $('s-area').textContent = [s.owner, s.area].filter(Boolean).join(' · ');
+    $('s-code').textContent = s.code;
+    $('s-rule').innerHTML = '💰 तुमच्या code ने आलेल्या student च्या पहिल्या payment वर <b>' + esc(s.first_percent) + '%</b>' +
+      (s.renewal_percent > 0 ? ', आणि पुढच्या payments वर <b>' + esc(s.renewal_percent) + '%</b>' : '') + '.';
+    document.querySelectorAll('[data-k]').forEach(function (el) {
+      var k = el.dataset.k; countUp(el, Number(sum[k] || 0), k === 'earned');
+    });
+    renderList();
+  }
+
+  var STEP = { paid: ['✅ Paid', 'paid'], account: ['Account', 'free'], tested: ['📝 Test दिली', 'tested'], opened: ['उघडली', 'tested'], sent: ['📨 पाठवली', 'sent'] };
+  function renderList() {
+    document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === tab); });
+    var box = $('list'), rows = data[tab] || [], html = '';
+    if (!rows.length) {
+      box.innerHTML = '<div class="empty">' + ({ students: 'अजून कोणी नाही. पालकांना Free Test पाठवा 💪', visitors: 'अजून कोणी Free test दिली नाही.', invites: 'अजून कोणाला पाठवलं नाही.' })[tab] + '</div>';
+      return;
+    }
+    rows.forEach(function (r, i) {
+      var d = 'style="animation-delay:' + Math.min(i, 12) * 0.03 + 's"';
+      if (tab === 'students') {
+        html += '<div class="item" ' + d + '><div><b>' + esc(r.name) + '</b><small>' + esc(r['class']) + ' · ' + esc(r.mobile) + ' · ' + dateText(r.joined_at) + '</small></div>' +
+          (r.paid ? '<span class="pill paid">✅ Paid' + (r.earned ? ' · ' + rupee(r.earned) : '') + '</span>' : '<span class="pill free">Free</span>') + '</div>';
+      } else if (tab === 'visitors') {
+        html += '<div class="item" ' + d + '><div><b>' + esc(r.name || 'नाव नाही') + '</b><small>' + esc(r['class']) + (r.mobile ? ' · ' + esc(r.mobile) : '') + ' · ' + dateText(r.last_seen_at) + '</small></div>' +
+          (r.tests ? '<span class="pill tested">📝 ' + r.tests + ' · ' + r.best_pct + '%</span>' : '<span class="pill sent">उघडली</span>') + '</div>';
+      } else {
+        var st = STEP[r.step] || STEP.sent;
+        html += '<div class="item" ' + d + '><div><b>' + esc(r.mobile) + (r.name ? ' · ' + esc(r.name) : '') + '</b><small>' + dateText(r.last_at) + (r.count > 1 ? ' · ' + r.count + ' वेळा' : '') + '</small></div>' +
+          '<span class="pill ' + st[1] + '">' + st[0] + '</span></div>';
+      }
+    });
+    box.innerHTML = html;
+  }
+  document.querySelectorAll('.tab').forEach(function (b) { b.onclick = function () { tab = b.dataset.tab; renderList(); }; });
+
+  function renderEarnings(e) {
+    $('e-hold').textContent = rupee(e.pending.amount);
+    $('e-ready').textContent = rupee(e.ready.amount);
+    $('e-min').textContent = rupee(e.min_payout);
+    $('e-note').textContent = 'Payment नंतर ' + e.hold_days + ' दिवस थांबून कमाई पक्की होते. दर महिन्याच्या 1 तारखेला हिशोब बंद होतो आणि 2 ते 5 तारखेदरम्यान UPI वर payment येतं. ₹' + e.min_payout + ' पेक्षा कमी असल्यास पुढच्या महिन्यात जोडलं जातं.';
+    var st = e.statements || [];
+    $('e-statements').innerHTML = st.length ? '<table><thead><tr><th>महिना</th><th>रक्कम</th><th>स्थिती</th></tr></thead><tbody>' + st.map(function (s) {
+      return '<tr><td>' + esc(s.month) + '</td><td>' + rupee(s.net) + '</td><td>' + (s.status === 'paid' ? '✅ दिले' + (s.utr ? ' <small>' + esc(s.utr) + '</small>' : '') : s.status === 'closed' ? '⏳ लवकरच' : '➡ पुढच्या महिन्यात') + '</td></tr>';
+    }).join('') + '</tbody></table>' : '';
+    var p = e.payout || {};
+    $('u-id').value = p.upi_id || ''; $('u-id2').value = p.upi_id || ''; $('u-name').value = p.upi_name || '';
+    $('u-pan').placeholder = p.pan || 'ABCDE1234F';
+    if (!p.upi_id) $('e-upi-box').open = true;
+  }
+
+  function load() {
+    show(data ? 'v-main' : 'v-loading');
+    return Promise.all([call('GET', '/shop/me'), call('GET', '/partners/me/earnings')]).then(function (res) {
+      data = res[0].data; render(); renderEarnings(res[1].data); show('v-main'); posterPreview();
+    }).catch(function (e) {
+      if (e.status === 401 || e.status === 403) { setToken(''); show('v-login'); $('l-msg').textContent = e.status === 403 ? e.message : ''; }
+      else { show(token ? 'v-loading' : 'v-login'); $('v-loading').innerHTML = '<p class="muted">😕 ' + esc(e.message) + '</p><button class="btn ghost" type="button" id="retry">🔄 पुन्हा प्रयत्न करा</button>'; $('retry').onclick = function () { $('v-loading').innerHTML = '<p class="muted">⏳ उघडत आहे<span class="loading-dots"></span></p>'; load(); }; }
+    });
+  }
+
+  // ── share ────────────────────────────────────────────
+  $('i-send').onclick = function () {
+    var m = mobile10($('i-mobile').value), msg = $('i-msg');
+    msg.className = 'msg';
+    if (!m) { msg.textContent = 'पालकांचा योग्य 10 अंकी नंबर लिहा'; return; }
+    if (m === data.shop.mobile) { msg.textContent = 'हा तुमचाच नंबर आहे — पालकांचा नंबर लिहा'; return; }
+    window.open('https://wa.me/91' + m + '?text=' + encodeURIComponent(shareText()), '_blank', 'noopener');
+    call('POST', '/shop/me/invite', { mobile: m }).then(function () {
+      msg.className = 'msg ok'; msg.textContent = '✅ पाठवलं! पुढच्या पालकांचा नंबर टाका.';
+      $('i-mobile').value = '';
+      return call('GET', '/shop/me').then(function (b) { data = b.data; render(); });
+    }).catch(function (e) { msg.textContent = e.message; });
+  };
+  $('i-any').onclick = function () {
+    var text = shareText();
+    if (navigator.share) { navigator.share({ text: text }).catch(function () { /* closed */ }); return; }
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  };
+
+  // ── poster ───────────────────────────────────────────
+  var sizeSel = $('p-size');
+  function fillSizes() {
+    if (sizeSel.options.length || !window.SHOP_POSTER) return;
+    Object.keys(SHOP_POSTER.SIZES).forEach(function (k) {
+      var o = document.createElement('option'); o.value = k; o.textContent = SHOP_POSTER.SIZES[k].label; sizeSel.appendChild(o);
+    });
+    sizeSel.value = 'A4';
+  }
+  function posterPreview() {
+    fillSizes();
+    if (!data || !window.SHOP_POSTER) return;
+    SHOP_POSTER.draw(data.shop, 'A5').then(function (cv) {
+      $('p-preview').src = cv.toDataURL('image/jpeg', .7); $('p-preview').classList.remove('hidden');
+    }).catch(function () { /* preview is optional */ });
+  }
+  function posterAction(fn, btn) {
+    var msg = $('p-msg'); msg.className = 'msg'; msg.textContent = '⏳ Poster तयार होत आहे…'; btn.disabled = true;
+    SHOP_POSTER[fn](data.shop, sizeSel.value).then(function () { msg.textContent = ''; })
+      .catch(function () { msg.textContent = 'Poster तयार झाला नाही. Internet तपासून पुन्हा करा.'; })
+      .then(function () { btn.disabled = false; });
+  }
+  $('p-down').onclick = function () { posterAction('download', this); };
+  $('p-print').onclick = function () { posterAction('print', this); };
+
+  // ── payout profile ───────────────────────────────────
+  $('u-save').onclick = function () {
+    var msg = $('u-msg'), btn = this; msg.className = 'msg';
+    btn.disabled = true;
+    call('PUT', '/partners/me/payout-profile', {
+      upi_id: $('u-id').value.trim(), upi_id_confirm: $('u-id2').value.trim(), upi_name: $('u-name').value.trim(), pan: $('u-pan').value.trim().toUpperCase(),
+    }).then(function () { msg.className = 'msg ok'; msg.textContent = '✅ Save झालं'; $('u-pan').value = ''; })
+      .catch(function (e) { msg.textContent = e.message; })
+      .then(function () { btn.disabled = false; });
+  };
+
+  window.addEventListener('DOMContentLoaded', function () {
+    if (token) load(); else show('v-login');
+  });
+})();
+</script>
+</body>
+</html>

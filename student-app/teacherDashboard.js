@@ -261,7 +261,7 @@ const TEACHER_DASHBOARD = (() => {
   async function loadDashboard() {
     // A YouTube partner only has the Refer & Earn screen: no student list, no teacher tools.
     const me = await API.getTeacherProfile().catch(() => null);
-    if (me?.partner_type === 'youtube') { window.PARTNER_EARNINGS?.applyYoutubeMode(); return; }
+    if (me?.partner_type === 'youtube' || me?.partner_type === 'shop') { window.PARTNER_EARNINGS?.applyYoutubeMode(); return; }
     const wrapEl = $('td-student-list');
     if (wrapEl) wrapEl.innerHTML = '<p class="td-hint">Loading...</p>';
     _showStudentList();

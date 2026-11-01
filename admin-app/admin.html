@@ -1808,6 +1808,31 @@ Marks: 1"></textarea>
                 <div class="pa-card"><small>Prize requests to send</small><b id="pa-claims-open">0</b><small>students waiting for a parcel</small></div>
               </div>
 
+              <div class="admin-card pa-section" id="sh-section">
+                <div class="pa-row">
+                  <h3>🏪 Shops (पुस्तक / guide दुकानं)</h3>
+                  <button type="button" id="sh-new" class="admin-btn-primary">+ नवीन दुकान</button>
+                </div>
+                <p class="import-hint">दुकानदार पालकांना Free Test आणि app पाठवतो, counter वर QR poster लावतो. त्याच्या code ने आलेल्या student ने pay केलं की खालचा % त्याला मिळतो (भरलेल्या रकमेवर). Payment महिन्याच्या statement मध्ये येतं. दुकानाचं panel: <b>/shop</b></p>
+                <div id="sh-form" class="sh-form hidden">
+                  <div class="pa-grid">
+                    <label>दुकानाचं नाव<input id="sh-name" class="admin-input" maxlength="80" placeholder="उदा. Ganesh Book Depot" /></label>
+                    <label>मालकाचं नाव<input id="sh-owner" class="admin-input" maxlength="60" /></label>
+                    <label>Mobile (login साठी)<input id="sh-mobile" class="admin-input" type="tel" maxlength="16" placeholder="98XXXXXXXX" /></label>
+                    <label>गाव / Area<input id="sh-area" class="admin-input" maxlength="80" placeholder="उदा. Satara" /></label>
+                    <label>पहिल्या payment वर %<input id="sh-first" class="admin-input" type="number" min="0" max="100" step="0.5" value="30" /></label>
+                    <label>Renewal वर % (0 = नाही)<input id="sh-renew" class="admin-input" type="number" min="0" max="100" step="0.5" value="0" /></label>
+                    <label>UPI ID (optional)<input id="sh-upi" class="admin-input" placeholder="name@bank" /></label>
+                  </div>
+                  <div class="pa-row-actions">
+                    <button type="button" id="sh-save" class="admin-btn-primary">💾 Save</button>
+                    <button type="button" id="sh-cancel" class="admin-btn-secondary">रद्द</button>
+                  </div>
+                </div>
+                <div id="sh-created" class="sh-created hidden"></div>
+                <div id="sh-list"></div>
+              </div>
+
               <div class="admin-card pa-section">
                 <h3>Settings</h3>
                 <div class="pa-grid">
@@ -2405,6 +2430,8 @@ Marks: 1"></textarea>
   <script src="importManager.js" defer></script>
   <script src="passageBlockAdmin.js" defer></script>
   <script src="partnersAdmin.js" defer></script>
+  <script src="../core/shopPoster.js" defer></script>
+  <script src="shopsAdmin.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="bannerAdmin.js" defer></script>

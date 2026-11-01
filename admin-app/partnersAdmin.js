@@ -193,7 +193,7 @@
         <th>Partner</th><th>Type</th><th>Commission</th><th>UPI</th><th>Pending</th><th>Ready</th><th>Paid so far</th></tr></thead><tbody>` +
         _partners.map(p => `<tr>
           <td><b>${esc(p.name)}</b><br><small>${esc(p.teacher_code)}</small></td>
-          <td>${p.partner_type === 'youtube' ? 'YouTube' : p.partner_type === 'school' ? 'School' : '-'}${p.commission_enabled ? '' : ' <small>(off)</small>'}</td>
+          <td>${p.partner_type === 'youtube' ? 'YouTube' : p.partner_type === 'school' ? 'School' : p.partner_type === 'shop' ? '🏪 Shop' : '-'}${p.commission_enabled ? '' : ' <small>(off)</small>'}</td>
           <td>${p.commission_mode === 'percent' ? `${p.commission_value}%` : rs(p.commission_value)}</td>
           <td>${p.upi_id ? esc(p.upi_id) : '<span class="pa-warn">missing</span>'}${p.pan ? '' : '<br><small class="pa-warn">no PAN</small>'}</td>
           <td>${rs(p.pending_amount)}<br><small>${p.pending_count} in hold</small></td>

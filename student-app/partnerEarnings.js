@@ -46,7 +46,7 @@ const PARTNER_EARNINGS = (() => {
     try {
       const data = await API.fetchMyEarnings();
       _enabled = !!data?.enabled;
-      if (_enabled && data.partner_type === 'youtube') applyYoutubeMode();
+      if (_enabled && (data.partner_type === 'youtube' || data.partner_type === 'shop')) applyYoutubeMode();
     } catch {
       _enabled = false;
     }
