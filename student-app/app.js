@@ -819,6 +819,18 @@ const APP = (() => {
       return;
     }
     beforePrompt?.();
+    // Installed from the website's "continue in the app" (Play referrer
+    // guest=…): the same free-part visitor, with their tests.
+    if (window.GUEST) {
+      await _readInstallReferrer();
+      const resumeGid = await DB.getSetting('install_referrer_guest', '').catch(() => '');
+      if (resumeGid && await GUEST.resume(resumeGid)) {
+        await DB.setSetting('install_referrer_guest', '').catch(() => {});
+        await _refreshProfileAfterLogin();
+        await _syncOfflineContentWithOverlay();
+        return;
+      }
+    }
     // Free link (…/student-app/?free=1): welcome + class picker, no login.
     if (window.GUEST?.wantsEntry?.() && await GUEST.start()) {
       await _refreshProfileAfterLogin();
@@ -1434,6 +1446,8 @@ const APP = (() => {
       const params = new URLSearchParams(String(res?.referrer || ''));
       const code = (params.get('teacher') || params.get('ref') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
       await DB.setSetting('install_referrer_code', code);
+      const guest = (params.get('guest') || '').toUpperCase();
+      if (/^[0-9A-F]{10}$/.test(guest)) await DB.setSetting('install_referrer_guest', guest);
       return code;
     } catch {
       return '';   // never block the app; it is asked again on the next launch

@@ -1289,6 +1289,9 @@
       const p = new URLSearchParams(location.search);
       const t = (p.get('teacher') || '').trim().toUpperCase();
       const r = (p.get('ref') || '').trim().toUpperCase();
+      // Free-part visitor moving from the website to the app: keep their tests.
+      const g = (p.get('guest') || '').trim().toUpperCase();
+      if (/^[0-9A-F]{10}$/.test(g)) return 'guest=' + g + (/^[A-Z0-9]{2,20}$/.test(t) ? '&teacher=' + t : '');
       if (/^[A-Z0-9]{2,20}$/.test(t)) return 'teacher=' + t;
       if (/^[A-Z0-9]{2,20}$/.test(r)) return 'ref=' + r;
       return '';

@@ -182,6 +182,17 @@ const GUEST = (() => {
     });
   }
 
+  // App installed from the website with the visitor's id: same lead, same tests.
+  async function resume(gid) {
+    try {
+      await API.startGuestSession({ resume_gid: gid });
+      await _saveState({ started_at: Date.now() });
+      await refresh();
+      _toast('👋 परत स्वागत! तुमचे free tests इथे आहेत', 'success');
+      return true;
+    } catch { return false; }
+  }
+
   async function _openSession(el, body, extra = {}) {
     const msg = el.querySelector('#gx-msg');
     const btns = el.querySelectorAll('button');
@@ -735,10 +746,16 @@ const GUEST = (() => {
       <div class="gx-row">
         ${next ? '<button type="button" class="gx-btn gx-go" id="gx-next">▶ सुरू करा</button>' : ''}
         <button type="button" class="gx-btn gx-unlock" id="gx-all">🔓 सगळे उघडा</button>
-      </div>`;
+      </div>
+      ${!_isNative() && Object.keys(done).length >= 2 ? '<button type="button" class="gx-link" id="gx-app" style="color:#fff">📱 App मध्ये पुढे चला — tests offline पण चालतात</button>' : ''}`;
     home.insertBefore(strip, home.firstElementChild);
     strip.querySelector('#gx-next')?.addEventListener('click', () => { API.guestEvent('engaged'); goNext(); });
     strip.querySelector('#gx-all').addEventListener('click', () => showOffer('locked'));
+    strip.querySelector('#gx-app')?.addEventListener('click', () => {
+      const q = new URLSearchParams({ guest: _state.gid || '' });
+      if (_state.src === 'teacher' && _state.ref) q.set('teacher', _state.ref);
+      window.open(`${_site()}/get-app.html?${q.toString()}`, '_blank', 'noopener');
+    });
     API.guestEvent('browsed');
 
     const n = Object.keys(done).length;
@@ -776,7 +793,7 @@ const GUEST = (() => {
   }
 
   return {
-    refresh, isActive, wantsEntry, entryParams, start, ensureName, onResult,
+    refresh, isActive, wantsEntry, entryParams, start, resume, ensureName, onResult,
     showOffer, openPay, goNext, renderHomeGuide, onSignupRequired, contactGate, fireworks,
     __resultCanvas: _resultCanvas,
     decorateHub,

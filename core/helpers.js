@@ -479,9 +479,10 @@ const API = (() => {
   }
 
   // New guest, or the same guest picking another class / giving a name.
-  async function startGuestSession({ batch, name, src, ref } = {}) {
+  async function startGuestSession({ batch, name, src, ref, resume_gid } = {}) {
     const state = await getGuestState();
     const body = {
+      resume_gid: resume_gid || undefined,
       batch: batch || state.batch || '',
       name: name !== undefined ? name : (state.name || ''),
       src: src || state.src || '',
@@ -498,7 +499,7 @@ const API = (() => {
     await Promise.all([
       DB.setSetting('student_pin', '').catch(() => {}),
       _storeStudentProfile({ ...user, id: `guest:${user.gid}`, status: 'active', guest: true }),
-      setGuestState({ gid: user.gid, batch: body.batch, name: user.name || '', src: body.src, ref: body.ref, has_parent_mobile: !!user.has_parent_mobile, offer: payload?.offer || state.offer || null }),
+      setGuestState({ gid: user.gid, batch: user.assigned_batches?.[0] || body.batch, name: user.name || '', src: body.src, ref: body.ref, has_parent_mobile: !!user.has_parent_mobile, offer: payload?.offer || state.offer || null }),
     ]);
     return payload;
   }
