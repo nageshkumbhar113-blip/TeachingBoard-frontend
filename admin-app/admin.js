@@ -236,6 +236,7 @@ const ADMIN = (() => {
         const content = $('atab-' + tab.dataset.tab);
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
         if (tab.dataset.tab === 'words')       _loadWordBank();
+        if (tab.dataset.tab === 'sync')        _loadGuestFunnel();
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
@@ -1951,6 +1952,101 @@ const ADMIN = (() => {
   // ════════════════════════
   // QR CODE
   // ════════════════════════
+
+  // ── Free part (student-app/guest.js): the link to share, funnel, leads ──
+  const FREE_SITE = 'https://teachingboard-frontend.vercel.app';
+
+  function _freeLinkMessage(url) {
+    return `📚 *NKs EduOrbit — Free Tests*\n` +
+      `8वी ते 10वी: Maths, Science, English… सगळ्या विषयांचे\n` +
+      `✅ Free Tests  ✅ Notes  ✅ सराव प्रश्न\n` +
+      `🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल\n` +
+      `👉 आत्ताच test द्या: ${url}`;
+  }
+
+  function _renderFreeLink() {
+    const box = $('free-link-box');
+    if (!box) return;
+    const url = `${FREE_SITE}/student-app/?free=1`;
+    const msg = _freeLinkMessage(url);
+    box.innerHTML = `
+      <div class="batch-admin-item">
+        <div>
+          <div class="batch-admin-name">🎁 Free Tests (सगळे classes)</div>
+          <div class="batch-admin-meta" style="word-break:break-all">${_esc(url)}</div>
+          <pre class="gxa-msg">${_esc(msg)}</pre>
+        </div>
+        <div class="batch-admin-actions">
+          <button class="admin-btn-secondary" type="button" id="btn-free-copy">📋 Copy</button>
+          <button class="admin-btn-primary" type="button" id="btn-free-wa">📱 WhatsApp</button>
+        </div>
+      </div>`;
+    $('btn-free-copy').addEventListener('click', () => {
+      navigator.clipboard?.writeText(msg).catch(() => {});
+      APP.toast('Copied!', 'success');
+    });
+    $('btn-free-wa').addEventListener('click', () => {
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    });
+  }
+
+  const _FUNNEL_LABELS = {
+    opened: '🔗 Link उघडली', browsed: '📚 Class निवडला', engaged: '▶ Free भाग वापरला', tested: '📝 Test दिला',
+    shared_friend: '👫 मित्रांना share', shared_parent: '👨‍👩‍👧 पालकांना share', lead: '📱 पालकांचा नंबर',
+    offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Pay केलं',
+  };
+
+  function _leadFollowUp(l) {
+    const pay = `${FREE_SITE}/parent-pay.html?g=${encodeURIComponent(l.gid)}`;
+    const ageDays = (Date.now() - new Date(l.created_at).getTime()) / 864e5;
+    const name = l.name || 'तुमच्या मुलाने';
+    if (ageDays < 2) {
+      return `नमस्कार 🙏 ${name}ने NKs EduOrbit वर *${l.last_test || 'test'}* मध्ये ${l.best_pct}% मिळवले.\n` +
+        `आणखी सराव केला तर गुण नक्की वाढतील.\nपूर्ण अभ्यासक्रम (सगळे tests + notes): ${pay}`;
+    }
+    return `${name}ने आत्तापर्यंत ${l.tests} free tests दिले 👏\nसगळ्या chapters साठी इथे पाहा: ${pay}\nकाही प्रश्न असल्यास याच नंबरवर विचारा.`;
+  }
+
+  async function _loadGuestFunnel() {
+    const funnelEl = $('guest-funnel'), listEl = $('guest-leads');
+    if (!funnelEl || !listEl) return;
+    const days = Number($('gl-days')?.value || 30);
+    const status = $('gl-status')?.value || 'unpaid';
+    funnelEl.innerHTML = '<p class="import-hint">⏳ उघडत आहे…</p>';
+    try {
+      const [f, leads] = await Promise.all([API.fetchGuestFunnel(days), API.fetchGuestLeads({ status, days })]);
+      const max = Math.max(1, f.total?.opened || 0);
+      funnelEl.innerHTML = (f.steps || []).map(s => {
+        const n = f.total?.[s] || 0;
+        return `<div class="gxa-step"><span>${_FUNNEL_LABELS[s] || s}</span><b>${n}</b><i style="width:${Math.round((n / max) * 100)}%"></i></div>`;
+      }).join('') + (Object.keys(f.by_source || {}).length
+        ? `<p class="import-hint" style="margin-top:8px">कुठून आले: ${Object.entries(f.by_source).map(([k, v]) => `${_esc(k)} ${v.opened} → ✅ ${v.paid}`).join(' · ')}</p>` : '');
+      if (!leads.length) { listEl.innerHTML = '<p class="import-hint">अजून कोणी नाही.</p>'; return; }
+      listEl.innerHTML = '';
+      leads.forEach(l => {
+        const item = document.createElement('div');
+        item.className = 'batch-admin-item';
+        item.setAttribute('role', 'listitem');
+        const seen = new Date(l.last_seen_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        item.innerHTML = `
+          <div>
+            <div class="batch-admin-name">${_esc(l.name || 'नाव नाही')} ${l.paid ? `<span class="gxa-badge gxa-paid">✅ Paid · ${_esc(l.student_code)}</span>` : l.student_code ? `<span class="gxa-badge">Account: ${_esc(l.student_code)}</span>` : ''}</div>
+            <div class="batch-admin-meta">${_esc(l.batch)} · ${l.tests} tests · best ${l.best_pct}% · ${_esc(seen)}</div>
+            <div class="batch-admin-meta">${l.parent_mobile ? '📱 ' + _esc(l.parent_mobile) : 'नंबर नाही'}${l.source ? ' · ' + _esc(l.source) : ''}</div>
+          </div>
+          <div class="batch-admin-actions">
+            ${l.parent_mobile && !l.paid ? '<button class="admin-btn-primary btn-gl-wa" type="button">📱 WhatsApp</button>' : ''}
+          </div>`;
+        item.querySelector('.btn-gl-wa')?.addEventListener('click', () => {
+          window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(_leadFollowUp(l))}`, '_blank');
+        });
+        listEl.appendChild(item);
+      });
+    } catch (err) {
+      funnelEl.innerHTML = `<p class="import-hint">आकडे आणता आले नाहीत: ${_esc(err?.message || '')}</p>`;
+      listEl.innerHTML = '';
+    }
+  }
 
   function _renderQuickLinks() {
     const list = $('quick-links-list');
@@ -3708,6 +3804,10 @@ const ADMIN = (() => {
     $('btn-fetch-github')?.addEventListener('click', _fetchFromGitHub);
 
     // Sync
+    _renderFreeLink();
+    $('btn-gl-refresh')?.addEventListener('click', _loadGuestFunnel);
+    $('gl-days')?.addEventListener('change', _loadGuestFunnel);
+    $('gl-status')?.addEventListener('change', _loadGuestFunnel);
     _renderQuickLinks();
     $('btn-share-url-qr')?.addEventListener('click', _generateServerUrlQR);
     $('btn-gen-qr')?.addEventListener('click', _generateQR);

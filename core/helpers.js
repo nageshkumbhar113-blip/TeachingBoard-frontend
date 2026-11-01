@@ -159,6 +159,8 @@ const API = (() => {
       // 'free' = free chapters only (unpaid / expired); anything else, incl. an
       // older server that doesn't send it, means full access.
       access_level: user.access_level === 'free' ? 'free' : 'full',
+      // Free-part visitor (no login): see startGuestSession / student-app/guest.js.
+      guest: user.guest === true,
     };
 
     await Promise.all([
@@ -286,6 +288,12 @@ const API = (() => {
       return loginPayload?.token || '';
     }
 
+    if (payload.role === 'student' && payload.guest) {
+      clearStudentToken();
+      const guestPayload = await startGuestSession({});
+      return guestPayload?.token || '';
+    }
+
     if (payload.role === 'student') {
       clearStudentToken();
       const loginPayload = await loginStudent({ student_code: payload.student_code || '' });
@@ -352,6 +360,8 @@ const API = (() => {
         clearStudentToken();
       } else if (response.status === 403 && payload?.code === 'CHAPTER_LOCKED') {
         window.dispatchEvent(new CustomEvent('teachingboard:locked', { detail: payload }));
+      } else if (response.status === 403 && payload?.code === 'GUEST_SIGNUP_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('teachingboard:guest-signup', { detail: { path } }));
       } else if (response.status === 401 && path !== '/auth/login') {
         window.dispatchEvent(new CustomEvent('teachingboard:unauthorized', { detail: { path } }));
       }
@@ -427,8 +437,100 @@ const API = (() => {
     if (existing && !_isTokenExpired(existing)) return existing;
     clearStudentToken();
 
+    const savedProfile = await getStudentProfile().catch(() => null);
+    if (savedProfile?.guest) return (await startGuestSession({})).token;
+
     const payload = await loginStudent(input);
     return payload.token;
+  }
+
+  // ════════════════════════
+  // GUEST (free part, no login) — docs/PLAN_guest_funnel.md
+  // ════════════════════════
+  // The guest token is kept like a student token, and the guest profile like a
+  // student profile with guest: true, so the whole app (sync, Home, Notes,
+  // Exercise, Test player) works unchanged; the server only ever serves the
+  // free chapters to it.
+  const GUEST_STATE_KEY = 'guest_state';
+
+  async function getGuestState() {
+    return await DB.getSetting(GUEST_STATE_KEY, null).catch(() => null) || {};
+  }
+
+  async function setGuestState(patch = {}) {
+    const next = { ...(await getGuestState()), ...patch };
+    await DB.setSetting(GUEST_STATE_KEY, next).catch(() => {});
+    return next;
+  }
+
+  async function isGuest() {
+    return !!(await getStudentProfile().catch(() => null))?.guest;
+  }
+
+  function _guestAuthHeaders() {
+    const t = getStudentToken();
+    const p = t ? _decodeTokenPayload(t) : null;
+    return p?.guest && !_isTokenExpired(t) ? { Authorization: `Bearer ${t}` } : {};
+  }
+
+  async function fetchGuestBatches() {
+    const payload = await request('/guest/batches');
+    return Array.isArray(payload?.data) ? payload.data : [];
+  }
+
+  // New guest, or the same guest picking another class / giving a name.
+  async function startGuestSession({ batch, name, src, ref } = {}) {
+    const state = await getGuestState();
+    const body = {
+      batch: batch || state.batch || '',
+      name: name !== undefined ? name : (state.name || ''),
+      src: src || state.src || '',
+      ref: ref || state.ref || '',
+    };
+    const payload = await request('/guest/session', {
+      method: 'POST',
+      headers: _guestAuthHeaders(),
+      body: JSON.stringify(body),
+    }, false);
+    const user = payload?.profile || {};
+    await _claimLocalDataFor(user.student_code);
+    if (payload?.token) setStudentToken(payload.token);
+    await Promise.all([
+      DB.setSetting('student_pin', '').catch(() => {}),
+      _storeStudentProfile({ ...user, id: `guest:${user.gid}`, status: 'active', guest: true }),
+      setGuestState({ gid: user.gid, batch: body.batch, name: user.name || '', src: body.src, ref: body.ref, has_parent_mobile: !!user.has_parent_mobile, offer: payload?.offer || state.offer || null }),
+    ]);
+    return payload;
+  }
+
+  async function _guestPost(path, body) {
+    const token = await ensureStudentSession();
+    return request(path, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body || {}) });
+  }
+
+  // Funnel step (browsed, engaged, shared_friend, shared_parent, offer_seen,
+  // checkout) — fire and forget, counted once per guest by the server.
+  function guestEvent(step) {
+    if (!navigator.onLine) return;
+    _guestPost('/guest/event', { step }).catch(() => {});
+  }
+
+  async function saveGuestContact(parentMobile) {
+    const payload = await _guestPost('/guest/contact', { parent_mobile: parentMobile, consent: true });
+    await setGuestState({ has_parent_mobile: true });
+    return payload;
+  }
+
+  async function claimGuestOffer() {
+    const payload = await _guestPost('/guest/offer', {});
+    if (payload?.offer) await setGuestState({ offer: payload.offer });
+    return payload?.offer || null;
+  }
+
+  async function fetchGuestRank(quizId) {
+    const token = await ensureStudentSession();
+    const payload = await request(`/guest/rank/${encodeURIComponent(quizId)}`, { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || null;
   }
 
   async function fetchStudentMe() {
@@ -1994,6 +2096,18 @@ const API = (() => {
   }
 
   // Admin: total / today / this-month revenue (sum of verified payments).
+  // Admin → Sync: free-part visitors (guest.js) and the funnel counts.
+  async function fetchGuestLeads({ status = 'all', days = 30 } = {}) {
+    const token = await ensureAdminSession();
+    const payload = await request(`/guest/admin/leads?status=${encodeURIComponent(status)}&days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
+    return Array.isArray(payload?.data) ? payload.data : [];
+  }
+
+  async function fetchGuestFunnel(days = 30) {
+    const token = await ensureAdminSession();
+    return request(`/guest/admin/funnel?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
   async function fetchRevenueSummary(pin = '') {
     const token = await ensureAdminSession(pin);
     const payload = await request('/payment/admin/revenue', {
@@ -2737,6 +2851,9 @@ const API = (() => {
     loginAdmin, loginStudent, loginTeacher, loginParent,
     ensureAdminSession, ensureStudentSession, ensureTeacherSession, ensureParentSession,
     fetchStudentMe,
+    getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
+    guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank,
+    fetchGuestLeads, fetchGuestFunnel,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,

@@ -85,6 +85,7 @@ const APP = (() => {
 
       // 2. Onboarding — reveal shell first so setup modal is visible on fresh installs
       await _runOnboardingIfNeeded({ beforePrompt: _revealAppShell });
+      await window.GUEST?.refresh?.();
 
       // 3. Appearance — apply before any render to avoid flash
       const uiMode = await DB.getSetting('ui_mode', 'normal');
@@ -378,6 +379,7 @@ const APP = (() => {
       DB.flushPendingWrites?.().catch(err => console.warn('online flush failed', err));
     });
 
+    window.addEventListener('teachingboard:guest-signup', () => window.GUEST?.onSignupRequired?.());
     window.addEventListener('teachingboard:locked', () => {
       _offerSubscribe().catch(err => console.warn('subscribe offer failed', err));
     });
@@ -797,6 +799,13 @@ const APP = (() => {
       return;
     }
 
+    // ── Returning guest (free part, no login): no PIN, straight in ─────────────
+    if (profile?.guest && profile.student_code) {
+      beforePrompt?.();
+      await _completeStudentLogin(profile);
+      return;
+    }
+
     // ── Returning Student ──────────────────────────────────────────────────────
     if (profile?.student_code) {
       // ── Returning user: show PIN lock ──
@@ -810,6 +819,12 @@ const APP = (() => {
       return;
     }
     beforePrompt?.();
+    // Free link (…/student-app/?free=1): welcome + class picker, no login.
+    if (window.GUEST?.wantsEntry?.() && await GUEST.start()) {
+      await _refreshProfileAfterLogin();
+      await _syncOfflineContentWithOverlay();
+      return;
+    }
     // A teacher/parent login shows its own dashboard, but app start-up
     // (nav buttons, Back, module set-up) must still go on: it used to wait
     // here for the whole session, so e.g. the parent's "‹ Back" did nothing
@@ -1124,6 +1139,8 @@ const APP = (() => {
   async function _offerSubscribe() {
     if (Date.now() - _lastSubscribeAt < 2000) return;
     _lastSubscribeAt = Date.now();
+
+    if (window.GUEST?.isActive?.()) { GUEST.showOffer('locked'); return; }
 
     const code = String(await DB.getSetting('student_code', '').catch(() => '') || '').trim();
     const pin  = String(await DB.getSetting('student_pin', '').catch(() => '') || '').trim();
@@ -1537,6 +1554,21 @@ const APP = (() => {
       tab.addEventListener('click', () => _applyRole(tab.dataset.role));
     });
 
+    // Free part without login (guest.js). onclick, not addEventListener: this
+    // screen can be opened again, and only the latest onDone must run.
+    const freeBtn = document.getElementById('ob-free-btn');
+    if (freeBtn && window.GUEST) {
+      freeBtn.onclick = async () => {
+        screen.classList.add('hidden');
+        if (await GUEST.start()) {
+          ac.abort();
+          onDone?.();
+        } else {
+          screen.classList.remove('hidden');
+        }
+      };
+    }
+
     _applyRole('student');
 
     // Pre-fill server URL with the auto-detected default
@@ -1844,6 +1876,11 @@ const APP = (() => {
       name = t?.name || t?.teacher_code || 'Teacher';
       infoHtml = `<p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">Teacher Code: <b>${_escHtml(t?.teacher_code || '')}</b></p>
         <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">${_escHtml(t?.institute_name || '')}</p>`;
+    } else if (window.GUEST?.isActive?.()) {
+      const g = await API.getGuestState().catch(() => ({}));
+      name = g.name || 'मित्रा';
+      infoHtml = `<p style="margin:0 0 2px;font-size:0.8rem;color:var(--text2);text-align:center">🎁 Free अभ्यास · <b>${_escHtml(g.batch || '')}</b></p>
+        <p style="margin:0 0 20px;font-size:0.8rem;color:var(--text2);text-align:center">सगळे tests उघडण्यासाठी account बनवा</p>`;
     } else {
       const profile = await API.getStudentProfile().catch(() => null);
       name = profile?.name || profile?.student_code || 'Student';
@@ -1863,6 +1900,7 @@ const APP = (() => {
         </div>
         <h2 style="margin:0 0 4px;font-size:1.1rem;color:var(--text1);text-align:center">${_escHtml(name)}</h2>
         ${infoHtml}
+        ${window.GUEST?.isActive?.() ? `<button id="ps-unlock-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#ff7a18,#ff3d77,#7b2ff7);color:#fff;font-weight:700;cursor:pointer;margin-bottom:8px">🔓 सगळे tests उघडा</button>` : ''}
         ${role ? '' : `<button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>`}
         <button id="ps-board-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🖥️ Board Mode ${_activeUiMode() === 'board' ? 'बंद करा' : 'चालू करा'}</button>
         <button id="ps-switch-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">↔ Switch Account</button>
@@ -1875,6 +1913,10 @@ const APP = (() => {
     overlay.querySelector('#ps-close-btn')?.addEventListener('click', _close);
     overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
 
+    overlay.querySelector('#ps-unlock-btn')?.addEventListener('click', () => {
+      _close();
+      window.GUEST?.showOffer('locked');
+    });
     overlay.querySelector('#ps-analytics-btn')?.addEventListener('click', () => {
       _close();
       window.ANALYTICS?.open();
@@ -2689,7 +2731,8 @@ const APP = (() => {
     // the auto-resume path did. Giving the Activity a couple seconds to
     // stabilize first is the standard fix for this class of Android
     // permission-timing crash.
-    setTimeout(() => _setupPushNotifications('student'), 2000);
+    const guest = !!window.GUEST?.isActive?.();
+    if (!guest) setTimeout(() => _setupPushNotifications('student'), 2000);
     await DB.syncHierarchyFromExisting?.();
     // Real bug fix: subjects/chapters that only have Notes/Exercise content
     // (no legacy MCQ quiz) never appeared in any Subject/Chapter dropdown —
@@ -2702,8 +2745,10 @@ const APP = (() => {
     // Cache renders instantly; network refresh happens in the background —
     // see _loadHomeBanners's own doc-comment.
     _loadHomeBanners().catch(() => {});
-    window.REFER_EARN?.refresh();
-    window.STUDY_PLAN?.refresh();
+    if (!guest) {
+      window.REFER_EARN?.refresh();
+      window.STUDY_PLAN?.refresh();
+    }
 
     // Hide drill-down sections immediately
     ['subject-section', 'chapter-section', 'lesson-section', 'available-tests-section']
@@ -2723,6 +2768,10 @@ const APP = (() => {
     await _renderHomeHierarchy();
     _renderContinueCard().catch(err => console.warn('continue card failed', err));
     _fillOfflineImagesSoon();
+    if (guest) {
+      window.GUEST.renderHomeGuide().catch(err => console.warn('guest guide failed', err));
+      return;
+    }
     await _maybeShowExpirySheet();
     _maybeShowBuyNowSheet();
   }
@@ -3061,6 +3110,7 @@ const APP = (() => {
     isQuizLocked,
     getFreeChapterIds,
     offerSubscribe: _offerSubscribe,
+    deviceId: () => _getDeviceId(),
     // Profile
     openProfileSettings: _openProfileSettings,
     // Test-only — not used by any production code path.

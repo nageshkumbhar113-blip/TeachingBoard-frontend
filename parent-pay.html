@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#2a0f5c" />
+<title>पालकांसाठी — NKs EduOrbit</title>
+<meta name="description" content="मुलाचा result पाहा आणि सगळे tests, notes उघडा — NKs EduOrbit" />
+<link rel="icon" href="/icons/icon-72.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&family=JetBrains+Mono:wght@700&display=swap" />
+<style>
+  :root {
+    --grad: linear-gradient(135deg, #ff7a18 0%, #ff3d77 50%, #7b2ff7 100%);
+    --ink: #1b1340; --muted: #6b6690; --gold: #ffc83d; --green: #16a34a; --red: #e11d48;
+    --font: 'Baloo 2', 'Noto Sans Devanagari', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; min-height: 100dvh; padding: 16px 16px 40px;
+    font-family: var(--font); color: var(--ink);
+    background: radial-gradient(120% 70% at 0% 0%, #ff9a3d 0%, transparent 55%),
+                radial-gradient(110% 70% at 100% 0%, #ff3d77 0%, transparent 55%),
+                radial-gradient(120% 90% at 50% 100%, #7b2ff7 0%, transparent 60%), #2a0f5c;
+  }
+  .wrap { max-width: 440px; margin: 0 auto; }
+  .brand { text-align: center; color: #fff; margin: 6px 0 14px; animation: rise .5s ease both; }
+  .brand b { display: block; font-size: 1.6rem; font-weight: 800; }
+  .brand span { opacity: .9; font-weight: 600; }
+  .card { background: #fff; border-radius: 24px; padding: 20px 18px; margin-bottom: 14px; box-shadow: 0 18px 50px rgba(43, 14, 110, .3); animation: pop .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+  .card:nth-of-type(2) { animation-delay: .08s } .card:nth-of-type(3) { animation-delay: .16s } .card:nth-of-type(4) { animation-delay: .24s }
+  h2 { margin: 0 0 8px; font-size: 1.35rem; line-height: 1.2; }
+  .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .muted { color: var(--muted); font-weight: 600; }
+  .child { display: flex; align-items: center; gap: 14px; }
+  .ring { width: 92px; height: 92px; flex: 0 0 92px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.5rem;
+          background: conic-gradient(#ff3d77 calc(var(--p) * 1%), #efeaff 0); position: relative; }
+  .ring::before { content: ''; position: absolute; inset: 10px; background: #fff; border-radius: 50%; }
+  .ring span { position: relative; }
+  .feats { list-style: none; padding: 0; margin: 4px 0 0; }
+  .feats li { padding: 8px 0; font-weight: 700; border-bottom: 1px dashed #ece6ff; }
+  .feats li:last-child { border-bottom: 0; }
+  .offer { position: relative; overflow: hidden; border-radius: 20px; padding: 14px; text-align: center; color: #fff; background: linear-gradient(135deg, #1b1340, #3b1d86); margin: 0 0 12px; }
+  .offer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.18) 50%, transparent 70%); background-size: 250% 100%; animation: shine 2.8s linear infinite; pointer-events: none; }
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--gold); color: #3b1d00; font-size: .8rem; font-weight: 800; }
+  .offer-head { font-size: 1.2rem; font-weight: 800; margin: 6px 0 2px; }
+  .timer { display: inline-flex; gap: 6px; margin-top: 6px; font: 700 1.15rem 'JetBrains Mono', monospace; }
+  .timer span { padding: 3px 8px; border-radius: 8px; background: rgba(255, 255, 255, .15); }
+  .plans { display: grid; gap: 10px; }
+  .plan { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 18px;
+          border: 2px solid #e7e1ff; background: #fff; cursor: pointer; font: 700 1rem var(--font); color: var(--ink); text-align: left; width: 100%; }
+  .plan.on { border-color: #ff3d77; box-shadow: 0 8px 22px rgba(255, 61, 119, .18); }
+  .plan small { display: block; color: var(--muted); font-weight: 600; }
+  .plan .price { text-align: right; font-size: 1.3rem; font-weight: 800; white-space: nowrap; }
+  .plan .price s { font-size: .9rem; color: var(--muted); margin-right: 4px; }
+  .badge { position: absolute; top: -10px; right: 14px; padding: 2px 10px; border-radius: 999px; background: var(--gold); color: #3b1d00; font-size: .75rem; font-weight: 800; }
+  label { display: block; margin-top: 12px; font-weight: 700; }
+  input { width: 100%; min-height: 52px; margin-top: 6px; padding: 12px 14px; border-radius: 14px; border: 2px solid #e7e1ff; background: #faf8ff; font: 700 1.15rem var(--font); color: var(--ink); }
+  input:focus { outline: none; border-color: #7b2ff7; background: #fff; }
+  .hint { font-size: .85rem; color: var(--muted); font-weight: 600; margin-top: 4px; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 58px; margin-top: 14px; border: 0; border-radius: 16px; cursor: pointer;
+         font: 800 1.2rem var(--font); color: #fff; background: var(--grad); box-shadow: 0 10px 24px rgba(255, 61, 119, .35); position: relative; overflow: hidden; text-decoration: none; }
+  .btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.4) 50%, transparent 65%); background-size: 250% 100%; animation: shine 2.4s linear infinite; }
+  .btn:disabled { filter: grayscale(.4); }
+  .btn.wa { background: #25d366; box-shadow: 0 10px 22px rgba(37, 211, 102, .35); }
+  .btn.ghost { background: #f3efff; color: #7b2ff7; box-shadow: none; }
+  .btn.ghost::after, .btn.wa::after { display: none; }
+  .msg { min-height: 1.2em; margin-top: 8px; text-align: center; color: var(--red); font-weight: 700; }
+  .safe { text-align: center; color: rgba(255, 255, 255, .85); font-weight: 600; font-size: .9rem; }
+  .code { font: 800 2rem 'JetBrains Mono', monospace; letter-spacing: .08em; text-align: center; padding: 10px; border-radius: 16px; background: #faf8ff; border: 2px dashed #7b2ff7; margin: 10px 0; }
+  .center { text-align: center; }
+  .big-emoji { font-size: 3.4rem; text-align: center; animation: bounce 2s ease-in-out infinite; }
+  .hidden { display: none !important; }
+  @keyframes pop { 0% { opacity: 0; transform: translateY(24px) scale(.94) } 70% { opacity: 1; transform: translateY(-3px) scale(1.01) } 100% { transform: none } }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+  @keyframes shine { from { background-position: -150% 0 } to { background-position: 150% 0 } }
+  @keyframes bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+  .fx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><b>🚀 NKs EduOrbit</b><span>पालकांसाठी</span></div>
+
+  <div id="v-loading" class="card center"><p class="muted">⏳ उघडत आहे…</p></div>
+
+  <div id="v-error" class="card center hidden">
+    <div class="big-emoji">😕</div>
+    <h2 id="err-title">Link उघडता आली नाही</h2>
+    <p class="muted" id="err-sub">मुलाने पाठवलेली पूर्ण link उघडा, किंवा थोड्या वेळाने पुन्हा प्रयत्न करा.</p>
+    <button class="btn ghost" id="err-retry">🔄 पुन्हा प्रयत्न करा</button>
+  </div>
+
+  <div id="v-main" class="hidden">
+    <div class="card">
+      <div class="child">
+        <div class="ring" id="c-ring" style="--p:0"><span id="c-pct">0%</span></div>
+        <div>
+          <h2><span id="c-name">तुमचं मूल</span> चा <span class="grad">result</span></h2>
+          <div class="muted" id="c-line"></div>
+          <div class="muted" id="c-batch"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>सगळे chapters <span class="grad">उघडा</span></h2>
+      <ul class="feats">
+        <li>📝 सगळ्या chapters चे सगळे tests आणि लगेच result</li>
+        <li>💡 प्रत्येक प्रश्नाचं स्पष्टीकरण</li>
+        <li>📖 Notes, Exercise आणि सराव प्रश्न</li>
+        <li>👨‍👩‍👧 तुम्हाला weekly progress report</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div id="offer" class="offer hidden">
+        <span class="tag">🎁 Test पूर्ण केल्याबद्दल</span>
+        <div class="offer-head" id="offer-head">पहिल्या महिन्यावर 50% सवलत!</div>
+        <div>⏳ फक्त <span class="timer" id="timer"></span> बाकी</div>
+      </div>
+      <div class="plans">
+        <button type="button" class="plan on" data-period="monthly" id="p-monthly">
+          <span>Monthly<small id="m-note">दर महिना</small></span>
+          <span class="price" id="m-price">—</span>
+        </button>
+        <button type="button" class="plan" data-period="yearly" id="p-yearly">
+          <span class="badge hidden" id="y-badge"></span>
+          <span>Yearly<small id="y-note">पूर्ण वर्ष</small></span>
+          <span class="price" id="y-price">—</span>
+        </button>
+      </div>
+
+      <label for="f-name">विद्यार्थ्याचं नाव</label>
+      <input id="f-name" maxlength="40" autocomplete="name" />
+      <label for="f-mobile">पालकांचा mobile</label>
+      <input id="f-mobile" type="tel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="98XXXXXXXX" />
+      <label for="f-pin">4 अंकी PIN ठेवा</label>
+      <input id="f-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" />
+      <div class="hint">App मध्ये login साठी हाच PIN लागेल. 1234, 1111 असा सोपा नको.</div>
+      <p class="msg" id="msg" role="alert"></p>
+      <button class="btn" id="pay">🔒 सुरक्षित Payment करा</button>
+    </div>
+    <p class="safe">🔐 Razorpay द्वारे सुरक्षित payment · UPI / Card / Net banking</p>
+  </div>
+
+  <div id="v-done" class="card center hidden">
+    <div class="big-emoji">🎉</div>
+    <h2>अभिनंदन! <span class="grad" id="d-name"></span> चं account तयार</h2>
+    <p class="muted">App मध्ये हा Student Code आणि तुम्ही ठेवलेला PIN टाकून login करा.</p>
+    <div class="code" id="d-code">—</div>
+    <a class="btn" href="/get-app.html" id="d-app">📱 App उघडा / Download</a>
+    <button class="btn wa" id="d-share">💬 हा code WhatsApp वर पाठवा</button>
+    <p class="muted" style="margin-top:10px">आत्तापर्यंत दिलेले सगळे tests account मध्ये आहेत.</p>
+  </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+<script>
+(function () {
+  'use strict';
+  var API = (function () {
+    try { return localStorage.getItem('teachingboard_api_url') || 'https://teachingboard-backend.onrender.com/api'; }
+    catch (e) { return 'https://teachingboard-backend.onrender.com/api'; }
+  })();
+  var gid = (new URLSearchParams(location.search).get('g') || '').trim().toUpperCase();
+  var $ = function (id) { return document.getElementById(id); };
+  var info = null, period = 'monthly';
+
+  function show(id) { ['v-loading', 'v-error', 'v-main', 'v-done'].forEach(function (v) { $(v).classList.toggle('hidden', v !== id); }); }
+  function err(t, s) { $('err-title').textContent = t; $('err-sub').textContent = s || ''; show('v-error'); }
+  function rupee(n) { return '₹' + Number(n || 0).toLocaleString('en-IN'); }
+  function post(path, body) {
+    return fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { if (!r.ok || b.success === false) throw new Error(b.message || 'काहीतरी चूक झाली'); return b; }); });
+  }
+
+  function fireworks() {
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var cv = document.createElement('canvas'); cv.className = 'fx'; document.body.appendChild(cv);
+    var ctx = cv.getContext('2d'), W = cv.width = innerWidth, H = cv.height = innerHeight, P = [];
+    var C = ['#ff7a18', '#ff3d77', '#7b2ff7', '#ffc83d', '#22c55e', '#38bdf8', '#fff'];
+    for (var b = 0; b < 6; b++) (function (b) { setTimeout(function () {
+      var x = W * (.15 + Math.random() * .7), y = H * (.15 + Math.random() * .35), c = C[b % C.length];
+      for (var i = 0; i < 60; i++) { var a = Math.PI * 2 * i / 60, v = 2 + Math.random() * 3.5; P.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: 70, c: Math.random() < .7 ? c : C[i % C.length] }); }
+    }, b * 300); })(b);
+    var t0 = Date.now();
+    (function f() {
+      ctx.clearRect(0, 0, W, H);
+      for (var i = P.length - 1; i >= 0; i--) { var p = P[i]; p.l--; p.vx *= .985; p.vy = p.vy * .985 + .05; p.x += p.vx; p.y += p.vy;
+        if (p.l <= 0) { P.splice(i, 1); continue; } ctx.globalAlpha = p.l / 70; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, 7); ctx.fill(); }
+      if (Date.now() - t0 < 4500) requestAnimationFrame(f); else cv.remove();
+    })();
+  }
+
+  function timer(el, until, onEnd) {
+    function tick() {
+      var ms = new Date(until).getTime() - Date.now();
+      if (ms <= 0) { clearInterval(id); onEnd(); return; }
+      var h = Math.floor(ms / 36e5), m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
+      el.innerHTML = [h, m, s].map(function (v) { return '<span>' + String(v).padStart(2, '0') + '</span>'; }).join(':');
+    }
+    var id = setInterval(tick, 1000); tick();
+  }
+
+  function renderPrices() {
+    var mp = info.prices.monthly || 0, yp = info.prices.yearly || 0;
+    var off = info.offer && info.offer.active ? info.offer.percent : 0;
+    $('m-price').innerHTML = off && mp ? '<s>' + rupee(mp) + '</s>' + rupee(Math.round(mp * (1 - off / 100))) : (mp ? rupee(mp) : '—');
+    $('m-note').textContent = off ? 'पहिला महिना ' + off + '% सवलत, नंतर ' + rupee(mp) + '/महिना' : 'दर महिना';
+    $('y-price').textContent = yp ? rupee(yp) : '—';
+    var save = mp && yp ? mp * 12 - yp : 0;
+    $('y-note').textContent = yp ? 'दिवसाला फक्त ' + rupee(Math.max(1, Math.round(yp / 365))) : 'पूर्ण वर्ष';
+    if (save > 0) { $('y-badge').textContent = rupee(save) + ' वाचवा'; $('y-badge').classList.remove('hidden'); }
+    $('p-monthly').classList.toggle('hidden', !mp);
+    $('p-yearly').classList.toggle('hidden', !yp);
+    if (!mp && yp) pick('yearly');
+  }
+
+  function pick(p) {
+    period = p;
+    $('p-monthly').classList.toggle('on', p === 'monthly');
+    $('p-yearly').classList.toggle('on', p === 'yearly');
+  }
+
+  function load() {
+    show('v-loading');
+    if (!/^[0-9A-F]{10}$/.test(gid)) { err('Link अपूर्ण आहे', 'मुलाने पाठवलेली पूर्ण link उघडा.'); return; }
+    fetch(API + '/guest/public/' + gid).then(function (r) { return r.json(); }).then(function (b) {
+      if (!b || !b.success) throw new Error(b && b.message);
+      info = b.data;
+      if (info.paid && info.student_code) { done(info.student_code, info.name); return; }
+      var pct = info.best_pct || 0;
+      $('c-name').textContent = info.name || 'तुमचं मूल';
+      $('c-line').textContent = info.tests ? info.tests + ' free tests दिले · सगळ्यात चांगले ' + pct + '%' : 'Free अभ्यास सुरू केला';
+      $('c-batch').textContent = info.batch ? '📚 ' + info.batch : '';
+      $('f-name').value = info.name || '';
+      show('v-main');
+      var k = 0, ring = $('c-ring');
+      var t = setInterval(function () { k = Math.min(pct, k + Math.max(1, Math.round(pct / 25))); ring.style.setProperty('--p', k); $('c-pct').textContent = k + '%'; if (k >= pct) clearInterval(t); }, 30);
+      if (info.offer && info.offer.active) {
+        $('offer-head').textContent = 'पहिल्या महिन्यावर ' + info.offer.percent + '% सवलत!';
+        $('offer').classList.remove('hidden');
+        timer($('timer'), info.offer.expires_at, function () { info.offer.active = false; $('offer').classList.add('hidden'); renderPrices(); });
+      }
+      renderPrices();
+    }).catch(function () { err('Link उघडता आली नाही', navigator.onLine ? 'ही link जुनी किंवा अपूर्ण आहे. मुलाकडून नवीन link मागवा.' : 'Internet चालू करून पुन्हा प्रयत्न करा.'); });
+  }
+
+  function done(code, name) {
+    $('d-code').textContent = code;
+    $('d-name').textContent = name || '';
+    show('v-done');
+    fireworks();
+    $('d-share').onclick = function () {
+      var text = '✅ अभिनंदन! *' + (name || '') + '* चं NKs EduOrbit account तयार झालं.\n👤 Student Code: *' + code + '*\n🔑 PIN: तुम्ही निवडलेला\n📱 App: ' + location.origin + '/get-app.html\nआत्तापर्यंत दिलेले सगळे tests account मध्ये आहेत. शुभेच्छा! 🎯';
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+    };
+  }
+
+  function weak(pin) {
+    if (!/^\d{4}$/.test(pin)) return true;
+    var d = pin.split('').map(Number);
+    return /^(\d)\1{3}$/.test(pin) || (d[1] === d[0] + 1 && d[2] === d[1] + 1 && d[3] === d[2] + 1) || (d[1] === d[0] - 1 && d[2] === d[1] - 1 && d[3] === d[2] - 1) || (d[0] === d[2] && d[1] === d[3]);
+  }
+
+  function pay() {
+    var msg = $('msg'), btn = $('pay');
+    var name = $('f-name').value.trim(), mobile = $('f-mobile').value.trim(), pin = $('f-pin').value.trim();
+    if (name.length < 2) { msg.textContent = 'विद्यार्थ्याचं नाव लिहा'; return; }
+    if (mobile.replace(/\D/g, '').length < 10) { msg.textContent = 'पालकांचा 10 अंकी mobile नंबर द्या'; return; }
+    if (weak(pin)) { msg.textContent = '4 अंकी PIN ठेवा (1234, 1111 असा सोपा नको)'; return; }
+    msg.textContent = ''; btn.disabled = true; btn.textContent = '⏳ तयार होत आहे…';
+    post('/guest/checkout', { gid: gid, name: name, parent_mobile: mobile, pin: pin, period: period }).then(function (o) {
+      if (!window.Razorpay) throw new Error('Payment उघडता आलं नाही — थोड्या वेळाने पुन्हा प्रयत्न करा');
+      var rz = new Razorpay({
+        key: o.key_id, amount: o.amount, currency: o.currency || 'INR', order_id: o.order_id,
+        name: 'NKs EduOrbit', description: o.batch + ' — ' + (o.period === 'yearly' ? 'Yearly' : 'Monthly'),
+        prefill: { name: name, contact: mobile.replace(/\D/g, '').slice(-10) }, theme: { color: '#7b2ff7' },
+        handler: function (r) {
+          btn.textContent = '⏳ Payment तपासत आहे…';
+          post('/payment/verify-public', { razorpay_order_id: r.razorpay_order_id, razorpay_payment_id: r.razorpay_payment_id, razorpay_signature: r.razorpay_signature })
+            .then(function () { done(o.student_code, o.name); })
+            .catch(function () { done(o.student_code, o.name); msg.textContent = ''; });
+        },
+        modal: { ondismiss: function () { btn.disabled = false; btn.textContent = '🔒 सुरक्षित Payment करा'; } }
+      });
+      rz.on('payment.failed', function () { msg.textContent = 'Payment झालं नाही — पैसे कापले गेले नाहीत. पुन्हा प्रयत्न करा.'; btn.disabled = false; btn.textContent = '🔒 सुरक्षित Payment करा'; });
+      rz.open();
+    }).catch(function (e) {
+      msg.textContent = e.message || 'काहीतरी चूक झाली';
+      btn.disabled = false; btn.textContent = '🔒 सुरक्षित Payment करा';
+    });
+  }
+
+  $('p-monthly').onclick = function () { pick('monthly'); };
+  $('p-yearly').onclick = function () { pick('yearly'); };
+  $('pay').onclick = pay;
+  $('err-retry').onclick = load;
+  load();
+})();
+</script>
+</body>
+</html>

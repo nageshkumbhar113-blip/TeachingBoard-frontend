@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="student-ui.css" />
   <link rel="stylesheet" href="notesViewer.css" />
   <link rel="stylesheet" href="videoTeacherSelect.css" />
+  <link rel="stylesheet" href="guest.css" />
   <!-- KaTeX 0.16.11 shipped with the app (js/vendor/katex, MIT): from the CDN,
        formulas showed as raw "$\pi r^2$" whenever the phone was offline. -->
   <link rel="stylesheet" href="../js/vendor/katex/katex.min.css" />
@@ -115,6 +116,9 @@
       </div>
       <div class="admit-perforation" aria-hidden="true"></div>
       <div class="admit-body">
+      <!-- Free part without login (guest.js) -->
+      <button type="button" id="ob-free-btn" class="ob-free-btn">🎁 Free tests try करा <small>Login नाही · लगेच Result</small></button>
+
       <!-- Role selector -->
       <div class="ob-role-tabs" role="group" aria-label="Login as">
         <button type="button" class="ob-role-tab active" data-role="student">👨‍🎓 Student</button>
@@ -1578,6 +1582,7 @@
   <script src="homeSearch.js" defer></script>
   <script src="ui.js" defer></script>
   <script src="payment.js" defer></script>
+  <script src="guest.js" defer></script>
   <script src="app.js" defer></script>
   <script src="student-mobile.js" defer></script>
 </body>

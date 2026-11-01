@@ -2516,3 +2516,13 @@ body.admin-app {
 .pb-multi-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pb-selectall { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; color: var(--text2, #666); cursor: pointer; user-select: none; }
 .pb-selectall input { margin: 0; accent-color: var(--accent); }
+
+/* Free part (guest.js): link, funnel, leads — admin Sync tab */
+.gxa-card { border: 2px solid #ffb38a; background: linear-gradient(180deg, #fff7f0, #fff); }
+.gxa-msg { white-space: pre-wrap; font: 600 0.82rem/1.5 inherit; background: #f6f3ff; border-radius: 10px; padding: 8px 10px; margin: 8px 0 0; color: #3b2d6b; }
+.gxa-funnel { display: grid; gap: 6px; margin: 10px 0 14px; }
+.gxa-step { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; background: #f6f3ff; overflow: hidden; font-weight: 600; }
+.gxa-step > i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(255,122,24,.28), rgba(123,47,247,.22)); z-index: 0; border-radius: 10px; }
+.gxa-step > span, .gxa-step > b { position: relative; z-index: 1; }
+.gxa-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 0.75rem; font-weight: 700; }
+.gxa-badge.gxa-paid { background: #dcfce7; color: #166534; }

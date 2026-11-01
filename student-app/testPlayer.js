@@ -231,6 +231,9 @@ const TEST_PLAYER = (() => {
       return;
     }
 
+    // Free-part visitor: their first name before the first test (guest.js).
+    if (window.GUEST?.isActive?.() && !(await GUEST.ensureName())) return;
+
     const hasEmbeddedQuestions = Array.isArray(quiz.questions) && quiz.questions.length > 0;
     const hasSectionRefs = (quiz.sections || []).some(section => section.question_ids?.length);
     if (!hasEmbeddedQuestions && !hasSectionRefs) {
@@ -1116,15 +1119,15 @@ const TEST_PLAYER = (() => {
     }
 
     // Push to server (non-blocking — queued if offline)
-    SYNC.submitAttempt(storedAttempt).catch(err => {
+    const submitted = SYNC.submitAttempt(storedAttempt).catch(err => {
       console.warn('Submit attempt sync failed:', err?.message);
       APP.toast('Result save pending — Internet आल्यावर sync होईल', 'info');
     });
 
-    _showResults(storedAttempt, qs);
+    _showResults(storedAttempt, qs, submitted);
   }
 
-  function _showResults(attempt, questions) {
+  function _showResults(attempt, questions, submitted) {
     $('tp-quiz-view')?.classList.add('hidden');
     $('tp-results-view')?.classList.remove('hidden');
 
@@ -1157,6 +1160,12 @@ const TEST_PLAYER = (() => {
       } else {
         reviewWrap.classList.add('hidden');
       }
+    }
+
+    // Free-part visitor: the animated result (marking, fireworks, rank, offer,
+    // share) plays over this screen; closing it leaves the detailed review.
+    if (window.GUEST?.isActive?.()) {
+      GUEST.onResult({ attempt, questions, quiz: state.quiz, submitted }).catch(err => console.warn('guest result failed', err));
     }
 
     $('tp-btn-retry').onclick = () => startTest(state.quiz.quiz_id, state.mode);
