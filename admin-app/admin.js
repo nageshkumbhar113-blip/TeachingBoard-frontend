@@ -1958,7 +1958,7 @@ const ADMIN = (() => {
 
   function _freeLinkMessage(url) {
     return `📚 *NKs EduOrbit — Free Tests*\n` +
-      `8वी ते 10वी: Maths, Science, English… सगळ्या विषयांचे\n` +
+      `4थी पासून पुढे आणि स्पर्धा परीक्षा (NMMS, Scholarship…): सगळ्या विषयांचे\n` +
       `✅ Free Tests  ✅ Notes  ✅ सराव प्रश्न\n` +
       `🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल\n` +
       `👉 आत्ताच test द्या: ${url}`;

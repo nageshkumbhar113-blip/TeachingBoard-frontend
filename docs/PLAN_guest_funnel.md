@@ -65,7 +65,7 @@ F7→F9 (price/trust). Everything below targets those two drops.
 ### 2.1 Link opens (F1)
 Popup over the app (no login):
 > 👋 **NKs EduOrbit मध्ये स्वागत!**
-> 8वी–10वी: सगळ्या विषयांचे Free Tests, Notes आणि सराव
+> 4थी पासून पुढे आणि स्पर्धा परीक्षा: सगळ्या विषयांचे Free Tests, Notes आणि सराव
 > ✅ Login नाही ✅ पूर्ण Free ✅ लगेच Result
 > **[ ▶ सुरू करा ]**
 
@@ -131,7 +131,7 @@ Placeholders: {name} {batch} {subject} {lesson} {test} {score} {total} {pct} {ra
 ### 3.1 Admin general share (Admin → 📤)
 ```
 📚 *NKs EduOrbit — Free Tests*
-8वी ते 10वी: Maths, Science, English… सगळ्या विषयांचे
+4थी पासून पुढे आणि स्पर्धा परीक्षा (NMMS, Scholarship…): सगळ्या विषयांचे
 ✅ Free Tests  ✅ Notes  ✅ सराव प्रश्न
 🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल
 👉 आत्ताच test द्या: {link}

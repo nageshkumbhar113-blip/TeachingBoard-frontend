@@ -158,7 +158,7 @@ const GUEST = (() => {
           <h1 class="gx-title gx-welcome-title">NKs EduOrbit<b>Free अभ्यास!</b></h1>
           ${challenge && challenge.from ? `<div class="gx-challenge">🏁 ${_esc(challenge.from)} चे ${challenge.fp}% — त्याला मागे टाका!</div>` : ''}
           ${!challenge && p.teacher ? '<div class="gx-challenge">👩‍🏫 तुमच्या सरांनी सुचवलेले Free tests</div>' : ''}
-          <p class="gx-sub">8वी–10वी: सगळ्या विषयांचे Free Tests, Notes आणि सराव</p>
+          <p class="gx-sub">4थी पासून पुढे आणि स्पर्धा परीक्षा: सगळ्या विषयांचे Free Tests, Notes आणि सराव</p>
           <div class="gx-chips">
             <span class="gx-chip" style="animation-delay:.1s">✅ Login नाही</span>
             <span class="gx-chip" style="animation-delay:.2s">🎁 पूर्ण Free</span>
