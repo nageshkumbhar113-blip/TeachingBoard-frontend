@@ -34,6 +34,7 @@ const VOCAB = (() => {
   // ─── Public entry ──────────────────────────────────────────────────────────
 
   async function openVocabScreen(batch, subject) {
+    window.USAGE?.bump('words');
     _batch   = batch   || '';
     _subject = subject || '';
 

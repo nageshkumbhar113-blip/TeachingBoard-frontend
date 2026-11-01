@@ -1317,6 +1317,38 @@ const API = (() => {
   async function createShop(body) { return _shopReq('', { method: 'POST', body: JSON.stringify(body) }); }
   async function updateShop(id, body) { return _shopReq(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }); }
   async function fetchShopStudents(id) { return (await _shopReq(`/${encodeURIComponent(id)}/students`))?.data || []; }
+  // Usage (core/usage.js). Plain fetch: a 401 here must never log anyone out.
+  async function _usageToken() {
+    const teacher = getTeacherToken() ? await getTeacherProfile() : null;
+    const student = !teacher && getStudentToken() ? await getStudentProfile() : null;
+    if (!teacher && (!student || student.guest)) return '';
+    return teacher ? getTeacherToken() : getStudentToken();
+  }
+  // null = cannot tell now (not logged in / offline)
+  async function usageRequest() {
+    const token = await _usageToken();
+    if (!token) return null;
+    const r = await safeFetch(`${getApiUrl()}/usage/collect`, { headers: { Authorization: `Bearer ${token}` } }, 1);
+    if (!r.ok) return null;
+    return r.json().catch(() => null);
+  }
+  async function sendUsage(days) {
+    const token = await _usageToken();
+    if (!token) return false;
+    const r = await safeFetch(`${getApiUrl()}/usage/daily`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ days }),
+    }, 1);
+    return r.ok;
+  }
+  async function fetchUsage(role = 'student', days = 30) {
+    const token = await ensureAdminSession();
+    const p = await request(`/usage/admin?role=${encodeURIComponent(role)}&days=${encodeURIComponent(days)}`, { headers: { Authorization: `Bearer ${token}` } });
+    return { data: p?.data || [], collect: p?.collect || {} };
+  }
+  async function requestUsageCollect() {
+    const token = await ensureAdminSession();
+    return request('/usage/admin/collect', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: '{}' });
+  }
   // Admin > Settlement
   async function fetchSettlement(month = '', fy = '') {
     const q = new URLSearchParams();
@@ -2946,7 +2978,7 @@ const API = (() => {
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
-    fetchShops, createShop, updateShop, fetchShopStudents, fetchSettlement, fetchSettlementHistory, settlePartnerNow,
+    fetchShops, createShop, updateShop, fetchShopStudents, fetchSettlement, fetchSettlementHistory, settlePartnerNow, sendUsage, usageRequest, fetchUsage, requestUsageCollect,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
     fetchPassageBlocks, fetchPassageBlock, updatePassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
     registerTeacher,

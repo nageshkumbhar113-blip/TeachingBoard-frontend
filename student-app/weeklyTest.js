@@ -294,6 +294,7 @@ const WEEKLY = (() => {
   function _hash(s) { let h = 0; for (const c of String(s)) h = (h * 33 + c.charCodeAt(0)) >>> 0; return h; }
 
   function _submitted(el, ev, res) {
+    window.USAGE?.bump('weekly');
     el.className = 'gx-layer gx-hero';
     el.innerHTML = `
       <div class="gx-card">

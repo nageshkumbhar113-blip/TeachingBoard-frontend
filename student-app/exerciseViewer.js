@@ -209,6 +209,7 @@ const EXERCISE_VIEWER = (() => {
   // re-select what they already chose there. Reuses the exact same private
   // handlers the manual dropdowns call; nothing about them changes.
   async function openChapter(batch, subject, chapter) {
+    window.USAGE?.bump('exercise');
     APP?.navigate?.('exercise');
     _showPickers(false, subject, chapter);
     await _populateBatches();

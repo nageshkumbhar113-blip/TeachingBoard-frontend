@@ -560,6 +560,7 @@ const TEACHER_PAPER_BUILDER = (() => {
         questions: _selectedQuestions.map(q => ({ ...(q.isMcq ? { mcqId: q.mcqId } : { questionId: q._id }), marks: q.marks, ...(q.sectionId ? { sectionId: q.sectionId } : {}) }))
       });
       APP?.toast?.(`✅ Paper "${paper.paperTitle}" saved (Paper #${paper.paperNumber})`, 'success');
+      window.USAGE?.bump('papers');
       _showPdfExportPanel(paper);
       _resetPaperState(false);
       _refreshQuota();

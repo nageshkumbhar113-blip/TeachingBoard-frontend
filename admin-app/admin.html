@@ -218,6 +218,10 @@
               <span class="atab-icon" aria-hidden="true">💸</span>
               <span class="atab-label">Settlement</span>
             </button>
+            <button class="atab" role="tab" data-tab="usage" aria-controls="atab-usage" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📊</span>
+              <span class="atab-label">Usage</span>
+            </button>
             <button class="atab" role="tab" data-tab="youtube-teachers" aria-controls="atab-youtube-teachers" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">🎬</span>
               <span class="atab-label">YouTube Teachers</span>
@@ -1919,6 +1923,31 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <div class="atab-content hidden" id="atab-usage" role="tabpanel" aria-labelledby="atab-btn-usage">
+            <div class="pa-wrap">
+              <h2>📊 Usage — कोण किती वापरतं, आधी कोणाला target करायचं</h2>
+              <p class="import-hint">प्रत्येक phone आपला वापर (मिनिटं, tests, notes…) स्वतःकडे साठवतो. "📥 Data मागवा" दाबल्यावर पुढच्या 8 दिवसांत app उघडणारे phones तो एकदाच पाठवतात — त्यामुळे server वर load नाही. तयार याद्यांमधून थेट WhatsApp करा किंवा Excel (CSV) घ्या.</p>
+              <div class="st-chips" id="us-roles">
+                <button type="button" class="st-chip on" data-us-role="student">👨‍🎓 Students</button>
+                <button type="button" class="st-chip" data-us-role="teacher">👩‍🏫 Teachers</button>
+                <button type="button" class="st-chip" data-us-role="shop">🏪 Shops</button>
+              </div>
+              <div class="st-filters">
+                <label>काळ<select id="us-days" class="admin-input"><option value="7">गेले 7 दिवस</option><option value="30" selected>गेले 30 दिवस</option><option value="90">गेले 90 दिवस</option><option value="365">गेलं वर्ष</option></select></label>
+                <label>Class<select id="us-class" class="admin-input"></select></label>
+                <label class="st-search">🔍 Search<input id="us-search" class="admin-input" type="search" placeholder="नाव, code, mobile, class, गाव" /></label>
+                <div class="pa-row-actions">
+                  <button type="button" id="us-collect" class="admin-btn-primary">📥 Data मागवा</button>
+                  <button type="button" id="us-csv" class="admin-btn-secondary">⬇️ Excel (CSV)</button>
+                </div>
+              </div>
+              <p class="import-hint" id="us-collect-status"></p>
+              <div class="pa-cards" id="us-cards"></div>
+              <div class="st-chips" id="us-lists"></div>
+              <div class="admin-card pa-section" id="us-body"></div>
+            </div>
+          </div>
+
           <div class="atab-content hidden" id="atab-pricing" role="tabpanel" aria-labelledby="atab-btn-pricing">
             <div id="bp-container" class="bp-container">
               <div class="bp-header">
@@ -2173,6 +2202,9 @@ Marks: 1"></textarea>
       </button>
       <button class="abn-drawer-item" data-tab="settlement">
         <span>💸</span> Settlement
+      </button>
+      <button class="abn-drawer-item" data-tab="usage">
+        <span>📊</span> Usage
       </button>
       <button class="abn-drawer-item" data-tab="banners">
         <span>🎯</span> Banners
@@ -2455,6 +2487,7 @@ Marks: 1"></textarea>
   <script src="../core/shopPoster.js" defer></script>
   <script src="shopsAdmin.js" defer></script>
   <script src="settlementAdmin.js" defer></script>
+  <script src="usageAdmin.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="bannerAdmin.js" defer></script>

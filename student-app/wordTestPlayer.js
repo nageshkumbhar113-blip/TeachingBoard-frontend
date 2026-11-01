@@ -41,6 +41,7 @@ const WORD_TEST_PLAYER = (() => {
   // ─── Public entry ──────────────────────────────────────────────────────────
 
   async function openWordTestScreen(batch, subject) {
+    window.USAGE?.bump('words');
     _batch   = batch   || '';
     _subject = subject || '';
     _showScreen();

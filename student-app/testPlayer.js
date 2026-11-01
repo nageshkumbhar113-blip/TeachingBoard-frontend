@@ -1164,6 +1164,7 @@ const TEST_PLAYER = (() => {
 
     // Free-part visitor: the animated result (marking, fireworks, rank, offer,
     // share) plays over this screen; closing it leaves the detailed review.
+    window.USAGE?.bump('tests');
     if (window.GUEST?.isActive?.()) {
       GUEST.onResult({ attempt, questions, quiz: state.quiz, submitted }).catch(err => console.warn('guest result failed', err));
     } else {

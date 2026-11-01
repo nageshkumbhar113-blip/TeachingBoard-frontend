@@ -704,6 +704,7 @@ const NOTES_VIEWER = (() => {
   // this chapter has no notes yet, shows a clear empty state rather than
   // silently falling back to whatever chapter was open before.
   async function openChapter(batch, subject, chapter) {
+    window.USAGE?.bump('notes');
     state.entry = 'chapter';
     await init();
     const match = state.chapters.find(c => c.subject === subject && c.name === chapter);

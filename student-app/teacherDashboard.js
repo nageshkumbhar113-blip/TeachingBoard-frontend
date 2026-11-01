@@ -520,6 +520,7 @@ const TEACHER_DASHBOARD = (() => {
 
     try {
       const res = await API.sendTeacherNotification(payload);
+      window.USAGE?.bump('notifs');
       const count = res?.recipient_count ?? 0;
       _closeModal();
       window.toast?.(`${count} parent(s) ला notification पाठवली!`, 'success');

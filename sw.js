@@ -25,6 +25,7 @@ const CORE_ASSETS = [
   './core/db.js',
   './core/imageCache.js',
   './core/helpers.js',
+  './core/usage.js',
   './core/fileExport.js',
   './core/math.js',
   './core/i18n.js',
