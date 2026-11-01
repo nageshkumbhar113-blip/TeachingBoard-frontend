@@ -145,8 +145,9 @@ const GUEST = (() => {
     await _afterSplash();
     const p = entryParams();
     const challenge = p.quiz && p.batch ? { quiz: p.quiz, batch: p.batch, from: p.from, fp: p.fp, ref: p.ref } : null;
-    const src = challenge ? 'friend' : p.teacher ? 'teacher' : p.free ? 'admin' : '';
-    const ref = challenge ? p.ref : p.teacher;
+    // ?ref=CODE without a test = a student's own share link (Refer & Earn)
+    const src = challenge ? 'friend' : p.teacher ? 'teacher' : p.ref ? 'student' : p.free ? 'admin' : '';
+    const ref = challenge ? p.ref : p.teacher || p.ref;
 
     return new Promise(resolve => {
       const floaters = ['📚', '🏆', '✏️', '🎯', '⭐', '🚀', '🧠', '📝', '🎉', '💡']
@@ -343,6 +344,8 @@ const GUEST = (() => {
             <button type="button" class="gx-btn gx-wa" id="gx-share-p">👨‍👩‍👧 पालकांना</button>
           </div>
           <button type="button" class="gx-btn gx-cool" id="gx-photo">📸 Status साठी Result photo</button>
+          <p class="gx-sub gx-refer-note">🎁 Account असलेल्या students ना मित्र जोडल्यावर बक्षिसं मिळतात (Refer &amp; Earn). Account बनवा आणि तिथून मित्रांना share करा!</p>
+          ${_isNative() ? '' : '<button type="button" class="gx-btn gx-ghost" id="gx-getapp">📲 App मध्ये पुढचे tests (offline पण चालतात)</button>'}
           <button type="button" class="gx-btn gx-ghost" id="gx-secondary"></button>
           <button type="button" class="gx-btn gx-ghost" id="gx-analysis">📊 पूर्ण analysis बघा</button>
         </div>
@@ -379,6 +382,11 @@ const GUEST = (() => {
     el.querySelector('#gx-share-f').onclick = () => shareFriend(ctx);
     el.querySelector('#gx-share-p').onclick = () => shareParent(ctx);
     el.querySelector('#gx-photo').onclick = () => shareResultImage(ctx).catch(() => _toast('Photo तयार करता आला नाही', 'error'));
+    el.querySelector('#gx-getapp')?.addEventListener('click', () => {
+      const q = new URLSearchParams({ guest: _state.gid || '' });
+      if (_state.src === 'teacher' && _state.ref) q.set('teacher', _state.ref);
+      window.open(`${_site()}/get-app.html?${q.toString()}`, '_blank', 'noopener');
+    });
     el.querySelector('#gx-analysis').onclick = async () => {
       if (!_state.has_parent_mobile && !(await contactGate())) return;
       close();   // the detailed review underneath (testPlayer results view)

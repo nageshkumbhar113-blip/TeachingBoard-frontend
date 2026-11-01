@@ -13,9 +13,15 @@ const REFER_EARN = (() => {
   let _data = null;
 
   const _link = () => `${SHARE_BASE}?ref=${encodeURIComponent(_data?.code || '')}`;
+  // Free test without login, carrying this student's code: a friend who pays
+  // after it counts for this student's Refer & Earn (backend guest checkout).
+  const _freeLink = () => `https://teachingboard-frontend.vercel.app/student-app/?free=1&ref=${encodeURIComponent(_data?.code || '')}`;
   const _message = () => [
     '📚 *Nks EduOrbit*: notes, exercises and MCQ tests for Maharashtra Board students.',
     '🎁 The first chapter of every subject is free.',
+    '',
+    '📝 Try a free test right now (no login needed):',
+    _freeLink(),
     '',
     'Open the app and register here:',
     _link(),
