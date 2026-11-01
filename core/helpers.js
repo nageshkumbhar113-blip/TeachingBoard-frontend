@@ -1325,6 +1325,7 @@ const API = (() => {
     return (await _partnerReq(`/settlement${q.toString() ? `?${q}` : ''}`))?.data || null;
   }
   async function fetchSettlementHistory(id) { return (await _partnerReq(`/settlement/${encodeURIComponent(id)}`))?.data || null; }
+  async function settlePartnerNow(id) { return (await _partnerReq(`/settlement/${encodeURIComponent(id)}/settle-now`, { method: 'POST', body: '{}' }))?.data || null; }
   async function fetchReferralSummary() {
     const token = await ensureAdminSession();
     const p = await request('/referrals/summary', { headers: { Authorization: `Bearer ${token}` } });
@@ -2942,7 +2943,7 @@ const API = (() => {
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
-    fetchShops, createShop, updateShop, fetchShopStudents, fetchSettlement, fetchSettlementHistory,
+    fetchShops, createShop, updateShop, fetchShopStudents, fetchSettlement, fetchSettlementHistory, settlePartnerNow,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
     fetchPassageBlocks, fetchPassageBlock, updatePassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
     registerTeacher,

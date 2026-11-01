@@ -55,6 +55,7 @@
     $('st-csv')?.addEventListener('click', _downloadCsv);
     $('st-refresh')?.addEventListener('click', load);
     $('st-body')?.addEventListener('click', _onClick);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && _open) { _open = ''; _showWindow(); } });
   }
 
   function _fillPickers(d) {
@@ -91,7 +92,7 @@
       _fillPickers(_data);
       Object.keys(_history).forEach(k => delete _history[k]);
       _render();
-      if (_open) _loadHistory(_open);
+      if (_open) { _showWindow(); _loadHistory(_open); }
     } catch (err) {
       if (body) body.innerHTML = `<p class="import-hint">Settlement load झालं नाही: ${esc(err.message)}</p>`;
     }
@@ -160,8 +161,8 @@
   }
 
   function _who(p) {
-    return `<button type="button" class="st-who" data-st-act="history" data-id="${esc(p.id)}" title="पूर्ण हिशोब पाहा">
-      <b>${esc(p.name)}</b>${p.status !== 'active' ? ` <span class="pa-badge">${esc(p.status)}</span>` : ''} <span class="st-more">${_open === p.id ? '▲' : '▼'}</span></button><br>
+    return `<button type="button" class="st-who" data-st-act="open" data-id="${esc(p.id)}" title="उघडा — पैसे द्या आणि पूर्ण हिशोब">
+      <b>${esc(p.name)}</b>${p.status !== 'active' ? ` <span class="pa-badge">${esc(p.status)}</span>` : ''} <span class="st-more">↗</span></button><br>
       <small>${TYPES[p.type] || esc(p.type)} · ${esc(p.code)}${p.mobile ? ` · <a href="https://wa.me/91${esc(p.mobile)}" target="_blank" rel="noopener">${esc(p.mobile)}</a>` : ''}${p.area ? ' · ' + esc(p.area) : ''}</small>
       ${p.tds_warn ? '<br><small class="pa-warn">⚠️ वर्षात ₹15,000+ आणि PAN नाही (TDS)</small>' : ''}
       ${p.lifetime.balanced ? '' : '<br><small class="pa-warn">⚠️ बेरीज जुळत नाही</small>'}`;
@@ -169,12 +170,13 @@
 
   function _status(p) {
     const m = p.month;
-    if (!m) return '<span class="pa-badge">या महिन्यात काही नाही</span>';
+    const open = `<button type="button" class="admin-btn-secondary st-open" data-st-act="open" data-id="${esc(p.id)}">${p.lifetime.owed > 0 ? '💸 उघडा / द्या' : '👁 उघडा'}</button>`;
+    if (!m) return `<span class="pa-badge">या महिन्यात काही नाही</span><br>${open}`;
     if (m.status === 'paid') {
       return `<span class="pa-badge st-ok">✅ दिले ${esc(dateText(m.paid_at))}</span><br><small>UTR ${esc(m.utr)}</small>
         ${p.mobile ? `<br><a class="admin-btn-secondary st-wa" href="${esc(_receiptLink(p, m, _data.month))}" target="_blank" rel="noopener">💬 पावती पाठवा</a>` : ''}`;
     }
-    if (m.status === 'carried') return `<span class="pa-badge">➡ पुढच्या महिन्यात (किमान ₹${_data.min_payout})</span>`;
+    if (m.status === 'carried') return `<span class="pa-badge">➡ पुढच्या महिन्यात (किमान ₹${_data.min_payout})</span><br>${open}`;
     return `<div class="sh-pay">
       ${p.upi_id ? `<a class="admin-btn-secondary" href="${esc(_upiLink(p, m.net, _data.month))}">💸 ${rs(m.net)} UPI</a>` : '<span class="pa-warn">UPI नाही</span>'}
       <input class="admin-input pa-utr" data-utr-for="${esc(m.id)}" placeholder="UTR / reference" maxlength="40" />
@@ -186,10 +188,7 @@
     return `<td><b class="st-in">${rs(L.paid)}</b></td><td><b class="${L.owed > 0 ? 'st-out' : ''}">${rs(L.owed)}</b>${L.owed ? `<br><small>${[L.due ? `बंद ${rs(L.due)}` : '', L.carried ? `पुढे ${rs(L.carried)}` : '', L.running ? `चालू ${rs(L.running)}` : ''].filter(Boolean).join(' · ')}</small>` : ''}</td>`;
   }
 
-  function _historyRow(p, cols) {
-    if (_open !== p.id) return '';
-    return `<tr class="st-history"><td colspan="${cols}">${_historyHtml(p)}</td></tr>`;
-  }
+  const _historyRow = () => '';
 
   // ── month view ────────────────────────────────────────────────────────────
   function _monthHtml(rows) {
@@ -246,11 +245,83 @@
     <p class="import-hint">आर्थिक वर्ष ${esc(_data.fy_label)} (एप्रिल–मार्च). "कमाई" = त्या वर्षात झालेल्या payments वरचं commission (refund वजा). "दिले" = त्या वर्षाच्या महिन्यांचे दिलेले statements. वर्षात ₹15,000 पेक्षा जास्त झाल्यास TDS (194H) लागू होऊ शकतो — PAN घ्या आणि CA ला विचारा.</p>`;
   }
 
+  // ── one person's window: pay + full account ─────────────────────────────
+  function _payForm(p, st) {
+    const upi = st.upi_id || p.upi_id;
+    return `<div class="st-pay-card">
+      <div class="st-pay-head"><b>${esc(monthLabel(st.month))}</b><span class="st-pay-amt">${rs(st.net)}</span></div>
+      <small>${st.new_count} payments · commission ${rs(st.new_amount)}${st.carried_in ? ` · मागचे ${rs(st.carried_in)}` : ''}${st.adjust_amount ? ` · refund ${rs(st.adjust_amount)}` : ''}</small>
+      <div class="st-pay-row">
+        ${upi ? `<a class="admin-btn-primary" href="${esc(_upiLink({ ...p, upi_id: upi }, st.net, st.month))}">💸 ${rs(st.net)} UPI ने द्या</a><small>UPI: ${esc(upi)}</small>` : '<span class="pa-warn">UPI नाही — Teachers / Shops मध्ये UPI भरा, किंवा दुसऱ्या मार्गाने देऊन reference टाका</span>'}
+      </div>
+      <div class="st-pay-row">
+        <input class="admin-input pa-utr" data-utr-for="${esc(st.id)}" placeholder="पैसे पाठवल्यावर UTR / reference नंबर" maxlength="40" />
+        <button type="button" class="admin-btn-primary" data-st-act="paid" data-stmt="${esc(st.id)}" data-id="${esc(p.id)}">✅ Paid mark करा</button>
+      </div></div>`;
+  }
+
+  function _windowHtml(p) {
+    const L = p.lifetime, h = _history[p.id];
+    const ready = r2(p.running.amount - p.running.hold);
+    const due = h ? h.statements.filter(st => st.status === 'closed') : [];
+    const lastPaid = h ? h.statements.find(st => st.status === 'paid') : null;
+    let pay;
+    if (!h) pay = '<p class="import-hint">⏳ उघडत आहे…</p>';
+    else if (due.length) pay = due.map(st => _payForm(p, st)).join('');
+    else {
+      pay = '<p class="st-nothing">✅ सध्या द्यायचं काही बाकी नाही.</p>';
+      if (ready + L.carried > 0) {
+        pay += `<div class="st-pay-card"><b>⚡ 1 तारखेची वाट न पाहता आत्ताच द्यायचं?</b>
+          <small>Hold संपलेली रक्कम ${rs(ready)}${L.carried ? ` + मागची ${rs(L.carried)}` : ''} आत्ता हिशोबात घेऊन द्यायला तयार होईल${p.running.hold ? ` (hold मधले ${rs(p.running.hold)} पुढच्या हिशोबात)` : ''}.</small>
+          <div class="st-pay-row"><button type="button" class="admin-btn-primary" data-st-act="settle-now" data-id="${esc(p.id)}">⚡ आत्ता हिशोब करा</button></div></div>`;
+      } else if (p.running.amount) {
+        pay += `<p class="import-hint">चालू महिन्याचे ${rs(p.running.amount)} अजून hold मध्ये आहेत (payment नंतर ${_data.hold_days} दिवस). 1 तारखेला हिशोब होईल.</p>`;
+      }
+    }
+    return `<div class="st-win" role="dialog" aria-modal="true" aria-label="${esc(p.name)}">
+      <div class="st-win-head">
+        <div><h3>${esc(p.name)}</h3>
+          <small>${TYPES[p.type] || esc(p.type)} · ${esc(p.code)} · दर ${esc(p.rate)}${p.mobile ? ` · <a href="https://wa.me/91${esc(p.mobile)}" target="_blank" rel="noopener">📱 ${esc(p.mobile)}</a>` : ''}${p.area ? ' · ' + esc(p.area) : ''}</small><br>
+          <small>UPI: ${p.upi_id ? `<b>${esc(p.upi_id)}</b>${p.upi_name ? ' (' + esc(p.upi_name) + ')' : ''}` : '<span class="pa-warn">नाही</span>'} · PAN: ${p.pan ? '✅' : '—'}${p.tds_warn ? ' <span class="pa-warn">⚠️ TDS साठी PAN हवा</span>' : ''}</small></div>
+        <button type="button" class="admin-btn-secondary" data-st-act="close" aria-label="बंद करा">✕</button>
+      </div>
+      <div class="st-win-tiles">
+        <div><small>एकूण कमाई</small><b>${rs(L.earned)}</b></div>
+        <div><small>दिले</small><b class="st-in">${rs(L.paid)}</b></div>
+        <div><small>द्यायचे (बंद)</small><b class="st-out">${rs(L.due)}</b></div>
+        <div><small>पुढे गेलेले</small><b>${rs(L.carried)}</b></div>
+        <div><small>चालू महिना</small><b>${rs(L.running)}</b>${p.running.hold ? `<small>${rs(p.running.hold)} hold</small>` : ''}</div>
+        <div><small>एकूण बाकी</small><b class="${L.owed > 0 ? 'st-out' : ''}">${rs(L.owed)}</b></div>
+      </div>
+      <h4>💸 पैसे द्या</h4>
+      ${pay}
+      ${lastPaid && p.mobile ? `<p><a class="admin-btn-secondary" href="${esc(_receiptLink(p, { net: lastPaid.net, utr: lastPaid.utr }, lastPaid.month))}" target="_blank" rel="noopener">💬 शेवटच्या payment ची पावती पाठवा (${esc(monthLabel(lastPaid.month))} · ${rs(lastPaid.net)})</a></p>` : ''}
+      ${h ? _historyHtml(p) : ''}
+    </div>`;
+  }
+
+  function _showWindow() {
+    let layer = document.getElementById('st-window');
+    if (!_open) { layer?.remove(); return; }
+    const p = _data?.partners.find(x => x.id === _open);
+    if (!p) { _open = ''; layer?.remove(); return; }
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = 'st-window';
+      layer.className = 'st-layer';
+      layer.addEventListener('click', e => { if (e.target === layer) { _open = ''; _showWindow(); } else _onClick(e); });
+      document.body.appendChild(layer);
+    }
+    const scroll = layer.querySelector('.st-win')?.scrollTop || 0;
+    layer.innerHTML = _windowHtml(p);
+    layer.querySelector('.st-win').scrollTop = scroll;
+  }
+
   // ── one person's history ──────────────────────────────────────────────────
   async function _loadHistory(id) {
     try { _history[id] = await API.fetchSettlementHistory(id); }
     catch (err) { _history[id] = { statements: [], lines: [] }; toast(err.message || 'हिशोब load झाला नाही', 'error'); }
-    _render();
+    _showWindow();
   }
 
   function _historyHtml(p) {
@@ -267,7 +338,7 @@
         <td><b>${rs(e.amount)}</b>${e.type === 'adjustment' ? '<br><small>refund</small>' : e.note === 'renewal' ? '<br><small>renewal</small>' : ''}</td>
         <td>${e.status === 'reversed' ? '✕ रद्द' : e.in_statement ? esc(monthLabel(e.payable_month)) + ' हिशोबात' : new Date(e.payable_at) > new Date() ? '⏳ hold' : 'चालू महिना'}</td></tr>`).join('')
     }</tbody></table>` : '';
-    return `<div class="st-hist"><h4>📒 ${esc(h.name)} — महिन्यांचा हिशोब</h4>${months}${lines ? `<h4>प्रत्येक payment</h4>${lines}` : ''}</div>`;
+    return `<div class="st-hist"><h4>📒 महिन्यांचा हिशोब</h4>${months}${lines ? `<h4>प्रत्येक payment</h4>${lines}` : ''}</div>`;
   }
 
   // ── students (prizes) ─────────────────────────────────────────────────────
@@ -324,15 +395,35 @@
     const btn = e.target.closest('[data-st-act]');
     if (!btn) return;
     const act = btn.dataset.stAct;
-    if (act === 'history') {
-      const id = btn.dataset.id;
-      _open = _open === id ? '' : id;
-      _render();
-      if (_open && !_history[id]) await _loadHistory(id);
+    if (act === 'open') {
+      _open = btn.dataset.id;
+      _showWindow();
+      await _loadHistory(_open);
+      return;
+    }
+    if (act === 'close') { _open = ''; _showWindow(); return; }
+    if (act === 'settle-now') {
+      // a second tap confirms (no dialogs in the app)
+      if (btn.dataset.armed !== '1') {
+        btn.dataset.armed = '1';
+        btn.textContent = '⚠️ खात्री? पुन्हा दाबा';
+        setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ''; btn.textContent = '⚡ आत्ता हिशोब करा'; } }, 3500);
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const st = await API.settlePartnerNow(btn.dataset.id);
+        toast(`✅ ${rs(st.net)} द्यायला तयार — UPI ने द्या आणि UTR टाका`, 'success');
+        await load();
+      } catch (err) {
+        toast(err.message || 'झालं नाही', 'error');
+        btn.disabled = false;
+      }
       return;
     }
     if (act === 'paid') {
-      const utr = document.querySelector(`[data-utr-for="${CSS.escape(btn.dataset.stmt)}"]`)?.value.trim() || '';
+      // the same statement can be on the table and in the window: read the box next to this button
+      const utr = btn.closest('.st-pay-card, .sh-pay')?.querySelector(`[data-utr-for="${CSS.escape(btn.dataset.stmt)}"]`)?.value.trim() || '';
       if (utr.length < 6) { toast('UPI चा UTR / reference नंबर लिहा', 'error'); return; }
       btn.disabled = true;
       try {

@@ -2493,6 +2493,23 @@ body.admin-app {
 .st-history td { background: rgba(124,58,237,.05); }
 .st-hist h4 { margin: 6px 0; }
 .st-hist .pa-table { margin-bottom: 10px; }
+.st-open { margin-top: 4px; font-size: .78rem; padding: 3px 10px; }
+.st-layer { position: fixed; inset: 0; z-index: 9000; background: rgba(15,10,40,.55); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; animation: stPop .2s ease both; }
+.st-win { width: min(900px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; background: var(--surface, #fff); color: var(--text, inherit); border: 1px solid var(--border, transparent); border-radius: 16px; padding: 16px 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+.st-win-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border-bottom: 1px solid rgba(128,128,128,.25); padding-bottom: 10px; }
+.st-win-head h3 { margin: 0 0 4px; }
+.st-win-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 12px 0; }
+.st-win-tiles div { border: 1px solid rgba(128,128,128,.25); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.st-win-tiles b { font-size: 1.2rem; }
+.st-win-tiles small { opacity: .75; font-size: .74rem; }
+.st-win h4 { margin: 12px 0 6px; }
+.st-pay-card { border: 2px solid rgba(249,115,22,.45); background: rgba(249,115,22,.06); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+.st-pay-head { display: flex; justify-content: space-between; align-items: center; }
+.st-pay-amt { font-size: 1.4rem; font-weight: 800; color: #c2410c; }
+.st-pay-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.st-pay-row .pa-utr { flex: 1 1 220px; max-width: none; }
+.st-nothing { font-weight: 700; color: #15803d; }
+@keyframes stPop { from { opacity: 0; } to { opacity: 1; } }
 .pa-badge.done { background: rgba(16,185,129,.2); color: #047857; font-weight: 700; }
 .pa-warn { color: #dc2626; font-size: 0.8rem; }
 
