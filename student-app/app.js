@@ -2787,6 +2787,7 @@ const APP = (() => {
     await _renderHomeHierarchy();
     _renderContinueCard().catch(err => console.warn('continue card failed', err));
     _fillOfflineImagesSoon();
+    window.WEEKLY?.renderHomeCard?.().catch?.(err => console.warn('weekly card failed', err));   // महा-Test, everyone
     if (guest) {
       window.GUEST.renderHomeGuide().catch(err => console.warn('guest guide failed', err));
       return;

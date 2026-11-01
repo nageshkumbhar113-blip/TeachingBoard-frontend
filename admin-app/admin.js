@@ -236,7 +236,7 @@ const ADMIN = (() => {
         const content = $('atab-' + tab.dataset.tab);
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
         if (tab.dataset.tab === 'words')       _loadWordBank();
-        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); }
+        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); }
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
@@ -2005,6 +2005,146 @@ const ADMIN = (() => {
         `आणखी सराव केला तर गुण नक्की वाढतील.\nपूर्ण अभ्यासक्रम (सगळे tests + notes): ${pay}`;
     }
     return `${name}ने आत्तापर्यंत ${l.tests} free tests दिले 👏\nसगळ्या chapters साठी इथे पाहा: ${pay}\nकाही प्रश्न असल्यास याच नंबरवर विचारा.`;
+  }
+
+  // ── Weekly महा-Test (automatic) ──
+  const _WK_DAYS = ['रविवार', 'सोमवार', 'मंगळवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+  let _wkEditing = null;
+  let _wkSchedules = [];
+
+  function _wkTypes() { return [...document.querySelectorAll('.wk-type')].filter(c => c.checked).map(c => c.value); }
+
+  async function _loadWeeklySubjects(preselect) {
+    const box = $('wk-subjects'), batch = $('wk-batch')?.value;
+    if (!box || !batch) return;
+    box.innerHTML = '<span class="import-hint">⏳ विषय आणि प्रश्न मोजत आहे…</span>';
+    try {
+      const r = await API.adminWeekly('GET', `/pool?batch=${encodeURIComponent(batch)}&types=${_wkTypes().join(',')}&source=${$('wk-source').value}`);
+      const keep = Array.isArray(preselect) ? new Set(preselect) : null;
+      box.innerHTML = 'विषय (क्रमाने दर आठवड्याला एक): ' + (r.data || []).map(s => `
+        <label class="wka-subj${s.questions ? '' : ' empty'}"><input type="checkbox" class="wk-subj" value="${_esc(s.subject)}" ${(!keep || keep.has(s.subject) || (keep.size === 0)) && s.questions ? 'checked' : ''} ${s.questions ? '' : 'disabled'} />
+          ${_esc(s.subject)} <small>(${s.questions} प्रश्न)</small></label>`).join('');
+    } catch (err) { box.innerHTML = `<span class="import-hint">विषय आणता आले नाहीत: ${_esc(err?.message || '')}</span>`; }
+  }
+
+  function _fillWeeklyForm(s) {
+    _wkEditing = s ? s._id : null;
+    $('wk-batch').value = s?.batch || $('wk-batch').value;
+    $('wk-batch').disabled = !!s;
+    $('wk-title').value = s?.title || 'महा-Test';
+    $('wk-day').value = String(s?.day_of_week ?? 0);
+    $('wk-time').value = s?.start_time || '18:00';
+    $('wk-dur').value = s?.duration_minutes || 30;
+    $('wk-win').value = s?.window_minutes || 120;
+    $('wk-count').value = s?.question_count || 30;
+    $('wk-source').value = s?.question_source || 'both';
+    $('wk-open').value = s?.open_to || 'all';
+    const types = new Set(s?.question_types?.length ? s.question_types : ['mcq']);
+    document.querySelectorAll('.wk-type').forEach(c => { c.checked = types.has(c.value); });
+    $('btn-wk-save').textContent = s ? '💾 बदल Save करा' : '💾 Save — automation सुरू';
+    _loadWeeklySubjects(s?.subjects || null);
+  }
+
+  async function _saveWeekly() {
+    const body = {
+      batch: $('wk-batch').value, title: $('wk-title').value.trim() || 'महा-Test',
+      day_of_week: Number($('wk-day').value), start_time: $('wk-time').value || '18:00',
+      duration_minutes: Number($('wk-dur').value), window_minutes: Number($('wk-win').value),
+      question_count: Number($('wk-count').value), question_source: $('wk-source').value, open_to: $('wk-open').value,
+      question_types: _wkTypes(), subjects: [...document.querySelectorAll('.wk-subj')].filter(c => c.checked).map(c => c.value), enabled: true,
+    };
+    if (!body.batch) { APP.toast('Class निवडा', 'error'); return; }
+    if (!body.question_types.length) { APP.toast('किमान एक प्रश्न प्रकार निवडा', 'error'); return; }
+    if (!body.subjects.length) { APP.toast('किमान एक विषय निवडा (ज्यात प्रश्न आहेत)', 'error'); return; }
+    if (body.window_minutes < body.duration_minutes) { APP.toast('खिडकी test च्या वेळेपेक्षा मोठी हवी', 'error'); return; }
+    try {
+      if (_wkEditing) await API.adminWeekly('PUT', `/schedules/${_wkEditing}`, body);
+      else await API.adminWeekly('POST', '/schedules', body);
+      APP.toast('✅ Save झालं — पुढचा महा-Test तयार', 'success');
+      _fillWeeklyForm(null);
+      _loadWeekly();
+    } catch (err) { APP.toast(err?.message || 'Save झालं नाही', 'error'); }
+  }
+
+  async function _loadWeekly() {
+    const list = $('wk-schedules'), evList = $('wk-events'), sel = $('wk-batch');
+    if (!list) return;
+    if (sel && !sel.options.length) {
+      try {
+        const batches = await API.fetchGuestBatches();
+        sel.innerHTML = batches.map(b => `<option value="${_esc(b.name)}">${_esc(b.name)}</option>`).join('');
+        _loadWeeklySubjects();
+      } catch { /* list stays empty */ }
+    }
+    try {
+      _wkSchedules = (await API.adminWeekly('GET', '/schedules'))?.data || [];
+      list.innerHTML = _wkSchedules.length ? '' : '<p class="import-hint">अजून कोणताही महा-Test set केलेला नाही.</p>';
+      _wkSchedules.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'batch-admin-item';
+        const next = s.next ? (s.next.status === 'skipped' ? '⚠️ पुढचा test बनला नाही (प्रश्न नाहीत)' : `पुढचा: <b>${_esc(s.next.subject)}</b> · ${_esc(new Date(s.next.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · ${s.next.questions} प्रश्न`) : '—';
+        item.innerHTML = `
+          <div>
+            <div class="batch-admin-name">${s.enabled ? '🟢' : '⏸️'} ${_esc(s.title)} · ${_esc(s.batch)}</div>
+            <div class="batch-admin-meta">दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} · ${s.duration_minutes} मि test · खिडकी ${s.window_minutes} मि · ${s.question_count} प्रश्न · ${_esc((s.question_types || []).join(', '))} · ${s.open_to === 'paid' ? 'फक्त paid' : 'सगळे'}</div>
+            <div class="batch-admin-meta">${next}</div>
+          </div>
+          <div class="batch-admin-actions">
+            <button class="admin-btn-secondary" data-a="edit" type="button">✏️ बदला</button>
+            <button class="admin-btn-secondary" data-a="trial" type="button">▶ Trial आत्ता</button>
+            <button class="admin-btn-secondary" data-a="toggle" type="button">${s.enabled ? '⏸️ थांबवा' : '▶️ चालू करा'}</button>
+            <button class="admin-btn-secondary" data-a="del" type="button">🗑️</button>
+          </div>`;
+        item.querySelector('[data-a="edit"]').onclick = () => { _fillWeeklyForm(s); $('wk-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+        item.querySelector('[data-a="trial"]').onclick = async () => {
+          try {
+            const r = await API.adminWeekly('POST', `/schedules/${s._id}/trial`, { start_in_minutes: 1, window_minutes: 30 });
+            APP.toast(`✅ Trial: ${r.data.subject}, ${r.data.questions} प्रश्न — 1 मिनिटात सुरू (30 मि खिडकी). Student app मध्ये बघा.`, 'success');
+            _loadWeekly();
+          } catch (err) { APP.toast(err?.message || 'Trial बनला नाही', 'error'); }
+        };
+        item.querySelector('[data-a="toggle"]').onclick = async () => {
+          try { await API.adminWeekly('PUT', `/schedules/${s._id}`, { enabled: !s.enabled }); _loadWeekly(); } catch (err) { APP.toast(err?.message || 'जमलं नाही', 'error'); }
+        };
+        item.querySelector('[data-a="del"]').onclick = async () => {
+          if (window.UI?.confirmAsync && !(await UI.confirmAsync(`${s.batch} चा महा-Test automation काढायचा?`))) return;
+          try { await API.adminWeekly('DELETE', `/schedules/${s._id}`); _loadWeekly(); } catch (err) { APP.toast(err?.message || 'जमलं नाही', 'error'); }
+        };
+        list.appendChild(item);
+      });
+      const events = (await API.adminWeekly('GET', '/events'))?.data || [];
+      evList.innerHTML = events.length ? '' : '<p class="import-hint">अजून नाही.</p>';
+      const now = Date.now();
+      events.forEach(e => {
+        const st = e.status === 'skipped' ? '⚠️ बनला नाही' : now < new Date(e.starts_at) ? '⏳ येणारा' : now < new Date(e.ends_at) ? '🔴 LIVE' : '✅ झाला';
+        const item = document.createElement('div');
+        item.className = 'batch-admin-item';
+        item.innerHTML = `
+          <div>
+            <div class="batch-admin-name">${st} · ${_esc(e.batch)} · ${_esc(e.subject)}${e.is_trial ? ' (trial)' : ''}</div>
+            <div class="batch-admin-meta">${_esc(new Date(e.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · registered ${e.registered} · दिला ${e.submitted}${e.skip_reason ? ' · ' + _esc(e.skip_reason) : ''}</div>
+          </div>
+          <div class="batch-admin-actions">${e.submitted ? '<button class="admin-btn-secondary" type="button">🏆 Results</button>' : ''}</div>`;
+        item.querySelector('button')?.addEventListener('click', () => _showWeeklyResults(e._id));
+        evList.appendChild(item);
+      });
+    } catch (err) {
+      list.innerHTML = `<p class="import-hint">आणता आलं नाही: ${_esc(err?.message || '')}</p>`;
+    }
+  }
+
+  async function _showWeeklyResults(id) {
+    const box = $('wk-results');
+    box.innerHTML = '<p class="import-hint">⏳ …</p>';
+    try {
+      const r = (await API.adminWeekly('GET', `/events/${id}`))?.data;
+      const rows = (r.entries || []).filter(x => x.submitted_at);
+      box.innerHTML = `<h4 class="admin-section-title">🏆 ${_esc(r.event.subject)} · ${_esc(r.event.batch)} — ${rows.length} जणांनी दिला</h4>
+        <table class="wka-table"><thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead><tbody>
+        ${rows.map(x => `<tr><td>${x.rank ?? '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.score}/${x.total}</td><td>${Math.round(x.time_taken / 60)} मि</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`).join('')}
+        </tbody></table>`;
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) { box.innerHTML = `<p class="import-hint">${_esc(err?.message || '')}</p>`; }
   }
 
   async function _loadExamDates() {
@@ -3859,6 +3999,11 @@ const ADMIN = (() => {
     _renderFreeLink();
     $('btn-gl-refresh')?.addEventListener('click', _loadGuestFunnel);
     $('btn-ex-add')?.addEventListener('click', _addExamDate);
+    $('btn-wk-save')?.addEventListener('click', _saveWeekly);
+    $('btn-wk-new')?.addEventListener('click', () => _fillWeeklyForm(null));
+    $('wk-batch')?.addEventListener('change', _loadWeeklySubjects);
+    $('wk-source')?.addEventListener('change', _loadWeeklySubjects);
+    document.querySelectorAll('.wk-type').forEach(c => c.addEventListener('change', _loadWeeklySubjects));
     $('gl-days')?.addEventListener('change', _loadGuestFunnel);
     $('gl-status')?.addEventListener('change', _loadGuestFunnel);
     _renderQuickLinks();

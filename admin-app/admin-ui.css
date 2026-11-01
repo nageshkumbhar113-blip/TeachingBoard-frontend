@@ -2532,3 +2532,14 @@ body.admin-app {
 .gxa-chip { padding: 2px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
 .gxa-chip.gxa-done { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
 .gxa-chip.gxa-live { background: #fff7d6; color: #7a4b00; border-color: #ffe7a8; }
+
+/* Weekly महा-Test admin */
+.wka-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin: 10px 0; }
+.wka-form > label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 0.85rem; }
+.wka-types, .wka-subjects { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-weight: 600; font-size: 0.85rem; }
+.wka-subj { padding: 4px 10px; border-radius: 10px; background: #f6f3ff; }
+.wka-subj.empty { opacity: .5; }
+.wka-results { margin-top: 12px; overflow-x: auto; }
+.wka-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.wka-table th, .wka-table td { padding: 6px 8px; border-bottom: 1px solid #ece6ff; text-align: left; }
+.wka-table th { background: #f6f3ff; }

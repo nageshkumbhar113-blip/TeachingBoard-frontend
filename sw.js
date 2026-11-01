@@ -38,6 +38,7 @@ const CORE_ASSETS = [
   './student-app/app.js',
   './student-app/payment.js',
   './student-app/guest.js',
+  './student-app/weeklyTest.js',
   './student-app/quiz.js',
   './student-app/testPlayer.js',
   './student-app/ui.js',

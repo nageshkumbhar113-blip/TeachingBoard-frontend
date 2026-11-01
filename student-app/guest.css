@@ -240,3 +240,49 @@
 
 /* Exam countdown line in the guide */
 .gx-guide-exam { display: inline-block; margin: 0 0 10px; padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, .22); font-weight: 700; font-size: .92rem; }
+
+/* ── Weekly महा-Test (weeklyTest.js) ──────────────────────────────── */
+.wk-card {
+  margin: 12px 12px 4px; padding: 14px 16px; border-radius: 20px; color: #fff; font-family: var(--gx-font);
+  background: linear-gradient(135deg, #1b1340 0%, #3b1d86 55%, #7b2ff7 100%); box-shadow: 0 12px 28px rgba(59, 29, 134, .35);
+  position: relative; overflow: hidden; animation: gxRise .5s ease both;
+}
+.wk-card::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.12) 50%, transparent 65%); background-size: 250% 100%; animation: gxShine 3.2s linear infinite; }
+.wk-tag { display: inline-block; padding: 3px 12px; border-radius: 999px; background: var(--gx-gold); color: #3b1d00; font-weight: 800; font-size: .9rem; }
+.wk-sub { margin: 8px 0 2px; font-size: 1.15rem; font-weight: 800; }
+.wk-when, .wk-meta, .wk-ok, .wk-live { font-size: .95rem; margin-top: 4px; opacity: .95; }
+.wk-live { color: #ffd1dc; font-weight: 800; }
+.wk-count { font-family: 'JetBrains Mono', monospace; }
+.wk-card .wk-btn { margin-top: 10px; position: relative; z-index: 1; }
+.wk-play { flex-direction: column; justify-content: flex-start; align-items: stretch; background: #f6f3ff; padding: 12px; gap: 10px; }
+.wk-play > * { max-width: 560px; width: 100%; margin-left: auto; margin-right: auto; }
+.wk-top { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 1.05rem; color: var(--gx-ink); }
+.wk-timer { font: 800 1.3rem 'JetBrains Mono', monospace; padding: 4px 12px; border-radius: 12px; background: #1b1340; color: #fff; }
+.wk-timer.low { background: #e11d48; animation: gxPulse 1s infinite; }
+.wk-pal { display: flex; flex-wrap: wrap; gap: 6px; }
+.wk-dot { width: 34px; height: 34px; border-radius: 10px; border: 2px solid #e7e1ff; background: #fff; font-weight: 800; cursor: pointer; color: var(--gx-muted); }
+.wk-dot.done { background: #dcfce7; border-color: #86efac; color: var(--gx-green); }
+.wk-dot.cur { border-color: var(--gx-pink); color: var(--gx-pink); }
+.wk-q { animation: none; margin: 0 auto; }
+.wk-qn { font-weight: 800; color: var(--gx-muted); font-size: .9rem; }
+.wk-qt { font-size: 1.2rem; font-weight: 700; margin: 6px 0 12px; line-height: 1.45; }
+.wk-img { max-width: 100%; border-radius: 12px; margin-bottom: 10px; }
+.wk-opt { display: block; width: 100%; text-align: left; margin: 8px 0 0; padding: 12px 14px; border-radius: 14px; border: 2px solid #e7e1ff; background: #fff; font: 600 1.05rem var(--gx-font); color: var(--gx-ink); cursor: pointer; }
+.wk-opt b { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 8px; border-radius: 8px; background: #f3efff; color: var(--gx-violet); }
+.wk-opt.on { border-color: var(--gx-violet); background: #f3efff; }
+.wk-opt.on b { background: var(--gx-violet); color: #fff; }
+.wk-nav .gx-btn { margin-top: 0; }
+.wk-rank-big { font-size: 4rem; font-weight: 800; text-align: center; line-height: 1.1; animation: gxStamp .6s cubic-bezier(.2,.9,.3,1.3) both; }
+.wk-res { text-align: center; }
+.wk-h { margin: 14px 0 6px; font-size: 1.1rem; }
+.wk-top10 { list-style: none; padding: 0; margin: 0; text-align: left; }
+.wk-top10 li { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; font-weight: 700; animation: gxRise .4s ease both; }
+.wk-top10 li:nth-child(odd) { background: #faf8ff; }
+.wk-top10 li.me { background: #fff7d6; outline: 2px solid var(--gx-gold); }
+.wk-review { margin-top: 12px; text-align: left; }
+.wk-review summary { cursor: pointer; font-weight: 800; padding: 10px; border-radius: 12px; background: #f3efff; color: var(--gx-violet); }
+.wk-rv { padding: 10px; border-bottom: 1px dashed #ece6ff; font-size: .95rem; }
+.wk-rv.ok { border-left: 4px solid var(--gx-green); }
+.wk-rv.bad { border-left: 4px solid #e11d48; }
+.wk-rv.skip { border-left: 4px solid #cbd5e1; }
+.wk-rv small { display: block; color: var(--gx-muted); margin-top: 4px; }

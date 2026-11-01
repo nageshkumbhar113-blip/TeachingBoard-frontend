@@ -2127,6 +2127,37 @@ const API = (() => {
     return request(`/guest/admin/exams/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
   }
 
+  // ── Weekly महा-Test (student-app/weeklyTest.js) ──
+  async function _studentAuth() {
+    const token = await ensureStudentSession();
+    return { Authorization: `Bearer ${token}` };
+  }
+  async function fetchWeeklyTests() {
+    const payload = await request('/weekly/my', { headers: await _studentAuth() });
+    return Array.isArray(payload?.data) ? payload.data : [];
+  }
+  async function weeklyRegister(id) {
+    return request(`/weekly/${encodeURIComponent(id)}/register`, { method: 'POST', headers: await _studentAuth(), body: '{}' });
+  }
+  async function weeklyPaper(id) {
+    return (await request(`/weekly/${encodeURIComponent(id)}/paper`, { headers: await _studentAuth() }))?.data || null;
+  }
+  async function weeklyKey(id) {
+    return (await request(`/weekly/${encodeURIComponent(id)}/key`, { headers: await _studentAuth() }))?.key || '';
+  }
+  async function weeklySubmit(id, body) {
+    return request(`/weekly/${encodeURIComponent(id)}/submit`, { method: 'POST', headers: await _studentAuth(), body: JSON.stringify(body) });
+  }
+  async function weeklyResult(id) {
+    return request(`/weekly/${encodeURIComponent(id)}/result`, { headers: await _studentAuth() });
+  }
+  async function _adminAuth() {
+    return { Authorization: `Bearer ${await ensureAdminSession()}` };
+  }
+  async function adminWeekly(method, path, body) {
+    return request(`/weekly/admin${path}`, { method, headers: await _adminAuth(), body: body ? JSON.stringify(body) : undefined });
+  }
+
   async function fetchGuestFunnel(days = 30) {
     const token = await ensureAdminSession();
     return request(`/guest/admin/funnel?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -2877,7 +2908,8 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
+    fetchGuestLeads, fetchGuestFunnel,
+    fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
