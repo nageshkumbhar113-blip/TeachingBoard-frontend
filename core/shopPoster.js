@@ -8,6 +8,14 @@
 window.SHOP_POSTER = (() => {
   const SITE = 'https://teachingboard-frontend.vercel.app';
   const QRCODE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  // PDF keeps the real paper size, so a xerox / print shop prints it right;
+  // JPEG is small for WhatsApp; PNG is the sharpest picture.
+  const FORMATS = {
+    pdf:  'PDF (print साठी best)',
+    jpeg: 'JPEG (WhatsApp / Status साठी)',
+    png:  'PNG (सगळ्यात स्पष्ट picture)',
+  };
   const SIZES = {
     A5: { label: 'A5 (लहान, counter वर)', mm: [148, 210] },
     A4: { label: 'A4 (नेहमीचा)', mm: [210, 297] },
@@ -19,20 +27,21 @@ window.SHOP_POSTER = (() => {
   const freeLink = code => `${SITE}/student-app/?free=1&shop=${encodeURIComponent(code)}`;
   const appLink = code => `${SITE}/get-app.html?teacher=${encodeURIComponent(code)}`;
 
-  let _qrLoading = null;
-  function _loadQR() {
-    if (window.QRCode) return Promise.resolve();
-    if (!_qrLoading) {
-      _qrLoading = new Promise((resolve, reject) => {
+  const _loading = {};
+  function _loadScript(src, ready) {
+    if (ready()) return Promise.resolve();
+    if (!_loading[src]) {
+      _loading[src] = new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = QRCODE_CDN; s.async = true;
-        s.onload = () => (window.QRCode ? resolve() : reject(new Error('QR library missing')));
-        s.onerror = () => { _qrLoading = null; reject(new Error('QR library did not load')); };
+        s.src = src; s.async = true;
+        s.onload = () => (ready() ? resolve() : reject(new Error('library missing')));
+        s.onerror = () => { delete _loading[src]; reject(new Error('library did not load')); };
         document.head.appendChild(s);
       });
     }
-    return _qrLoading;
+    return _loading[src];
   }
+  const _loadQR = () => _loadScript(QRCODE_CDN, () => !!window.QRCode);
 
   async function _qrCanvas(text, px) {
     await _loadQR();
@@ -141,15 +150,28 @@ window.SHOP_POSTER = (() => {
     return cv;
   }
 
-  const _file = (shop, size) => `poster-${shop.code}-${size}.png`;
+  const _file = (shop, size, ext = 'png') => `poster-${shop.code}-${size}.${ext === 'jpeg' ? 'jpg' : ext}`;
 
-  async function download(shop, size) {
+  async function _pdf(cv, size) {
+    await _loadScript(JSPDF_CDN, () => !!window.jspdf?.jsPDF);
+    const [w, h] = (SIZES[size] || SIZES.A4).mm;
+    const doc = new window.jspdf.jsPDF({ unit: 'mm', format: [w, h], orientation: 'portrait', compress: true });
+    doc.addImage(cv.toDataURL('image/jpeg', .95), 'JPEG', 0, 0, w, h);
+    return doc.output('blob');
+  }
+
+  // format: pdf | jpeg | png
+  async function download(shop, size, format = 'pdf') {
+    if (!FORMATS[format]) format = 'pdf';
     const cv = await draw(shop, size);
-    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
-    if (!blob) throw new Error('no image');
-    if (window.FILE_EXPORT?.saveAndShare) return window.FILE_EXPORT.saveAndShare(blob, _file(shop, size));
+    const blob = format === 'pdf'
+      ? await _pdf(cv, size)
+      : await new Promise(r => cv.toBlob(r, format === 'jpeg' ? 'image/jpeg' : 'image/png', .92));
+    if (!blob) throw new Error('no file');
+    const name = _file(shop, size, format);
+    if (window.FILE_EXPORT?.saveAndShare) return window.FILE_EXPORT.saveAndShare(blob, name);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = _file(shop, size);
+    a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
@@ -176,5 +198,5 @@ window.SHOP_POSTER = (() => {
     setTimeout(() => frame.remove(), 60000);
   }
 
-  return { SIZES, draw, download, print, freeLink, appLink };
+  return { SIZES, FORMATS, draw, download, print, freeLink, appLink };
 })();

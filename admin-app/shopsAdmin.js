@@ -127,6 +127,11 @@
     return Object.entries(sizes).map(([k, v]) => `<option value="${k}"${k === 'A4' ? ' selected' : ''}>${esc(v.label)}</option>`).join('');
   }
 
+  function _formatOptions() {
+    const f = window.SHOP_POSTER?.FORMATS || { pdf: 'PDF' };
+    return Object.entries(f).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  }
+
   function _render() {
     const box = $('sh-list');
     if (!_shops.length) {
@@ -150,7 +155,8 @@
         <div class="sh-actions">
           <select class="admin-input sh-size" data-size-for="${esc(s.id)}" aria-label="Poster size">${_sizeOptions()}</select>
           <button type="button" class="admin-btn-primary" data-sh-act="print" data-id="${esc(s.id)}">🖨️ Poster Print</button>
-          <button type="button" class="admin-btn-secondary" data-sh-act="download" data-id="${esc(s.id)}">⬇️ Poster</button>
+          <select class="admin-input sh-size" data-fmt-for="${esc(s.id)}" aria-label="Download format">${_formatOptions()}</select>
+          <button type="button" class="admin-btn-secondary" data-sh-act="download" data-id="${esc(s.id)}">⬇️ Download</button>
           <button type="button" class="admin-btn-secondary" data-sh-act="students" data-id="${esc(s.id)}">👥 Students</button>
           <button type="button" class="admin-btn-secondary" data-sh-act="edit" data-id="${esc(s.id)}">✏️ Edit</button>
           <button type="button" class="admin-btn-secondary" data-sh-act="pin" data-id="${esc(s.id)}">🔑 नवीन PIN</button>
@@ -185,7 +191,8 @@
     if (act === 'print' || act === 'download') {
       if (!window.SHOP_POSTER) { toast('Poster tool load झालं नाही', 'error'); return; }
       btn.disabled = true;
-      try { await window.SHOP_POSTER[act](shop, size); }
+      const fmt = document.querySelector(`[data-fmt-for="${CSS.escape(shop.id)}"]`)?.value || 'pdf';
+      try { await window.SHOP_POSTER[act](shop, size, fmt); }
       catch { toast('Poster तयार झाला नाही. Internet तपासा.', 'error'); }
       finally { btn.disabled = false; }
       return;

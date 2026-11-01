@@ -145,6 +145,9 @@
       <p class="muted">Counter वर लावा. पालक scan करून लगेच Free Test देतील, आणि त्याचं credit तुम्हाला.</p>
       <label for="p-size">Size</label>
       <select id="p-size"></select>
+      <label for="p-fmt">Download कोणत्या प्रकारात</label>
+      <select id="p-fmt"></select>
+      <div class="hint">Xerox / print दुकानात <b>PDF</b> द्या — बरोबर size मध्ये print होतो. WhatsApp साठी JPEG.</div>
       <div class="row">
         <button class="btn" id="p-down" type="button">⬇️ Download</button>
         <button class="btn ghost" id="p-print" type="button">🖨️ Print</button>
@@ -359,6 +362,9 @@
       var o = document.createElement('option'); o.value = k; o.textContent = SHOP_POSTER.SIZES[k].label; sizeSel.appendChild(o);
     });
     sizeSel.value = 'A4';
+    Object.keys(SHOP_POSTER.FORMATS).forEach(function (k) {
+      var o = document.createElement('option'); o.value = k; o.textContent = SHOP_POSTER.FORMATS[k]; $('p-fmt').appendChild(o);
+    });
   }
   function posterPreview() {
     fillSizes();
@@ -369,7 +375,7 @@
   }
   function posterAction(fn, btn) {
     var msg = $('p-msg'); msg.className = 'msg'; msg.textContent = '⏳ Poster तयार होत आहे…'; btn.disabled = true;
-    SHOP_POSTER[fn](data.shop, sizeSel.value).then(function () { msg.textContent = ''; })
+    SHOP_POSTER[fn](data.shop, sizeSel.value, $('p-fmt').value).then(function () { msg.textContent = ''; })
       .catch(function () { msg.textContent = 'Poster तयार झाला नाही. Internet तपासून पुन्हा करा.'; })
       .then(function () { btn.disabled = false; });
   }
