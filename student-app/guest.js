@@ -759,6 +759,7 @@ const GUEST = (() => {
       btn.addEventListener('click', () => {
         const hub = { ...(_state.hub || {}) };
         hub[key] = { ...(hub[key] || {}), [label]: true };
+        _state = { ..._state, hub };   // the next render must see it at once
         _saveState({ hub });
         API.guestEvent('engaged');
       });

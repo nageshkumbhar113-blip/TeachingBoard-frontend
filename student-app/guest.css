@@ -230,3 +230,10 @@
   box-shadow: 0 10px 22px rgba(255, 61, 119, .3); animation: gxShine 3s linear infinite, gxPulse 2s infinite;
 }
 .ob-free-btn small { display: block; font-size: .8rem; font-weight: 600; opacity: .92; }
+
+/* Chapter screen: the next step for a guest */
+.chapter-hub-btn.gx-glow { position: relative; border: 2px solid #ff3d77 !important; background: linear-gradient(135deg, #fff5f0, #fdf0ff) !important; }
+.chapter-hub-btn.gx-glow::after {
+  content: '👉 इथून सुरू करा'; position: absolute; top: -11px; right: 14px; padding: 2px 10px; border-radius: 999px;
+  background: var(--gx-grad); color: #fff; font: 800 .78rem var(--gx-font); animation: gxBounce 1.6s ease-in-out infinite;
+}
