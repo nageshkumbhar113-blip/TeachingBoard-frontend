@@ -15,7 +15,9 @@ const WEEKLY = (() => {
   const _paperKey = id => `weekly_paper_${id}`;
   const _stateKey = id => `weekly_state_${id}`;
   let _events = [];
+  let _consent = true;     // "माझं नाव दाखवा" already answered? (asked once, at the first registration)
   let _tick = null;
+  const EVENTS_CACHE = 'weekly_events_cache';
 
   function _when(d) {
     const x = new Date(d);
@@ -54,6 +56,9 @@ const WEEKLY = (() => {
     const home = document.getElementById('screen-home');
     if (!home || !window.API?.fetchWeeklyTests || !navigator.onLine) return;
     try { _events = await API.fetchWeeklyTests(); } catch { return; }
+    _consent = _events.consent !== false;
+    DB.setSetting?.(EVENTS_CACHE, _events).catch(() => {});
+    window.dispatchEvent(new Event('weekly-toppers'));
     home.querySelector('.wk-card')?.remove();
     clearInterval(_tick);
     // the most relevant one: live > upcoming > a closed one with my result
@@ -131,6 +136,7 @@ const WEEKLY = (() => {
                  <input class="gx-input" id="wk-r-mob" type="tel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="98XXXXXXXX" /></label>
                  <label class="gx-check"><input type="checkbox" id="wk-r-ok" /> <span>Test ची आठवण आणि result साठी NKs EduOrbit कडून संपर्कास पालकांची संमती आहे</span></label>` : '')
             : `<label class="gx-field"><span>Mobile</span><input class="gx-input" value="${_esc(profile?.mobile || '—')}" readonly /></label>`}
+          ${_consent ? '' : `<label class="gx-check wk-show-name"><input type="checkbox" id="wk-r-show" /> <span>🏆 <b>माझं नाव दाखवा</b> — top 10 मध्ये आलो तर माझं पूर्ण नाव माझ्या class च्या toppers banner आणि rank board वर दिसेल (पालकांची संमती)</span></label>`}
           <p class="gx-msg" id="wk-r-msg" role="alert"></p>
           <button type="button" class="gx-btn gx-big gx-shine" id="wk-r-go">✍️ Register करा</button>
           ${guest && !window.Capacitor?.isNativePlatform?.() ? `
@@ -169,7 +175,9 @@ const WEEKLY = (() => {
         try {
           if (guest && name !== gs.name) { await API.startGuestSession({ name }); await API.setGuestState({ name }); }
           if (needMobile) await API.saveGuestContact(mob.value);
-          await API.weeklyRegister(ev.event_id);
+          const showBox = el.querySelector('#wk-r-show');
+          await API.weeklyRegister(ev.event_id, showBox ? { show_name: showBox.checked } : {});
+          _consent = true;
           await window.GUEST?.refresh?.();
           _toast('✅ Registered! वेळेवर इथे "सुरू करा" येईल', 'success');
           window.GUEST?.fireworks?.(.5);
@@ -332,7 +340,7 @@ const WEEKLY = (() => {
           ${me?.rank && !d.top.some(t => t.me) ? `<li class="wk-gap">⋯</li><li class="me"><span>#${me.rank}</span><span>तुम्ही</span><b>${me.score}/${me.total}</b></li>` : ''}</ol>
         <div class="gx-row">
           <button type="button" class="gx-btn gx-wa" id="wk-share">📤 Share करा</button>
-          ${me ? '<button type="button" class="gx-btn gx-cool" id="wk-photo">📸 Status photo</button>' : ''}
+          ${me ? `<button type="button" class="gx-btn gx-cool" id="wk-photo">${me.rank && me.rank <= 10 ? '🏅 Topper certificate' : '📸 Status photo'}</button>` : ''}
         </div>
         <details class="wk-review"><summary>📖 बरोबर उत्तरं बघा</summary>
           ${d.review.map((q, i) => {
@@ -372,7 +380,8 @@ const WEEKLY = (() => {
     g.textAlign = 'center';
     // gold ribbon title
     g.fillStyle = '#ffc83d'; g.beginPath(); if (g.roundRect) g.roundRect(240, 70, 600, 96, 48); else g.rect(240, 70, 600, 96); g.fill();
-    g.fillStyle = '#3b1d00'; g.font = font(800, 58); g.fillText('🏆 महा-Test', W / 2, 138);
+    const top10 = me.rank && me.rank <= 10;
+    g.fillStyle = '#3b1d00'; g.font = font(800, 58); g.fillText(top10 ? '🏅 Top 10 Topper' : '🏆 महा-Test', W / 2, 138);
     g.fillStyle = '#fff'; g.font = font(700, 46); g.fillText(`${name ? name + ' · ' : ''}${d.subject}`.slice(0, 40), W / 2, 240);
     // medal / rank
     const rank = me.rank || 0;
@@ -386,7 +395,7 @@ const WEEKLY = (() => {
     g.font = font(700, 50); g.fillStyle = '#ffd27a';
     g.fillText(`गुण ${me.score}/${me.total}`, W / 2, 905);
     g.fillStyle = '#ff9ec0'; g.font = font(800, 56);
-    g.fillText('पुढच्या आठवड्यात मला हरवून दाखव! 😎', W / 2, 1030);
+    g.fillText(top10 ? `🎉 महा-Test (${String(d.subject).slice(0, 18)}) Topper!` : 'पुढच्या आठवड्यात मला हरवून दाखव! 😎', W / 2, 1030);
     g.fillStyle = '#fff'; g.font = font(800, 50);
     g.fillText('दर आठवड्याला Free महा-Test', W / 2, 1180);
     g.font = font(700, 40); g.fillText('teachingboard-frontend.vercel.app', W / 2, 1255);
@@ -409,7 +418,39 @@ const WEEKLY = (() => {
     if (!window.Capacitor?.isNativePlatform?.()) _toast('📸 Photo save झाला — WhatsApp Status ला टाका', 'success');
   }
 
-  return { renderHomeCard, start, showResult, __photoCanvas: _photoCanvas };
+  // ── Toppers banner (Home carousel): this class's top 10 until its next महा-Test ──
+  async function bannerSlides() {
+    if (!_events.length) {
+      const cached = await DB.getSetting?.(EVENTS_CACHE, []).catch(() => []);
+      if (Array.isArray(cached) && cached.length) _events = cached;
+    }
+    const now = Date.now();
+    const live = _events.filter(e => e.results && (e.toppers || []).length && e.banner_until && new Date(e.banner_until) > now)
+      .sort((a, b) => new Date(b.reveal_at) - new Date(a.reveal_at));
+    // one class's card per class (latest); a student in many classes sees a different one each day
+    const byBatch = [...new Map(live.map(e => [e.batch, e])).values()];
+    if (!byBatch.length) return [];
+    const ev = byBatch[Math.floor(now / 864e5) % byBatch.length];
+    const slides = [{ banner_id: `wk-top-${ev.event_id}-a`, kind: 'toppers', part: 'podium', ev }];
+    if (ev.toppers.length > 3) slides.push({ banner_id: `wk-top-${ev.event_id}-b`, kind: 'toppers', part: 'list', ev });
+    return slides;
+  }
+
+  function topperSlideHtml(b) {
+    const ev = b.ev, t = ev.toppers;
+    const head = `<div class="wkb-head">🏆 महा-Test Toppers · ${_esc(ev.batch)} · ${_esc(ev.subject)}</div>`;
+    const mine = ev.me?.rank
+      ? (ev.me.rank <= 10 ? `🎉 तुम्ही #${ev.me.rank}!` : `तुमचा क्रमांक #${ev.me.rank} · पुढच्या वेळी top 10 💪`)
+      : '👆 Rank board बघा';
+    if (b.part === 'podium') {
+      const cell = (x, cls, medal) => x ? `<div class="wkb-pod ${cls}"><span class="wkb-medal">${medal}</span><b>${_esc(x.name)}</b><small>${x.score}/${x.total}</small></div>` : '<div class="wkb-pod"></div>';
+      return `${head}<div class="wkb-podium">${cell(t[1], 'p2', '🥈')}${cell(t[0], 'p1', '🥇')}${cell(t[2], 'p3', '🥉')}</div><div class="wkb-me">${mine}</div>`;
+    }
+    const rows = t.slice(3, 10).map(x => `<li><span>🎖️ #${x.rank}</span><b>${_esc(x.name)}</b><small>${x.score}/${x.total}</small></li>`).join('');
+    return `${head}<ol class="wkb-list">${rows}</ol><div class="wkb-me">${ev.participants ? `${ev.participants} students · ` : ''}${mine}</div>`;
+  }
+
+  return { renderHomeCard, start, showResult, bannerSlides, topperSlideHtml, __photoCanvas: _photoCanvas };
 })();
 
 window.WEEKLY = WEEKLY;

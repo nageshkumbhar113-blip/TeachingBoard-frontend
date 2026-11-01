@@ -2150,12 +2150,15 @@ const API = (() => {
     const token = await ensureStudentSession();
     return { Authorization: `Bearer ${token}` };
   }
+  // The list also carries `consent`: has "माझं नाव दाखवा" been answered already (asked once).
   async function fetchWeeklyTests() {
     const payload = await request('/weekly/my', { headers: await _studentAuth() });
-    return Array.isArray(payload?.data) ? payload.data : [];
+    const list = Array.isArray(payload?.data) ? payload.data : [];
+    list.consent = payload?.consent === true;
+    return list;
   }
-  async function weeklyRegister(id) {
-    return request(`/weekly/${encodeURIComponent(id)}/register`, { method: 'POST', headers: await _studentAuth(), body: '{}' });
+  async function weeklyRegister(id, body = {}) {
+    return request(`/weekly/${encodeURIComponent(id)}/register`, { method: 'POST', headers: await _studentAuth(), body: JSON.stringify(body) });
   }
   async function weeklyPaper(id) {
     return (await request(`/weekly/${encodeURIComponent(id)}/paper`, { headers: await _studentAuth() }))?.data || null;

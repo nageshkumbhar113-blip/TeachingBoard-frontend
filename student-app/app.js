@@ -2020,6 +2020,7 @@ const APP = (() => {
     });
   }
   let _bannerList = [];
+  let _baseBanners = [];   // admin / default banners, before the महा-Test toppers slides
   let _bannerIndex = 0;
   let _bannerDir = 1;
   let _bannerTimer = null;
@@ -2097,6 +2098,7 @@ const APP = (() => {
   }
 
   function _openBanner(banner) {
+    if (banner?.kind === 'toppers') { if (typeof WEEKLY !== 'undefined') WEEKLY.showResult(banner.ev); return; }
     if (!banner || banner.isDefault) return; // built-in quotes are decorative only — no navigation, no engagement tracking
     API.recordBannerOpen?.(banner.banner_id); // fire-and-forget, never blocks navigation
     switch (banner.linkType) {
@@ -2118,7 +2120,10 @@ const APP = (() => {
     }
   }
 
-  function _renderHomeBanners(banners) {
+  // महा-Test toppers of the student's class go first, then the usual banners.
+  async function _renderHomeBanners(banners) {
+    _baseBanners = Array.isArray(banners) ? banners : [];
+    const toppers = typeof WEEKLY !== 'undefined' ? await WEEKLY.bannerSlides().catch(() => []) : [];
     const wrap  = $('home-banners');
     const track = $('home-banners-track');
     const dots  = $('home-banners-dots');
@@ -2126,7 +2131,7 @@ const APP = (() => {
 
     clearInterval(_bannerTimer);
     _bannerTimer = null;
-    _bannerList  = Array.isArray(banners) ? banners : [];
+    _bannerList  = [...toppers, ..._baseBanners];
     _bannerIndex = 0;
     _bannerDir   = 1;
 
@@ -2138,6 +2143,9 @@ const APP = (() => {
     }
 
     track.innerHTML = _bannerList.map((b, i) => {
+      if (b.kind === 'toppers') {
+        return `<div class="home-banner wkb ${b.part === 'podium' ? 'wkb-a' : 'wkb-b'}" data-idx="${i}" role="button" tabindex="0">${WEEKLY.topperSlideHtml(b)}</div>`;
+      }
       const gradClass = _BANNER_GRADIENT_CLASSES[i % _BANNER_GRADIENT_CLASSES.length];
       const bgAttr = b.imageUrl ? ` style="background-image:url('${_escBanner((window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(b.imageUrl) : b.imageUrl))}')"` : '';
       return `<div class="home-banner ${gradClass}" data-idx="${i}"${bgAttr} role="button" tabindex="0">
@@ -2174,6 +2182,9 @@ const APP = (() => {
   function _withDefaultBannerFallback(list, quotes) {
     return Array.isArray(list) && list.length > 0 ? list : _buildDefaultBanners(quotes);
   }
+
+  // the महा-Test card fetched new results -> refresh the toppers slides
+  window.addEventListener('weekly-toppers', () => { if ($('home-banners-track')) _renderHomeBanners(_baseBanners); });
 
   async function _loadHomeBanners() {
     const [cachedBanners, cachedQuotes] = await Promise.all([

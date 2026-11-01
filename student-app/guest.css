@@ -181,6 +181,29 @@
 .gx-offer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .18) 50%, transparent 70%); background-size: 200% 100%; animation: gxShine 2.8s linear infinite; pointer-events: none; }
 .gx-offer-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--gx-gold); color: #3b1d00; font-size: .8rem; font-weight: 800; }
 .gx-offer-head { font-size: 1.25rem; font-weight: 800; margin: 6px 0 2px; }
+/* महा-Test toppers banner (Home carousel, 170px tall) */
+.home-banner.wkb { padding: 10px 14px; justify-content: flex-start; gap: 4px; background: radial-gradient(120% 120% at 50% 0%, #4c1d95, #1b1340 70%); }
+.home-banner.wkb::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .35;
+  background-image: radial-gradient(#ffc83d 1.5px, transparent 1.6px), radial-gradient(#ff3d77 1.5px, transparent 1.6px);
+  background-size: 34px 34px, 46px 46px; background-position: 0 0, 17px 23px; }
+.wkb-head { position: relative; font-weight: 800; font-size: .86rem; color: #ffc83d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wkb-podium { position: relative; display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 6px; flex: 1; }
+.wkb-pod { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4px 4px 6px; border-radius: 12px 12px 6px 6px; background: rgba(255,255,255,.1); min-width: 0; }
+.wkb-pod b { font-size: .8rem; line-height: 1.15; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.wkb-pod small { font-size: .7rem; opacity: .85; font-weight: 700; }
+.wkb-pod.p1 { background: linear-gradient(180deg, rgba(255,200,61,.45), rgba(255,200,61,.12)); padding-top: 6px; }
+.wkb-pod.p1 b { font-size: .9rem; }
+.wkb-medal { font-size: 1.6rem; line-height: 1; animation: wkbBob 2.4s ease-in-out infinite; }
+.wkb-pod.p1 .wkb-medal { font-size: 2.1rem; }
+.wkb-list { position: relative; list-style: none; margin: 2px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; flex: 1; align-content: start; }
+.wkb-list li { display: flex; align-items: baseline; gap: 4px; font-size: .74rem; min-width: 0; }
+.wkb-list li b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wkb-list li span { color: #ffc83d; font-weight: 800; white-space: nowrap; }
+.wkb-list li small { opacity: .8; }
+.wkb-me { position: relative; font-size: .76rem; font-weight: 700; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes wkbBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .wkb-medal { animation: none; } }
+.wk-show-name { margin-top: 8px; }
 .gx-offer-fine { margin-top: 4px; font-size: .78rem; font-weight: 600; opacity: .85; }
 .gx-offer-price { font-size: 1.05rem; }
 .gx-offer-price s { opacity: .65; margin-right: 6px; }
