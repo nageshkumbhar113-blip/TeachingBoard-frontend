@@ -360,25 +360,30 @@
   }
 
   // ── CSV for the CA (opens in Excel) ───────────────────────────────────────
+  // CSV is all English (for the CA / Excel): plain words for statuses, English dates.
+  const CSV_STATUS = { closed: 'Due', paid: 'Paid', carried: 'Carried forward', requested: 'To send', shipped: 'Sent', rejected: 'Rejected' };
+  const csvDate = d => (d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '');
+  const csvName = v => String(v || '').replace(' (account हटवलेलं)', ' (account deleted)');
+
   function _downloadCsv() {
     if (!_data) return;
     const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     let head, rows, name;
     if (_type === 'students') {
       head = ['Student', 'Code', 'Mobile', 'Prize', 'Status', 'Requested', 'Sent', 'Tracking'];
-      rows = _students().flatMap(s => s.claims.map(c => [s.name, s.code, c.phone || s.mobile, c.title, c.status, dateText(c.requested_at), dateText(c.shipped_at), c.tracking]));
+      rows = _students().flatMap(s => s.claims.map(c => [s.name, s.code, c.phone || s.mobile, c.title, CSV_STATUS[c.status] || c.status, csvDate(c.requested_at), csvDate(c.shipped_at), c.tracking]));
       name = `prizes-${_data.fy_label}.csv`;
     } else if (_view === 'year') {
       head = ['Name', 'Owner', 'Type', 'Code', 'Mobile', 'PAN given', 'Payments', 'FY earned', 'FY paid', 'Months paid', 'All-time paid', 'All-time owed'];
-      rows = _rows().filter(p => p.fy.earned || p.fy.paid).map(p => [p.name, p.owner, TYPE_TEXT[p.type] || p.type, p.code, p.mobile, p.pan ? 'yes' : 'no', p.fy.payments, p.fy.earned, p.fy.paid, p.fy.months_paid, p.lifetime.paid, p.lifetime.owed]);
+      rows = _rows().filter(p => p.fy.earned || p.fy.paid).map(p => [csvName(p.name), p.owner, TYPE_TEXT[p.type] || p.type, p.code, p.mobile, p.pan ? 'yes' : 'no', p.fy.payments, p.fy.earned, p.fy.paid, p.fy.months_paid, p.lifetime.paid, p.lifetime.owed]);
       name = `settlement-FY-${_data.fy_label}.csv`;
     } else if (_view === 'all') {
       head = ['Name', 'Owner', 'Type', 'Code', 'Mobile', 'Earned', 'Paid', 'Closed to pay', 'Carried', 'Running', 'Owed'];
-      rows = _rows().map(p => { const L = p.lifetime; return [p.name, p.owner, TYPE_TEXT[p.type] || p.type, p.code, p.mobile, L.earned, L.paid, L.due, L.carried, L.running, L.owed]; });
+      rows = _rows().map(p => { const L = p.lifetime; return [csvName(p.name), p.owner, TYPE_TEXT[p.type] || p.type, p.code, p.mobile, L.earned, L.paid, L.due, L.carried, L.running, L.owed]; });
       name = 'settlement-all-time.csv';
     } else {
       head = ['Month', 'Name', 'Owner', 'Type', 'Code', 'Mobile', 'UPI', 'Rate', 'Payments', 'Commission', 'Refund', 'Carried in', 'Net', 'Status', 'Paid on', 'UTR', 'All-time paid', 'All-time owed'];
-      rows = _rows().filter(p => p.month).map(p => { const m = p.month; return [_data.month, p.name, p.owner, TYPE_TEXT[p.type] || p.type, p.code, p.mobile, p.upi_id, p.rate, m.count, m.amount, m.adjust, m.carried_in, m.net, m.status, dateText(m.paid_at), m.utr, p.lifetime.paid, p.lifetime.owed]; });
+      rows = _rows().filter(p => p.month).map(p => { const m = p.month; return [monthLabel(_data.month), csvName(p.name), p.owner, TYPE_TEXT[p.type] || p.type, p.code, p.mobile, p.upi_id, String(p.rate).replace('₹', 'Rs '), m.count, m.amount, m.adjust, m.carried_in, m.net, CSV_STATUS[m.status] || m.status, csvDate(m.paid_at), m.utr, p.lifetime.paid, p.lifetime.owed]; });
       name = `settlement-${_data.month}.csv`;
     }
     const csv = '﻿' + [head, ...rows].map(r => r.map(cell).join(',')).join('\r\n');
