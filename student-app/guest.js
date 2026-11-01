@@ -256,7 +256,7 @@ const GUEST = (() => {
           <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
           <div class="gx-logo" aria-hidden="true">✍️</div>
           <h2 class="gx-title">तुमचं <span class="gx-grad-text">नाव</span>?</h2>
-          <p class="gx-sub">Result वर आणि share card वर दिसेल</p>
+          <p class="gx-sub">Result वर आणि share card वर दिसेल. Test नंतर result पाहण्यासाठी पालकांचा WhatsApp नंबर लागेल.</p>
           <label class="gx-field"><span>नाव</span>
             <input class="gx-input" id="gx-name" maxlength="30" autocomplete="given-name" placeholder="उदा. राहुल" /></label>
           <p class="gx-msg" id="gx-msg" role="alert"></p>
@@ -300,6 +300,8 @@ const GUEST = (() => {
     _vibrate([30, 40, 30]);
     await new Promise(r => { gate.querySelector('#gx-see').onclick = r; });
     _close(gate);
+    // The result opens after the parent's number (once; never asked again).
+    if (!_state.has_parent_mobile) await contactGate({ forResult: true });
 
     // 2. Marking → ring → verdict
     const ans = Array.isArray(attempt.answers) ? attempt.answers : [];
@@ -683,28 +685,31 @@ const GUEST = (() => {
   document.addEventListener('focusin', e => { if (e.target?.id === 'reg-mobile') _tryHint(e.target); }, true);
 
   // ── Parent mobile (unlocks the detailed analysis) ──────────────────
-  function contactGate() {
+  // forResult: asked right after "Result बघा" (owner's choice, 2026-11-01) —
+  // no close / later; the student was told before the test (ensureName).
+  function contactGate({ forResult = false } = {}) {
     return new Promise(resolve => {
       const canPick = 'contacts' in navigator && 'select' in (navigator.contacts || {});
-      const el = _layer('gx-dim', `
+      const el = _layer(forResult ? 'gx-hero' : 'gx-dim', `
         <div class="gx-card">
-          <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
-          <div class="gx-logo" aria-hidden="true">📊</div>
-          <h2 class="gx-title">पूर्ण <span class="gx-grad-text">analysis</span></h2>
-          <p class="gx-sub">पालकांचा WhatsApp नंबर द्या — प्रत्येक प्रश्नाचं analysis लगेच उघडेल</p>
+          ${forResult ? '' : '<button type="button" class="gx-close" aria-label="बंद करा">✕</button>'}
+          <div class="gx-logo" aria-hidden="true">${forResult ? '🎯' : '📊'}</div>
+          ${forResult
+            ? '<h2 class="gx-title">तुमचा <span class="gx-grad-text">Result</span> तयार आहे!</h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — result लगेच दिसेल आणि पालकांनाही तुमची प्रगती कळेल</p>'
+            : '<h2 class="gx-title">पूर्ण <span class="gx-grad-text">analysis</span></h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — प्रत्येक प्रश्नाचं analysis लगेच उघडेल</p>'}
           <label class="gx-field"><span>पालकांचा mobile</span>
             <input class="gx-input" id="gx-mob" type="tel" inputmode="tel" autocomplete="tel" placeholder="98XXXXXXXX" maxlength="16" /></label>
           ${canPick ? '<button type="button" class="gx-btn gx-ghost" id="gx-pick">📇 Contacts मधून निवडा</button>' : ''}
           <label class="gx-check"><input type="checkbox" id="gx-ok" /> <span>NKs EduOrbit कडून result व अभ्यासाबद्दल संपर्कास पालकांची संमती आहे</span></label>
           <p class="gx-msg" id="gx-msg" role="alert"></p>
-          <button type="button" class="gx-btn gx-big" id="gx-save">📊 Analysis बघा</button>
-          <button type="button" class="gx-link" id="gx-later">नंतर</button>
+          <button type="button" class="gx-btn gx-big gx-shine" id="gx-save">${forResult ? '🎯 Result बघा' : '📊 Analysis बघा'}</button>
+          ${forResult ? '' : '<button type="button" class="gx-link" id="gx-later">नंतर</button>'}
         </div>`);
       const mob = el.querySelector('#gx-mob'), msg = el.querySelector('#gx-msg');
       _hintOnFocus(mob);
       const done = v => { _close(el); resolve(v); };
-      el.querySelector('.gx-close').onclick = () => done(false);
-      el.querySelector('#gx-later').onclick = () => done(false);
+      el.querySelector('.gx-close')?.addEventListener('click', () => done(false));
+      el.querySelector('#gx-later')?.addEventListener('click', () => done(false));
       el.querySelector('#gx-pick')?.addEventListener('click', async () => {
         try {
           const [c] = await navigator.contacts.select(['tel'], { multiple: false });
@@ -720,6 +725,8 @@ const GUEST = (() => {
           _state.has_parent_mobile = true;
           done(true);
         } catch (err) {
+          // No internet / server asleep: never trap the result behind it.
+          if (!navigator.onLine || /fetch|network|timeout|failed/i.test(String(err?.message || ''))) { done(true); return; }
           msg.textContent = err?.message || 'योग्य 10 अंकी नंबर द्या';
           mob.classList.remove('gx-bad'); void mob.offsetWidth; mob.classList.add('gx-bad');
         }
