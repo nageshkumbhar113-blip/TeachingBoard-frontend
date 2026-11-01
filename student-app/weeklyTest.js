@@ -353,6 +353,8 @@ const WEEKLY = (() => {
       </div>`;
     document.body.appendChild(el);
     if (me?.rank && me.rank <= 10) window.GUEST?.fireworks?.(me.rank <= 3 ? 1.6 : 1); else window.GUEST?.fireworks?.(.6);
+    // good marks -> Google Play review sheet (app only, at most once a month)
+    if (me?.total) window.APP_REVIEW?.afterResult((me.score / me.total) * 100, 3500);
     el.querySelector('.gx-close').onclick = () => el.remove();
     el.querySelector('#wk-photo')?.addEventListener('click', () => _sharePhoto(d).catch(() => _toast('Photo तयार करता आला नाही', 'error')));
     el.querySelector('#wk-share').onclick = () => {

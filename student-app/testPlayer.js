@@ -1166,6 +1166,9 @@ const TEST_PLAYER = (() => {
     // share) plays over this screen; closing it leaves the detailed review.
     if (window.GUEST?.isActive?.()) {
       GUEST.onResult({ attempt, questions, quiz: state.quiz, submitted }).catch(err => console.warn('guest result failed', err));
+    } else {
+      // good marks -> Google Play review sheet (app only, at most once a month)
+      window.APP_REVIEW?.afterResult(percent);
     }
 
     $('tp-btn-retry').onclick = () => startTest(state.quiz.quiz_id, state.mode);

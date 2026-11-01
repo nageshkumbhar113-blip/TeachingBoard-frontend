@@ -1,6 +1,7 @@
 // Makes sure android/app/build.gradle has the Google Play dependencies that the student app's own
-// plugins need: Install Referrer (android-student/InstallReferrerPlugin.java) and Play services
-// auth for Phone Number Hint (android-student/PhoneHintPlugin.java). build.gradle lives in the
+// plugins need: Install Referrer (android-student/InstallReferrerPlugin.java), Play services
+// auth for Phone Number Hint (android-student/PhoneHintPlugin.java) and Play In-App Review
+// (android-student/InAppReviewPlugin.java). build.gradle lives in the
 // gitignored android/ folder, so this runs from build-student.bat on every build (safe to repeat).
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -12,6 +13,8 @@ const deps = [
     '// Google Play install referrer (teacher / friend code from the share link) - see InstallReferrerPlugin.java'],
   ['com.google.android.gms:play-services-auth', 'implementation "com.google.android.gms:play-services-auth:21.2.0"',
     '// Phone Number Hint (parent mobile without typing) - see PhoneHintPlugin.java'],
+  ['com.google.android.play:review', 'implementation "com.google.android.play:review:2.0.2"',
+    '// Google Play In-App Review (stars + comment to the Play listing) - see InAppReviewPlugin.java'],
 ];
 
 const anchor = /(\r?\n)(\s*)implementation project\(':capacitor-android'\)/;
