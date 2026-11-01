@@ -246,6 +246,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'books')       window.BOOKS_MANAGER?.init();
         if (tab.dataset.tab === 'pricing')     window.BATCH_PRICING?.init();
         if (tab.dataset.tab === 'partners')    { window.PARTNERS_ADMIN?.init(); window.SHOPS_ADMIN?.init(); }
+        if (tab.dataset.tab === 'settlement')  window.SETTLEMENT_ADMIN?.init();
         if (tab.dataset.tab === 'youtube-teachers') window.YOUTUBE_TEACHER_ADMIN?.init();
         if (tab.dataset.tab === 'banners')     window.BANNER_ADMIN?.init();
         if (tab.dataset.tab === 'dashboard')   _loadDashboard();

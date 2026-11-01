@@ -214,6 +214,10 @@
               <span class="atab-icon" aria-hidden="true">🤝</span>
               <span class="atab-label">Partners</span>
             </button>
+            <button class="atab" role="tab" data-tab="settlement" aria-controls="atab-settlement" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">💸</span>
+              <span class="atab-label">Settlement</span>
+            </button>
             <button class="atab" role="tab" data-tab="youtube-teachers" aria-controls="atab-youtube-teachers" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">🎬</span>
               <span class="atab-label">YouTube Teachers</span>
@@ -1802,9 +1806,9 @@ Marks: 1"></textarea>
             <div class="pa-wrap">
               <h2>🤝 Partners - commission and monthly payouts</h2>
               <p class="import-hint">Each month is closed on the 1st and paid between the 2nd and the 5th. A closed month never changes: later refunds are deducted in the next statement. Turn commission on for a teacher in the Teachers tab.</p>
+              <p class="import-hint"><b>💸 पैसे देणं, महिन्याचा आणि वर्षाचा हिशोब, आले-गेले: Settlement tab मध्ये.</b> इथे फक्त settings, shops, बक्षीस requests आणि commission lines.</p>
 
               <div class="pa-cards">
-                <div class="pa-card"><small>To pay (closed statements)</small><b id="pa-due-total">₹0</b><small id="pa-due-count"></small></div>
                 <div class="pa-card"><small>Prize requests to send</small><b id="pa-claims-open">0</b><small>students waiting for a parcel</small></div>
               </div>
 
@@ -1876,27 +1880,42 @@ Marks: 1"></textarea>
 
               <div class="admin-card pa-section">
                 <div class="pa-row">
-                  <h3>Monthly statements</h3>
-                  <div class="pa-row-actions">
-                    <select id="pa-month" class="admin-input"></select>
-                    <button type="button" id="pa-close-month" class="admin-btn-secondary">Close last month now</button>
-                  </div>
-                </div>
-                <div id="pa-statements"></div>
-              </div>
-
-              <div class="admin-card pa-section">
-                <h3>Partners</h3>
-                <div id="pa-partners"></div>
-              </div>
-
-              <div class="admin-card pa-section">
-                <div class="pa-row">
                   <h3>Commission lines</h3>
                   <select id="pa-ledger-partner" class="admin-input"></select>
                 </div>
                 <div id="pa-ledger"></div>
               </div>
+            </div>
+          </div>
+
+          <div class="atab-content hidden" id="atab-settlement" role="tabpanel" aria-labelledby="atab-btn-settlement">
+            <div class="pa-wrap">
+              <h2>💸 Settlement — कोणाला किती द्यायचे, किती दिले</h2>
+              <p class="import-hint">Teachers, YouTube partners आणि shops चा हिशोब एकाच ठिकाणी. दर महिन्याच्या 1 तारखेला मागचा महिना आपोआप बंद होतो; 2 ते 5 तारखेला UPI ने द्या.</p>
+              <div class="st-filters">
+                <label>महिना<select id="st-month" class="admin-input"></select></label>
+                <label>आर्थिक वर्ष<select id="st-fy" class="admin-input"></select></label>
+                <label class="st-search">🔍 Search<input id="st-search" class="admin-input" type="search" placeholder="नाव, code, mobile, गाव, UPI" /></label>
+                <div class="pa-row-actions">
+                  <button type="button" id="st-csv" class="admin-btn-secondary">⬇️ Excel (CSV)</button>
+                  <button type="button" id="st-refresh" class="admin-btn-secondary">🔄</button>
+                </div>
+              </div>
+              <div class="st-money-wrap" id="st-money"></div>
+              <div class="pa-cards" id="st-cards"></div>
+              <div class="st-chips" id="st-types">
+                <button type="button" class="st-chip on" data-st-type="all">सगळे</button>
+                <button type="button" class="st-chip" data-st-type="school">👩‍🏫 Teachers</button>
+                <button type="button" class="st-chip" data-st-type="youtube">🎬 YouTube</button>
+                <button type="button" class="st-chip" data-st-type="shop">🏪 Shops</button>
+                <button type="button" class="st-chip" data-st-type="students">🎁 Students</button>
+              </div>
+              <div class="st-chips" id="st-views">
+                <button type="button" class="st-chip on" data-st-view="month">📅 महिना</button>
+                <button type="button" class="st-chip" data-st-view="all">📒 आतापर्यंत एकूण</button>
+                <button type="button" class="st-chip" data-st-view="year">📆 वर्ष (एप्रिल–मार्च)</button>
+              </div>
+              <div class="admin-card pa-section" id="st-body"></div>
             </div>
           </div>
 
@@ -2151,6 +2170,9 @@ Marks: 1"></textarea>
       </button>
       <button class="abn-drawer-item" data-tab="partners">
         <span>🤝</span> Partners
+      </button>
+      <button class="abn-drawer-item" data-tab="settlement">
+        <span>💸</span> Settlement
       </button>
       <button class="abn-drawer-item" data-tab="banners">
         <span>🎯</span> Banners
@@ -2432,6 +2454,7 @@ Marks: 1"></textarea>
   <script src="partnersAdmin.js" defer></script>
   <script src="../core/shopPoster.js" defer></script>
   <script src="shopsAdmin.js" defer></script>
+  <script src="settlementAdmin.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="bannerAdmin.js" defer></script>

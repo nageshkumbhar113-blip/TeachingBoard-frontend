@@ -79,6 +79,16 @@
   details summary { cursor: pointer; font-weight: 800; color: #7b2ff7; margin-top: 8px; }
   table { width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 8px; }
   td, th { padding: 6px 4px; border-bottom: 1px dashed var(--line); text-align: left; }
+  .settle { display: grid; gap: 8px; margin-top: 10px; }
+  .mrow { padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); animation: rise .35s ease both; }
+  .mrow.run { background: linear-gradient(135deg, #f5f3ff, #fff1f6); border-color: #e4d9ff; }
+  .mrow .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .mrow .top b { font-size: 1.05rem; }
+  .mrow .amt { font-size: 1.25rem; font-weight: 800; color: #b45309; white-space: nowrap; }
+  .mrow .lines { margin-top: 4px; font-size: .86rem; color: var(--muted); font-weight: 600; }
+  .mrow .lines span { display: inline-block; margin-right: 10px; }
+  .pill.wait { background: #e0f2fe; color: #075985; }
+  .total-paid { margin-top: 10px; text-align: center; font-weight: 800; color: var(--green); }
   .logout { display: block; margin: 6px auto 0; background: none; border: 0; color: #fff; font: 700 .95rem var(--font); text-decoration: underline; cursor: pointer; opacity: .9; }
   .loading-dots::after { content: ''; animation: dots 1.2s steps(4) infinite; }
   @keyframes dots { 0% { content: '' } 25% { content: '.' } 50% { content: '..' } 75% { content: '...' } }
@@ -166,14 +176,19 @@
     </div>
 
     <div class="card">
+      <h3>📅 महिन्याचा हिशोब (Settlement)</h3>
+      <div class="settle" id="e-months"></div>
+      <div class="total-paid" id="e-paid-total"></div>
+      <p class="hint" id="e-note"></p>
+    </div>
+
+    <div class="card">
       <h3>💰 कमाई आणि Payment</h3>
       <div class="stats" style="margin-top:6px">
         <div class="stat"><b id="e-hold">₹0</b><small>⏳ थांबलेली</small></div>
         <div class="stat"><b id="e-ready">₹0</b><small>✅ पक्की झालेली</small></div>
         <div class="stat"><b id="e-min">₹0</b><small>किमान payout</small></div>
       </div>
-      <p class="hint" id="e-note"></p>
-      <div id="e-statements"></div>
       <details id="e-upi-box">
         <summary>🏦 UPI माहिती (payment इथे येईल)</summary>
         <label for="u-id">UPI ID</label>
@@ -310,15 +325,39 @@
   }
   document.querySelectorAll('.tab').forEach(function (b) { b.onclick = function () { tab = b.dataset.tab; renderList(); }; });
 
+  var MONTHS = ['जानेवारी', 'फेब्रुवारी', 'मार्च', 'एप्रिल', 'मे', 'जून', 'जुलै', 'ऑगस्ट', 'सप्टेंबर', 'ऑक्टोबर', 'नोव्हेंबर', 'डिसेंबर'];
+  function monthName(m) { var p = String(m).split('-'); return (MONTHS[Number(p[1]) - 1] || p[1]) + ' ' + p[0]; }
+  function nextMonthFirst(m) { var p = String(m).split('-').map(Number); return '1 ' + MONTHS[p[1] % 12]; }
+
+  // Month-by-month account: running month on top, then every closed month and its payout.
+  function renderSettlement(se) {
+    var html = '';
+    var run = se.running;
+    html += '<div class="mrow run"><div class="top"><b>🔄 ' + monthName(run.month) + ' (चालू)</b><span class="amt">' + rupee(run.amount) + '</span></div>' +
+      '<div class="lines"><span>👨‍🎓 ' + run.count + ' payments</span>' + (run.hold_amount ? '<span>⏳ ' + rupee(run.hold_amount) + ' hold मध्ये</span>' : '') +
+      '<span>📅 ' + nextMonthFirst(run.month) + ' ला हिशोब बंद</span></div></div>';
+    se.months.forEach(function (m, i) {
+      var pill = m.status === 'paid'
+        ? '<span class="pill paid">✅ दिले' + (m.paid_at ? ' ' + dateText(m.paid_at) : '') + '</span>'
+        : m.status === 'closed' ? '<span class="pill wait">⏳ 2–5 तारखेला येईल</span>'
+        : '<span class="pill sent">➡ पुढच्या महिन्यात जोडले</span>';
+      var lines = '<span>👨‍🎓 ' + m.count + ' payments · ' + rupee(m.amount) + '</span>';
+      if (m.adjust) lines += '<span>↩ refund ' + rupee(m.adjust) + '</span>';
+      if (m.carried_in) lines += '<span>➕ मागचे ' + rupee(m.carried_in) + '</span>';
+      if (m.status === 'paid' && m.utr) lines += '<span>🧾 UTR ' + esc(m.utr) + '</span>';
+      if (m.status === 'carried') lines += '<span>किमान ₹' + se.min_payout + ' पूर्ण झाले नाहीत</span>';
+      html += '<div class="mrow" style="animation-delay:' + Math.min(i + 1, 10) * 0.04 + 's"><div class="top"><b>' + monthName(m.month) + '</b><span class="amt">' + rupee(m.net) + '</span></div>' +
+        '<div class="lines">' + lines + '</div><div style="margin-top:6px">' + pill + '</div></div>';
+    });
+    $('e-months').innerHTML = html;
+    $('e-paid-total').textContent = se.paid_total ? '✅ आतापर्यंत मिळालेले: ' + rupee(se.paid_total) : '';
+    $('e-note').textContent = 'Payment नंतर ' + se.hold_days + ' दिवस थांबून कमाई पक्की होते. दर महिन्याच्या 1 तारखेला हिशोब बंद होतो आणि 2 ते 5 तारखेदरम्यान UPI वर payment येतं. ₹' + se.min_payout + ' पेक्षा कमी असल्यास पुढच्या महिन्यात जोडलं जातं.';
+  }
+
   function renderEarnings(e) {
     $('e-hold').textContent = rupee(e.pending.amount);
     $('e-ready').textContent = rupee(e.ready.amount);
     $('e-min').textContent = rupee(e.min_payout);
-    $('e-note').textContent = 'Payment नंतर ' + e.hold_days + ' दिवस थांबून कमाई पक्की होते. दर महिन्याच्या 1 तारखेला हिशोब बंद होतो आणि 2 ते 5 तारखेदरम्यान UPI वर payment येतं. ₹' + e.min_payout + ' पेक्षा कमी असल्यास पुढच्या महिन्यात जोडलं जातं.';
-    var st = e.statements || [];
-    $('e-statements').innerHTML = st.length ? '<table><thead><tr><th>महिना</th><th>रक्कम</th><th>स्थिती</th></tr></thead><tbody>' + st.map(function (s) {
-      return '<tr><td>' + esc(s.month) + '</td><td>' + rupee(s.net) + '</td><td>' + (s.status === 'paid' ? '✅ दिले' + (s.utr ? ' <small>' + esc(s.utr) + '</small>' : '') : s.status === 'closed' ? '⏳ लवकरच' : '➡ पुढच्या महिन्यात') + '</td></tr>';
-    }).join('') + '</tbody></table>' : '';
     var p = e.payout || {};
     $('u-id').value = p.upi_id || ''; $('u-id2').value = p.upi_id || ''; $('u-name').value = p.upi_name || '';
     $('u-pan').placeholder = p.pan || 'ABCDE1234F';
@@ -328,7 +367,7 @@
   function load() {
     show(data ? 'v-main' : 'v-loading');
     return Promise.all([call('GET', '/shop/me'), call('GET', '/partners/me/earnings')]).then(function (res) {
-      data = res[0].data; render(); renderEarnings(res[1].data); show('v-main'); posterPreview();
+      data = res[0].data; render(); renderEarnings(res[1].data); renderSettlement(data.settlement); show('v-main'); posterPreview();
     }).catch(function (e) {
       if (e.status === 401 || e.status === 403) { setToken(''); show('v-login'); $('l-msg').textContent = e.status === 403 ? e.message : ''; }
       else { show(token ? 'v-loading' : 'v-login'); $('v-loading').innerHTML = '<p class="muted">😕 ' + esc(e.message) + '</p><button class="btn ghost" type="button" id="retry">🔄 पुन्हा प्रयत्न करा</button>'; $('retry').onclick = function () { $('v-loading').innerHTML = '<p class="muted">⏳ उघडत आहे<span class="loading-dots"></span></p>'; load(); }; }

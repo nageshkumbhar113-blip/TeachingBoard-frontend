@@ -2462,6 +2462,37 @@ body.admin-app {
 .sh-pin-box { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(249,115,22,.1); border: 1px solid rgba(249,115,22,.4); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sh-pin-box code, .sh-card code { font-weight: 800; letter-spacing: .04em; }
 .sh-students { margin-top: 10px; }
+
+/* Admin > Settlement */
+.st-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.st-filters label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; min-width: 150px; }
+.st-filters .st-search { flex: 1 1 220px; }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-chip { padding: 6px 14px; border-radius: 999px; border: 1px solid rgba(128,128,128,.35); background: transparent; color: inherit; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.st-chip.on { border-color: #f97316; background: rgba(249,115,22,.15); color: #c2410c; }
+.st-money-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.st-money { border: 1px solid rgba(128,128,128,.3); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.st-money-title { font-weight: 800; margin-bottom: 4px; }
+.st-money-row { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.st-money-row b { font-size: 1.15rem; }
+.st-money small { opacity: .75; font-size: .75rem; }
+.st-money .st-net { border-top: 1px dashed rgba(128,128,128,.4); padding-top: 6px; }
+.st-in { color: #15803d; }
+.st-out { color: #c2410c; }
+.pa-card.st-due { border-color: rgba(220,38,38,.45); background: rgba(220,38,38,.07); }
+.pa-card.st-paid { border-color: rgba(22,163,74,.45); background: rgba(22,163,74,.08); }
+.pa-card.st-warn { border-color: #dc2626; background: rgba(220,38,38,.15); }
+.st-table td { min-width: 70px; }
+.st-row-due td { background: rgba(249,115,22,.07); }
+.st-total td { border-top: 2px solid rgba(128,128,128,.4); font-weight: 700; }
+.st-who { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.st-who:hover b { text-decoration: underline; }
+.st-more { font-size: .7rem; opacity: .6; }
+.pa-badge.st-ok { background: rgba(22,163,74,.18); color: #15803d; font-weight: 700; }
+.st-wa { display: inline-block; margin-top: 4px; font-size: .78rem; padding: 3px 8px; }
+.st-history td { background: rgba(124,58,237,.05); }
+.st-hist h4 { margin: 6px 0; }
+.st-hist .pa-table { margin-bottom: 10px; }
 .pa-badge.done { background: rgba(16,185,129,.2); color: #047857; font-weight: 700; }
 .pa-warn { color: #dc2626; font-size: 0.8rem; }
 

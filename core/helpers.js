@@ -1317,6 +1317,14 @@ const API = (() => {
   async function createShop(body) { return _shopReq('', { method: 'POST', body: JSON.stringify(body) }); }
   async function updateShop(id, body) { return _shopReq(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }); }
   async function fetchShopStudents(id) { return (await _shopReq(`/${encodeURIComponent(id)}/students`))?.data || []; }
+  // Admin > Settlement
+  async function fetchSettlement(month = '', fy = '') {
+    const q = new URLSearchParams();
+    if (month) q.set('month', month);
+    if (fy) q.set('fy', fy);
+    return (await _partnerReq(`/settlement${q.toString() ? `?${q}` : ''}`))?.data || null;
+  }
+  async function fetchSettlementHistory(id) { return (await _partnerReq(`/settlement/${encodeURIComponent(id)}`))?.data || null; }
   async function fetchReferralSummary() {
     const token = await ensureAdminSession();
     const p = await request('/referrals/summary', { headers: { Authorization: `Bearer ${token}` } });
@@ -2934,7 +2942,7 @@ const API = (() => {
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
-    fetchShops, createShop, updateShop, fetchShopStudents,
+    fetchShops, createShop, updateShop, fetchShopStudents, fetchSettlement, fetchSettlementHistory,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
     fetchPassageBlocks, fetchPassageBlock, updatePassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
     registerTeacher,
