@@ -2096,12 +2096,20 @@ const ADMIN = (() => {
             <button class="admin-btn-secondary" data-a="del" type="button">🗑️</button>
           </div>`;
         item.querySelector('[data-a="edit"]').onclick = () => { _fillWeeklyForm(s); $('wk-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
-        item.querySelector('[data-a="trial"]').onclick = async () => {
+        item.querySelector('[data-a="trial"]').onclick = async e => {
+          const btn = e.currentTarget;
+          if (btn.disabled) return;
+          btn.disabled = true; btn.textContent = '⏳ बनत आहे…';   // one click = one trial (server also allows only one at a time)
           try {
             const r = await API.adminWeekly('POST', `/schedules/${s._id}/trial`, { start_in_minutes: 1, window_minutes: 30 });
-            APP.toast(`✅ Trial: ${r.data.subject}, ${r.data.questions} प्रश्न — 1 मिनिटात सुरू (30 मि खिडकी). Student app मध्ये बघा.`, 'success');
+            APP.toast(r.existing
+              ? `ℹ️ Trial आधीच चालू आहे: ${r.data.subject}, ${r.data.questions} प्रश्न. Student app मध्ये बघा.`
+              : `✅ Trial: ${r.data.subject}, ${r.data.questions} प्रश्न — 1 मिनिटात सुरू (30 मि खिडकी). Student app मध्ये बघा.`, 'success');
             _loadWeekly();
-          } catch (err) { APP.toast(err?.message || 'Trial बनला नाही', 'error'); }
+          } catch (err) {
+            APP.toast(err?.message || 'Trial बनला नाही', 'error');
+            btn.disabled = false; btn.textContent = '▶ Trial आत्ता';
+          }
         };
         item.querySelector('[data-a="toggle"]').onclick = async () => {
           try { await API.adminWeekly('PUT', `/schedules/${s._id}`, { enabled: !s.enabled }); _loadWeekly(); } catch (err) { APP.toast(err?.message || 'जमलं नाही', 'error'); }
@@ -2124,8 +2132,16 @@ const ADMIN = (() => {
             <div class="batch-admin-name">${st} · ${_esc(e.batch)} · ${_esc(e.subject)}${e.is_trial ? ' (trial)' : ''}</div>
             <div class="batch-admin-meta">${_esc(new Date(e.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · registered ${e.registered} · दिला ${e.submitted}${e.skip_reason ? ' · ' + _esc(e.skip_reason) : ''}</div>
           </div>
-          <div class="batch-admin-actions">${e.submitted ? '<button class="admin-btn-secondary" type="button">🏆 Results</button>' : ''}</div>`;
-        item.querySelector('button')?.addEventListener('click', () => _showWeeklyResults(e._id));
+          <div class="batch-admin-actions">
+            ${e.submitted ? '<button class="admin-btn-secondary" data-a="res" type="button">🏆 Results</button>' : ''}
+            <button class="admin-btn-secondary" data-a="del" type="button" title="हा test काढा">🗑️</button>
+          </div>`;
+        item.querySelector('[data-a="res"]')?.addEventListener('click', () => _showWeeklyResults(e._id));
+        item.querySelector('[data-a="del"]').addEventListener('click', async () => {
+          const msg = e.submitted ? `हा test (${e.subject}) आणि त्याचे ${e.submitted} results काढायचे?` : `हा test (${e.subject}${e.is_trial ? ', trial' : ''}) काढायचा?`;
+          if (window.UI?.confirmAsync && !(await UI.confirmAsync(msg))) return;
+          try { await API.adminWeekly('DELETE', `/events/${e._id}`); _loadWeekly(); } catch (err) { APP.toast(err?.message || 'काढता आलं नाही', 'error'); }
+        });
         evList.appendChild(item);
       });
     } catch (err) {
