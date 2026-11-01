@@ -2045,6 +2045,19 @@ const ADMIN = (() => {
     } catch (err) { APP.toast(err?.message || 'जोडता आलं नाही', 'error'); }
   }
 
+  // Where this visitor is in the funnel: every step as a chip, done ✓ / not yet.
+  function _leadSteps(l) {
+    const done = new Set(l.steps || []);
+    if (l.paid) done.add('paid');
+    const chips = [
+      ['browsed', '📚 Class'], ['engaged', '▶ Free भाग'], ['tested', `📝 Test${l.tests ? ' ×' + l.tests : ''}`],
+      ['shared_friend', '👫 मित्रांना share'], ['shared_parent', '👨‍👩‍👧 पालकांना share'], ['lead', '📱 नंबर'],
+      ['offer_seen', '🎁 सवलत बघितली'], ['checkout', '💳 Pay page'], ['paid', '✅ Paid'],
+    ];
+    const offer = l.offer?.active ? `<span class="gxa-chip gxa-live">⏳ सवलत चालू · ${_esc(new Date(l.offer.expires_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }))} पर्यंत</span>` : '';
+    return chips.map(([k, label]) => `<span class="gxa-chip${done.has(k) ? ' gxa-done' : ''}">${done.has(k) ? '✓ ' : ''}${label}</span>`).join('') + offer;
+  }
+
   async function _loadGuestFunnel() {
     const funnelEl = $('guest-funnel'), listEl = $('guest-leads');
     if (!funnelEl || !listEl) return;
@@ -2071,6 +2084,7 @@ const ADMIN = (() => {
             <div class="batch-admin-name">${_esc(l.name || 'नाव नाही')} ${l.paid ? `<span class="gxa-badge gxa-paid">✅ Paid · ${_esc(l.student_code)}</span>` : l.student_code ? `<span class="gxa-badge">Account: ${_esc(l.student_code)}</span>` : ''}</div>
             <div class="batch-admin-meta">${_esc(l.batch)} · ${l.tests} tests · best ${l.best_pct}% · ${_esc(seen)}</div>
             <div class="batch-admin-meta">${l.parent_mobile ? '📱 ' + _esc(l.parent_mobile) : 'नंबर नाही'}${l.source ? ' · ' + _esc(l.source) : ''}</div>
+            <div class="gxa-steps">${_leadSteps(l)}</div>
           </div>
           <div class="batch-admin-actions">
             ${l.parent_mobile && !l.paid ? '<button class="admin-btn-primary btn-gl-wa" type="button">📱 WhatsApp</button>' : ''}

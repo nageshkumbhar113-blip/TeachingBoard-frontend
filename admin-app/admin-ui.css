@@ -2526,3 +2526,9 @@ body.admin-app {
 .gxa-step > span, .gxa-step > b { position: relative; z-index: 1; }
 .gxa-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 0.75rem; font-weight: 700; }
 .gxa-badge.gxa-paid { background: #dcfce7; color: #166534; }
+
+/* Lead card: funnel steps */
+.gxa-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gxa-chip { padding: 2px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
+.gxa-chip.gxa-done { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.gxa-chip.gxa-live { background: #fff7d6; color: #7a4b00; border-color: #ffe7a8; }
