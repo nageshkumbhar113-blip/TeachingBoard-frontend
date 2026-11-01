@@ -522,6 +522,10 @@ const API = (() => {
     return payload;
   }
 
+  async function saveGuestDeviceToken(deviceToken) {
+    return _guestPost('/guest/device-token', { device_token: deviceToken });
+  }
+
   async function claimGuestOffer() {
     const payload = await _guestPost('/guest/offer', {});
     if (payload?.offer) await setGuestState({ offer: payload.offer });
@@ -2853,7 +2857,7 @@ const API = (() => {
     ensureAdminSession, ensureStudentSession, ensureTeacherSession, ensureParentSession,
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
-    guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank,
+    guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
     fetchGuestLeads, fetchGuestFunnel,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

@@ -1834,6 +1834,7 @@ const APP = (() => {
         try {
           if (role === 'teacher') await API.updateTeacherDeviceToken(deviceToken);
           else if (role === 'parent') await API.updateParentDeviceToken(deviceToken);
+          else if (role === 'student' && window.GUEST?.isActive?.()) await API.saveGuestDeviceToken(deviceToken);
           else if (role === 'student') await API.updateStudentDeviceToken(deviceToken);
         } catch (e) { console.warn('FCM token register failed', e); }
       });
@@ -2750,7 +2751,7 @@ const APP = (() => {
     // stabilize first is the standard fix for this class of Android
     // permission-timing crash.
     const guest = !!window.GUEST?.isActive?.();
-    if (!guest) setTimeout(() => _setupPushNotifications('student'), 2000);
+    setTimeout(() => _setupPushNotifications('student'), 2000);   // guests too: the evening "next free test" nudge
     await DB.syncHierarchyFromExisting?.();
     // Real bug fix: subjects/chapters that only have Notes/Exercise content
     // (no legacy MCQ quiz) never appeared in any Subject/Chapter dropdown —
