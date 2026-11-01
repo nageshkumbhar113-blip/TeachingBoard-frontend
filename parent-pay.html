@@ -82,7 +82,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="brand"><b>🚀 NKs EduOrbit</b><span>पालकांसाठी</span></div>
+  <div class="brand"><b>🚀 NKs EduOrbit</b><span>पालकांसाठी</span><div id="proof" style="margin-top:4px;font-weight:700"></div></div>
 
   <div id="v-loading" class="card center"><p class="muted">⏳ उघडत आहे…</p></div>
 
@@ -236,6 +236,7 @@
       $('c-name').textContent = info.name || 'तुमचं मूल';
       $('c-line').textContent = info.tests ? info.tests + ' free tests दिले · सगळ्यात चांगले ' + pct + '%' : 'Free अभ्यास सुरू केला';
       $('c-batch').textContent = info.batch ? '📚 ' + info.batch : '';
+      if (info.students_count >= 20) $('proof').textContent = '🎓 ' + Number(info.students_count).toLocaleString('en-IN') + '+ students NKs EduOrbit वर अभ्यास करतात';
       $('f-name').value = info.name || '';
       show('v-main');
       var k = 0, ring = $('c-ring');

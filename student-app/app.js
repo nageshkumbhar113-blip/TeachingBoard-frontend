@@ -1913,6 +1913,10 @@ const APP = (() => {
     overlay.querySelector('#ps-close-btn')?.addEventListener('click', _close);
     overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
 
+    if (window.GUEST?.isActive?.()) {
+      const sw = overlay.querySelector('#ps-switch-btn');
+      if (sw) sw.textContent = '🔑 माझं account आहे — Login करा';
+    }
     overlay.querySelector('#ps-unlock-btn')?.addEventListener('click', () => {
       _close();
       window.GUEST?.showOffer('locked');

@@ -157,6 +157,7 @@ const GUEST = (() => {
           <div class="gx-logo" aria-hidden="true">🚀</div>
           <h1 class="gx-title gx-welcome-title">NKs EduOrbit<b>Free अभ्यास!</b></h1>
           ${challenge && challenge.from ? `<div class="gx-challenge">🏁 ${_esc(challenge.from)} चे ${challenge.fp}% — त्याला मागे टाका!</div>` : ''}
+          ${!challenge && p.teacher ? '<div class="gx-challenge">👩‍🏫 तुमच्या सरांनी सुचवलेले Free tests</div>' : ''}
           <p class="gx-sub">8वी–10वी: सगळ्या विषयांचे Free Tests, Notes आणि सराव</p>
           <div class="gx-chips">
             <span class="gx-chip" style="animation-delay:.1s">✅ Login नाही</span>
@@ -328,6 +329,7 @@ const GUEST = (() => {
             <button type="button" class="gx-btn gx-wa" id="gx-share-f">👫 मित्रांना</button>
             <button type="button" class="gx-btn gx-wa" id="gx-share-p">👨‍👩‍👧 पालकांना</button>
           </div>
+          <button type="button" class="gx-btn gx-cool" id="gx-photo">📸 Status साठी Result photo</button>
           <button type="button" class="gx-btn gx-ghost" id="gx-secondary"></button>
           <button type="button" class="gx-btn gx-ghost" id="gx-analysis">📊 पूर्ण analysis बघा</button>
         </div>
@@ -363,6 +365,7 @@ const GUEST = (() => {
     const ctx = { quiz, pct, score: attempt.score, max: attempt.max_score, improved, weak };
     el.querySelector('#gx-share-f').onclick = () => shareFriend(ctx);
     el.querySelector('#gx-share-p').onclick = () => shareParent(ctx);
+    el.querySelector('#gx-photo').onclick = () => shareResultImage(ctx).catch(() => _toast('Photo तयार करता आला नाही', 'error'));
     el.querySelector('#gx-analysis').onclick = async () => {
       if (!_state.has_parent_mobile && !(await contactGate())) return;
       close();   // the detailed review underneath (testPlayer results view)
@@ -584,6 +587,68 @@ const GUEST = (() => {
     API.guestEvent('shared_parent');
   }
 
+  // Result card as a picture (1080×1350) for WhatsApp Status — free publicity.
+  function _resultCanvas(ctx) {
+    const W = 1080, H = 1350;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const bg = g.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#ff7a18'); bg.addColorStop(.5, '#ff3d77'); bg.addColorStop(1, '#7b2ff7');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    // confetti
+    const cols = ['#ffc83d', '#ffffff', '#22c55e', '#38bdf8', '#1b1340'];
+    for (let i = 0; i < 70; i++) {
+      g.save(); g.globalAlpha = .55; g.fillStyle = cols[i % cols.length];
+      g.translate((i * 157) % W, (i * 263) % H); g.rotate(i);
+      g.fillRect(-9, -4, 18, 8); g.restore();
+    }
+    const font = (w, px) => `${w} ${px}px "Baloo 2", "Noto Sans Devanagari", sans-serif`;
+    g.textAlign = 'center'; g.fillStyle = '#fff';
+    g.font = font(800, 64); g.fillText('🚀 NKs EduOrbit', W / 2, 130);
+    // card
+    g.fillStyle = '#ffffff';
+    const x = 90, y = 200, w = W - 180, h = 900, r = 60;
+    g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.fill();
+    g.fillStyle = '#6b6690'; g.font = font(700, 46);
+    g.fillText((_state.name || 'मी') + ' चा Result', W / 2, 300);
+    g.fillStyle = '#1b1340'; g.font = font(700, 44);
+    g.fillText(_lesson(ctx.quiz).slice(0, 34), W / 2, 370);
+    // ring
+    const cx = W / 2, cy = 640, R = 190;
+    g.lineWidth = 46; g.strokeStyle = '#efeaff'; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+    const rg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    rg.addColorStop(0, '#ff7a18'); rg.addColorStop(.5, '#ff3d77'); rg.addColorStop(1, '#7b2ff7');
+    g.strokeStyle = rg; g.lineCap = 'round'; g.beginPath(); g.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(.01, ctx.pct / 100)); g.stroke();
+    g.fillStyle = '#1b1340'; g.font = font(800, 150); g.fillText(`${ctx.pct}%`, cx, cy + 50);
+    g.fillStyle = '#6b6690'; g.font = font(700, 48); g.fillText(`${ctx.score} / ${ctx.max} गुण`, cx, cy + 120);
+    g.fillStyle = '#7a4b00'; g.font = font(800, 50);
+    g.fillText(ctx.rank?.rank && ctx.rank.total > 1 ? `🏆 ${ctx.rank.total} students मध्ये #${ctx.rank.rank}` : ctx.pct >= 75 ? '🔥 खूप छान!' : '💪 सराव चालू!', W / 2, 960);
+    g.fillStyle = '#ff3d77'; g.font = font(800, 54);
+    g.fillText('तू मला मागे टाकू शकतोस? 😎', W / 2, 1050);
+    g.fillStyle = '#fff'; g.font = font(800, 52);
+    g.fillText('Free test द्या — login नाही', W / 2, 1200);
+    g.font = font(700, 40); g.fillText('teachingboard-frontend.vercel.app', W / 2, 1270);
+    return cv;
+  }
+
+  async function shareResultImage(ctx) {
+    await document.fonts?.ready;
+    const cv = _resultCanvas(ctx);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    if (!blob) throw new Error('no image');
+    const text = `🎉 ${_lesson(ctx.quiz)} मध्ये ${ctx.pct}%! तू पण करून बघ 👉 ${_friendLink(ctx.quiz, ctx.pct)}`;
+    API.guestEvent('shared_friend');
+    if (!_isNative()) {
+      const file = new File([blob], 'nks-result.png', { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file], text }); return; } catch (e) { if (e?.name === 'AbortError') return; }
+      }
+    }
+    await window.FILE_EXPORT?.saveAndShare(blob, 'nks-result.png');
+    if (!_isNative()) _toast('📸 Photo save झाला — WhatsApp Status ला टाका', 'success');
+  }
+
   // ── Parent mobile (unlocks the detailed analysis) ──────────────────
   function contactGate() {
     return new Promise(resolve => {
@@ -681,6 +746,25 @@ const GUEST = (() => {
     else if (n >= 3 && n >= (_state.offer_snooze_tests || 0)) setTimeout(() => showOffer('third'), 900);
   }
 
+  // Chapter screen: the next step pulses — Notes, then Exercise, then Test.
+  function decorateHub(grid, chapter) {
+    if (!_active || !grid) return;
+    const key = String(chapter || '');
+    const seen = (_state.hub || {})[key] || {};
+    const order = ['Notes', 'Exercise', 'Test'];
+    const next = order.find(l => !seen[l]) || 'Test';
+    grid.querySelectorAll('.chapter-hub-btn').forEach(btn => {
+      const label = btn.getAttribute('aria-label');
+      btn.classList.toggle('gx-glow', label === next);
+      btn.addEventListener('click', () => {
+        const hub = { ...(_state.hub || {}) };
+        hub[key] = { ...(hub[key] || {}), [label]: true };
+        _saveState({ hub });
+        API.guestEvent('engaged');
+      });
+    });
+  }
+
   // A feature that needs a real account (Words, Study Plan, …).
   let _signupAt = 0;
   function onSignupRequired() {
@@ -693,6 +777,8 @@ const GUEST = (() => {
   return {
     refresh, isActive, wantsEntry, entryParams, start, ensureName, onResult,
     showOffer, openPay, goNext, renderHomeGuide, onSignupRequired, contactGate, fireworks,
+    __resultCanvas: _resultCanvas,
+    decorateHub,
   };
 })();
 

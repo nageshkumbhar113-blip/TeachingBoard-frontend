@@ -867,6 +867,7 @@ const UI = (() => {
       fragment.appendChild(btn);
     });
     grid.appendChild(fragment);
+    window.GUEST?.decorateHub?.(grid, chapter);   // free-part visitor: Notes → Exercise → Test
 
     $('available-tests-section')?.classList.add('hidden');
     // Chapter Hub is its own screen (not another inline home-page section),
