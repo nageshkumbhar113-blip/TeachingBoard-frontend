@@ -111,14 +111,16 @@
     const stats = _data.stats || {};
     $('hp-faq-note').textContent = _data.faq ? 'तुम्ही बदललेली उत्तरं वापरात आहेत.' : 'सध्या app ची मूळ उत्तरं वापरात आहेत.';
     $('hp-faq').innerHTML = _faq.map((s, si) => `<div class="hp-sec">
-      <h4>${esc(s.icon || '')} ${esc(s.title)}</h4>
+      <h4>${esc(s.icon || '')} ${esc(s.title)}${s.title_en && s.title_en !== s.title ? ` <small>/ ${esc(s.title_en)}</small>` : ''}</h4>
       ${s.items.map((it, ii) => {
         const st = stats[`${s.id}_${it.id}`] || {};
         return `<div class="hp-item">
-          <div class="hp-item-head"><input class="admin-input" data-f="q" data-s="${si}" data-i="${ii}" value="${esc(it.q)}" />
+          <div class="hp-item-head"><input class="admin-input" data-f="q" data-s="${si}" data-i="${ii}" value="${esc(it.q)}" placeholder="प्रश्न (मराठी)" />
             <small class="hp-stat">👁 ${st.asked || 0}${st.unresolved ? ` · ❌ ${st.unresolved}` : ''}</small>
             <button type="button" class="admin-btn-secondary" data-hp-faq="del" data-s="${si}" data-i="${ii}" title="काढा">🗑️</button></div>
-          <textarea class="admin-input" rows="2" data-f="a" data-s="${si}" data-i="${ii}">${esc(it.a)}</textarea>
+          <textarea class="admin-input" rows="2" data-f="a" data-s="${si}" data-i="${ii}" placeholder="उत्तर (मराठी)">${esc(it.a)}</textarea>
+          <div class="hp-en"><input class="admin-input" data-f="q_en" data-s="${si}" data-i="${ii}" value="${esc(it.q_en || '')}" placeholder="Question (English)" />
+            <textarea class="admin-input" rows="2" data-f="a_en" data-s="${si}" data-i="${ii}" placeholder="Answer (English) — रिकामं ठेवलं तर मराठी उत्तर दिसेल">${esc(it.a_en || '')}</textarea></div>
           ${it.action ? `<small class="import-hint">बटण: ${esc(it.action)}</small>` : ''}
         </div>`;
       }).join('')}
@@ -138,7 +140,7 @@
     if (!b) return;
     _readFaq();
     const s = _faq[Number(b.dataset.s)];
-    if (b.dataset.hpFaq === 'add') s.items.push({ id: 'q' + Date.now().toString(36), q: 'नवीन प्रश्न', a: 'उत्तर' });
+    if (b.dataset.hpFaq === 'add') s.items.push({ id: 'q' + Date.now().toString(36), q: 'नवीन प्रश्न', a: 'उत्तर', q_en: '', a_en: '' });
     else s.items.splice(Number(b.dataset.i), 1);
     _renderFaq();
   }

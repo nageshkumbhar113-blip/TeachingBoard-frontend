@@ -2503,6 +2503,7 @@ body.admin-app {
 .hp-item-head { display: flex; gap: 6px; align-items: center; }
 .hp-item-head .admin-input { flex: 1; font-weight: 700; }
 .hp-stat { white-space: nowrap; opacity: .8; }
+.hp-en { display: flex; flex-direction: column; gap: 4px; padding-left: 10px; border-left: 3px solid rgba(124,58,237,.35); }
 .st-open { margin-top: 4px; font-size: .78rem; padding: 3px 10px; }
 .st-layer { position: fixed; inset: 0; z-index: 9000; background: rgba(15,10,40,.55); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; animation: stPop .2s ease both; }
 .st-win { width: min(900px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; background: var(--surface, #fff); color: var(--text, inherit); border: 1px solid var(--border, transparent); border-radius: 16px; padding: 16px 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
