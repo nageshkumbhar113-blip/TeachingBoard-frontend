@@ -119,7 +119,8 @@ const HELP_BOT = (() => {
       waDone: 'WhatsApp उघडलं — नाव, नंबर आणि problem लिहून पाठवा. Admin लवकरच उत्तर देतील.',
       forgotIntro: 'ठीक आहे. विद्यार्थ्याचं नाव आणि पालकांचा mobile नंबर (register करताना दिलेला) लिहा. हा phone पण तपासला जाईल.',
       studentName: 'विद्यार्थ्याचं नाव', parentMobile: 'पालकांचा mobile', check: '🔍 तपासा', needName: 'नाव लिहा', needMobile: '10 अंकी नंबर लिहा',
-      notMatched: '😕 या phone वरून खात्री झाली नाही. (नवीन phone असेल, किंवा नाव / नंबर वेगळा दिला असेल.)',
+      notMatched: '😕 हे नाव आणि नंबर जुळले नाहीत. Register करताना दिलेलं नाव आणि पालकांचा नंबरच लिहा.',
+      otherDevice: '📱 नाव आणि नंबर बरोबर आहेत, पण हे account या phone वर नाही — ज्या phone वर student login करतो त्या phone च्या app मधून हेच करा. Phone बदलला / हरवला असेल तर खालून Admin ला request पाठवा.',
       reqNewPin: '📨 Admin ला request पाठवा (नवीन PIN WhatsApp वर)', retry: '🔁 पुन्हा प्रयत्न',
       matched: n => `✅ खात्री झाली! <b>${n}</b> चा Student Code:`, setPin: 'नवीन 4 अंकी PIN ठेवा (10 मिनिटांत):', newPin: 'नवीन PIN', pinAgain: 'PIN पुन्हा',
       savePin: '💾 PIN Save करा', need4: '4 अंकी PIN लिहा', notSame: 'दोन्ही PIN सारखे नाहीत', pinDone: '🎉 PIN बदलला! Code आणि PIN login मध्ये भरले आहेत — "Continue" दाबा.', toLogin: '✅ Login कडे जा',
@@ -137,7 +138,8 @@ const HELP_BOT = (() => {
       waDone: 'WhatsApp is open — write your name, number and the problem and send it. The admin will reply soon.',
       forgotIntro: 'OK. Write the student\'s name and the parent\'s mobile number (the one given at registration). This phone will be checked too.',
       studentName: 'Student\'s name', parentMobile: 'Parent\'s mobile', check: '🔍 Check', needName: 'Write the name', needMobile: 'Write a 10-digit number',
-      notMatched: '😕 We could not confirm it from this phone. (It may be a new phone, or the name / number is different.)',
+      notMatched: '😕 This name and number do not match. Use the name and the parent\'s number given at registration.',
+      otherDevice: '📱 The name and number are right, but this account is not on this phone — do this from the app on the phone where the student logs in. If the phone was changed or lost, send a request to the admin below.',
       reqNewPin: '📨 Send a request to the admin (new PIN on WhatsApp)', retry: '🔁 Try again',
       matched: n => `✅ Confirmed! <b>${n}</b>'s Student Code:`, setPin: 'Set a new 4-digit PIN (within 10 minutes):', newPin: 'New PIN', pinAgain: 'PIN again',
       savePin: '💾 Save PIN', need4: 'Write a 4-digit PIN', notSame: 'The two PINs are not the same', pinDone: '🎉 PIN changed! The code and PIN are filled in the login — tap "Continue".', toLogin: '✅ Go to login',
@@ -152,7 +154,17 @@ const HELP_BOT = (() => {
   const L = (o, f) => (_lang === 'en' && o?.[`${f}_en`]) || o?.[f] || '';
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const _deviceId = () => { try { return localStorage.getItem('_tbDevice') || ''; } catch { return ''; } };
+  // the same id the app uses for login (student-app/app.js _getDeviceId); made here if this phone has none yet
+  const _deviceId = () => {
+    try {
+      let id = localStorage.getItem('_tbDevice');
+      if (!id) {
+        id = crypto?.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+        localStorage.setItem('_tbDevice', id);
+      }
+      return id;
+    } catch { return ''; }
+  };
   const _native = () => !!window.Capacitor?.isNativePlatform?.();
 
   function _css() {
@@ -316,7 +328,7 @@ const HELP_BOT = (() => {
         const r = await _post('/help/recover', { name, mobile: m, device_id: _deviceId() });
         f.querySelectorAll('input').forEach(x => { x.disabled = true; });
         if (r.ok) return _newPin(r);
-        _say(t('notMatched'));
+        _say(t(r.reason === 'other_device' ? 'otherDevice' : 'notMatched'));
         _options([[t('reqNewPin'), () => _requestForm('student', 'not_matched', { name, mobile: m })], [t('retry'), _forgot], [t('menu'), _menu]]);
       } catch (err) {
         e.target.disabled = false; msg.textContent = err.message;
