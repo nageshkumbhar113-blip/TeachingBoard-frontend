@@ -344,6 +344,8 @@ const HELP_BOT = (() => {
         document.querySelector('.ob-role-tab[data-role="student"]')?.click();
         if (code) code.value = r.student_code;
         if (pin) pin.value = p1;
+        const lock = document.getElementById('pin-lock-input');   // the PIN lock screen of a saved account
+        if (lock && lock.offsetParent !== null) lock.value = p1;
         _options([[t('toLogin'), close, 'hb-main']]);
       } catch (err) {
         e.target.disabled = false; msg.textContent = err.message;
@@ -384,7 +386,7 @@ const HELP_BOT = (() => {
     if (_layer) { open(); }
   }
 
-  function open() {
+  function open(start) {
     _css();
     close();
     _layer = document.createElement('div');
@@ -398,7 +400,7 @@ const HELP_BOT = (() => {
     _layer.querySelector('.hb-x').onclick = close;
     _layer.querySelectorAll('[data-lang]').forEach(b => { b.onclick = () => { if (b.dataset.lang !== _lang) _setLang(b.dataset.lang); }; });
     document.body.appendChild(_layer);
-    _loadFaq().finally(() => { if (_layer) _menu(); });
+    _loadFaq().finally(() => { if (_layer) (typeof start === 'function' ? start : _menu)(); });
   }
 
   function close() { _layer?.remove(); _layer = null; }
@@ -415,7 +417,7 @@ const HELP_BOT = (() => {
     host.appendChild(b);
   }
 
-  return { mount, open, close };
+  return { mount, open, close, openForgot: () => open(_forgot) };
 })();
 window.HELP_BOT = HELP_BOT;
 window.HELP_DEFAULTS = HELP_DEFAULTS;
@@ -423,4 +425,6 @@ window.HELP_DEFAULTS = HELP_DEFAULTS;
 document.addEventListener('DOMContentLoaded', () => {
   const card = document.querySelector('#onboarding-screen .onboarding-card');
   if (card) HELP_BOT.mount(card, { role: 'student', api: () => window.API?.getApiUrl?.() || 'https://teachingboard-backend.onrender.com/api' });
+  // PIN lock screen (saved account): "PIN विसरलात?" goes straight to the forgot-PIN steps
+  document.getElementById('pin-lock-forgot')?.addEventListener('click', () => HELP_BOT.openForgot());
 });
