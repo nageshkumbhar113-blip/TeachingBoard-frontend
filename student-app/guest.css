@@ -204,6 +204,13 @@
 @keyframes wkbBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .wkb-medal { animation: none; } }
 .wk-show-name { margin-top: 8px; }
+/* 👩‍🏫 माझे Teachers (Home) + Connect student QR (teacher Share tab) */
+.tc-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed rgba(128,128,128,.25); }
+.tc-row small { opacity: .75; }
+.tc-add { display: flex; gap: 8px; margin-top: 8px; }
+.tc-input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 1px solid rgba(128,128,128,.35); padding: 6px 10px; font: inherit; font-weight: 700; text-transform: uppercase; background: transparent; color: inherit; }
+.tc-add .re-open-btn { margin: 0; white-space: nowrap; }
+.tc-qr { text-align: center; margin: 6px 0; }
 .gx-offer-fine { margin-top: 4px; font-size: .78rem; font-weight: 600; opacity: .85; }
 .gx-offer-price { font-size: 1.05rem; }
 .gx-offer-price s { opacity: .65; margin-right: 6px; }

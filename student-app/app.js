@@ -1296,6 +1296,7 @@ const APP = (() => {
 
     const codeCard = document.getElementById('reg-code-card');
     _applyRegistrationLinkParams(loginCard, regCard);
+    window.TEACHER_CONNECT?.onLoginScreen();   // teacher's join link: code ready in Register
     // Fresh install from a Play Store share link: open Register with the code already filled in
     _readInstallReferrer().then(code => {
       if (!code || _linkParamsApplied) return;
@@ -2778,6 +2779,8 @@ const APP = (() => {
     if (!guest) {
       window.REFER_EARN?.refresh();
       window.STUDY_PLAN?.refresh();
+      window.TEACHER_CONNECT?.renderHomeCard();   // 👩‍🏫 माझे Teachers
+      window.TEACHER_CONNECT?.afterLogin();       // opened a teacher's join link?
     }
 
     // Hide drill-down sections immediately

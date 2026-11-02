@@ -195,6 +195,7 @@ const TEACHER_DASHBOARD = (() => {
   }
 
   async function _initShareTab() {
+    window.TEACHER_CONNECT?.renderTeacherBox($('tc-box'));   // 🔗 Connect student
     const profile = await API.getTeacherProfile().catch(() => null);
     _shareCode = String(profile?.teacher_code || '').trim().toUpperCase();
     const codeEl = $('td-share-code');
