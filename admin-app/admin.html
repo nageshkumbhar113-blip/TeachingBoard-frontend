@@ -222,6 +222,10 @@
               <span class="atab-icon" aria-hidden="true">📊</span>
               <span class="atab-label">Usage</span>
             </button>
+            <button class="atab" role="tab" data-tab="help" aria-controls="atab-help" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">🤖</span>
+              <span class="atab-label">Help</span>
+            </button>
             <button class="atab" role="tab" data-tab="youtube-teachers" aria-controls="atab-youtube-teachers" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">🎬</span>
               <span class="atab-label">YouTube Teachers</span>
@@ -1948,6 +1952,26 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <div class="atab-content hidden" id="atab-help" role="tabpanel" aria-labelledby="atab-btn-help">
+            <div class="pa-wrap">
+              <h2>🤖 Help — login मदत bot</h2>
+              <p class="import-hint">Login page वरच्या "❓ मदत" मधून आलेल्या requests. Student आपल्याच phone वरून code / PIN स्वतः मिळवतो; नवीन phone, teacher आणि दुकान यांच्या requests इथे येतात.</p>
+              <div class="pa-cards"><div class="pa-card st-due"><small>उघड्या requests</small><b id="hp-open">0</b><small>नवीन PIN पाठवायचे</small></div></div>
+              <div class="admin-card pa-section">
+                <div class="pa-row"><h3>🔑 PIN requests</h3>
+                  <select id="hp-status" class="admin-input"><option value="open">उघड्या</option><option value="done">झालेल्या</option><option value="rejected">नाकारलेल्या</option></select></div>
+                <div id="hp-requests"></div>
+              </div>
+              <div class="admin-card pa-section">
+                <div class="pa-row"><h3>💬 Bot चे प्रश्न आणि उत्तरं</h3>
+                  <div class="pa-row-actions"><button type="button" id="hp-faq-reset" class="admin-btn-secondary">↩ मूळ उत्तरं परत</button><button type="button" id="hp-faq-save" class="admin-btn-primary">💾 Save</button></div></div>
+                <p class="import-hint" id="hp-faq-note"></p>
+                <p class="import-hint">👁 = किती वेळा उघडलं · ❌ = "अजून problem आहे" किती वेळा दाबलं (ज्यावर ❌ जास्त ते उत्तर सुधारा).</p>
+                <div id="hp-faq"></div>
+              </div>
+            </div>
+          </div>
+
           <div class="atab-content hidden" id="atab-pricing" role="tabpanel" aria-labelledby="atab-btn-pricing">
             <div id="bp-container" class="bp-container">
               <div class="bp-header">
@@ -2205,6 +2229,9 @@ Marks: 1"></textarea>
       </button>
       <button class="abn-drawer-item" data-tab="usage">
         <span>📊</span> Usage
+      </button>
+      <button class="abn-drawer-item" data-tab="help">
+        <span>🤖</span> Help
       </button>
       <button class="abn-drawer-item" data-tab="banners">
         <span>🎯</span> Banners
@@ -2488,6 +2515,8 @@ Marks: 1"></textarea>
   <script src="shopsAdmin.js" defer></script>
   <script src="settlementAdmin.js" defer></script>
   <script src="usageAdmin.js" defer></script>
+  <script src="../core/helpBot.js" defer></script>
+  <script src="helpAdmin.js" defer></script>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="bannerAdmin.js" defer></script>

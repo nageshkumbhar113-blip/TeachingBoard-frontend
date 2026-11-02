@@ -209,6 +209,7 @@
 
 <script src="/core/fileExport.js" defer></script>
 <script src="/core/shopPoster.js" defer></script>
+<script src="/core/helpBot.js" defer></script>
 <script>
 (function () {
   'use strict';
@@ -433,6 +434,7 @@
   };
 
   window.addEventListener('DOMContentLoaded', function () {
+    if (window.HELP_BOT) HELP_BOT.mount($('v-login'), { role: 'shop', api: function () { return API; } });
     if (token) load(); else show('v-login');
   });
 })();

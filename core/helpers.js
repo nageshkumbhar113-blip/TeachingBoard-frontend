@@ -1345,6 +1345,17 @@ const API = (() => {
     const p = await request(`/usage/admin?role=${encodeURIComponent(role)}&days=${encodeURIComponent(days)}`, { headers: { Authorization: `Bearer ${token}` } });
     return { data: p?.data || [], collect: p?.collect || {} };
   }
+  // Admin > 🤖 Help
+  async function _helpReq(path, options = {}) {
+    const token = await ensureAdminSession();
+    return request(`/help/admin${path}`, { ...options, headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function fetchHelpAdmin(status = 'open') { return (await _helpReq(`?status=${encodeURIComponent(status)}`))?.data || {}; }
+  async function saveHelpFaq(faq) { return _helpReq('/faq', { method: 'PUT', body: JSON.stringify({ faq }) }); }
+  async function resolvePinRequest(id, userId, resetDevice = true) {
+    return (await _helpReq(`/pin-requests/${encodeURIComponent(id)}/resolve`, { method: 'POST', body: JSON.stringify({ user_id: userId, reset_device: resetDevice }) }))?.data || {};
+  }
+  async function rejectPinRequest(id) { return _helpReq(`/pin-requests/${encodeURIComponent(id)}/reject`, { method: 'POST', body: '{}' }); }
   async function requestUsageCollect() {
     const token = await ensureAdminSession();
     return request('/usage/admin/collect', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: '{}' });
@@ -2978,7 +2989,7 @@ const API = (() => {
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,
-    fetchShops, createShop, updateShop, fetchShopStudents, fetchSettlement, fetchSettlementHistory, settlePartnerNow, sendUsage, usageRequest, fetchUsage, requestUsageCollect,
+    fetchShops, createShop, updateShop, fetchShopStudents, fetchSettlement, fetchSettlementHistory, settlePartnerNow, sendUsage, usageRequest, fetchUsage, requestUsageCollect, fetchHelpAdmin, saveHelpFaq, resolvePinRequest, rejectPinRequest,
     markPartnerStatementPaid, fetchPartnerCommissions, reversePartnerCommission, fetchReferralClaims, updateReferralClaim, fetchReferralSummary,
     fetchPassageBlocks, fetchPassageBlock, updatePassageBlock, deletePassageBlock, previewPassageImport, runPassageImport, fetchPassageBlocksTeacher, fetchStudentPassageBlocks,
     registerTeacher,

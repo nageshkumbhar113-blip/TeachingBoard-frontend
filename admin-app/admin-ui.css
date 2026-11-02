@@ -2493,6 +2493,16 @@ body.admin-app {
 .st-history td { background: rgba(124,58,237,.05); }
 .st-hist h4 { margin: 6px 0; }
 .st-hist .pa-table { margin-bottom: 10px; }
+
+/* Admin > 🤖 Help */
+.hp-cands { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.hp-cand { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.hp-sec { border: 1px solid rgba(128,128,128,.3); border-radius: 12px; padding: 10px 12px; margin-top: 10px; }
+.hp-sec h4 { margin: 0 0 6px; }
+.hp-item { margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+.hp-item-head { display: flex; gap: 6px; align-items: center; }
+.hp-item-head .admin-input { flex: 1; font-weight: 700; }
+.hp-stat { white-space: nowrap; opacity: .8; }
 .st-open { margin-top: 4px; font-size: .78rem; padding: 3px 10px; }
 .st-layer { position: fixed; inset: 0; z-index: 9000; background: rgba(15,10,40,.55); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; animation: stPop .2s ease both; }
 .st-win { width: min(900px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; background: var(--surface, #fff); color: var(--text, inherit); border: 1px solid var(--border, transparent); border-radius: 16px; padding: 16px 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
