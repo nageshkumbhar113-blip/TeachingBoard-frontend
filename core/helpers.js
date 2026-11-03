@@ -668,6 +668,8 @@ const API = (() => {
       tags      : question.tags   || [],
       image     : question.image  || null,
       option_images: normalizeBackendOptionImages(question),
+      // the 💡 solution (reasoning questions' steps + युक्ती) — a bank sync used to wipe it
+      explanation: String(question.explanation || '').trim(),
       source    : 'api',
       synced_at : Date.now(),
     };
