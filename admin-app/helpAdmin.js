@@ -13,7 +13,7 @@
   const toast = (m, t = 'info') => (typeof APP !== 'undefined' && APP?.toast) ? APP.toast(m, t) : console.log(m);
   const when = d => (d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '');
   const ROLE = { student: '👨‍🎓 Student', teacher: '👩‍🏫 Teacher', shop: '🏪 Shop' };
-  const REASON = { new_phone: 'नवीन phone', not_matched: 'phone वरून खात्री नाही', teacher: 'Teacher', shop: 'दुकान' };
+  const REASON = { new_phone: 'नवीन phone', not_matched: 'phone वरून खात्री नाही', teacher: 'Teacher', shop: 'दुकान', device_move: '📱 जुन्या phone वरून स्वतः नवीन phone वर shift' };
 
   let _bound = false;
   let _status = 'open';

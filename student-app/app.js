@@ -1919,6 +1919,7 @@ const APP = (() => {
         ${window.GUEST?.isActive?.() ? `<button id="ps-unlock-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#ff7a18,#ff3d77,#7b2ff7);color:#fff;font-weight:700;cursor:pointer;margin-bottom:8px">🔓 सगळे tests उघडा</button>` : ''}
         ${role ? '' : `<button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>`}
         <button id="ps-board-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🖥️ Board Mode ${_activeUiMode() === 'board' ? 'बंद करा' : 'चालू करा'}</button>
+        ${role || window.GUEST?.isActive?.() || !window.HELP_BOT?.openMove ? '' : `<button id="ps-move-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📱 नवीन phone वर shift करा</button>`}
         <button id="ps-switch-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">↔ Switch Account</button>
         <button id="ps-close-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent,#e74c3c);color:#fff;font-weight:600;cursor:pointer">Close</button>
       </div>
@@ -1940,6 +1941,10 @@ const APP = (() => {
     overlay.querySelector('#ps-analytics-btn')?.addEventListener('click', () => {
       _close();
       window.ANALYTICS?.open();
+    });
+    overlay.querySelector('#ps-move-btn')?.addEventListener('click', () => {
+      _close();
+      window.HELP_BOT?.openMove?.();
     });
     overlay.querySelector('#ps-board-btn')?.addEventListener('click', async () => {
       _close();
