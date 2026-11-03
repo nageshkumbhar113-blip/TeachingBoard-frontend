@@ -222,6 +222,13 @@ const PEN_BOARD = (() => {
 
   // ── drawing ─────────────────────────────────────────────
   function _curveCtrl(s) { return [2 * s.h[0] - (s.a[0] + s.b[0]) / 2, 2 * s.h[1] - (s.a[1] + s.b[1]) / 2]; }
+  function _axesBox(s) {
+    if (s.full) return [0, 0, s.W, s.H];
+    const L = _axesLen(s), [ax, ay] = s.a;
+    return [ax - L, ay - L, ax + L, ay + L];
+  }
+  // numbers along an axis: every step out from the origin, inside lo..hi
+  function _axesTicks(o, lo, hi, st) { const out = []; for (let v = o + st, n = 1; v < hi - 8; v += st, n++) out.push([v, n]); for (let v = o - st, n = -1; v > lo + 8; v -= st, n--) out.push([v, n]); return out; }
   function _axesLen(s) { const st = s.step || CM; return Math.max(st, Math.round(Math.max(Math.abs(s.b[0] - s.a[0]), Math.abs(s.b[1] - s.a[1])) / st) * st); }
   function shapePath(x, s) {
     if (s.t === 'arc') {
@@ -238,11 +245,12 @@ const PEN_BOARD = (() => {
     else if (s.k === 'rect') x.rect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
     else if (s.k === 'tri') { x.moveTo((ax + bx) / 2, ay); x.lineTo(ax, by); x.lineTo(bx, by); x.closePath(); }
     else if (s.k === 'axes') {
-      const L = _axesLen(s);
-      x.moveTo(ax - L, ay); x.lineTo(ax + L, ay); x.moveTo(ax, ay - L); x.lineTo(ax, ay + L);
-      for (const [ex, ey, g] of [[ax + L, ay, 0], [ax - L, ay, Math.PI], [ax, ay - L, -Math.PI / 2], [ax, ay + L, Math.PI / 2]])
+      const [x0, y0, x1, y1] = _axesBox(s), st = s.step || CM, e = s.full ? 3 : 0;
+      x.moveTo(x0 + e, ay); x.lineTo(x1 - e, ay); x.moveTo(ax, y0 + e); x.lineTo(ax, y1 - e);
+      for (const [ex, ey, g] of [[x1 - e, ay, 0], [x0 + e, ay, Math.PI], [ax, y0 + e, -Math.PI / 2], [ax, y1 - e, Math.PI / 2]])
         for (const d of [-0.45, 0.45]) { x.moveTo(ex, ey); x.lineTo(ex - 10 * Math.cos(g + d), ey - 10 * Math.sin(g + d)); }
-      for (let i = s.step || CM; i < L; i += s.step || CM) { x.moveTo(ax + i, ay - 4); x.lineTo(ax + i, ay + 4); x.moveTo(ax - i, ay - 4); x.lineTo(ax - i, ay + 4); x.moveTo(ax - 4, ay - i); x.lineTo(ax + 4, ay - i); x.moveTo(ax - 4, ay + i); x.lineTo(ax + 4, ay + i); }
+      for (const [v] of _axesTicks(ax, x0, x1, st)) { x.moveTo(v, ay - 4); x.lineTo(v, ay + 4); }
+      for (const [v] of _axesTicks(ay, y0, y1, st)) { x.moveTo(ax - 4, v); x.lineTo(ax + 4, v); }
     }
   }
   function drawStroke(x, s, dark) {
@@ -266,12 +274,13 @@ const PEN_BOARD = (() => {
     if (s.t === 'shape' || s.t === 'arc') {
       x.lineWidth = s.w; x.beginPath(); shapePath(x, s); x.stroke();
       if (s.k === 'axes') {
-        const [ax, ay] = s.a, L = _axesLen(s);
+        const [ax, ay] = s.a, [x0, y0, x1, y1] = _axesBox(s), st = s.step || CM, u = s.u || 1;
         x.font = '600 12px Mukta, sans-serif'; x.textAlign = 'center';
-        x.fillText('X', ax + L - 4, ay - 12); x.fillText("X'", ax - L + 6, ay - 12); x.fillText('Y', ax + 14, ay - L + 8); x.fillText("Y'", ax + 14, ay + L - 2); x.fillText('O', ax - 10, ay + 16);
-        const st = s.step || CM, u = s.u || 1;
+        x.fillText('X', x1 - 10, ay - 12); x.fillText("X'", x0 + 12, ay - 12); x.fillText('Y', ax + 14, y0 + 14); x.fillText("Y'", ax + 14, y1 - 6); x.fillText('O', ax - 10, ay + 16);
         if (s.step) x.font = '700 13px Mukta, sans-serif';
-        for (let i = st, n = 1; i < L; i += st, n++) { x.fillText(n * u, ax + i, ay + 17); x.fillText(-n * u, ax - i, ay + 17); x.textAlign = 'right'; x.fillText(n * u, ax - 7, ay - i + 4); x.fillText(-n * u, ax - 7, ay + i + 4); x.textAlign = 'center'; }
+        for (const [v, n] of _axesTicks(ax, x0, x1, st)) x.fillText(n * u, v, ay + 17);
+        x.textAlign = 'right';
+        for (const [v, n] of _axesTicks(ay, y0, y1, st)) x.fillText(-n * u, ax - 7, v + 4);
       }
       x.restore(); return;
     }
@@ -306,7 +315,7 @@ const PEN_BOARD = (() => {
     if (s.k === 'circle') { const r = dist(s.a, s.b), out = []; for (let i = 0; i <= 48; i++) { const g = i / 48 * Math.PI * 2; out.push([ax + r * Math.cos(g), ay + r * Math.sin(g)]); } return out; }
     if (s.k === 'rect') return [[ax, ay], [bx, ay], [bx, by], [ax, by], [ax, ay]];
     if (s.k === 'tri') return [[(ax + bx) / 2, ay], [ax, by], [bx, by], [(ax + bx) / 2, ay]];
-    if (s.k === 'axes') { const L = _axesLen(s); return [...lerp([ax - L, ay], [ax + L, ay], 20), ...lerp([ax, ay - L], [ax, ay + L], 20)]; }
+    if (s.k === 'axes') { const [x0, y0, x1, y1] = _axesBox(s); return [...lerp([x0, ay], [x1, ay], 40), ...lerp([ax, y0], [ax, y1], 40)]; }
     return [];
   }
   function segDist(p, a, b) { const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy; let t = L2 ? ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / L2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p[0] - (a[0] + t * vx), p[1] - (a[1] + t * vy)); }
@@ -366,7 +375,7 @@ const PEN_BOARD = (() => {
     let pts, pad = (s.w || 0) / 2 + 3;
     if (s.t === 'cut') pts = s.poly;
     else if (s.t === 'er') pts = s.p;
-    else if (s.t === 'shape' && s.k === 'axes') { const L = _axesLen(s) + 24; pts = [[s.a[0] - L, s.a[1] - L], [s.a[0] + L, s.a[1] + L]]; }
+    else if (s.t === 'shape' && s.k === 'axes') { const b = _axesBox(s); pts = [[b[0] - 24, b[1] - 24], [b[2] + 24, b[3] + 24]]; }
     else pts = samples(s);
     if (!pts?.length) return [0, 0, 0, 0];
     if (s.t === 'shape' && s.k === 'arrow') pad += 12 + s.w * 2;
@@ -609,6 +618,26 @@ const PEN_BOARD = (() => {
       x.strokeRect(b[0] - 4, b[1] - 4, b[2] - b[0] + 8, b[3] - b[1] + 8); x.restore();
       if (note) label(x, note, [b[0] - 18, b[1] + 6]);
     }
+    _axisGrab(p) {
+      if (!this.isBoard) return false;
+      const st = this.state();
+      for (const i of [...st.vis].reverse()) {
+        const s0 = this.strokes[i];
+        if (s0.t !== 'shape' || s0.k !== 'axes' || !s0.full) continue;
+        const s = this.styled(st, i), q = mApply(mInv(this.matOf(st, i)), p);
+        const dy = Math.abs(q[0] - s.a[0]), dx = Math.abs(q[1] - s.a[1]);
+        if (Math.min(dx, dy) > 14) continue;
+        this.axDrag = { i, which: dy <= dx ? 'y' : 'x', a: s.a.slice(), m: this.matOf(st, i) };
+        this.redraw({ skip: new Set([i]) }); this._axisPaint();
+        return true;
+      }
+      return false;
+    }
+    _axisPaint() {
+      const g = this.axDrag, st = this.state(), s = { ...this.styled(st, g.i), a: g.a }, x = this.ctx(this.live);
+      this.clearLive(); x.save(); x.transform(...g.m); drawAny(x, s, this.dark()); x.restore();
+      label(x, g.which === 'y' ? '⟷ Y axis' : '↕ X axis', mApply(g.m, g.a));
+    }
     // ⬅ ⬆ ⬇ ➡ / arrow keys: move the selection a step (quick repeats make one ↶ step)
     nudgeSel(dx, dy) {
       if (!this.sel.length) return;
@@ -750,6 +779,7 @@ const PEN_BOARD = (() => {
         if (S.tool === 'fill') { this._fillAt(p); return; }
         L.setPointerCapture(e.pointerId);
         if (S.tool === 'laser') { this.laserOn = true; this.lp = p; this.laser.push([p[0], p[1], performance.now()]); this._laserLoop(); return; }
+        if (S.tool === 'sel' && this._axisGrab(p)) return;
         if (S.tool === 'sel') {
           const b = this.sel.length && this.selBox();
           if (b && p[0] > b[0] - 10 && p[0] < b[2] + 10 && p[1] > b[1] - 10 && p[1] < b[3] + 10) { this._dragStart(p); return; }
@@ -770,7 +800,11 @@ const PEN_BOARD = (() => {
         }
         if (S.tool === 'shape') {
           this.cur = { t: 'shape', k: S.shape, a: p, b: p, c: S.c, w: WID[S.w] };
-          if (S.shape === 'axes' && this.isBoard && S.bg === 'graph') Object.assign(this.cur, { a: [Math.round(p[0] / GRAPH) * GRAPH, Math.round(p[1] / GRAPH) * GRAPH], step: GRAPH, u: S.unit });
+          if (S.shape === 'axes' && this.isBoard && S.bg === 'graph') {
+            // pressing on axes already there drags that axis instead (Y left / right, X up / down)
+            if (this._axisGrab(p)) { this.cur = null; return; }
+            Object.assign(this.cur, { a: [Math.round(p[0] / GRAPH) * GRAPH, Math.round(p[1] / GRAPH) * GRAPH], step: GRAPH, u: S.unit, full: true, W: Math.round(parseFloat(this.base.style.width)), H: Math.round(parseFloat(this.base.style.height)) });
+          }
           this._paint(); return;
         }
         if (S.tool === 'er' && S.er === 'stroke') { this.cur = { t: 'del', ids: [] }; this._wipeAt(p); this._cursor(p); return; }
@@ -784,6 +818,11 @@ const PEN_BOARD = (() => {
         const p = this._pt(e);
         if (this.laserOn) { this.lp = p; this.laser.push([p[0], p[1], performance.now()]); return; }
         if (this.bend) { this.bend.h = [p[0], p[1]]; this.redraw(); this.clearLive(); this.guide(); return; }
+        if (this.axDrag) {
+          const g = this.axDrag, q = mApply(mInv(g.m), p);
+          if (g.which === 'y') g.a[0] = Math.round(q[0] / GRAPH) * GRAPH; else g.a[1] = Math.round(q[1] / GRAPH) * GRAPH;
+          this._axisPaint(); return;
+        }
         if (this.drag) { this.drag.dx = p[0] - this.drag.p0[0]; this.drag.dy = p[1] - this.drag.p0[1]; this._dragPaint(); return; }
         const s = this.cur;
         if (!s) { if (S.tool === 'er' && e.pointerType !== 'touch') this._cursor(p); return; }
@@ -798,6 +837,12 @@ const PEN_BOARD = (() => {
       const up = () => {
         if (this.pan) { this.pan = null; return; }
         if (this.bend) { this.bend = null; this.redo = []; _changed(); return; }
+        if (this.axDrag) {
+          const g = this.axDrag; this.axDrag = null;
+          const was = this.styled(this.state(), g.i).a;
+          if (g.a[0] !== was[0] || g.a[1] !== was[1]) this.push({ t: 'sty', ch: [[g.i, { a: g.a }]] });
+          this.redraw(); this.clearLive(); this.guide(); return;
+        }
         if (this.drag) {
           const { dx, dy } = this.drag; this.drag = null;
           if (Math.abs(dx) + Math.abs(dy) > 1) this.push({ t: 'mv', ids: [...this.sel], dx, dy });
@@ -826,7 +871,7 @@ const PEN_BOARD = (() => {
           if (Math.max(...xs) - Math.min(...xs) < 6 || Math.max(...ys) - Math.min(...ys) < 6) return;
           this._rubOut({ t: 'cut', poly }); return;
         }
-        if (s.t === 'shape' && dist(s.a, s.b) < 4) { this.guide(); return; }
+        if (s.t === 'shape' && !s.full && dist(s.a, s.b) < 4) { this.guide(); return; }
         if (s.t === 'arc' && Math.abs(s.a1 - s.a0) < 0.02) { this.guide(); return; }
         if (s.t === 'er') { this._rubOut(s); return; }
         if (s.t === 'shape' && s.k === 'curve') { s.h = [(s.a[0] + s.b[0]) / 2, (s.a[1] + s.b[1]) / 2]; this.commit(s); this.edit = this.strokes.length - 1; this.guide(); return; }
