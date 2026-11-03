@@ -36,9 +36,12 @@ const PEN_BOARD = (() => {
   const HL = ['rgba(255,214,0,.4)', 'rgba(0,230,118,.34)', 'rgba(255,64,129,.32)', 'rgba(64,160,255,.34)'];
   const WID = [2.5, 5, 10];
   const CM = 40;                       // 40 px = 1 cm (ruler, graph paper, readouts)
-  const S = { tool: 'pen', c: 0, h: 0, w: 1, dark: false, bg: 'blank', shape: 'line', er: 'brush', sub: null, lastBoard: 'white' };
+  const S = { tool: 'pen', c: 0, h: 0, w: 1, dark: false, bg: 'blank', shape: 'line', er: 'brush', sub: null, lastBoard: 'white', unit: 1 };
   const dist = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
   const cmTxt = d => (d / CM).toFixed(1) + ' cm';
+  // graph paper: a big square of 60 px = 10 × 10 small squares of 6 px (a little darker every 5th line,
+  // dark every 10th); X-Y axes drawn on it sit on a dark crossing and step one big square per number
+  const GRAPH = 60, GRAPH_S = 6;
   let penSeen = false;
 
   // ── where the question comes from ──────────────────────
@@ -219,7 +222,7 @@ const PEN_BOARD = (() => {
 
   // ── drawing ─────────────────────────────────────────────
   function _curveCtrl(s) { return [2 * s.h[0] - (s.a[0] + s.b[0]) / 2, 2 * s.h[1] - (s.a[1] + s.b[1]) / 2]; }
-  function _axesLen(s) { return Math.max(CM, Math.round(Math.max(Math.abs(s.b[0] - s.a[0]), Math.abs(s.b[1] - s.a[1])) / CM) * CM); }
+  function _axesLen(s) { const st = s.step || CM; return Math.max(st, Math.round(Math.max(Math.abs(s.b[0] - s.a[0]), Math.abs(s.b[1] - s.a[1])) / st) * st); }
   function shapePath(x, s) {
     if (s.t === 'arc') {
       if (Math.abs(s.a1 - s.a0) >= Math.PI * 2) { x.moveTo(s.o[0] + s.r, s.o[1]); x.arc(s.o[0], s.o[1], s.r, 0, Math.PI * 2); }
@@ -239,7 +242,7 @@ const PEN_BOARD = (() => {
       x.moveTo(ax - L, ay); x.lineTo(ax + L, ay); x.moveTo(ax, ay - L); x.lineTo(ax, ay + L);
       for (const [ex, ey, g] of [[ax + L, ay, 0], [ax - L, ay, Math.PI], [ax, ay - L, -Math.PI / 2], [ax, ay + L, Math.PI / 2]])
         for (const d of [-0.45, 0.45]) { x.moveTo(ex, ey); x.lineTo(ex - 10 * Math.cos(g + d), ey - 10 * Math.sin(g + d)); }
-      for (let i = CM; i < L; i += CM) { x.moveTo(ax + i, ay - 4); x.lineTo(ax + i, ay + 4); x.moveTo(ax - i, ay - 4); x.lineTo(ax - i, ay + 4); x.moveTo(ax - 4, ay - i); x.lineTo(ax + 4, ay - i); x.moveTo(ax - 4, ay + i); x.lineTo(ax + 4, ay + i); }
+      for (let i = s.step || CM; i < L; i += s.step || CM) { x.moveTo(ax + i, ay - 4); x.lineTo(ax + i, ay + 4); x.moveTo(ax - i, ay - 4); x.lineTo(ax - i, ay + 4); x.moveTo(ax - 4, ay - i); x.lineTo(ax + 4, ay - i); x.moveTo(ax - 4, ay + i); x.lineTo(ax + 4, ay + i); }
     }
   }
   function drawStroke(x, s, dark) {
@@ -266,7 +269,9 @@ const PEN_BOARD = (() => {
         const [ax, ay] = s.a, L = _axesLen(s);
         x.font = '600 12px Mukta, sans-serif'; x.textAlign = 'center';
         x.fillText('X', ax + L - 4, ay - 12); x.fillText("X'", ax - L + 6, ay - 12); x.fillText('Y', ax + 14, ay - L + 8); x.fillText("Y'", ax + 14, ay + L - 2); x.fillText('O', ax - 10, ay + 16);
-        for (let i = CM, n = 1; i < L; i += CM, n++) { x.fillText(n, ax + i, ay + 17); x.fillText(-n, ax - i, ay + 17); x.fillText(n, ax - 14, ay - i + 4); x.fillText(-n, ax - 16, ay + i + 4); }
+        const st = s.step || CM, u = s.u || 1;
+        if (s.step) x.font = '700 13px Mukta, sans-serif';
+        for (let i = st, n = 1; i < L; i += st, n++) { x.fillText(n * u, ax + i, ay + 17); x.fillText(-n * u, ax - i, ay + 17); x.textAlign = 'right'; x.fillText(n * u, ax - 7, ay - i + 4); x.fillText(-n * u, ax - 7, ay + i + 4); x.textAlign = 'center'; }
       }
       x.restore(); return;
     }
@@ -763,7 +768,11 @@ const PEN_BOARD = (() => {
           else this.cur = { t: 'cset', o: p, b: p, keep: c && dist(p, c.o) >= 16 ? c.r : 0 };
           this._paint(); return;
         }
-        if (S.tool === 'shape') { this.cur = { t: 'shape', k: S.shape, a: p, b: p, c: S.c, w: WID[S.w] }; this._paint(); return; }
+        if (S.tool === 'shape') {
+          this.cur = { t: 'shape', k: S.shape, a: p, b: p, c: S.c, w: WID[S.w] };
+          if (S.shape === 'axes' && this.isBoard && S.bg === 'graph') Object.assign(this.cur, { a: [Math.round(p[0] / GRAPH) * GRAPH, Math.round(p[1] / GRAPH) * GRAPH], step: GRAPH, u: S.unit });
+          this._paint(); return;
+        }
         if (S.tool === 'er' && S.er === 'stroke') { this.cur = { t: 'del', ids: [] }; this._wipeAt(p); this._cursor(p); return; }
         if (S.tool === 'er' && (S.er === 'rect' || S.er === 'lasso')) { this.cur = { t: 'sel', k: S.er, a: p, b: p, p: [p] }; this._paint(); return; }
         this.cur = { t: S.tool, c: S.tool === 'hl' ? S.h : S.c, w: S.tool === 'er' ? WID[S.w] * 5 : S.tool === 'hl' ? WID[S.w] * 4 : WID[S.w], pr: e.pointerType === 'pen', p: [p] };
@@ -895,8 +904,8 @@ const PEN_BOARD = (() => {
 .pb-ovbar span{overflow:hidden;text-overflow:ellipsis}
 .pb-ovbar button{font:inherit;border:0;border-radius:99px;padding:4px 12px;background:#1d1400;color:#ffb300;cursor:pointer}
 .pb-txin{position:absolute;z-index:3;min-width:180px;min-height:1.6em;resize:none;border:1.5px dashed #3b6cff;border-radius:6px;background:rgba(59,108,255,.06);font-family:Mukta,"Nirmala UI",sans-serif;font-weight:600;line-height:1.25;padding:0 4px;outline:none;user-select:text;-webkit-user-select:text}
-#pb-bd{position:absolute;inset:0;background:#fbfcfd;color:#17202c;--rl:rgba(40,80,140,.16);--gb:rgba(20,130,90,.38);--gf:rgba(20,130,90,.13)}
-#pb-bd.black{background:radial-gradient(ellipse at 50% 40%,#25302b,#19211e 70%,#141a17);color:#eef2ea;--rl:rgba(255,255,255,.1);--gb:rgba(150,235,195,.3);--gf:rgba(150,235,195,.09)}
+#pb-bd{position:absolute;inset:0;background:#fbfcfd;color:#17202c;--rl:rgba(40,80,140,.16);--gb:rgba(20,130,90,.55);--gm:rgba(20,130,90,.32);--gf:rgba(20,130,90,.16)}
+#pb-bd.black{background:radial-gradient(ellipse at 50% 40%,#25302b,#19211e 70%,#141a17);color:#eef2ea;--rl:rgba(255,255,255,.1);--gb:rgba(150,235,195,.45);--gm:rgba(150,235,195,.26);--gf:rgba(150,235,195,.13)}
 .pb-top{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;gap:6px;align-items:center;padding:calc(8px + env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) 8px max(10px,env(safe-area-inset-left,0px));overflow-x:auto;white-space:nowrap;background:rgba(240,243,248,.94);border-bottom:1px solid #dde3ec}
 #pb-bd.black .pb-top{background:rgba(10,14,12,.65);border-color:rgba(255,255,255,.1)}
 .pb-top button{font:inherit;font-size:.95rem;border-radius:10px;padding:6px 12px;cursor:pointer;border:1px solid #cfd7e3;background:#fff;color:#17202c;flex:none}
@@ -909,7 +918,7 @@ const PEN_BOARD = (() => {
 #pb-paper{position:relative;width:100%;overflow:hidden}
 #pb-paper.bg-ruled{background-image:repeating-linear-gradient(to bottom,transparent 0 39px,var(--rl) 39px 40px)}
 #pb-paper.bg-grid{background-image:linear-gradient(var(--rl) 1px,transparent 1px),linear-gradient(90deg,var(--rl) 1px,transparent 1px);background-size:32px 32px}
-#pb-paper.bg-graph{background-image:linear-gradient(var(--gb) 1px,transparent 1px),linear-gradient(90deg,var(--gb) 1px,transparent 1px),linear-gradient(var(--gf) 1px,transparent 1px),linear-gradient(90deg,var(--gf) 1px,transparent 1px);background-size:40px 40px,40px 40px,8px 8px,8px 8px}
+#pb-paper.bg-graph{background-image:linear-gradient(var(--gb) 1.6px,transparent 1.6px),linear-gradient(90deg,var(--gb) 1.6px,transparent 1.6px),linear-gradient(var(--gm) 1.2px,transparent 1.2px),linear-gradient(90deg,var(--gm) 1.2px,transparent 1.2px),linear-gradient(var(--gf) 1px,transparent 1px),linear-gradient(90deg,var(--gf) 1px,transparent 1px);background-size:60px 60px,60px 60px,30px 30px,30px 30px,6px 6px,6px 6px}
 .pb-pg{position:absolute;left:0;right:0;border-top:2px dashed rgba(120,130,150,.35);pointer-events:none}
 .pb-pg span{position:absolute;right:10px;top:4px;font-size:.75rem;opacity:.55}
 .pb-inst{position:absolute;left:0;top:0;transform-origin:0 0;z-index:2;touch-action:none;cursor:move;filter:drop-shadow(0 4px 10px rgba(0,0,0,.18))}
@@ -1092,7 +1101,8 @@ const PEN_BOARD = (() => {
     if (S.sub === 'selbar') {
       const n = active.sel.length;
       el.innerHTML = `<div class="hd">${n} selected — press inside and drag to move · tap a colour / thickness below to change it</div><button type="button" data-mv="-1,0" aria-label="Move left">⬅</button><button type="button" data-mv="0,-1" aria-label="Move up">⬆</button><button type="button" data-mv="0,1" aria-label="Move down">⬇</button><button type="button" data-mv="1,0" aria-label="Move right">➡</button><button type="button" data-sel="big">➕ Bigger</button><button type="button" data-sel="small">➖ Smaller</button><button type="button" data-sel="left">⟲ Turn</button><button type="button" data-sel="right">⟳ Turn</button><button type="button" data-sel="copy">⧉ Copy</button><button type="button" data-sel="del">🗑️ Delete</button><button type="button" data-sel="none">✕ Deselect</button>`;
-    } else if (S.sub === 'shape') el.innerHTML = '<div class="hd">Pick one, then drag on the board (curved line: drag the yellow dot to bend it)</div>' + SHAPES.map(s => `<button type="button" data-shape="${s[0]}" aria-pressed="${S.shape === s[0]}">${s[1]} ${s[2]}</button>`).join('');
+    } else if (S.sub === 'shape') el.innerHTML = '<div class="hd">Pick one, then drag on the board (curved line: drag the yellow dot to bend it)</div>' + SHAPES.map(s => `<button type="button" data-shape="${s[0]}" aria-pressed="${S.shape === s[0]}">${s[1]} ${s[2]}</button>`).join('') +
+      `<div class="hd">X-Y axes on graph paper — one big square =</div>` + [1, 2, 5, 10].map(u => `<button type="button" data-unit="${u}" aria-pressed="${S.unit === u}">${u}</button>`).join('');
     else if (S.sub === 'er') el.innerHTML = '<div class="hd">Which eraser?</div>' + ERASERS.map(s => `<button type="button" data-er="${s[0]}" aria-pressed="${S.er === s[0]}">${s[1]} ${s[2]}</button>`).join('') +
       `<button type="button" data-er="all" class="${clrArm ? 'warn' : ''}">${clrArm ? 'Tap again = clear all' : '🗑️ Clear all'}</button>`;
     else el.innerHTML = '<div class="hd">Maths tools — drag to move, turn with the blue ⟳; pen along an edge = straight line</div>' +
@@ -1139,7 +1149,8 @@ const PEN_BOARD = (() => {
   }
   function _onSub(e) {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.shape) { S.shape = b.dataset.shape; _pickTool('shape'); S.sub = null; }
+    if (b.dataset.shape) { S.shape = b.dataset.shape; _pickTool('shape'); S.sub = null; if (S.shape === 'axes' && S.bg !== 'graph') _toast('✚ Tip: 📐 → Graph paper first, then the axes sit on its squares'); }
+    if (b.dataset.unit) { S.unit = +b.dataset.unit; S.shape = 'axes'; _pickTool('shape'); S.sub = null; _toast(`✚ X-Y axes: one big square = ${S.unit}`); }
     if (b.dataset.er) {
       if (b.dataset.er === 'all') { if (!_armClear()) { _renderSub(); return; } active.clear(); S.sub = null; }
       else { S.er = b.dataset.er; _pickTool('er'); S.sub = null; if (S.er === 'stroke') _toast('✂️ Any line / shape you touch goes completely'); if (S.er === 'rect') _toast('⬚ Drag a box — everything inside is rubbed out'); if (S.er === 'lasso') _toast('➰ Draw a loop — everything inside is rubbed out'); }
@@ -1309,9 +1320,10 @@ const PEN_BOARD = (() => {
     if (S.bg === 'ruled') for (let y = 39; y < H; y += 40) line(rl, 0, y, W, y);
     if (S.bg === 'grid') { for (let y = 0; y < H; y += 32) line(rl, 0, y, W, y); for (let v = 0; v < W; v += 32) line(rl, v, 0, v, H); }
     if (S.bg === 'graph') {
-      const gf = S.dark ? 'rgba(150,235,195,.09)' : 'rgba(20,130,90,.13)', gb = S.dark ? 'rgba(150,235,195,.3)' : 'rgba(20,130,90,.38)';
-      for (let y = 0; y < H; y += 8) line(y % 40 ? gf : gb, 0, y, W, y);
-      for (let v = 0; v < W; v += 8) line(v % 40 ? gf : gb, v, 0, v, H);
+      const gf = S.dark ? 'rgba(150,235,195,.13)' : 'rgba(20,130,90,.16)', gm = S.dark ? 'rgba(150,235,195,.26)' : 'rgba(20,130,90,.32)', gb = S.dark ? 'rgba(150,235,195,.45)' : 'rgba(20,130,90,.55)';
+      const c = i => i % 10 === 0 ? gb : i % 5 === 0 ? gm : gf;
+      for (let i = 0, y = 0; y < H; i++, y += GRAPH_S) line(c(i), 0, y, W, y);
+      for (let i = 0, v = 0; v < W; i++, v += GRAPH_S) line(c(i), v, 0, v, H);
     }
     x.drawImage(board.base, 0, 0, W, H);
     x.restore();
