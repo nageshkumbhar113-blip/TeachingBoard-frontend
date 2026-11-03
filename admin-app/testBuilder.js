@@ -49,7 +49,9 @@ const TEST_BUILDER = (() => {
   // OPEN / CLOSE
   // ════════════════════════
 
-  async function open(quiz_id = null) {
+  // preset (from Import › PDF मधून आकृती प्रश्न): { batch, subject, chapter, q_ids } — a new quiz
+  // with those questions already in Section A; the admin only fills title / timer / marks.
+  async function open(quiz_id = null, preset = null) {
     if (quiz_id) {
       const existing = await DB.getQuiz(quiz_id);
       if (!existing) { APP.toast('Quiz not found', 'error'); return; }
@@ -63,6 +65,10 @@ const TEST_BUILDER = (() => {
           question_ids: [], timer: 30, positive_marks: 1, negative_marks: 0, mode: 'manual' },
       ];
       state.paperMode = 'manual';
+      if (preset) {
+        state.quiz = { batch: preset.batch || '', subject: preset.subject || '', chapter: preset.chapter || '' };
+        state.sections[0].question_ids = (preset.q_ids || []).slice();
+      }
     }
 
     state.step               = 1;
@@ -724,6 +730,12 @@ SECTIONS:
       <div class="tb-q-layout">
 
         <div class="tb-bank-panel">
+          <div class="tb-section-tabs" role="tablist" aria-label="Question source">
+            <button type="button" class="tb-sec-tab active" id="tb-src-bank" role="tab" aria-selected="true">📚 Question Bank</button>
+            <button type="button" class="tb-sec-tab" id="tb-src-fig" role="tab" aria-selected="false">🧩 Reasoning प्रश्न तयार करा</button>
+          </div>
+          <div id="tb-fig-panel" class="hidden"></div>
+          <div id="tb-bank-wrap" style="display:flex;flex-direction:column;gap:10px;min-height:0">
           <div class="tb-bank-header">
             <span class="tb-panel-title">📚 Question Bank</span>
             <div class="tb-bank-filters">
@@ -874,6 +886,7 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
             <button class="admin-btn-secondary" id="tb-manual-submit">+ Add to Section</button>
             <button class="admin-btn-secondary hidden" id="tb-manual-cancel-edit" style="margin-left:6px">✕ Cancel Edit</button>
           </div>
+          </div>
         </div>
 
         <div class="tb-selected-panel">
@@ -909,6 +922,21 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
       });
     });
 
+    // Question source: the bank (as before) or the new reasoning-figure generator
+    const showSource = fig => {
+      $('tb-src-bank').classList.toggle('active', !fig); $('tb-src-bank').setAttribute('aria-selected', String(!fig));
+      $('tb-src-fig').classList.toggle('active', fig);   $('tb-src-fig').setAttribute('aria-selected', String(fig));
+      $('tb-bank-wrap').classList.toggle('hidden', fig);
+      $('tb-fig-panel').classList.toggle('hidden', !fig);
+      if (fig && !$('tb-fig-panel').dataset.mounted) {
+        if (!window.FIGGEN) { $('tb-fig-panel').innerHTML = '<p class="tb-empty-hint">Reload the page once (new module).</p>'; return; }
+        FIGGEN.mountPanel($('tb-fig-panel'), { onAdd: _addFigureQuestions });
+        $('tb-fig-panel').dataset.mounted = '1';
+      }
+    };
+    $('tb-src-bank').addEventListener('click', () => showSource(false));
+    $('tb-src-fig').addEventListener('click', () => showSource(true));
+
     // Auto-mix & bulk parse
     $('tb-do-automix').addEventListener('click', _doAutoMix);
     $('tb-bulk-parse').addEventListener('click', _doBulkParse);
@@ -934,6 +962,45 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
     _renderRandomPickPanel();
     _renderBankList();
     _renderSelectedList();
+  }
+
+  // Reasoning figure questions from FIGGEN: pictures → Cloudinary, then saved like any other bank
+  // question (local bank + server bank, so Paper Builder / महा-Test can use them) and put in the
+  // active section.
+  async function _addFigureQuestions(qs, level, progress) {
+    const sec = state.sections[state.activeSection];
+    if (!sec) throw new Error('No section');
+    const mixed = state.paperMode === 'mixed';
+    const meta = {
+      batch  : (mixed && sec.source_batch) || state.quiz?.batch || '',
+      subject: (mixed && sec.subject) || state.quiz?.subject || '',
+      chapter: state.quiz?.chapter || '',
+      level,
+    };
+    const records = await FIGGEN.toBankQuestions(qs, meta, progress);
+    progress?.('save');
+    const saved = await DB.saveQuestionsBatch(records);
+    saved.forEach(s => { if (!sec.question_ids.includes(s.q_id)) sec.question_ids.push(s.q_id); });
+    await _pushReasoningToServerBank(saved);
+    await _loadBankQuestions();
+    _renderBankList();
+    _renderSelectedList();
+    _renderSectionTabs();
+    APP.toast(`✅ ${saved.length} आकृती प्रश्न "${sec.label}" मध्ये जोडले`, 'success');
+  }
+
+  // Server question bank copy (Paper Builder reads it). Not fatal when offline: retried on Publish.
+  async function _pushReasoningToServerBank(list) {
+    const todo = list.filter(q => (q.tags || []).includes('reasoning') && !q.bank_synced);
+    if (!todo.length) return true;
+    try {
+      for (let i = 0; i < todo.length; i += 50) await API.bulkSaveQuestions(todo.slice(i, i + 50));
+      await DB.saveQuestionsBatch(todo.map(q => ({ ...q, bank_synced: true })));
+      return true;
+    } catch (err) {
+      APP.toast(`प्रश्न quiz मध्ये आहेत; प्रश्न-बँकेत (server) Publish करताना पुन्हा save होतील. (${err?.message || 'offline'})`, 'info');
+      return false;
+    }
   }
 
   async function _loadBankQuestions() {
@@ -1668,6 +1735,12 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
     state.quiz  = saved;
 
     if (isPublish) {
+      // reasoning questions added while offline still need their server-bank copy
+      try {
+        const ids = new Set(_getAllSelectedQIds());
+        const mine = (await DB.getAllQuestions()).filter(q => ids.has(q.q_id) && (q.tags || []).includes('reasoning') && !q.bank_synced);
+        if (mine.length) await _pushReasoningToServerBank(mine);
+      } catch { /* the quiz itself still publishes */ }
       try {
         const result = await SYNC.publishQuiz(saved);
         state.quiz = result?.quiz || await DB.getQuiz(saved.quiz_id) || saved;

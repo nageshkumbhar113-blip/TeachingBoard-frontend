@@ -713,6 +713,7 @@ const API = (() => {
       tags      : question.tags       || [],
       image     : question.image      || null,
       option_images: normalizeOptionImages(question.option_images),
+      explanation: question.explanation || '',
     };
 
     if (type === 'mcq') {
@@ -871,6 +872,27 @@ const API = (() => {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(toBackendQuestion(question)),
     });
+  }
+
+  // Many questions at once into the server question bank (Paper Builder / महा-Test read it).
+  async function bulkSaveQuestions(questions) {
+    const token = await ensureAdminSession();
+    return request('/questions/bulk', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ questions: questions.map(q => ({ ...toBackendQuestion(q), q_id: q.q_id })) }),
+    });
+  }
+
+  // Small figure PNGs (data URLs, at most 10 per call) -> Cloudinary URLs.
+  async function uploadFigures(images) {
+    const token = await ensureAdminSession();
+    const payload = await request('/questions/figures/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ images }),
+    });
+    return payload?.urls || [];
   }
 
   async function updateQuestion(backendId, question, pin = '') {
@@ -2980,7 +3002,7 @@ const API = (() => {
     fetchQuiz, fetchPublishedQuizzes, fetchQuizById, generateQuizQuestions,
     fetchQuizPatterns, saveQuizPattern, deleteQuizPattern,
     fetchLessons, fetchQuestions, fetchAttempts,
-    addQuestion, updateQuestion, deleteQuestion, deleteQuiz,
+    addQuestion, updateQuestion, deleteQuestion, deleteQuiz, bulkSaveQuestions, uploadFigures,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment, previewPaymentPrice,
     fetchPendingPayments, fetchRevenueSummary,
