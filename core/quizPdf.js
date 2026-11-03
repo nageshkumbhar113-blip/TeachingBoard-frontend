@@ -423,6 +423,30 @@ const QUIZ_PDF = (() => {
     return groups;
   }
 
+  // Page breaks. The rendered paper is one tall picture cut into pages; a cut
+  // straight through a question (text on one page, its figures / options on the
+  // next) is what teachers saw. Every block marked break-inside:avoid (a whole
+  // question) and every <img> is measured before the snapshot, and a page ends
+  // just above the first such block that would be cut — in either column of a
+  // two-column paper. A block taller than a page is left to be cut.
+  function _keepSpans(root) {
+    const r0 = root.getBoundingClientRect();
+    return [...root.querySelectorAll('[style*="break-inside:avoid"], [style*="page-break-inside:avoid"], img')]
+      .map(el => { const r = el.getBoundingClientRect(); return [r.top - r0.top, r.bottom - r0.top]; })
+      .filter(([t, b]) => b - t > 2);
+  }
+  function _sliceEnd(start, pagePx, totalPx, spans) {
+    const maxEnd = start + pagePx;
+    if (maxEnd >= totalPx) return totalPx;
+    let end = maxEnd;
+    for (let guard = 0; guard < 60; guard++) {
+      const hit = spans.find(([t, b]) => t < end - 1 && b > end + 1 && t > start + 4 && b - t < pagePx);
+      if (!hit) break;
+      end = hit[0] - 2;
+    }
+    return end - start < pagePx * 0.25 ? maxEnd : Math.floor(end);
+  }
+
   function _drawWatermark(pdf, pageWidth, pageHeight) {
     pdf.saveGraphicsState?.();
     pdf.setTextColor(200, 200, 200);
@@ -505,6 +529,8 @@ const QUIZ_PDF = (() => {
       // do not re-add foreignObjectRendering without first re-testing
       // against real off-screen content, not just an on-screen sample.
       canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const k = canvas.height / (container.firstElementChild.getBoundingClientRect().height || canvas.height);
+      canvas._keep = _keepSpans(container.firstElementChild).map(([t, b]) => [t * k, b * k]);
     } finally {
       container.remove();
     }
@@ -533,7 +559,7 @@ const QUIZ_PDF = (() => {
     let renderedPx = 0;
     let firstPage = true;
     while (renderedPx < canvas.height) {
-      const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - renderedPx);
+      const sliceHeightPx = _sliceEnd(renderedPx, pageSliceHeightPx, canvas.height, canvas._keep || []) - renderedPx;
 
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width  = canvas.width;
@@ -604,6 +630,8 @@ const QUIZ_PDF = (() => {
         // tried and reverted — it blanks the canvas for content this far
         // off-screen. Do not re-add it here either.
         canvas = await window.html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        const k = canvas.height / (container.firstElementChild.getBoundingClientRect().height || canvas.height);
+        canvas._keep = _keepSpans(container.firstElementChild).map(([t, b]) => [t * k, b * k]);
       } finally {
         container.remove();
       }
@@ -613,7 +641,7 @@ const QUIZ_PDF = (() => {
       let renderedPx = 0;
 
       while (renderedPx < canvas.height) {
-        const sliceHeightPx = Math.min(pageSliceHeightPx, canvas.height - renderedPx);
+        const sliceHeightPx = _sliceEnd(renderedPx, pageSliceHeightPx, canvas.height, canvas._keep || []) - renderedPx;
 
         const pageCanvas = document.createElement('canvas');
         pageCanvas.width  = canvas.width;
