@@ -551,6 +551,14 @@ const PEN_BOARD = (() => {
       x.strokeRect(b[0] - 4, b[1] - 4, b[2] - b[0] + 8, b[3] - b[1] + 8); x.restore();
       if (note) label(x, note, [b[0] - 18, b[1] + 6]);
     }
+    // ⬅ ⬆ ⬇ ➡ / arrow keys: move the selection a step (quick repeats make one ↶ step)
+    nudgeSel(dx, dy) {
+      if (!this.sel.length) return;
+      const last = this.strokes[this.strokes.length - 1], now = Date.now();
+      if (last && last.t === 'mv' && last.nudge && now - last.nudge < 1200 && last.ids.join() === this.sel.join()) { last.dx += dx; last.dy += dy; last.nudge = now; _changed(); }
+      else this.push({ t: 'mv', ids: [...this.sel], dx, dy, nudge: now });
+      this.redraw(); this.clearLive(); this.guide();
+    }
     // ➕ ➖ ⟲ ⟳ around the middle of the selection
     transformSel(f, deg) {
       if (!this.sel.length) return;
@@ -996,6 +1004,8 @@ const PEN_BOARD = (() => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? active.redoOne() : active.undo(); }
       if (S.tool === 'sel' && active.sel.length && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); active.deleteSel(); _selBar(); }
       if (S.tool === 'sel' && active.sel.length && e.key === 'Escape') { active.sel = []; active.clearLive(); active.guide(); _selBar(); }
+      const AR = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (AR && S.tool === 'sel' && active.sel.length) { e.preventDefault(); const st = e.shiftKey ? 2 : 10; active.nudgeSel(AR[0] * st, AR[1] * st); }
     });
     new ResizeObserver(() => { if (!$('pb-bd').hidden) board.size(); if (!$('pb-ov').hidden) over.size(); }).observe(root);
   }
@@ -1028,7 +1038,7 @@ const PEN_BOARD = (() => {
     el.hidden = false;
     if (S.sub === 'selbar') {
       const n = active.sel.length;
-      el.innerHTML = `<div class="hd">${n} selected — press inside and drag to move · tap a colour / thickness below to change it</div><button type="button" data-sel="big">➕ Bigger</button><button type="button" data-sel="small">➖ Smaller</button><button type="button" data-sel="left">⟲ Turn</button><button type="button" data-sel="right">⟳ Turn</button><button type="button" data-sel="copy">⧉ Copy</button><button type="button" data-sel="del">🗑️ Delete</button><button type="button" data-sel="none">✕ Deselect</button>`;
+      el.innerHTML = `<div class="hd">${n} selected — press inside and drag to move · tap a colour / thickness below to change it</div><button type="button" data-mv="-1,0" aria-label="Move left">⬅</button><button type="button" data-mv="0,-1" aria-label="Move up">⬆</button><button type="button" data-mv="0,1" aria-label="Move down">⬇</button><button type="button" data-mv="1,0" aria-label="Move right">➡</button><button type="button" data-sel="big">➕ Bigger</button><button type="button" data-sel="small">➖ Smaller</button><button type="button" data-sel="left">⟲ Turn</button><button type="button" data-sel="right">⟳ Turn</button><button type="button" data-sel="copy">⧉ Copy</button><button type="button" data-sel="del">🗑️ Delete</button><button type="button" data-sel="none">✕ Deselect</button>`;
     } else if (S.sub === 'shape') el.innerHTML = '<div class="hd">Pick one, then drag on the board (curved line: drag the yellow dot to bend it)</div>' + SHAPES.map(s => `<button type="button" data-shape="${s[0]}" aria-pressed="${S.shape === s[0]}">${s[1]} ${s[2]}</button>`).join('');
     else if (S.sub === 'er') el.innerHTML = '<div class="hd">Which eraser?</div>' + ERASERS.map(s => `<button type="button" data-er="${s[0]}" aria-pressed="${S.er === s[0]}">${s[1]} ${s[2]}</button>`).join('') +
       `<button type="button" data-er="all" class="${clrArm ? 'warn' : ''}">${clrArm ? 'Tap again = clear all' : '🗑️ Clear all'}</button>`;
@@ -1081,6 +1091,7 @@ const PEN_BOARD = (() => {
       if (b.dataset.er === 'all') { if (!_armClear()) { _renderSub(); return; } active.clear(); S.sub = null; }
       else { S.er = b.dataset.er; _pickTool('er'); S.sub = null; if (S.er === 'stroke') _toast('✂️ Any line / shape you touch goes completely'); if (S.er === 'rect') _toast('⬚ Drag a box — everything inside is rubbed out'); if (S.er === 'lasso') _toast('➰ Draw a loop — everything inside is rubbed out'); }
     }
+    if (b.dataset.mv) { const [dx, dy] = b.dataset.mv.split(',').map(Number); active.nudgeSel(dx * 20, dy * 20); return; }
     if (b.dataset.sel) {
       if (b.dataset.sel === 'big') active.transformSel(1.15, 0);
       if (b.dataset.sel === 'small') active.transformSel(1 / 1.15, 0);
