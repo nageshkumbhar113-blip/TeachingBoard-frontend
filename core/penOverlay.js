@@ -11,7 +11,7 @@
         per question while the app stays open; 💾 makes one picture
         (question + board) for Share / Save (core/fileExport.js).
      ✍️ on the app itself — transparent glass, cleared when closed.
-   Tools: 👆 select + move / copy / remove a figure, 🪣 fill a closed area,
+   Tools: 👆 select + move / copy / remove a figure, 🎨 fill a closed area,
    pen (pressure), highlighter, eraser (part / whole line / box /
    free-hand area / all), laser, shapes (straight + bendable curve line,
    arrow, circle, rectangle, triangle, X-Y axes), text, compass, ruler,
@@ -317,7 +317,7 @@ const PEN_BOARD = (() => {
     if (s.t === 'txt' || s.t === 'fill') { c.x = s.x + dx; c.y = s.y + dy; }
     return c;
   }
-  // 🪣 a filled area: an alpha mask (1 px = 1 CSS px) coloured on demand
+  // 🎨 a filled area: an alpha mask (1 px = 1 CSS px) coloured on demand
   function fillCanvas(s, dark) {
     const k = dark ? 1 : 0;
     s._fc = s._fc || [];
@@ -488,7 +488,7 @@ const PEN_BOARD = (() => {
     visible() { return this.state().vis; }
     hasInk() { return this.visible().length > 0; }
     clearLive() { this.ctx(this.live).clearRect(0, 0, 1e5, 1e5); }
-    _reset() { this.edit = -1; this.sel = []; this.drag = null; }
+    _reset() { this.edit = -1; this.sel = []; this.drag = null; this.cmp = null; }
     // records pushed together (a ⧉ copy) share a grp and go back / come back as one step
     undo() {
       if (!this.strokes.length) { _toast('Nothing to undo'); return; }
@@ -541,7 +541,7 @@ const PEN_BOARD = (() => {
       x.strokeRect(b[0] - 4, b[1] - 4, b[2] - b[0] + 8, b[3] - b[1] + 8); x.restore();
       if (note) label(x, note, [b[0] - 18, b[1] + 6]);
     }
-    deleteSel() { if (!this.sel.length) return; this.push({ t: 'del', ids: [...this.sel] }); this.sel = []; this.redraw(); this.clearLive(); this.guide(); }
+    deleteSel() { if (!this.sel.length) return; this.push({ t: 'del', ids: [...this.sel] }); this.sel = []; this.cmp = null; this.redraw(); this.clearLive(); this.guide(); }
     copySel() {
       if (!this.sel.length) return;
       const st = this.state(), made = [], grp = 'c' + Date.now();
@@ -555,7 +555,7 @@ const PEN_BOARD = (() => {
       this.sel = made; this.redraw(); this.clearLive(); this.guide();
       _toast('⧉ Copy made — drag it where you want');
     }
-    // ── 🪣 fill the closed area under the finger (lines with gaps up to ~4 px still hold) ──
+    // ── 🎨 fill the closed area under the finger (lines with gaps up to ~4 px still hold) ──
     // only the part of the board on screen is searched, so a board with many pages fills as fast as one
     _fillAt(p) {
       const W = Math.round(parseFloat(this.base.style.width)), full = Math.round(parseFloat(this.base.style.height));
@@ -570,7 +570,7 @@ const PEN_BOARD = (() => {
       let wall = new Uint8Array(N);
       for (let i = 0; i < N; i++) wall[i] = a[i * 4 + 3] > 60 ? 1 : 0;
       wall = dilate(wall, W, H, 2);
-      if (wall[sy * W + sx]) { _toast('🪣 Tap the empty space inside a shape, not on a line'); return; }
+      if (wall[sy * W + sx]) { _toast('🎨 Tap the empty space inside a shape, not on a line'); return; }
       const reg = new Uint8Array(N), stack = [sx, sy];
       let x0 = sx, x1 = sx, y0 = sy, y1 = sy, count = 0, edge = false;
       const free = i => !wall[i] && !reg[i];
@@ -586,7 +586,7 @@ const PEN_BOARD = (() => {
           if (y < H - 1) { const f = free((y + 1) * W + x); if (f && !dn) { stack.push(x, y + 1); dn = true; } else if (!f) dn = false; }
         }
       }
-      if (edge && count > N * 0.35) { _toast('🪣 This area is not closed — close the shape first'); return; }
+      if (edge && count > N * 0.35) { _toast('🎨 This area is not closed — close the shape first'); return; }
       // grow it a little so the colour reaches under the lines (no white rim)
       const pad = 4, bx = Math.max(0, x0 - pad), by = Math.max(0, y0 - pad), bw = Math.min(W, x1 + pad + 1) - bx, bh = Math.min(H, y1 + pad + 1) - by;
       const sub = new Uint8Array(bw * bh);
@@ -623,7 +623,7 @@ const PEN_BOARD = (() => {
       inp.className = 'pb-txin'; inp.style.left = p[0] + 'px'; inp.style.top = (p[1] - fs * 0.6) + 'px';
       inp.style.fontSize = fs + 'px'; inp.style.color = PAL[S.c][dark ? 1 : 0]; inp.rows = 1;
       inp.placeholder = 'Type here…';
-      this.paper.appendChild(inp); setTimeout(() => inp.focus(), 0);
+      this.paper.appendChild(inp); inp.focus();
       const done = () => { const v = inp.value.trim(); inp.remove(); if (v) this.commit({ t: 'txt', x: p[0], y: p[1] - fs * 0.6 + 1, s: v, c: S.c, fs }); };
       inp.addEventListener('blur', done, { once: true });
       inp.addEventListener('input', () => { inp.rows = Math.max(1, inp.value.split('\n').length); });
@@ -638,9 +638,11 @@ const PEN_BOARD = (() => {
     _bind() {
       const L = this.live;
       L.addEventListener('pointerdown', e => {
-        if (e.pointerType === 'pen' && !penSeen) { penSeen = true; _toast('Stylus found: your finger now only scrolls'); }
+        if (e.pointerType === 'pen' && !penSeen) { penSeen = true; _toast('Stylus found: while drawing, a finger only scrolls'); }
         _closeSub();
-        if (S.tool === 'hand' || (penSeen && e.pointerType === 'touch')) { L.setPointerCapture(e.pointerId); this.pan = { y: e.clientY, st: this.scroller.scrollTop }; return; }
+        // with a stylus in use a resting hand must not draw, so a finger scrolls — but a finger still
+        // selects / moves figures and fills colour
+        if (S.tool === 'hand' || (penSeen && e.pointerType === 'touch' && S.tool !== 'sel' && S.tool !== 'fill')) { L.setPointerCapture(e.pointerId); this.pan = { y: e.clientY, st: this.scroller.scrollTop }; return; }
         e.preventDefault();
         const p = this._pt(e);
         if (S.tool === 'txt') { this._text(p); return; }
@@ -658,8 +660,11 @@ const PEN_BOARD = (() => {
         if (S.tool === 'shape' && ed && ed.k === 'curve' && dist(p, ed.h) < 22) { this.bend = ed; return; }
         this.edit = -1;
         if (S.tool === 'compass') {
-          if (!this.cmp || dist(p, this.cmp.o) < 16) this.cur = { t: 'cset', o: p, b: p };
-          else { const g = Math.atan2(p[1] - this.cmp.o[1], p[0] - this.cmp.o[0]); this.cur = { t: 'arc', o: this.cmp.o, r: this.cmp.r, a0: g, a1: g, last: g, c: S.c, w: WID[S.w] }; }
+          // press on the ring = draw the arc; at the centre = a new radius; anywhere else = put the
+          // compass there (drag = new radius, a plain tap = same radius at the new centre)
+          const c = this.cmp, onRing = c && Math.abs(dist(p, c.o) - c.r) < Math.max(28, c.r * 0.25);
+          if (onRing && dist(p, c.o) >= 16) { const g = Math.atan2(p[1] - c.o[1], p[0] - c.o[0]); this.cur = { t: 'arc', o: c.o, r: c.r, a0: g, a1: g, last: g, c: S.c, w: WID[S.w] }; }
+          else this.cur = { t: 'cset', o: p, b: p, keep: c && dist(p, c.o) >= 16 ? c.r : 0 };
           this._paint(); return;
         }
         if (S.tool === 'shape') { this.cur = { t: 'shape', k: S.shape, a: p, b: p, c: S.c, w: WID[S.w] }; this._paint(); return; }
@@ -704,7 +709,9 @@ const PEN_BOARD = (() => {
         }
         if (s.t === 'cset') {
           const r = dist(s.o, s.b);
-          if (r > 8) { this.cmp = { o: s.o, r }; _toast(`Radius ${cmTxt(r)} set — now press beside it and turn`); } else _toast('Compass: press the centre and drag out');
+          if (r > 8) { this.cmp = { o: s.o, r }; _toast(`Radius ${cmTxt(r)} set — now press on the dotted ring and turn`); }
+          else if (s.keep) { this.cmp = { o: s.o, r: s.keep }; _toast(`Compass moved (radius ${cmTxt(s.keep)}) — press on the dotted ring and turn`); }
+          else _toast('Compass: press the centre and drag out');
           this.guide(); return;
         }
         if (s.t === 'del') { if (s.pushed) { delete s.pushed; _changed(); } return; }
@@ -912,7 +919,7 @@ const PEN_BOARD = (() => {
   const B = { idx: 0, item: null, fs: 17, ans: false, min: false, busy: false };
   const SHAPES = [['line', '／', 'Straight line'], ['curve', '⌒', 'Curved line'], ['arrow', '➝', 'Arrow'], ['circle', '◯', 'Circle'], ['rect', '▭', 'Rectangle'], ['tri', '△', 'Triangle'], ['axes', '✚', 'X-Y axes']];
   const ERASERS = [['brush', '🧽', 'Rub out a part'], ['stroke', '✂️', 'Remove a whole line / shape'], ['rect', '⬚', 'Rub out inside a box'], ['lasso', '➰', 'Rub out inside a free-hand loop']];
-  const TOOLS = [['hand', '✋', 'Scroll the page'], ['sel', '👆', 'Select & move'], ['pen', '✏️', 'Pen'], ['hl', '🖍️', 'Highlighter'], ['fill', '🪣', 'Fill colour'], ['er', '🧽', 'Eraser'], ['laser', '🔴', 'Laser'], ['shape', '🔷', 'Lines & shapes'], ['txt', '🔤', 'Text'], ['compass', '🧭', 'Compass']];
+  const TOOLS = [['hand', '✋', 'Scroll the page'], ['sel', '👆', 'Select & move'], ['pen', '✏️', 'Pen'], ['hl', '🖍️', 'Highlighter'], ['fill', '🎨', 'Fill colour'], ['er', '🧽', 'Eraser'], ['laser', '🔴', 'Laser'], ['shape', '🔷', 'Lines & shapes'], ['txt', '🔤', 'Text'], ['compass', '🧭', 'Compass']];
   let clrArm = 0;
 
   function _toast(t) { const el = $('pb-toast'); if (!el) return; el.textContent = t; el.classList.add('on'); clearTimeout(_toast._t); _toast._t = setTimeout(() => el.classList.remove('on'), 1800); }
@@ -1002,10 +1009,10 @@ const PEN_BOARD = (() => {
   function _pickTool(t) {
     S.tool = t;
     if (t === 'laser') _toast('🔴 Laser: point — the line fades by itself');
-    if (t === 'compass') _toast(active?.cmp ? 'Compass set — press beside it and turn; press the centre for a new radius' : '🧭 Press the centre and drag out = radius');
+    if (t === 'compass') { if (active) active.cmp = null; _toast('🧭 Press the centre and drag out = radius'); }
     if (t === 'txt') _toast('🔤 Tap where you want to type');
     if (t === 'sel') _toast('👆 Tap a figure (or drag a box around it), then drag to move');
-    if (t === 'fill') _toast('🪣 Pick a colour, then tap inside a closed shape');
+    if (t === 'fill') _toast('🎨 Pick a colour, then tap inside a closed shape');
     if (active) { if (t !== 'shape') active.edit = -1; if (t !== 'sel') active.sel = []; active.clearLive(); active.guide(); }
   }
   function _armClear() {
