@@ -2,9 +2,10 @@
    penOverlay.js — Board Mode pen + Whiteboard / Blackboard
    Global: PEN_BOARD
 
-   Only in Board Mode (body.mode-board), only on MCQ practice (screen-quiz),
-   an exercise's questions (screen-exercise) and an open note (screen-notes,
-   taken part by part). Never in tests / महा-Test.
+   Only in Board Mode (body.mode-board), on every screen; the board brings the
+   question of MCQ practice (screen-quiz), an exercise (screen-exercise) or an
+   open note (screen-notes, part by part), elsewhere it is a plain board.
+   Never during an exam / महा-Test.
    A yellow ✏️ button opens:
      ⬜ / ⬛ board — the app is covered, the open question comes along as a
         card ("Show answer" hides the answer until tapped); the writing is kept
@@ -153,6 +154,23 @@ const PEN_BOARD = (() => {
     async go(i) { return i; },
     onClose(i) { this.parts()[i]?.els[0].scrollIntoView({ block: 'start' }); },
   };
+  const SRC_BLANK = {
+    kind: 'blank',
+    count() { return 1; },
+    index() { return 0; },
+    item() { const sc = document.querySelector('#screens-wrap > .screen:not(.hidden)')?.id || 'app'; return { id: 'blank:' + sc, label: 'Board', title: '', html: '', ans: '', ex: '' }; },
+    async go(i) { return i; },
+    onClose() {},
+  };
+  // the ✏️ shows on every screen in Board Mode — only never during an exam / महा-Test,
+  // or over the login / PIN screens
+  function _penAllowed() {
+    if (!document.body.classList.contains('mode-board')) return false;
+    if (window.TEST_PLAYER?.isExamRunning?.()) return false;
+    if (document.querySelector('.wk-play')) return false;
+    if (_seen($('onboarding-screen')) || _seen($('pin-lock-screen'))) return false;
+    return true;
+  }
   function _source() {
     const b = document.body;
     if (!b.classList.contains('mode-board')) return null;
@@ -1119,7 +1137,8 @@ const PEN_BOARD = (() => {
     _toast('Write on the app — this is cleared when you close');
   }
   async function openBoard(kind) {
-    const s = _source(); if (!s) return;
+    if (!_penAllowed()) return;
+    const s = _source() || SRC_BLANK;
     _build(); src = s;
     S.dark = (kind || S.lastBoard) === 'black'; S.lastBoard = S.dark ? 'black' : 'white';
     B.idx = s.index(); B.min = false; B.wide = s.kind === 'note';
@@ -1168,7 +1187,8 @@ const PEN_BOARD = (() => {
     $('pb-theme').textContent = S.dark ? '⬜ Whiteboard' : '⬛ Blackboard';
     $('pb-paper').className = S.bg === 'blank' ? '' : 'bg-' + S.bg;
     $('pb-bg').textContent = '📄 Paper: ' + ({ blank: 'Plain', ruled: 'Ruled', grid: 'Grid', graph: 'Graph' })[S.bg];
-    const n = src.count();
+    const n = src.count(), blank = src.kind === 'blank';
+    for (const id of ['pb-prev', 'pb-qn', 'pb-next']) $(id).hidden = blank;
     $('pb-qn').textContent = `${({ mcq: 'MCQ', ex: 'Question', note: 'Part' })[src.kind]} ${B.idx + 1} / ${n}`;
     $('pb-next').textContent = src.kind === 'note' ? 'Next part ▶' : 'Next question ▶';
     $('pb-prev').disabled = B.idx <= 0;
@@ -1176,7 +1196,8 @@ const PEN_BOARD = (() => {
   }
   function _renderCard() {
     const q = B.item;
-    $('pb-q').hidden = B.min; $('pb-chip').hidden = !B.min;
+    const blank = src?.kind === 'blank';
+    $('pb-q').hidden = B.min || blank; $('pb-chip').hidden = !B.min || blank;
     $('pb-q').classList.toggle('wide', !!B.wide);
     $('pb-q').innerHTML = `
       <div class="pb-qh"><b>${_esc(q.label)}${q.title ? ' · ' + _esc(q.title) : ''}</b><span class="grow"></span>
@@ -1273,7 +1294,7 @@ const PEN_BOARD = (() => {
   }
   function _refreshShare() { _shareCanvas = _picture($('pb-sh-q').checked); $('pb-sh-img').src = _shareCanvas.toDataURL('image/png'); }
   let _shareCanvas = null;
-  function _openShare() { _saveCur(); _closeSub(); _refreshShare(); $('pb-sh-msg').textContent = 'Pick WhatsApp, Drive, Files… from the list.'; $('pb-sh').hidden = false; }
+  function _openShare() { _saveCur(); _closeSub(); const blank = src?.kind === 'blank'; $('pb-sh-q').checked = !blank; $('pb-sh-q').parentElement.hidden = blank; _refreshShare(); $('pb-sh-msg').textContent = 'Pick WhatsApp, Drive, Files… from the list.'; $('pb-sh').hidden = false; }
   async function _doShare() {
     const cv = _shareCanvas; if (!cv) return;
     const msg = $('pb-sh-msg'); msg.textContent = '⏳ Getting it ready…';
@@ -1292,7 +1313,7 @@ const PEN_BOARD = (() => {
   function _refreshFab() {
     const fab = $('pb-fab'); if (!fab) return;
     const open = $('pb-root') && !$('pb-root').hidden;
-    const ok = !open && !!_source();
+    const ok = !open && _penAllowed();
     fab.hidden = !ok;
     if (!ok) $('pb-fabmenu').hidden = true;
   }
@@ -1310,10 +1331,10 @@ const PEN_BOARD = (() => {
     if (!$('pb-style')) { const st = document.createElement('style'); st.id = 'pb-style'; st.textContent = CSS; document.head.appendChild(st); }
     document.body.append(fab, menu);
     fab.addEventListener('click', () => {
-      const s = _source(); if (!s) return;
+      if (!_penAllowed()) return;
       menu.hidden = !menu.hidden;
-      const it = s.item(s.index());
-      $('pb-fabhd').textContent = `Opens with the current one: ${it?.label || ''}`;
+      const s = _source(), it = s?.item(s.index());
+      $('pb-fabhd').textContent = it ? `Opens with the current one: ${it.label}` : 'A plain board (no question on this screen)';
     });
     menu.addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
@@ -1325,7 +1346,7 @@ const PEN_BOARD = (() => {
       const card = e.target.closest?.('#ev-questions-list .ev-qcard'); if (card) _lastCard = card;
     }, true);
     const mo = new MutationObserver(_queueFab);
-    mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    mo.observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true });
     const wrap = $('screens-wrap'); if (wrap) mo.observe(wrap, { attributes: true, subtree: true, attributeFilter: ['class', 'style'], childList: true });
     _refreshFab();
   }
