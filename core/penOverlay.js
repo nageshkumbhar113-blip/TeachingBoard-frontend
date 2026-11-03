@@ -262,11 +262,21 @@ const PEN_BOARD = (() => {
     return false;
   }
 
-  // points every ~4 px along a drawing, moved to where it is now
+  // where a drawing now sits = its own coordinates through a matrix [a, b, c, d, e, f]
+  // (canvas transform order) built from its moves / resizes / turns
+  const M_ID = [1, 0, 0, 1, 0, 0];
+  const mMul = (A, B) => [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]];
+  const mApply = (M, q) => [M[0] * q[0] + M[2] * q[1] + M[4], M[1] * q[0] + M[3] * q[1] + M[5]];
+  const mInv = M => { const det = M[0] * M[3] - M[1] * M[2], a = M[3] / det, b = -M[1] / det, c = -M[2] / det, d = M[0] / det; return [a, b, c, d, -(a * M[4] + c * M[5]), -(b * M[4] + d * M[5])]; };
+  const mMove = (dx, dy) => [1, 0, 0, 1, dx, dy];
+  // grow by f and turn by g (radians) around (cx, cy)
+  const mAround = (cx, cy, f, g) => { const co = Math.cos(g) * f, si = Math.sin(g) * f; return [co, si, -si, co, cx - co * cx + si * cy, cy - si * cx - co * cy]; };
+
+  // points every ~4 px along a drawing, where it sits now
   function _pts(D) {
     const P = samples(D.s), out = [];
     for (let i = 0; i < P.length; i++) {
-      const q = [P[i][0] + D.o[0], P[i][1] + D.o[1]];
+      const q = mApply(D.m, P[i]);
       if (i) { const r = out[out.length - 1], n = Math.min(40, Math.floor(dist(r, q) / 4)); for (let k = 1; k < n; k++) out.push([r[0] + (q[0] - r[0]) * k / n, r[1] + (q[1] - r[1]) * k / n]); }
       out.push(q);
     }
@@ -274,7 +284,8 @@ const PEN_BOARD = (() => {
   }
   // the colour stops a few px short of the line's middle: look around the point
   function _inFill(F, q, r) {
-    for (const dx of [-r, 0, r]) for (const dy of [-r, 0, r]) if (hits(F.s, [q[0] + dx - F.o[0], q[1] + dy - F.o[1]], 0)) return true;
+    F.mi = F.mi || mInv(F.m);
+    for (const dx of [-r, 0, r]) for (const dy of [-r, 0, r]) if (hits(F.s, mApply(F.mi, [q[0] + dx, q[1] + dy]), 0)) return true;
     return false;
   }
   // do two drawings touch? (a fill touches the lines it was filled against)
@@ -305,29 +316,23 @@ const PEN_BOARD = (() => {
     for (const q of pts) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
     return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
   }
-  const _boxAt = (b, o) => [b[0] + o[0], b[1] + o[1], b[2] + o[0], b[3] + o[1]];
+  // a box through a matrix -> the upright box around it
+  const _boxAt = (b, M) => {
+    const P = [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]].map(q => mApply(M, q)), xs = P.map(q => q[0]), ys = P.map(q => q[1]);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
   const _meets = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
-  // a copy of a stroke moved by dx, dy (for ⧉ copy)
-  function shifted(s, dx, dy) {
-    const m = q => [q[0] + dx, q[1] + dy, ...q.slice(2)];
-    const c = { ...s }; delete c._fc;
-    if (s.p) c.p = s.p.map(m);
-    for (const k of ['a', 'b', 'h', 'o']) if (Array.isArray(s[k])) c[k] = m(s[k]);   // (a fill's w / h are its size)
-    if (s.poly) c.poly = s.poly.map(m);
-    if (s.t === 'txt' || s.t === 'fill') { c.x = s.x + dx; c.y = s.y + dy; }
-    return c;
-  }
   // 🎨 a filled area: an alpha mask (1 px = 1 CSS px) coloured on demand
   function fillCanvas(s, dark) {
-    const k = dark ? 1 : 0;
-    s._fc = s._fc || [];
-    if (!s._fc[k]) {
+    const k = dark ? 1 : 0, key = s.c + ':' + k;
+    s._fc = s._fc || {};
+    if (!s._fc[key]) {
       const c = document.createElement('canvas'); c.width = s.w; c.height = s.h;
       const x = c.getContext('2d'); x.drawImage(s.mask, 0, 0);
       x.globalCompositeOperation = 'source-in'; x.fillStyle = PAL[s.c][k]; x.fillRect(0, 0, s.w, s.h);
-      s._fc[k] = c;
+      s._fc[key] = c;
     }
-    return s._fc[k];
+    return s._fc[key];
   }
   function drawAny(x, s, dark) {
     if (s.t === 'fill') { x.save(); x.globalAlpha = 0.85; x.drawImage(fillCanvas(s, dark), s.x, s.y); x.restore(); return; }
@@ -424,9 +429,10 @@ const PEN_BOARD = (() => {
   // ── a writing surface (the board, or the glass over the app) ──
   // strokes is an append-only log (so ↶ is just "drop the last record"):
   //   drawings — pen / hl / shape / arc / txt / fill
-  //   'clr' wipes what came before, 'del' hides drawings, 'mv' moves drawings,
-  //   'er' / 'cut' rub out; each one keeps the drawings it touched (tg: [index, dx, dy] =
-  //   where that drawing had been moved to then), so a rubbed-out part moves with its figure.
+  //   'clr' wipes what came before, 'del' hides drawings, 'mv' moves drawings, 'xf' resizes /
+  //   turns them (m = matrix), 'sty' changes colour / thickness / text size,
+  //   'er' / 'cut' rub out; each one keeps the drawings it touched (tg: [index, matrix of that
+  //   drawing then]), so a rubbed-out part moves, grows and turns with its figure.
   class Surface {
     constructor(scroller, paper, base, live, isBoard) {
       Object.assign(this, { scroller, paper, base, live, isBoard });
@@ -452,36 +458,40 @@ const PEN_BOARD = (() => {
     state() {
       let from = 0;
       this.strokes.forEach((s, i) => { if (s.t === 'clr') from = i + 1; });
-      const gone = new Set(), off = new Map(), ers = new Map(), vis = [];
+      const gone = new Set(), mat = new Map(), sty = new Map(), ers = new Map(), vis = [];
+      const by = (k, M) => mat.set(k, mMul(M, mat.get(k) || M_ID));
       for (let i = from; i < this.strokes.length; i++) {
         const s = this.strokes[i];
         if (s.t === 'del') s.ids.forEach(k => gone.add(k));
-        else if (s.t === 'mv') s.ids.forEach(k => { const o = off.get(k) || [0, 0]; off.set(k, [o[0] + s.dx, o[1] + s.dy]); });
-        else if (s.t === 'er' || s.t === 'cut') (s.tg || []).forEach(([k, rx, ry]) => { if (!ers.has(k)) ers.set(k, []); ers.get(k).push([s, rx, ry]); });
+        else if (s.t === 'mv') s.ids.forEach(k => by(k, mMove(s.dx, s.dy)));
+        else if (s.t === 'xf') s.ids.forEach(k => by(k, s.m));
+        else if (s.t === 'sty') s.ch.forEach(([k, o]) => sty.set(k, { ...(sty.get(k) || {}), ...o }));
+        else if (s.t === 'er' || s.t === 'cut') (s.tg || []).forEach(([k, m]) => { if (!ers.has(k)) ers.set(k, []); ers.get(k).push([s, m]); });
         else vis.push(i);
       }
-      return { vis: vis.filter(i => !gone.has(i)), off, ers };
+      return { vis: vis.filter(i => !gone.has(i)), mat, sty, ers };
     }
-    offOf(st, i) { return st.off.get(i) || [0, 0]; }
+    matOf(st, i) { return st.mat.get(i) || M_ID; }
+    styled(st, i) { const o = st.sty.get(i), s = this.strokes[i]; return o ? { ...s, ...o } : s; }
     // fills first (they sit under the lines), then the rest in the order drawn
     render(x, opt = {}) {
       const st = opt.st || this.state(), dark = this.dark();
       const order = [...st.vis.filter(i => this.strokes[i].t === 'fill'), ...st.vis.filter(i => this.strokes[i].t !== 'fill')];
       for (const i of order) {
         if (opt.skip?.has(i) || (opt.only && !opt.only.has(i))) continue;
-        const s = this.strokes[i];
+        const s = this.styled(st, i);
         if (opt.noFill && s.t === 'fill') continue;
-        const o = this.offOf(st, i), ox = o[0] + (opt.dx || 0), oy = o[1] + (opt.dy || 0);
+        const M = opt.dx || opt.dy ? mMul(mMove(opt.dx || 0, opt.dy || 0), this.matOf(st, i)) : this.matOf(st, i);
         const el = st.ers.get(i);
-        if (!el) { x.save(); x.translate(ox, oy); drawAny(x, s, dark); x.restore(); continue; }
+        if (!el) { x.save(); x.transform(...M); drawAny(x, s, dark); x.restore(); continue; }
         const b = bbox(s), w = Math.ceil(b[2] - b[0]) + 2, h = Math.ceil(b[3] - b[1]) + 2;
         if (w <= 2 || h <= 2) continue;
         const d = this.dpr, sc = this._scratch || (this._scratch = document.createElement('canvas'));
         sc.width = Math.ceil(w * d); sc.height = Math.ceil(h * d);
         const y = sc.getContext('2d'); y.setTransform(d, 0, 0, d, 0, 0); y.translate(-b[0], -b[1]);
         drawAny(y, s, dark);
-        for (const [e, rx, ry] of el) { y.save(); y.translate(-rx, -ry); drawStroke(y, e, dark); y.restore(); }
-        x.drawImage(sc, b[0] + ox, b[1] + oy, w, h);
+        for (const [e, m] of el) { y.save(); y.transform(...mInv(m)); drawStroke(y, e, dark); y.restore(); }
+        x.save(); x.transform(...M); x.drawImage(sc, b[0], b[1], w, h); x.restore();
       }
     }
     redraw(opt) { const x = this.ctx(this.base); x.clearRect(0, 0, 1e5, 1e5); this.render(x, opt); }
@@ -503,22 +513,22 @@ const PEN_BOARD = (() => {
     // a rub-out keeps every drawing whose box it meets
     _rubOut(e) {
       const st = this.state(), eb = bbox(e);
-      e.tg = st.vis.filter(i => _meets(_boxAt(bbox(this.strokes[i]), this.offOf(st, i)), eb)).map(i => { const o = this.offOf(st, i); return [i, o[0], o[1]]; });
+      e.tg = st.vis.filter(i => _meets(_boxAt(bbox(this.strokes[i]), this.matOf(st, i)), eb)).map(i => [i, this.matOf(st, i)]);
       this.push(e); this.redraw();
     }
     // ── 👆 select / move ──
     selBox(st = this.state()) {
       let b = null;
-      for (const i of this.sel) { const q = _boxAt(bbox(this.strokes[i]), this.offOf(st, i)); b = b ? [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[2]), Math.max(b[3], q[3])] : q; }
+      for (const i of this.sel) { const q = _boxAt(bbox(this.strokes[i]), this.matOf(st, i)); b = b ? [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[2]), Math.max(b[3], q[3])] : q; }
       return b;
     }
     // the whole figure under the finger: every drawing joined to it — lines that touch,
     // colour filled between them — so a coloured figure moves as one piece
     _pick(p) {
       const st = this.state();
-      const hit = [...st.vis].reverse().find(i => { const o = this.offOf(st, i); return hits(this.strokes[i], [p[0] - o[0], p[1] - o[1]], 10); });
+      const hit = [...st.vis].reverse().find(i => hits(this.strokes[i], mApply(mInv(this.matOf(st, i)), p), 10));
       if (hit == null) return [];
-      const info = new Map(st.vis.map(i => { const s = this.strokes[i], o = this.offOf(st, i); return [i, { s, o, b: _boxAt(bbox(s), o) }]; }));
+      const info = new Map(st.vis.map(i => { const s = this.strokes[i], m = this.matOf(st, i); return [i, { s, m, b: _boxAt(bbox(s), m) }]; }));
       const out = new Set([hit]), todo = [hit];
       while (todo.length) {
         const i = todo.pop(), A = info.get(i);
@@ -541,15 +551,40 @@ const PEN_BOARD = (() => {
       x.strokeRect(b[0] - 4, b[1] - 4, b[2] - b[0] + 8, b[3] - b[1] + 8); x.restore();
       if (note) label(x, note, [b[0] - 18, b[1] + 6]);
     }
+    // ➕ ➖ ⟲ ⟳ around the middle of the selection
+    transformSel(f, deg) {
+      if (!this.sel.length) return;
+      const b = this.selBox(), cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+      this.push({ t: 'xf', ids: [...this.sel], m: mAround(cx, cy, f, deg * Math.PI / 180) });
+      this.redraw(); this.clearLive(); this.guide();
+    }
+    // a colour / thickness tapped while something is selected changes it
+    styleSel(o) {
+      if (!this.sel.length) return;
+      const ch = [];
+      for (const i of this.sel) {
+        const t = this.strokes[i].t;
+        if ('c' in o && t !== 'hl') ch.push([i, { c: o.c }]);
+        if ('w' in o) {
+          if (t === 'txt') ch.push([i, { fs: [18, 26, 38][o.w] }]);
+          else if (t === 'hl') ch.push([i, { w: WID[o.w] * 4 }]);
+          else if (t !== 'fill') ch.push([i, { w: WID[o.w] }]);
+        }
+      }
+      if (!ch.length) return;
+      this.push({ t: 'sty', ch });
+      this.redraw(); this.clearLive(); this.guide();
+    }
     deleteSel() { if (!this.sel.length) return; this.push({ t: 'del', ids: [...this.sel] }); this.sel = []; this.cmp = null; this.redraw(); this.clearLive(); this.guide(); }
     copySel() {
       if (!this.sel.length) return;
       const st = this.state(), made = [], grp = 'c' + Date.now();
       for (const i of this.sel) {
-        const o = this.offOf(st, i), dx = o[0] + 24, dy = o[1] + 24;
-        this.strokes.push({ ...shifted(this.strokes[i], dx, dy), grp }); const k = this.strokes.length - 1; made.push(k);
+        this.strokes.push({ ...this.strokes[i], grp }); const k = this.strokes.length - 1; made.push(k);
+        this.strokes.push({ t: 'xf', ids: [k], m: mMul(mMove(24, 24), this.matOf(st, i)), grp });
+        if (st.sty.has(i)) this.strokes.push({ t: 'sty', ch: [[k, st.sty.get(i)]], grp });
         // the rubbed-out bits go along with the copy
-        for (const [e, rx, ry] of st.ers.get(i) || []) this.strokes.push({ ...shifted(e, dx - rx, dy - ry), tg: [[k, 0, 0]], grp });
+        for (const [e, m] of st.ers.get(i) || []) this.strokes.push({ ...e, tg: [[k, m]], grp });
       }
       this.redo = []; _changed();
       this.sel = made; this.redraw(); this.clearLive(); this.guide();
@@ -596,7 +631,7 @@ const PEN_BOARD = (() => {
       const mx = mask.getContext('2d'), im = mx.createImageData(bw, bh);
       for (let i = 0; i < md.length; i++) if (md[i]) { im.data[i * 4 + 3] = 255; }
       mx.putImageData(im, 0, 0);
-      this.commit({ t: 'fill', c: S.c, x: bx, y: by + top, w: bw, h: bh, mask, md });
+      this.commit({ t: 'fill', c: S.c, x: bx, y: by + top, w: bw, h: bh, mask, md, _fc: {} });
     }
     // compass once set (faint circle + radius), the bend handle of a curve line, the selection
     guide() {
@@ -632,7 +667,7 @@ const PEN_BOARD = (() => {
     _wipeAt(p) {
       const r = WID[S.w] * 2.5, del = this.cur, st = this.state();
       let any = false;
-      for (const i of st.vis) { const o = this.offOf(st, i); if (!del.ids.includes(i) && hits(this.strokes[i], [p[0] - o[0], p[1] - o[1]], r)) { del.ids.push(i); any = true; } }
+      for (const i of st.vis) { if (!del.ids.includes(i) && hits(this.strokes[i], mApply(mInv(this.matOf(st, i)), p), r)) { del.ids.push(i); any = true; } }
       if (any) { if (!del.pushed) { this.strokes.push(del); del.pushed = true; this.redo = []; } this.redraw(); }
     }
     _bind() {
@@ -703,7 +738,7 @@ const PEN_BOARD = (() => {
         this.clearLive();
         if (s.t === 'band') {
           const bx = [Math.min(s.a[0], s.b[0]), Math.min(s.a[1], s.b[1]), Math.max(s.a[0], s.b[0]), Math.max(s.a[1], s.b[1])], st = this.state();
-          this.sel = st.vis.filter(i => { const q = _boxAt(bbox(this.strokes[i]), this.offOf(st, i)), cx = (q[0] + q[2]) / 2, cy = (q[1] + q[3]) / 2; return cx > bx[0] && cx < bx[2] && cy > bx[1] && cy < bx[3]; });
+          this.sel = st.vis.filter(i => { const q = _boxAt(bbox(this.strokes[i]), this.matOf(st, i)), cx = (q[0] + q[2]) / 2, cy = (q[1] + q[3]) / 2; return cx > bx[0] && cx < bx[2] && cy > bx[1] && cy < bx[3]; });
           if (!this.sel.length) _toast('👆 Tap a figure, or drag a box around it');
           this.guide(); _selBar(); return;
         }
@@ -959,6 +994,8 @@ const PEN_BOARD = (() => {
     document.addEventListener('keydown', e => {
       if (!active || /^(TEXTAREA|INPUT)$/.test(e.target.tagName)) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? active.redoOne() : active.undo(); }
+      if (S.tool === 'sel' && active.sel.length && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); active.deleteSel(); _selBar(); }
+      if (S.tool === 'sel' && active.sel.length && e.key === 'Escape') { active.sel = []; active.clearLive(); active.guide(); _selBar(); }
     });
     new ResizeObserver(() => { if (!$('pb-bd').hidden) board.size(); if (!$('pb-ov').hidden) over.size(); }).observe(root);
   }
@@ -973,7 +1010,8 @@ const PEN_BOARD = (() => {
     const dark = active ? active.dark() : true, onBoard = active === board;
     const cols = S.tool === 'hl' ? HL.map((c, i) => `<button type="button" class="dot" data-h="${i}" aria-pressed="${S.h === i}" style="background:${c.replace(/[\d.]+\)$/, '1)')}" aria-label="Colour ${i + 1}"></button>`).join('')
       : PAL.map((c, i) => `<button type="button" class="dot" data-c="${i}" aria-pressed="${S.c === i}" style="background:${c[dark ? 1 : 0]}" aria-label="Colour ${i + 1}"></button>`).join('');
-    const showCols = !['hand', 'laser', 'er', 'sel'].includes(S.tool), showW = !['hand', 'laser', 'sel', 'fill'].includes(S.tool) && !(S.tool === 'er' && (S.er === 'rect' || S.er === 'lasso'));
+    const selOn = S.tool === 'sel' && active?.sel.length > 0;
+    const showCols = !['hand', 'laser', 'er', 'sel'].includes(S.tool) || selOn, showW = (!['hand', 'laser', 'sel', 'fill'].includes(S.tool) && !(S.tool === 'er' && (S.er === 'rect' || S.er === 'lasso'))) || selOn;
     const icon = t => t === 'shape' && S.tool === 'shape' ? SHAPES.find(s => s[0] === S.shape)[1] : t === 'er' ? ERASERS.find(s => s[0] === S.er)[1] : TOOLS.find(s => s[0] === t)[1];
     $('pb-tools').innerHTML =
       TOOLS.filter(t => onBoard || (t[0] !== 'hand' && t[0] !== 'compass')).map(t => `<button type="button" class="t ${S.sub === t[0] ? 'open' : ''}" data-tool="${t[0]}" aria-pressed="${S.tool === t[0]}" title="${t[2]}" aria-label="${t[2]}">${icon(t[0])}</button>`).join('') +
@@ -990,7 +1028,7 @@ const PEN_BOARD = (() => {
     el.hidden = false;
     if (S.sub === 'selbar') {
       const n = active.sel.length;
-      el.innerHTML = `<div class="hd">${n} selected — press inside and drag to move</div><button type="button" data-sel="copy">⧉ Copy</button><button type="button" data-sel="del">🗑️ Delete</button><button type="button" data-sel="none">✕ Deselect</button>`;
+      el.innerHTML = `<div class="hd">${n} selected — press inside and drag to move · tap a colour / thickness below to change it</div><button type="button" data-sel="big">➕ Bigger</button><button type="button" data-sel="small">➖ Smaller</button><button type="button" data-sel="left">⟲ Turn</button><button type="button" data-sel="right">⟳ Turn</button><button type="button" data-sel="copy">⧉ Copy</button><button type="button" data-sel="del">🗑️ Delete</button><button type="button" data-sel="none">✕ Deselect</button>`;
     } else if (S.sub === 'shape') el.innerHTML = '<div class="hd">Pick one, then drag on the board (curved line: drag the yellow dot to bend it)</div>' + SHAPES.map(s => `<button type="button" data-shape="${s[0]}" aria-pressed="${S.shape === s[0]}">${s[1]} ${s[2]}</button>`).join('');
     else if (S.sub === 'er') el.innerHTML = '<div class="hd">Which eraser?</div>' + ERASERS.map(s => `<button type="button" data-er="${s[0]}" aria-pressed="${S.er === s[0]}">${s[1]} ${s[2]}</button>`).join('') +
       `<button type="button" data-er="all" class="${clrArm ? 'warn' : ''}">${clrArm ? 'Tap again = clear all' : '🗑️ Clear all'}</button>`;
@@ -1027,9 +1065,9 @@ const PEN_BOARD = (() => {
       _pickTool(t);
     }
     if (b.dataset.geo) S.sub = S.sub === 'geo' ? null : 'geo';
-    if (b.dataset.c) S.c = +b.dataset.c;
+    if (b.dataset.c) { S.c = +b.dataset.c; if (S.tool === 'sel') active?.styleSel({ c: S.c }); }
     if (b.dataset.h) S.h = +b.dataset.h;
-    if (b.dataset.w) S.w = +b.dataset.w;
+    if (b.dataset.w) { S.w = +b.dataset.w; if (S.tool === 'sel') active?.styleSel({ w: S.w }); }
     const a = b.dataset.act;
     if (a === 'undo') active.undo();
     if (a === 'redo') active.redoOne();
@@ -1044,6 +1082,10 @@ const PEN_BOARD = (() => {
       else { S.er = b.dataset.er; _pickTool('er'); S.sub = null; if (S.er === 'stroke') _toast('✂️ Any line / shape you touch goes completely'); if (S.er === 'rect') _toast('⬚ Drag a box — everything inside is rubbed out'); if (S.er === 'lasso') _toast('➰ Draw a loop — everything inside is rubbed out'); }
     }
     if (b.dataset.sel) {
+      if (b.dataset.sel === 'big') active.transformSel(1.15, 0);
+      if (b.dataset.sel === 'small') active.transformSel(1 / 1.15, 0);
+      if (b.dataset.sel === 'left') active.transformSel(1, -15);
+      if (b.dataset.sel === 'right') active.transformSel(1, 15);
       if (b.dataset.sel === 'copy') active.copySel();
       if (b.dataset.sel === 'del') active.deleteSel();
       if (b.dataset.sel === 'none') { active.sel = []; active.clearLive(); active.guide(); }
