@@ -1379,7 +1379,10 @@ const TEST_PLAYER = (() => {
     _unlockExamMode();
   }
 
-  return { init, startTest, isExamRunning, isInProgress, abandon };
+  // read-only look at the open test, for the Board Mode pen (core/penOverlay.js)
+  function peek() { return { questions: state.questions || [], current: state.current, mode: state.mode, title: state.quiz?.title || '' }; }
+
+  return { init, startTest, isExamRunning, isInProgress, abandon, peek };
 })();
 
 window.TEST_PLAYER = TEST_PLAYER;

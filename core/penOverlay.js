@@ -3,8 +3,9 @@
    Global: PEN_BOARD
 
    Only in Board Mode (body.mode-board), on every screen; the board brings the
-   question of MCQ practice (screen-quiz), an exercise (screen-exercise) or an
-   open note (screen-notes, part by part), elsewhere it is a plain board.
+   question of MCQ practice (screen-quiz), a chapter's MCQ test (screen-test-player,
+   via TEST_PLAYER.peek), an exercise (screen-exercise) or an open note
+   (screen-notes, part by part); elsewhere it is a plain board.
    Never during an exam / महा-Test.
    A yellow ✏️ button opens:
      ⬜ / ⬛ board — the app is covered, the open question comes along as a
@@ -154,6 +155,39 @@ const PEN_BOARD = (() => {
     async go(i) { return i; },
     onClose(i) { this.parts()[i]?.els[0].scrollIntoView({ block: 'start' }); },
   };
+  // a chapter's MCQ test (screen-test-player) in practice / test mode — never an exam
+  const SRC_TP = {
+    kind: 'mcq',
+    peek() { return window.TEST_PLAYER?.peek?.() || { questions: [] }; },
+    count() { return this.peek().questions.length; },
+    index() { return Math.max(0, this.peek().current || 0); },
+    item(i) {
+      const pk = this.peek(), q = pk.questions[i]; if (!q) return null;
+      const live = i === pk.current, type = q.type || 'mcq';
+      let html = `<div>${_rich(q.question)}</div>`;
+      const img = $('tp-q-image');
+      if (live && img?.src && !$('tp-q-image-wrap')?.classList.contains('hidden') && img.getClientRects().length) html += `<img class="pb-qimg" src="${_esc(img.src)}" alt="">`;
+      let opts = null, ans = '';
+      if (type === 'mcq') {
+        const btns = live ? [...($('tp-options-grid')?.querySelectorAll('.option-btn') || [])] : [];
+        opts = btns.map(b => ({ k: b.dataset.key, h: `<b>${_esc(b.dataset.key)})</b> ${b.querySelector('.option-text')?.innerHTML || ''}${b.querySelector('.option-media')?.innerHTML || ''}` }));
+        const a = opts.find(o => o.k === q.answer);
+        ans = a ? a.h : `<b>${_esc(q.answer)}</b>`;
+      } else if (type === 'tf') { opts = [{ k: 'True', h: '✅ True' }, { k: 'False', h: '❌ False' }]; ans = _esc(q.answer); }
+      else ans = _esc(Array.isArray(q.answer) ? q.answer.join(', ') : (typeof q.answer === 'object' ? JSON.stringify(q.answer) : q.answer));
+      return { id: 'tp:' + (q.q_id || i), label: `Q${i + 1}`, title: pk.title, html, opts, ansKey: q.answer, ans, ex: q.explanation ? _rich(q.explanation) : '' };
+    },
+    // the board's ◀ ▶ press the test's own Prev / Next
+    async go(i) {
+      const cur = this.index();
+      if (i === cur) return cur;
+      if (i > cur) { if (cur >= this.count() - 1) return cur; $('tp-next')?.click(); } else $('tp-prev')?.click();
+      for (let t = 0; t < 30 && this.index() === cur; t++) await _sleep(50);
+      await _sleep(150);
+      return this.index();
+    },
+    onClose() {},
+  };
   const SRC_BLANK = {
     kind: 'blank',
     count() { return 1; },
@@ -176,6 +210,7 @@ const PEN_BOARD = (() => {
     if (!b.classList.contains('mode-board')) return null;
     if (window.TEST_PLAYER?.isExamRunning?.()) return null;
     if (_seen($('screen-quiz')) && SRC_QUIZ.count()) return SRC_QUIZ;
+    if (_seen($('screen-test-player')) && _seen($('tp-quiz-view')) && SRC_TP.count()) return SRC_TP;
     const sec = $('ev-questions-section');
     if (_seen($('screen-exercise')) && sec && sec.style.display !== 'none' && SRC_EX.count()) return SRC_EX;
     if (_seen($('screen-notes')) && SRC_NOTE.count()) return SRC_NOTE;
