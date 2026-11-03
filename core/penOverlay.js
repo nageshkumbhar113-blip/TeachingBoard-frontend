@@ -223,6 +223,7 @@ const PEN_BOARD = (() => {
   // ── drawing ─────────────────────────────────────────────
   function _curveCtrl(s) { return [2 * s.h[0] - (s.a[0] + s.b[0]) / 2, 2 * s.h[1] - (s.a[1] + s.b[1]) / 2]; }
   function _axesBox(s) {
+    if (s.box) return s.box;
     if (s.full) return [0, 0, s.W, s.H];
     const L = _axesLen(s), [ax, ay] = s.a;
     return [ax - L, ay - L, ax + L, ay + L];
@@ -624,19 +625,22 @@ const PEN_BOARD = (() => {
       for (const i of [...st.vis].reverse()) {
         const s0 = this.strokes[i];
         if (s0.t !== 'shape' || s0.k !== 'axes' || !s0.full) continue;
-        const s = this.styled(st, i), q = mApply(mInv(this.matOf(st, i)), p);
-        const dy = Math.abs(q[0] - s.a[0]), dx = Math.abs(q[1] - s.a[1]);
-        if (Math.min(dx, dy) > 14) continue;
-        this.axDrag = { i, which: dy <= dx ? 'y' : 'x', a: s.a.slice(), m: this.matOf(st, i) };
+        const s = this.styled(st, i), q = mApply(mInv(this.matOf(st, i)), p), b = _axesBox(s), [ax, ay] = s.a;
+        const ends = [['x1', [b[2], ay]], ['x0', [b[0], ay]], ['y0', [ax, b[1]]], ['y1', [ax, b[3]]]];
+        const end = ends.find(([, e]) => dist(e, q) < 22);
+        const dy = Math.abs(q[0] - ax), dx = Math.abs(q[1] - ay);
+        if (!end && (Math.min(dx, dy) > 14 || q[0] < b[0] - 14 || q[0] > b[2] + 14 || q[1] < b[1] - 14 || q[1] > b[3] + 14)) continue;
+        this.axDrag = { i, which: end ? end[0] : dy <= dx ? 'y' : 'x', a: s.a.slice(), box: b.slice(), m: this.matOf(st, i) };
         this.redraw({ skip: new Set([i]) }); this._axisPaint();
         return true;
       }
       return false;
     }
     _axisPaint() {
-      const g = this.axDrag, st = this.state(), s = { ...this.styled(st, g.i), a: g.a }, x = this.ctx(this.live);
+      const g = this.axDrag, st = this.state(), s = { ...this.styled(st, g.i), a: g.a, box: g.box }, x = this.ctx(this.live);
       this.clearLive(); x.save(); x.transform(...g.m); drawAny(x, s, this.dark()); x.restore();
-      label(x, g.which === 'y' ? '⟷ Y axis' : '↕ X axis', mApply(g.m, g.a));
+      const tip = { y: '⟷ Y axis', x: '↕ X axis', x1: '⟷ X axis longer / shorter', x0: '⟷ X axis longer / shorter', y0: '↕ Y axis longer / shorter', y1: '↕ Y axis longer / shorter' }[g.which];
+      label(x, tip, mApply(g.m, g.which === 'x1' ? [g.box[2], g.a[1]] : g.which === 'x0' ? [g.box[0], g.a[1]] : g.which === 'y0' ? [g.a[0], g.box[1]] : g.which === 'y1' ? [g.a[0], g.box[3]] : g.a));
     }
     // ⬅ ⬆ ⬇ ➡ / arrow keys: move the selection a step (quick repeats make one ↶ step)
     nudgeSel(dx, dy) {
@@ -746,6 +750,16 @@ const PEN_BOARD = (() => {
         label(x, 'Drag the yellow dot to bend', e.h);
       }
       if (S.tool === 'sel' && this.sel.length && !this.drag) { const b = this.selBox(); if (b) this._selRect(x, b, 'Press inside and drag to move'); }
+      if (this.isBoard && !this.axDrag && (S.tool === 'sel' || (S.tool === 'shape' && S.shape === 'axes'))) {
+        const st = this.state();
+        for (const i of st.vis) {
+          const s0 = this.strokes[i]; if (s0.t !== 'shape' || s0.k !== 'axes' || !s0.full) continue;
+          const sx = this.styled(st, i), b = _axesBox(sx), m = this.matOf(st, i), [ax, ay] = sx.a;
+          x.save(); x.fillStyle = 'rgba(59,108,255,.85)';
+          for (const e of [[b[2], ay], [b[0], ay], [ax, b[1]], [ax, b[3]]]) { const q = mApply(m, e); x.beginPath(); x.arc(q[0], q[1], 7, 0, 7); x.fill(); }
+          x.restore();
+        }
+      }
     }
     _pt(e) { const r = this.paper.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5]; }
     _text(p) {
@@ -819,8 +833,14 @@ const PEN_BOARD = (() => {
         if (this.laserOn) { this.lp = p; this.laser.push([p[0], p[1], performance.now()]); return; }
         if (this.bend) { this.bend.h = [p[0], p[1]]; this.redraw(); this.clearLive(); this.guide(); return; }
         if (this.axDrag) {
-          const g = this.axDrag, q = mApply(mInv(g.m), p);
-          if (g.which === 'y') g.a[0] = Math.round(q[0] / GRAPH) * GRAPH; else g.a[1] = Math.round(q[1] / GRAPH) * GRAPH;
+          const g = this.axDrag, q = mApply(mInv(g.m), p), sn = v => Math.round(v / GRAPH) * GRAPH, b = g.box;
+          // an axis stays inside its arms; an arm is at least one square long
+          if (g.which === 'y') g.a[0] = Math.min(b[2] - GRAPH, Math.max(b[0] + GRAPH, sn(q[0])));
+          else if (g.which === 'x') g.a[1] = Math.min(b[3] - GRAPH, Math.max(b[1] + GRAPH, sn(q[1])));
+          else if (g.which === 'x1') b[2] = Math.max(g.a[0] + GRAPH, sn(q[0]));
+          else if (g.which === 'x0') b[0] = Math.min(g.a[0] - GRAPH, sn(q[0]));
+          else if (g.which === 'y0') b[1] = Math.min(g.a[1] - GRAPH, sn(q[1]));
+          else if (g.which === 'y1') b[3] = Math.max(g.a[1] + GRAPH, sn(q[1]));
           this._axisPaint(); return;
         }
         if (this.drag) { this.drag.dx = p[0] - this.drag.p0[0]; this.drag.dy = p[1] - this.drag.p0[1]; this._dragPaint(); return; }
@@ -828,6 +848,10 @@ const PEN_BOARD = (() => {
         if (!s) { if (S.tool === 'er' && e.pointerType !== 'touch') this._cursor(p); return; }
         if (s.t === 'del') { this._wipeAt(p); this._cursor(p); return; }
         if (s.t === 'cset' || s.t === 'shape' || s.t === 'band') s.b = p;
+        if (s.t === 'shape' && s.full) {
+          const L = Math.round(Math.max(Math.abs(p[0] - s.a[0]), Math.abs(p[1] - s.a[1])) / GRAPH) * GRAPH;
+          s.box = L >= GRAPH ? [Math.max(0, s.a[0] - L), Math.max(0, s.a[1] - L), Math.min(s.W, s.a[0] + L), Math.min(s.H, s.a[1] + L)] : undefined;
+        }
         else if (s.t === 'sel') { s.b = p; s.p.push(p); }
         else if (s.t === 'arc') { const g = Math.atan2(p[1] - s.o[1], p[0] - s.o[0]); let d = g - s.last; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; s.a1 += d; s.last = g; }
         else if (s.snap) s.p = [s.p[0], proj(p, s.snap)];
@@ -839,8 +863,8 @@ const PEN_BOARD = (() => {
         if (this.bend) { this.bend = null; this.redo = []; _changed(); return; }
         if (this.axDrag) {
           const g = this.axDrag; this.axDrag = null;
-          const was = this.styled(this.state(), g.i).a;
-          if (g.a[0] !== was[0] || g.a[1] !== was[1]) this.push({ t: 'sty', ch: [[g.i, { a: g.a }]] });
+          const was = this.styled(this.state(), g.i), wb = _axesBox(was);
+          if (g.a[0] !== was.a[0] || g.a[1] !== was.a[1] || g.box.some((v, k) => v !== wb[k])) this.push({ t: 'sty', ch: [[g.i, { a: g.a, box: g.box }]] });
           this.redraw(); this.clearLive(); this.guide(); return;
         }
         if (this.drag) {
