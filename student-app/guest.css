@@ -294,6 +294,10 @@
 .wk-dot { width: 34px; height: 34px; border-radius: 10px; border: 2px solid #e7e1ff; background: #fff; font-weight: 800; cursor: pointer; color: var(--gx-muted); }
 .wk-dot.done { background: #dcfce7; border-color: #86efac; color: var(--gx-green); }
 .wk-dot.cur { border-color: var(--gx-pink); color: var(--gx-pink); }
+.wk-sec { flex-basis: 100%; font-weight: 800; font-size: .82rem; color: var(--gx-muted); margin-top: 4px; }
+.wk-subj { color: var(--gx-pink); }
+.wk-bysub { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .92rem; }
+.wk-bysub td { padding: 4px 6px; border-bottom: 1px solid #ece8ff; }
 .wk-q { animation: none; margin: 0 auto; }
 .wk-qn { font-weight: 800; color: var(--gx-muted); font-size: .9rem; }
 .wk-qt { font-size: 1.2rem; font-weight: 700; margin: 6px 0 12px; line-height: 1.45; }

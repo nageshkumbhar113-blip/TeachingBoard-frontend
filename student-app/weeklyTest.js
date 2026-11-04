@@ -84,8 +84,10 @@ const WEEKLY = (() => {
   }
 
   function _paintCard(card, ev) {
+    const parts = (ev.sections || []).length
+      ? `<div class="wk-meta">${ev.sections.map(s => `${_esc(s.subject)} ${s.count}`).join(' · ')}${ev.negative ? ` · चुकीला −${ev.negative}` : ''}</div>` : '';
     const head = `<div class="wk-tag">🏆 ${_esc(ev.title || 'महा-Test')}</div>
-      <div class="wk-sub">${_esc(ev.subject)} · ${ev.question_count} प्रश्न · ${ev.duration_minutes} मिनिटं</div>`;
+      <div class="wk-sub">${_esc(ev.subject)} · ${ev.question_count} प्रश्न · ${ev.duration_minutes} मिनिटं</div>${parts}`;
     if (ev.state === 'upcoming') {
       card.innerHTML = `${head}
         <div class="wk-when">📅 ${_esc(_when(ev.starts_at))} · सुरू व्हायला <b class="wk-count">${_left(new Date(ev.starts_at) - Date.now())}</b></div>
@@ -217,7 +219,14 @@ const WEEKLY = (() => {
     // same order every time for this person (seeded by their code)
     const seed = String((await API.getStudentProfile?.().catch(() => null))?.student_code || 'x');
     let h = 0; for (const c of seed + ev.event_id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const qs = questions.slice().sort((a, b) => ((h ^ _hash(a.q_id)) >>> 0) - ((h ^ _hash(b.q_id)) >>> 0));
+    const mix = arr => arr.slice().sort((a, b) => ((h ^ _hash(a.q_id)) >>> 0) - ((h ^ _hash(b.q_id)) >>> 0));
+    let qs;
+    if (ev.paper_order === 'sections') {
+      const groups = new Map();
+      questions.forEach(q => { const k = q.subject || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(q); });
+      qs = [...groups.values()].flatMap(mix);
+    } else qs = mix(questions);
+    const paperMode = !!ev.paper_order;
     const deadline = Math.min(st.startedAt + ev.duration_minutes * 60000, new Date(ev.ends_at).getTime());
     const save = () => DB.setSetting(_stateKey(ev.event_id), { startedAt: st.startedAt, answers: st.answers, leave: st.leave }).catch(() => {});
     save();
@@ -242,7 +251,7 @@ const WEEKLY = (() => {
       const given = st.answers[q.q_id] || '';
       const opts = Object.entries(q.options || {}).filter(([, v]) => String(v ?? '').trim());
       el.querySelector('#wk-q').innerHTML = `
-        <div class="wk-qn">प्रश्न ${st.i + 1} / ${qs.length}</div>
+        <div class="wk-qn">प्रश्न ${st.i + 1} / ${qs.length}${paperMode && q.subject ? ` · <span class="wk-subj">${_esc(q.subject)}</span>` : ''}${paperMode && q.marks && q.marks !== 1 ? ` · ${q.marks} गुण` : ''}</div>
         <div class="wk-qt">${_esc(q.question)}</div>
         ${q.image ? `<img class="wk-img" src="${_esc(q.image)}" alt="">` : ''}
         ${q.type === 'fib'
@@ -256,7 +265,7 @@ const WEEKLY = (() => {
       window.MATH?.renderElement?.(el.querySelector('#wk-q'));
     };
     const palette = () => {
-      el.querySelector('#wk-pal').innerHTML = qs.map((q, k) => `<button type="button" class="wk-dot${String(st.answers[q.q_id] || '').trim() ? ' done' : ''}${k === st.i ? ' cur' : ''}" data-i="${k}">${k + 1}</button>`).join('');
+      el.querySelector('#wk-pal').innerHTML = qs.map((q, k) => `${ev.paper_order === 'sections' && q.subject && (k === 0 || qs[k - 1].subject !== q.subject) ? `<span class="wk-sec">${_esc(q.subject)}</span>` : ''}<button type="button" class="wk-dot${String(st.answers[q.q_id] || '').trim() ? ' done' : ''}${k === st.i ? ' cur' : ''}" data-i="${k}">${k + 1}</button>`).join('');
       el.querySelectorAll('.wk-dot').forEach(b => b.onclick = () => { st.i = Number(b.dataset.i); paint(); });
     };
     el.querySelector('#wk-prev').onclick = () => { if (st.i > 0) { st.i--; paint(); } };
@@ -300,12 +309,18 @@ const WEEKLY = (() => {
       <div class="gx-card">
         <div class="gx-logo">✅</div>
         <h2 class="gx-title">Test जमा झालं!</h2>
-        ${res ? `<p class="gx-sub">तुमचे गुण: <b class="gx-grad-text" style="font-size:1.6rem">${res.score} / ${res.total}</b></p>` : '<p class="gx-sub">Internet आल्यावर आपोआप जमा होईल.</p>'}
+        ${res ? `<p class="gx-sub">तुमचे गुण: <b class="gx-grad-text" style="font-size:1.6rem">${res.score} / ${res.total}</b></p>${_bySubject(res.by_subject)}` : '<p class="gx-sub">Internet आल्यावर आपोआप जमा होईल.</p>'}
         <p class="gx-sub">🏆 Rank list आणि बरोबर उत्तरं <b>${_esc(_when(ev.reveal_at || ev.ends_at))}</b> ला</p>
         <button type="button" class="gx-btn gx-big" id="wk-done">🏠 Home</button>
       </div>`;
     window.GUEST?.fireworks?.(.8);
     el.querySelector('#wk-done').onclick = () => { el.remove(); window.APP?.loadHome?.(); };
+  }
+
+  // a mixed paper's marks, subject by subject
+  function _bySubject(rows) {
+    if (!Array.isArray(rows) || rows.length < 2) return '';
+    return `<table class="wk-bysub"><tbody>${rows.map(r => `<tr><td>${_esc(r.subject)}</td><td><b>${r.score}/${r.total}</b></td><td>✅ ${r.correct}${r.wrong ? ` · ❌ ${r.wrong}` : ''}</td></tr>`).join('')}</tbody></table>`;
   }
 
   async function _retryPendingSubmit() {
@@ -334,7 +349,8 @@ const WEEKLY = (() => {
         ${me ? `
           <div class="wk-rank-big">${me.rank ? medal(me.rank) : '—'}</div>
           <div class="gx-sub">${d.participants} students पैकी तुमचा क्रमांक</div>
-          <div class="gx-stats"><div class="gx-stat">🎯 ${me.score}/${me.total}<small>गुण</small></div><div class="gx-stat">✅ ${me.correct}<small>बरोबर</small></div><div class="gx-stat">⏱ ${me.time_taken < 60 ? me.time_taken + ' से' : Math.round(me.time_taken / 60) + ' मि'}<small>वेळ</small></div></div>`
+          <div class="gx-stats"><div class="gx-stat">🎯 ${me.score}/${me.total}<small>गुण</small></div><div class="gx-stat">✅ ${me.correct}<small>बरोबर</small></div><div class="gx-stat">⏱ ${me.time_taken < 60 ? me.time_taken + ' से' : Math.round(me.time_taken / 60) + ' मि'}<small>वेळ</small></div></div>
+          ${_bySubject(me.by_subject)}`
           : '<p class="gx-sub">तुम्ही हा test दिला नाही. पुढच्या आठवड्यात नक्की द्या!</p>'}
         <h3 class="wk-h">🏆 Rank Board · ${d.participants} students</h3>
         <ol class="wk-top10 wk-board">${d.top.map(t => `<li class="${t.me ? 'me' : ''}${t.rank <= 3 ? ' podium' : ''}"><span>${medal(t.rank)}</span><span>${_esc(t.name)}${t.me ? ' (तुम्ही)' : ''}</span><b>${t.score}/${t.total}</b></li>`).join('')}
@@ -346,7 +362,7 @@ const WEEKLY = (() => {
         <details class="wk-review"><summary>📖 बरोबर उत्तरं बघा</summary>
           ${d.review.map((q, i) => {
             const ok = q.given && (q.given === q.answer || String((q.options || {})[q.given] ?? q.given).trim().toLowerCase() === String((q.options || {})[q.answer] ?? q.answer).trim().toLowerCase());
-            return `<div class="wk-rv ${q.given ? (ok ? 'ok' : 'bad') : 'skip'}"><b>${i + 1}. ${_esc(q.question)}</b>
+            return `<div class="wk-rv ${q.given ? (ok ? 'ok' : 'bad') : 'skip'}">${q.subject && (i === 0 || d.review[i - 1].subject !== q.subject) && d.paper_order === 'sections' ? `<div class="wk-sec">${_esc(q.subject)}</div>` : ''}<b>${i + 1}. ${_esc(q.question)}</b>
               <div>✅ ${_esc((q.options || {})[q.answer] ?? q.answer)}${q.given && !ok ? ` · ❌ तुमचं: ${_esc((q.options || {})[q.given] ?? q.given)}` : ''}${!q.given ? ' · ⏭ सोडला' : ''}</div>
               ${q.explanation ? `<small>${_esc(q.explanation)}</small>` : ''}</div>`;
           }).join('')}

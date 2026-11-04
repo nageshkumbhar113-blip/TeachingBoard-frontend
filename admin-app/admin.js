@@ -2054,12 +2054,104 @@ const ADMIN = (() => {
 
   function _wkTypes() { return [...document.querySelectorAll('.wk-type')].filter(c => c.checked).map(c => c.value); }
 
+  // ── Mixed papers: each paper = name, order, negative marks, and per subject: count, marks, chapters ──
+  let _wkPool = [];          // [{ subject, questions, chapters:[{chapter, questions}] }] for the chosen class / types / source
+  let _wkPapers = [];        // the papers being edited
+  const _wkMode = () => document.querySelector('input[name="wk-mode"]:checked')?.value || 'subject';
+  function _wkShowMode() {
+    const papers = _wkMode() === 'papers';
+    document.querySelectorAll('.wk-only-subject').forEach(e => { e.hidden = papers; });
+    document.querySelectorAll('.wk-only-papers').forEach(e => { e.hidden = !papers; });
+    if (papers && !_wkPapers.length) _wkPapers = [_wkNewPaper()];
+    if (papers) _wkPaintPapers();
+  }
+  const _wkNewPaper = () => ({ name: '', order: 'sections', negative: 0, parts: [] });
+  // questions a part can get: its chosen chapters (or the whole subject)
+  function _wkAvail(part) {
+    const s = _wkPool.find(x => x.subject === part.subject);
+    if (!s) return 0;
+    if (!part.chapters?.length) return s.questions;
+    const want = new Set(part.chapters);
+    return (s.chapters || []).filter(c => want.has(c.chapter)).reduce((n, c) => n + c.questions, 0);
+  }
+  function _wkPaintPapers() {
+    const box = $('wk-papers');
+    if (!box) return;
+    box.innerHTML = _wkPapers.map((p, pi) => {
+      // rows: the paper's parts first (in their order), then the class's other subjects (not ticked)
+      const used = new Set(p.parts.map(x => x.subject));
+      const rows = [...p.parts.map(x => ({ ...x, on: true })), ..._wkPool.filter(s => !used.has(s.subject)).map(s => ({ subject: s.subject, chapters: [], count: 10, marks: 1, on: false }))];
+      const total = p.parts.reduce((n, x) => n + (Number(x.count) || 0), 0);
+      const marks = p.parts.reduce((n, x) => n + (Number(x.count) || 0) * (Number(x.marks) || 0), 0);
+      return `<div class="wka-paper" data-p="${pi}">
+        <div class="wka-paper-head">
+          <b>पेपर ${pi + 1}</b>
+          <input class="admin-input" data-f="name" placeholder="पेपरचं नाव, उदा. SAT पेपर" maxlength="60" value="${_esc(p.name)}" aria-label="पेपरचं नाव" />
+          <label>क्रम <select class="admin-input" data-f="order"><option value="sections" ${p.order !== 'mix' ? 'selected' : ''}>📚 विषय क्रमाने</option><option value="mix" ${p.order === 'mix' ? 'selected' : ''}>🔀 Mix</option></select></label>
+          <label>चुकीच्या उत्तराला वजा <input class="admin-input" data-f="negative" type="number" min="0" max="10" step="0.25" value="${Number(p.negative) || 0}" style="width:70px" /></label>
+          ${_wkPapers.length > 1 ? '<button type="button" class="admin-btn-secondary" data-a="delp">🗑️ पेपर काढा</button>' : ''}
+        </div>
+        <table class="wka-parts"><thead><tr><th></th><th>विषय</th><th>Chapters</th><th>प्रश्न</th><th>गुण / प्रश्न</th><th></th></tr></thead><tbody>
+          ${rows.map((x, ri) => {
+            const avail = _wkAvail(x), short = x.on && (Number(x.count) || 0) > avail;
+            const all = !x.chapters?.length, chs = _wkPool.find(s => s.subject === x.subject)?.chapters || [];
+            return `<tr class="${x.on ? '' : 'off'}" data-s="${_esc(x.subject)}">
+              <td><input type="checkbox" data-a="on" ${x.on ? 'checked' : ''} aria-label="${_esc(x.subject)} घ्या" /></td>
+              <td>${_esc(x.subject)}<br><small>${avail} प्रश्न उपलब्ध</small>${short ? `<div class="wka-warn">⚠️ ${x.count} मागितले, फक्त ${avail} आहेत</div>` : ''}</td>
+              <td>${x.on ? `<details><summary>${all ? 'सगळे chapters' : x.chapters.length + ' chapters'}</summary><div class="wka-chap">
+                  <label><input type="checkbox" data-a="allch" ${all ? 'checked' : ''} /> <b>सगळे निवडा</b></label>
+                  ${chs.map(c => `<label><input type="checkbox" data-a="ch" value="${_esc(c.chapter)}" ${all || x.chapters.includes(c.chapter) ? 'checked' : ''} /> ${_esc(c.chapter)} <small>(${c.questions})</small></label>`).join('')}
+                </div></details>` : '—'}</td>
+              <td><input type="number" class="admin-input" data-f="count" min="1" max="200" value="${Number(x.count) || 10}" ${x.on ? '' : 'disabled'} aria-label="प्रश्न" /></td>
+              <td><input type="number" class="admin-input" data-f="marks" min="0.25" max="20" step="0.25" value="${Number(x.marks) || 1}" ${x.on ? '' : 'disabled'} aria-label="गुण" /></td>
+              <td>${x.on && p.order !== 'mix' ? `<button type="button" class="admin-btn-secondary" data-a="up" ${ri === 0 ? 'disabled' : ''} aria-label="वर">⬆</button><button type="button" class="admin-btn-secondary" data-a="down" ${ri >= p.parts.length - 1 ? 'disabled' : ''} aria-label="खाली">⬇</button>` : ''}</td>
+            </tr>`;
+          }).join('')}
+        </tbody></table>
+        <div class="wka-sum">एकूण ${total} प्रश्न · ${marks} गुण${Number(p.negative) ? ` · चुकीला −${Number(p.negative)}` : ''}${p.parts.some(x => (Number(x.count) || 0) > _wkAvail(x)) ? ' · <span class="wka-warn">⚠️ काही विषयांत प्रश्न कमी — जितके आहेत तितके येतील</span>' : ''}</div>
+      </div>`;
+    }).join('') + `<div><button type="button" class="admin-btn-secondary" data-a="addp">➕ आणखी पेपर (आलटून-पालटून येतील)</button></div>`;
+  }
+  function _wkPaperEvent(e) {
+    const t = e.target, pBox = t.closest('.wka-paper');
+    if (t.dataset.a === 'addp') { _wkPapers.push(_wkNewPaper()); _wkPaintPapers(); return; }
+    if (!pBox) return;
+    const p = _wkPapers[Number(pBox.dataset.p)];
+    if (t.dataset.a === 'delp') { _wkPapers.splice(Number(pBox.dataset.p), 1); _wkPaintPapers(); return; }
+    if (t.dataset.f === 'name') { p.name = t.value; return; }
+    if (t.dataset.f === 'order') { p.order = t.value; _wkPaintPapers(); return; }
+    if (t.dataset.f === 'negative') { p.negative = Number(t.value) || 0; if (e.type === 'change') _wkPaintPapers(); return; }
+    const row = t.closest('tr[data-s]'); if (!row) return;
+    const subject = row.dataset.s, idx = p.parts.findIndex(x => x.subject === subject), part = p.parts[idx];
+    if (t.dataset.a === 'on') {
+      if (t.checked && !part) p.parts.push({ subject, chapters: [], count: Number(row.querySelector('[data-f="count"]').value) || 10, marks: Number(row.querySelector('[data-f="marks"]').value) || 1 });
+      if (!t.checked && part) p.parts.splice(idx, 1);
+      _wkPaintPapers(); return;
+    }
+    if (!part) return;
+    if (t.dataset.f === 'count') { part.count = Number(t.value) || 1; if (e.type === 'change') _wkPaintPapers(); return; }
+    if (t.dataset.f === 'marks') { part.marks = Number(t.value) || 1; if (e.type === 'change') _wkPaintPapers(); return; }
+    if (t.dataset.a === 'allch') { part.chapters = []; _wkPaintPapers(); return; }
+    if (t.dataset.a === 'ch') {
+      const chs = [...row.querySelectorAll('[data-a="ch"]')].filter(c => c.checked).map(c => c.value);
+      const allN = row.querySelectorAll('[data-a="ch"]').length;
+      part.chapters = chs.length === allN ? [] : chs;
+      _wkPaintPapers();
+      row.isConnected || $('wk-papers').querySelector(`.wka-paper[data-p="${pBox.dataset.p}"] tr[data-s="${CSS.escape(subject)}"] details`)?.setAttribute('open', '');
+      return;
+    }
+    if (t.dataset.a === 'up' && idx > 0) { [p.parts[idx - 1], p.parts[idx]] = [p.parts[idx], p.parts[idx - 1]]; _wkPaintPapers(); return; }
+    if (t.dataset.a === 'down' && idx < p.parts.length - 1) { [p.parts[idx + 1], p.parts[idx]] = [p.parts[idx], p.parts[idx + 1]]; _wkPaintPapers(); }
+  }
+
   async function _loadWeeklySubjects(preselect) {
     const box = $('wk-subjects'), batch = $('wk-batch')?.value;
     if (!box || !batch) return;
     box.innerHTML = '<span class="import-hint">⏳ विषय आणि प्रश्न मोजत आहे…</span>';
     try {
       const r = await API.adminWeekly('GET', `/pool?batch=${encodeURIComponent(batch)}&types=${_wkTypes().join(',')}&source=${$('wk-source').value}`);
+      _wkPool = r.data || [];
+      if (_wkMode() === 'papers') _wkPaintPapers();
       const keep = Array.isArray(preselect) ? new Set(preselect) : null;
       box.innerHTML = 'विषय (क्रमाने दर आठवड्याला एक): ' + (r.data || []).map(s => `
         <label class="wka-subj${s.questions ? '' : ' empty'}"><input type="checkbox" class="wk-subj" value="${_esc(s.subject)}" ${(!keep || keep.has(s.subject) || (keep.size === 0)) && s.questions ? 'checked' : ''} ${s.questions ? '' : 'disabled'} />
@@ -2083,6 +2175,10 @@ const ADMIN = (() => {
     const types = new Set(s?.question_types?.length ? s.question_types : ['mcq']);
     document.querySelectorAll('.wk-type').forEach(c => { c.checked = types.has(c.value); });
     $('btn-wk-save').textContent = s ? '💾 बदल Save करा' : '💾 Save — automation सुरू';
+    _wkPapers = (s?.papers || []).map(p => ({ ...p, parts: (p.parts || []).map(x => ({ ...x, chapters: [...(x.chapters || [])] })) }));
+    const mode = s?.mode === 'papers' ? 'papers' : 'subject';
+    document.querySelectorAll('input[name="wk-mode"]').forEach(r => { r.checked = r.value === mode; });
+    _wkShowMode();
     _loadWeeklySubjects(s?.subjects || null);
   }
 
@@ -2093,10 +2189,17 @@ const ADMIN = (() => {
       duration_minutes: Number($('wk-dur').value), window_minutes: Number($('wk-win').value),
       question_count: Number($('wk-count').value), question_source: $('wk-source').value, open_to: $('wk-open').value,
       question_types: _wkTypes(), subjects: [...document.querySelectorAll('.wk-subj')].filter(c => c.checked).map(c => c.value), enabled: true,
+      mode: _wkMode(),
     };
+    if (body.mode === 'papers') body.papers = _wkPapers;
     if (!body.batch) { APP.toast('Class निवडा', 'error'); return; }
     if (!body.question_types.length) { APP.toast('किमान एक प्रश्न प्रकार निवडा', 'error'); return; }
-    if (!body.subjects.length) { APP.toast('किमान एक विषय निवडा (ज्यात प्रश्न आहेत)', 'error'); return; }
+    if (body.mode === 'papers') {
+      if (!_wkPapers.length) { APP.toast('किमान एक पेपर बनवा', 'error'); return; }
+      if (_wkPapers.some(p => !String(p.name || '').trim())) { APP.toast('प्रत्येक पेपरला नाव द्या', 'error'); return; }
+      if (_wkPapers.some(p => !p.parts.length)) { APP.toast('प्रत्येक पेपरमध्ये किमान एक विषय निवडा', 'error'); return; }
+      if (!body.subjects.length) body.subjects = [...new Set(_wkPapers.flatMap(p => p.parts.map(x => x.subject)))];
+    } else if (!body.subjects.length) { APP.toast('किमान एक विषय निवडा (ज्यात प्रश्न आहेत)', 'error'); return; }
     if (body.window_minutes < body.duration_minutes) { APP.toast('खिडकी test च्या वेळेइतकी किंवा जास्त हवी', 'error'); return; }
     const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
     if (body.result_time && toMin(body.result_time) < toMin(body.start_time) + body.window_minutes) { APP.toast('Result ची वेळ test संपल्यानंतरची हवी', 'error'); return; }
@@ -2125,11 +2228,13 @@ const ADMIN = (() => {
       _wkSchedules.forEach(s => {
         const item = document.createElement('div');
         item.className = 'batch-admin-item';
-        const next = s.next ? (s.next.status === 'skipped' ? '⚠️ पुढचा test बनला नाही (प्रश्न नाहीत)' : `पुढचा: <b>${_esc(s.next.subject)}</b> · ${_esc(new Date(s.next.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · ${s.next.questions} प्रश्न`) : '—';
+        const short = (s.next?.shortages || []).map(x => `${_esc(x.subject)}: ${x.want} मागितले, ${x.got} मिळाले`).join(' · ');
+        const next = s.next ? (s.next.status === 'skipped' ? '⚠️ पुढचा test बनला नाही (प्रश्न नाहीत)' : `पुढचा: <b>${_esc(s.next.subject)}</b> · ${_esc(new Date(s.next.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · ${s.next.questions} प्रश्न${short ? ` <span class="wka-warn">⚠️ प्रश्न कमी — ${short}</span>` : ''}`) : '—';
+        const what = s.mode === 'papers' ? `पेपर आलटून-पालटून: ${(s.papers || []).map(p => _esc(p.name)).join(' → ')}` : `${s.question_count} प्रश्न`;
         item.innerHTML = `
           <div>
             <div class="batch-admin-name">${s.enabled ? '🟢' : '⏸️'} ${_esc(s.title)} · ${_esc(s.batch)}</div>
-            <div class="batch-admin-meta">दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} ते ${_esc(_wkEnd(s))} · Result ${_esc(s.result_time || _wkEnd(s))} · ${s.duration_minutes} मि test · ${s.question_count} प्रश्न · ${_esc((s.question_types || []).join(', '))} · ${s.open_to === 'paid' ? 'फक्त paid' : 'सगळे'}</div>
+            <div class="batch-admin-meta">दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} ते ${_esc(_wkEnd(s))} · Result ${_esc(s.result_time || _wkEnd(s))} · ${s.duration_minutes} मि test · ${what} · ${_esc((s.question_types || []).join(', '))} · ${s.open_to === 'paid' ? 'फक्त paid' : 'सगळे'}</div>
             <div class="batch-admin-meta">${next}</div>
           </div>
           <div class="batch-admin-actions">
@@ -2145,9 +2250,10 @@ const ADMIN = (() => {
           btn.disabled = true; btn.textContent = '⏳ बनत आहे…';   // one click = one trial (server also allows only one at a time)
           try {
             const r = await API.adminWeekly('POST', `/schedules/${s._id}/trial`, { start_in_minutes: 1, window_minutes: 30 });
-            APP.toast(r.existing
+            const short = (r.data.shortages || []).map(x => `${x.subject} ${x.got}/${x.want}`).join(', ');
+            APP.toast((r.existing
               ? `ℹ️ Trial आधीच चालू आहे: ${r.data.subject}, ${r.data.questions} प्रश्न. Student app मध्ये बघा.`
-              : `✅ Trial: ${r.data.subject}, ${r.data.questions} प्रश्न — 1 मिनिटात सुरू (30 मि खिडकी). Student app मध्ये बघा.`, 'success');
+              : `✅ Trial: ${r.data.subject}, ${r.data.questions} प्रश्न — 1 मिनिटात सुरू (30 मि खिडकी). Student app मध्ये बघा.`) + (short ? ` ⚠️ प्रश्न कमी: ${short}` : ''), short ? 'info' : 'success');
             _loadWeekly();
           } catch (err) {
             APP.toast(err?.message || 'Trial बनला नाही', 'error');
@@ -4062,7 +4168,11 @@ const ADMIN = (() => {
     $('btn-ex-add')?.addEventListener('click', _addExamDate);
     $('btn-wk-save')?.addEventListener('click', _saveWeekly);
     $('btn-wk-new')?.addEventListener('click', () => _fillWeeklyForm(null));
-    $('wk-batch')?.addEventListener('change', _loadWeeklySubjects);
+    $('wk-batch')?.addEventListener('change', () => { _wkPapers = _wkPapers.map(p => ({ ...p, parts: [] })); _loadWeeklySubjects(); });
+    document.querySelectorAll('input[name="wk-mode"]').forEach(r => r.addEventListener('change', _wkShowMode));
+    $('wk-papers')?.addEventListener('input', _wkPaperEvent);
+    $('wk-papers')?.addEventListener('change', _wkPaperEvent);
+    $('wk-papers')?.addEventListener('click', e => { if (e.target.closest('button')) _wkPaperEvent({ target: e.target.closest('button'), type: 'click' }); });
     $('wk-source')?.addEventListener('change', _loadWeeklySubjects);
     document.querySelectorAll('.wk-type').forEach(c => c.addEventListener('change', _loadWeeklySubjects));
     $('gl-days')?.addEventListener('change', _loadGuestFunnel);

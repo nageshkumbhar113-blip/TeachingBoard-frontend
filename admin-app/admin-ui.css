@@ -2591,6 +2591,22 @@ body.admin-app {
 .pb-selectall { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; color: var(--text2, #666); cursor: pointer; user-select: none; }
 .pb-selectall input { margin: 0; accent-color: var(--accent); }
 
+/* महा-Test mixed papers editor */
+.wk-only-subject[hidden], .wk-only-papers[hidden] { display: none !important; }
+.wka-mode { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-weight: 600; }
+.wka-mode label { font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+.wka-papers { grid-column: 1 / -1; display: grid; gap: 12px; }
+.wka-paper { border: 1px solid var(--border, #d8dee8); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
+.wka-paper-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wka-paper-head .admin-input { width: auto; flex: 1 1 160px; }
+.wka-parts { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.wka-parts th, .wka-parts td { padding: 4px 6px; border-bottom: 1px solid var(--border, #e3e8ef); text-align: left; vertical-align: top; }
+.wka-parts input[type=number] { width: 64px; }
+.wka-parts tr.off td:not(:first-child) { opacity: .45; }
+.wka-warn { color: #b45309; font-weight: 600; }
+.wka-chap { margin-top: 4px; display: grid; gap: 2px; max-height: 180px; overflow: auto; padding: 6px; border: 1px dashed var(--border, #d8dee8); border-radius: 8px; }
+.wka-sum { font-weight: 700; }
+
 /* Free part (guest.js): link, funnel, leads — admin Sync tab */
 .gxa-card { border: 2px solid #ffb38a; background: linear-gradient(180deg, #fff7f0, #fff); }
 .gxa-msg { white-space: pre-wrap; font: 600 0.82rem/1.5 inherit; background: #f6f3ff; border-radius: 10px; padding: 8px 10px; margin: 8px 0 0; color: #3b2d6b; }

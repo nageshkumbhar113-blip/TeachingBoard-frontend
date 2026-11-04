@@ -886,7 +886,11 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                 <label>Test चा वेळ (मिनिटं) <input id="wk-dur" class="admin-input" type="number" min="5" max="180" value="30" /></label>
                 <label>सुरू करायची खिडकी (मिनिटं) <input id="wk-win" class="admin-input" type="number" min="10" max="1440" value="30" /></label>
                 <label>Result (rank list) वेळ <input id="wk-result" class="admin-input" type="time" value="20:00" /></label>
-                <label>प्रश्न <input id="wk-count" class="admin-input" type="number" min="5" max="100" value="30" /></label>
+                <div class="wka-mode" role="radiogroup" aria-label="Test चा प्रकार">Test चा प्रकार:
+                  <label><input type="radio" name="wk-mode" value="subject" checked /> 🔁 एक विषय दर आठवड्याला</label>
+                  <label><input type="radio" name="wk-mode" value="papers" /> 🧩 Mixed पेपर (आलटून-पालटून)</label>
+                </div>
+                <label class="wk-only-subject">प्रश्न <input id="wk-count" class="admin-input" type="number" min="5" max="100" value="30" /></label>
                 <label>प्रश्न कुठून <select id="wk-source" class="admin-input"><option value="both">Question Bank + Tests</option><option value="bank">फक्त Question Bank</option><option value="tests">फक्त आधीचे Tests</option></select></label>
                 <label>कोणासाठी <select id="wk-open" class="admin-input"><option value="all">सगळे (free सुद्धा)</option><option value="paid">फक्त paid students</option></select></label>
                 <div class="wka-types">प्रश्नाचा प्रकार:
@@ -894,7 +898,8 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                   <label><input type="checkbox" class="wk-type" value="tf" /> True / False</label>
                   <label><input type="checkbox" class="wk-type" value="fib" /> रिकाम्या जागा</label>
                 </div>
-                <div id="wk-subjects" class="wka-subjects"></div>
+                <div id="wk-subjects" class="wka-subjects wk-only-subject"></div>
+                <div id="wk-papers" class="wka-papers wk-only-papers" hidden></div>
               </div>
               <div class="admin-toolbar">
                 <button id="btn-wk-save" class="admin-btn-primary" type="button">💾 Save — automation सुरू</button>
