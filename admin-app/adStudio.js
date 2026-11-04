@@ -701,40 +701,58 @@ const AD_STUDIO = (() => {
       return { ...r, cpt: cpt(r), cpp: cpp(r), verdict: v, tone, by: usePaid ? 'paid' : 'test' };
     });
   }
-  async function _loadBoard() {
+  async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
     box.innerHTML = '<p class="import-hint">⏳ उघडत आहे…</p>';
     try {
       const days = Number($('ads-days')?.value || 30);
-      const f = await API.fetchGuestFunnel(days);
+      // Meta's own numbers (spend, views, link clicks) when Meta is connected on the server
+      const [f, meta] = await Promise.all([
+        API.fetchGuestFunnel(days),
+        Promise.resolve(API.fetchMetaAds?.(days, { fresh })).catch(err => ({ connected: false, error: err?.message || '' })),
+      ]);
+      const M = meta?.connected ? (meta.by_name || {}) : {};
       const spend = await _spend();
       const V = _variants(_facts());
       // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
+      const ours = id => /^t-/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
       const audOfId = id => { const m = /^t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).find(v => id.endsWith('-' + v)); return V[k]?.aud || 'parent'; };
-      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend)]);
+      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend), ...Object.keys(M).filter(ours)]);
+      const odd = Object.values(M).filter(m => !ours(m.name.toLowerCase()));
       const rs = n => Number.isFinite(n) ? '₹' + Math.round(n) : '—';
+      const num = n => n >= 1e5 ? (n / 1e5).toFixed(1) + 'L' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+      // spend: from Meta when the ad is there (read-only), else typed by the admin
+      const spendCell = r => M[r.id] ? `<b>₹${Math.round(r.spend)}</b> <small class="ads-meta">Meta</small>`
+        : `<input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" />`;
+      const metaCell = id => M[id] ? `${num(M[id].impressions)} · ${M[id].clicks}${M[id].clicks ? ` <small>(₹${Math.round(M[id].spend / M[id].clicks)}/click)</small>` : ''}` : '—';
+      const status = !meta ? '' : meta.connected
+        ? `<p class="ads-meta-line ok">🔗 Meta जोडलं: <b>${_esc(meta.account?.name || '')}</b> · ${_esc(meta.account?.currency || '')} · ${_esc(meta.since || '')} ते ${_esc(meta.until || '')} · ${Object.keys(M).length} ads</p>`
+        : meta.error ? `<p class="ads-meta-line bad">⚠️ ${_esc(meta.error)}</p>`
+        : '<p class="ads-meta-line">🔗 Meta जोडलेलं नाही — खर्च हाताने लिहा.</p>';
       const groups = Object.keys(AUD).map(aud => {
         const mine = [...ids].filter(id => audOfId(id) === aud);
         if (!mine.length) return '';
-        const sp = id => Number(spend[id]) || 0;
+        const sp = id => M[id] ? M[id].spend : (Number(spend[id]) || 0);
         if (isTeacher(aud)) {
           const rows = verdicts(mine.map(id => { const t = f.by_teacher_ad?.[id] || {}; return { id, opened: 0, tested: t.registered || 0, paid: t.paid || 0, spend: sp(id), approved: t.approved || 0, students: t.students || 0 }; }))
             .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt));
-          return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>नोंदणी</th><th>Approve</th><th>त्यांनी आणलेली मुलं</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / नोंदणी</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
-            ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
-              <td><input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" /></td>
+          return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>नोंदणी</th><th>Approve</th><th>त्यांनी आणलेली मुलं</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / नोंदणी</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
+            ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
+              <td>${spendCell(r)}</td>
               <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b></td></tr>`).join('')}</tbody></table>`;
         }
         const rows = verdicts(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id) })))
           .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt) || b.opened - a.opened);
-        return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
-          ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
-            <td><input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" /></td>
+        return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
+          ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
+            <td>${spendCell(r)}</td>
             <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b></td></tr>`).join('')}</tbody></table>`;
       }).join('');
-      if (!groups) { box.innerHTML = '<p class="import-hint">अजून कोणत्याही ad मधून कोणी आलं नाही. Ad चालू केल्यावर इथे आकडे येतील.</p>'; return; }
-      box.innerHTML = `${groups}
-      <p class="import-hint">प्रत्येक गटातल्या ads ची तुलना त्याच गटातल्या ads शी. पालक / विद्यार्थी: "₹ प्रति test", teachers: "₹ प्रति नोंदणी"; 2 ads ना 3+ paid झाले की "₹ प्रति paid" वरून. ₹500 खर्च किंवा 30 जणांनी link उघडल्यावरच निर्णय. Meta मधला खर्च इथे लिहा.</p>`;
+      // Meta ads whose name is not one of our ad ids: their numbers can't be matched
+      const oddHtml = odd.length ? `<p class="ads-meta-line bad">ℹ️ Meta मधल्या या ads चं नाव आपल्या ad id सारखं नाही, म्हणून त्यांचे आकडे जुळत नाहीत: ${odd.map(m => `<b>${_esc(m.name)}</b> (₹${Math.round(m.spend)})`).join(', ')}. Ads Manager मध्ये ad चं नाव ad id सारखं ठेवा (उदा. 10th-r-guide).</p>` : '';
+      if (!groups) { box.innerHTML = `${status}${oddHtml}<p class="import-hint">अजून कोणत्याही ad मधून कोणी आलं नाही. Ad चालू केल्यावर इथे आकडे येतील.</p>`; return; }
+      box.innerHTML = `${status}${groups}${oddHtml}
+      <p class="import-hint">प्रत्येक गटातल्या ads ची तुलना त्याच गटातल्या ads शी. पालक / विद्यार्थी: "₹ प्रति test", teachers: "₹ प्रति नोंदणी"; 2 ads ना 3+ paid झाले की "₹ प्रति paid" वरून. ₹500 खर्च किंवा 30 जणांनी link उघडल्यावरच निर्णय. ${meta?.connected ? 'खर्च Meta कडून आपोआप येतो (10 मिनिटांत एकदा ताजा).' : 'Meta मधला खर्च इथे लिहा.'}</p>`;
       box.querySelectorAll('.ads-spend').forEach(inp => inp.addEventListener('change', async () => { await _saveSpend(inp.dataset.id, inp.value); _loadBoard(); }));
     } catch (err) { box.innerHTML = `<p class="import-hint">आकडे आणता आले नाहीत: ${_esc(err?.message || '')}</p>`; }
   }
@@ -843,8 +861,8 @@ const AD_STUDIO = (() => {
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
-      $('ads-refresh').addEventListener('click', _loadBoard);
-      $('ads-days').addEventListener('change', _loadBoard);
+      $('ads-refresh').addEventListener('click', () => _loadBoard(true));
+      $('ads-days').addEventListener('change', () => _loadBoard());
       st.t0 = performance.now();
       _raf = requestAnimationFrame(_loop);
     }

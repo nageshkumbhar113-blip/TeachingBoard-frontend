@@ -2663,3 +2663,9 @@ body.admin-app {
 .ads-split-i { display: inline-block; margin: 4px 10px 0 0; font-weight: 600; }
 .ads-warn { background: #fff7d6; border: 1px solid #ffc83d; color: #5a3b00; border-radius: 10px; padding: 8px 10px; font-weight: 700; font-size: .86rem; }
 .ads-aud-h { margin: 12px 0 4px; font-size: .95rem; }
+
+/* Ads: Meta connection line */
+.ads-meta-line { font-size: .84rem; font-weight: 700; margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: #f6f3ff; color: #3b2d6b; }
+.ads-meta-line.ok { background: #ecfdf3; color: #14532d; }
+.ads-meta-line.bad { background: #fff7d6; color: #5a3b00; }
+.ads-meta { font-size: .7rem; font-weight: 800; color: #1877f2; }
