@@ -2677,3 +2677,12 @@ body.admin-app {
 
 .ads-metabox .ads-age { width: 70px; }
 .ads-age-note { font-weight: 600 !important; color: #6b6290 !important; font-size: .74rem; }
+
+.ads-acts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
+.ads-act { border: 1px solid #c9c2e8; background: #fff; border-radius: 8px; padding: 3px 8px; font-weight: 700; font-size: .76rem; cursor: pointer; }
+.ads-act.warn { border-color: #ef4444; color: #b91c1c; }
+.ads-act.good { border-color: #22c55e; color: #15803d; }
+.ads-act[data-sure] { background: #fff7d6; }
+.ads-st { font-size: .72rem; font-weight: 800; }
+.ads-st.on { color: #15803d; }
+.ads-st.off { color: #8a83b3; }

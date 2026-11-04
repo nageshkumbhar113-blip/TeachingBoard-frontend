@@ -2271,6 +2271,12 @@ const API = (() => {
     return request('/guest/admin/meta/ad', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
   }
 
+  // Admin › Ads leaderboard buttons: pause / resume an ad, +20% ad set budget (in Meta)
+  async function metaAction(body) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/meta/action', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+  }
+
   async function fetchGuestFunnel(days = 30) {
     const token = await ensureAdminSession();
     return request(`/guest/admin/funnel?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -3021,7 +3027,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

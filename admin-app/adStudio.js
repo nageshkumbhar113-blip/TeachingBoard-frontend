@@ -789,6 +789,17 @@ const AD_STUDIO = (() => {
       // spend: from Meta when the ad is there (read-only), else typed by the admin
       const spendCell = r => M[r.id] ? `<b>₹${Math.round(r.spend)}</b> <small class="ads-meta">Meta</small>`
         : `<input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" />`;
+      // the ad's state in Meta + the buttons: ⏸ / ▶ for the ad, 🏆 +20% for a winning ad set
+      const S = meta?.connected ? (meta.ads || {}) : {};
+      const actCell = r => {
+        const a = S[r.id]; if (!a) return '';
+        const on = a.status === 'ACTIVE';
+        const btns = [`<small class="ads-st ${on ? 'on' : 'off'}">${on ? '● चालू' : '○ बंद'}</small>`];
+        if (on) btns.push(`<button type="button" class="ads-act${r.tone === 'bad' ? ' warn' : ''}" data-act="pause" data-ad="${_esc(a.ad_id)}">⏸ बंद करा</button>`);
+        else btns.push(`<button type="button" class="ads-act" data-act="resume" data-ad="${_esc(a.ad_id)}">▶ चालू करा</button>`);
+        if (r.tone === 'good' && a.budget) btns.push(`<button type="button" class="ads-act good" data-act="budget" data-adset="${_esc(a.adset_id)}">🏆 बजेट ₹${Math.round(a.budget)} → ₹${Math.round(a.budget * 1.2)}</button>`);
+        return `<div class="ads-acts">${btns.join('')}</div>`;
+      };
       const metaCell = id => M[id] ? `${num(M[id].impressions)} · ${M[id].clicks}${M[id].clicks ? ` <small>(₹${Math.round(M[id].spend / M[id].clicks)}/click)</small>` : ''}` : '—';
       const status = !meta ? '' : meta.connected
         ? `<p class="ads-meta-line ok">🔗 Meta जोडलं: <b>${_esc(meta.account?.name || '')}</b> · ${_esc(meta.account?.currency || '')} · ${_esc(meta.since || '')} ते ${_esc(meta.until || '')} · ${Object.keys(M).length} ads</p>`
@@ -804,20 +815,38 @@ const AD_STUDIO = (() => {
           return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>नोंदणी</th><th>Approve</th><th>त्यांनी आणलेली मुलं</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / नोंदणी</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
             ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
               <td>${spendCell(r)}</td>
-              <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b></td></tr>`).join('')}</tbody></table>`;
+              <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b>${actCell(r)}</td></tr>`).join('')}</tbody></table>`;
         }
         const rows = verdicts(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id) })))
           .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt) || b.opened - a.opened);
         return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
           ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
             <td>${spendCell(r)}</td>
-            <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b></td></tr>`).join('')}</tbody></table>`;
+            <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b>${actCell(r)}</td></tr>`).join('')}</tbody></table>`;
       }).join('');
       // Meta ads whose name is not one of our ad ids: their numbers can't be matched
       const oddHtml = odd.length ? `<p class="ads-meta-line bad">ℹ️ Meta मधल्या या ads चं नाव आपल्या ad id सारखं नाही, म्हणून त्यांचे आकडे जुळत नाहीत: ${odd.map(m => `<b>${_esc(m.name)}</b> (₹${Math.round(m.spend)})`).join(', ')}. Ads Manager मध्ये ad चं नाव ad id सारखं ठेवा (उदा. 10th-r-guide).</p>` : '';
       if (!groups) { box.innerHTML = `${status}${oddHtml}<p class="import-hint">अजून कोणत्याही ad मधून कोणी आलं नाही. Ad चालू केल्यावर इथे आकडे येतील.</p>`; return; }
       box.innerHTML = `${status}${groups}${oddHtml}
       <p class="import-hint">प्रत्येक गटातल्या ads ची तुलना त्याच गटातल्या ads शी. पालक / विद्यार्थी: "₹ प्रति test", teachers: "₹ प्रति नोंदणी"; 2 ads ना 3+ paid झाले की "₹ प्रति paid" वरून. ₹500 खर्च किंवा 30 जणांनी link उघडल्यावरच निर्णय. ${meta?.connected ? 'खर्च Meta कडून आपोआप येतो (10 मिनिटांत एकदा ताजा).' : 'Meta मधला खर्च इथे लिहा.'}</p>`;
+      // buttons act in Meta: first press asks "पक्कं?", the second does it
+      box.querySelectorAll('.ads-act').forEach(btn => btn.addEventListener('click', async () => {
+        if (!btn.dataset.sure) {
+          btn.dataset.label = btn.textContent; btn.dataset.sure = '1'; btn.textContent = 'पक्कं? पुन्हा दाबा';
+          setTimeout(() => { if (btn.isConnected && btn.dataset.sure) { delete btn.dataset.sure; btn.textContent = btn.dataset.label; } }, 4000);
+          return;
+        }
+        btn.disabled = true; btn.textContent = '⏳';
+        try {
+          const out = btn.dataset.act === 'budget' ? await API.metaAction({ action: 'budget', adset_id: btn.dataset.adset })
+            : await API.metaAction({ action: btn.dataset.act, ad_id: btn.dataset.ad });
+          APP.toast(btn.dataset.act === 'budget' ? `${out.name}: बजेट ₹${out.from} → ₹${out.to}` : `${out.name}: ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}`, 'success');
+          _loadBoard(true);
+        } catch (err) {
+          APP.toast(err?.message || 'Meta मध्ये बदल झाला नाही', 'error');
+          btn.disabled = false; delete btn.dataset.sure; btn.textContent = btn.dataset.label;
+        }
+      }));
       box.querySelectorAll('.ads-spend').forEach(inp => inp.addEventListener('change', async () => { await _saveSpend(inp.dataset.id, inp.value); _loadBoard(); }));
     } catch (err) { box.innerHTML = `<p class="import-hint">आकडे आणता आले नाहीत: ${_esc(err?.message || '')}</p>`; }
   }
