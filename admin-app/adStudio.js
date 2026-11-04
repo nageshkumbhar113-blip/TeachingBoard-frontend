@@ -699,7 +699,17 @@ const AD_STUDIO = (() => {
       const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
       if (out.exists) msg.innerHTML = `ℹ️ <b>${_esc(id)}</b> ही ad Meta मध्ये आधीच आहे — दुसरी बनवली नाही.`;
       else if (out.pending) msg.textContent = '⏳ Meta अजून video तयार करत आहे. 2 मिनिटांनी पुन्हा "Meta वर पाठवा" दाबा (video पुन्हा जाणार नाही).';
-      else msg.innerHTML = `✅ <b>${_esc(id)}</b> Meta मध्ये बनली — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये उघडा</a>, तपासा आणि चालू करा.`;
+      else {
+        msg.innerHTML = `✅ <b>${_esc(id)}</b> Meta मध्ये बनली — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये पाहा</a> किंवा इथूनच
+          <button type="button" class="ads-act good" id="ads-meta-on">▶ आत्ता चालू करा</button>`;
+        const on = $('ads-meta-on');
+        on.addEventListener('click', async () => {
+          if (!on.dataset.sure) { on.dataset.sure = '1'; on.textContent = 'पक्कं? पुन्हा दाबा (आजपासून खर्च सुरू)'; return; }
+          on.disabled = true;
+          try { await API.metaAction({ action: 'resume', ad_id: out.ad_id }); msg.innerHTML = `✅ <b>${_esc(id)}</b> चालू झाली. Meta ती तपासून (साधारण काही तासांत) दाखवायला सुरू करेल.`; _loadBoard(true); }
+          catch (err) { on.disabled = false; delete on.dataset.sure; on.textContent = '▶ आत्ता चालू करा'; APP.toast(err?.message || 'चालू झाली नाही', 'error'); }
+        });
+      }
       return out;
     } catch (err) {
       msg.textContent = `⚠️ ${err?.message || 'Meta वर पाठवता आलं नाही'}`;
@@ -782,7 +792,9 @@ const AD_STUDIO = (() => {
       // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
       const ours = id => /^t-/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
       const audOfId = id => { const m = /^t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).find(v => id.endsWith('-' + v)); return V[k]?.aud || 'parent'; };
-      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend), ...Object.keys(M).filter(ours)]);
+      // every ad that is in Meta under our name shows up (also a new one with no spend yet)
+      const inMeta = meta?.connected ? Object.keys(meta.ads || {}).filter(ours) : [];
+      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend), ...Object.keys(M).filter(ours), ...inMeta]);
       const odd = Object.values(M).filter(m => !ours(m.name.toLowerCase()));
       const rs = n => Number.isFinite(n) ? '₹' + Math.round(n) : '—';
       const num = n => n >= 1e5 ? (n / 1e5).toFixed(1) + 'L' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
