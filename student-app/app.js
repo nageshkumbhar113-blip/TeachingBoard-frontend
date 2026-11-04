@@ -1278,9 +1278,11 @@ const APP = (() => {
       try {
         const server = (document.getElementById('ob-server')?.value || '').trim() || API.DEFAULT_API_URL;
         if (server && window.API?.setApiUrl) API.setApiUrl(server);
+        // came from a Facebook / Instagram ad (?treg=…&ad=ID): the ad gets the credit
+        const signup_ad = _linkParam('ad').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
         const res = await API.registerTeacher(isYt
-          ? { name, mobile, partner_type: 'youtube', channel_name: channelName, channel_url: channelUrl, pin, agree: true }
-          : { name, mobile, partner_type: 'school', institute_name: institute, pin, agree: true });
+          ? { name, mobile, partner_type: 'youtube', channel_name: channelName, channel_url: channelUrl, pin, agree: true, signup_ad }
+          : { name, mobile, partner_type: 'school', institute_name: institute, pin, agree: true, signup_ad });
         const codeEl = document.getElementById('treg-done-code');
         if (codeEl) codeEl.textContent = res?.teacher_code || '';
         tregCard?.classList.add('hidden');
@@ -1295,6 +1297,15 @@ const APP = (() => {
     });
 
     const codeCard = document.getElementById('reg-code-card');
+    // ?treg=school|youtube (a teacher ad's link): the teacher registration form, type already chosen
+    const tregLink = _linkParam('treg').toLowerCase();
+    if (tregLink === 'school' || tregLink === 'youtube') {
+      _linkParamsApplied = true;
+      loginCard?.classList.add('hidden');
+      chooseCard?.classList.add('hidden');
+      tregCard?.classList.remove('hidden');
+      _setTregType(tregLink);
+    }
     _applyRegistrationLinkParams(loginCard, regCard);
     window.TEACHER_CONNECT?.onLoginScreen();   // teacher's join link: code ready in Register
     // Fresh install from a Play Store share link: open Register with the code already filled in

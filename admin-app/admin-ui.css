@@ -2653,3 +2653,13 @@ body.admin-app {
 .ads-table tr.good td { background: #ecfdf3; }
 .ads-table tr.bad td { background: #fff1f2; }
 .ads-table tr.muted td { color: #8a83b3; }
+.ads-row[hidden], .ads-warn[hidden] { display: none !important; }
+.ads-auds { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; margin: 8px 0; }
+.ads-aud { border: 2px solid #e2dcf7; background: #fff; border-radius: 12px; padding: 8px 10px; cursor: pointer; font-weight: 800; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.ads-aud small { font-weight: 600; color: #6b6290; font-size: .74rem; }
+.ads-aud[aria-pressed="true"] { border-color: #ff4d8d; background: #fff0f6; }
+.ads-budget { margin: 6px 0; font-weight: 700; font-size: .86rem; }
+.ads-budget input { width: 110px; display: inline-block; }
+.ads-split-i { display: inline-block; margin: 4px 10px 0 0; font-weight: 600; }
+.ads-warn { background: #fff7d6; border: 1px solid #ffc83d; color: #5a3b00; border-radius: 10px; padding: 8px 10px; font-weight: 700; font-size: .86rem; }
+.ads-aud-h { margin: 12px 0 4px; font-size: .95rem; }

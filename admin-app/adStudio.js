@@ -2,9 +2,12 @@
    adStudio.js — Admin › Sync › 📣 Ads (Facebook / Instagram)
    Global: AD_STUDIO
 
-   Six video ads per class that differ only in their first seconds (the hook),
-   for A/B testing: 💰 loss, 🧩 10-second challenge, 🏆 this week's topper,
-   ⏰ days to the exam, 🎁 free / no login, 📄 real-paper pattern. Real numbers:
+   Video ads for four audiences — 👨‍👩‍👧 parents (most of the budget), 🎓 students,
+   🏫 school teachers / tutors and ▶️ YouTube teachers. Within an audience the ads
+   differ only in their first seconds (the hook), for A/B testing. Parent and
+   student ads open a free test of the class; teacher ads open the teacher
+   registration (?treg=school|youtube) with the commission from Admin › Partners.
+   Real numbers:
    the class's free tests (/guest/batches), the next exam date, the last
    महा-Test (participants, topper — first name + initial, only when the
    family let the name show). Drawn on a canvas and recorded in this browser
@@ -23,9 +26,17 @@ const AD_STUDIO = (() => {
   const SITE = 'https://teachingboard-frontend.vercel.app';
   const FMT = { 916: [1080, 1920], 45: [1080, 1350], 11: [1080, 1080] };
   const SPEND_KEY = 'ad_spend';   // { [adId]: rupees } on this admin device
+  // who the ad is for, and the share of the daily budget (parents first: they pay)
+  const AUD = {
+    parent:  { name: '👨‍👩‍👧 पालक', share: 70 },
+    student: { name: '🎓 विद्यार्थी', share: 15 },
+    school:  { name: '🏫 School teacher / Tutor', share: 10 },
+    youtube: { name: '▶️ YouTube teacher', share: 5 },
+  };
+  const isTeacher = a => a === 'school' || a === 'youtube';
 
-  let _batches = [], _exams = [], _events = [], _ready = false;
-  const st = { batch: '', label: '', v: 'loss', lang: 'both', fmt: '916', t0: 0, paused: false, pausedAt: 0, rec: null };
+  let _batches = [], _exams = [], _events = [], _cfg = {}, _ready = false;
+  const st = { aud: 'parent', batch: '', label: '', v: 'loss', lang: 'both', fmt: '916', t0: 0, paused: false, pausedAt: 0, rec: null };
 
   // ── what the ads say (filled per class) ──
   const T = {
@@ -55,6 +66,7 @@ const AD_STUDIO = (() => {
       examTitle: exam?.title || '',
       players: ev ? (ev.participants || ev.submitted || 0) : 0,
       topName: top ? short(top.name) : '', topScore: top ? `${top.score}/${top.total}` : '',
+      pct: Number(_cfg.school_percent ?? 15), flat: Number(_cfg.youtube_flat ?? 30),
     };
   }
   function _nextExam() {
@@ -70,7 +82,7 @@ const AD_STUDIO = (() => {
     const L = f.label;
     return {
       loss: {
-        name: '💰 नुकसानाची भीती', who: 'पालक', ok: true,
+        aud: 'parent', name: '💰 नुकसानाची भीती', ok: true,
         hook: f.nmms ? ['फक्त 2 गुण कमी पडले…', 'Missed by just 2 marks…'] : [`${L}: फक्त 2 गुण कमी पडले…`, `${L}: missed by just 2 marks…`],
         hook2: f.nmms ? ['…आणि ₹48,000 ची NMMS शिष्यवृत्ती गेली', '…and lost the ₹48,000 NMMS scholarship'] : ['…आणि मेरिट लिस्ट हुकली', '…and missed the merit list'],
         scenes: ['hook', 'question', 'result', 'features', 'offer'],
@@ -79,7 +91,7 @@ const AD_STUDIO = (() => {
         headline: [f.nmms ? 'NMMS: 2 गुणांनी शिष्यवृत्ती जाऊ देऊ नका' : `${L}: 2 गुणांनी मागे पडू नका`, f.nmms ? 'Don\'t lose NMMS by 2 marks' : `${L}: don't miss by 2 marks`],
       },
       challenge: {
-        name: '🧩 10 सेकंद challenge', who: 'मुलं', ok: true,
+        aud: 'student', name: '🧩 10 सेकंद challenge', ok: true,
         hook: [`हा ${f.nmms ? 'NMMS ' : ''}प्रश्न 10 सेकंदात सोडवा!`, `Solve this ${f.nmms ? 'NMMS ' : ''}question in 10 seconds!`],
         scenes: ['challenge', 'question', 'features', 'offer'],
         copy: [`🧩 हा प्रश्न 10 सेकंदात सोडवता येतो का?\nउत्तर आणि युक्ती video मध्ये. ${f.freeTests ? f.freeTests + ' ' : ''}Free tests, दर रविवारी महा-Test आणि तुमचा क्रमांक.\n✅ Login नाही`,
@@ -87,14 +99,14 @@ const AD_STUDIO = (() => {
         headline: ['10 सेकंदात सोडवा 🧩', 'Solve it in 10 seconds 🧩'],
       },
       proof: {
-        name: '🏆 या आठवड्याचा Topper', who: 'दोन्ही', ok: !!(f.players && f.topScore), why: 'आधी या class चा एक महा-Test होऊन result लागायला हवा',
+        aud: 'parent', name: '🏆 या आठवड्याचा Topper', ok: !!(f.players && f.topScore), why: 'आधी या class चा एक महा-Test होऊन result लागायला हवा',
         scenes: ['topper', 'question', 'features', 'offer'],
         copy: [`🏆 या रविवारी ${f.players} मुलांनी महा-Test दिला. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nतुमचं मूल कितव्या क्रमांकावर? आधी Free test द्या.\n✅ Login नाही · लगेच Result`,
           `🏆 ${f.players} students took the Maha-Test this Sunday. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nWhere does your child stand? Start with a free test.\n✅ No login · Instant result`],
         headline: [`या आठवड्याचा Topper ${f.topScore}`, `This week's topper: ${f.topScore}`],
       },
       days: {
-        name: '⏰ परीक्षेला दिवस बाकी', who: 'पालक', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा मध्ये या class ची तारीख टाका',
+        aud: 'parent', name: '⏰ परीक्षेला दिवस बाकी', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा मध्ये या class ची तारीख टाका',
         hook: [`${f.examTitle || 'परीक्षेला'} फक्त`, `${f.examTitle || 'Exam'} in just`], hook2: ['दिवस बाकी', 'days'],
         scenes: ['days', 'features', 'question', 'offer'],
         copy: [`⏰ ${f.examTitle || 'परीक्षेला'} फक्त ${f.days} दिवस बाकी.\nरोज 20 मिनिटं: प्रश्न + युक्ती, सराव tests, दर रविवारी महा-Test.\n✅ आजच Free test द्या`,
@@ -102,23 +114,78 @@ const AD_STUDIO = (() => {
         headline: [`${f.days} दिवस बाकी ⏰`, `${f.days} days left ⏰`],
       },
       free: {
-        name: '🎁 धोका नाही', who: 'दोन्ही', ok: true,
+        aud: 'parent', name: '🎁 धोका नाही', ok: true,
         hook: ['आधी Free Test द्या, मग ठरवा', 'Try a free test first, then decide'],
         scenes: ['free', 'question', 'result', 'offer'],
         copy: [`🎁 आधी Free test द्या, मग ठरवा.\nLogin नाही, फॉर्म नाही. ${L} चे प्रश्न, लगेच गुण आणि क्रमांक.`, `🎁 Take a free test first, then decide.\nNo login, no form. ${L} questions, instant score and rank.`],
         headline: [`Free ${L} Test`, `Free ${L} Test`],
       },
       paper: {
-        name: '📄 खऱ्या पेपरसारखे', who: 'पालक', ok: true,
+        aud: 'parent', name: '📄 खऱ्या पेपरसारखे', ok: true,
         hook: [f.nmms ? 'NMMS च्या खऱ्या पेपरसारखे प्रश्न' : `${L}: खऱ्या पेपरसारखे प्रश्न`, f.nmms ? 'Questions like the real NMMS paper' : `${L}: questions like the real paper`],
         scenes: ['paper', 'question', 'features', 'offer'],
         copy: [`📄 मागील ${f.nmms ? 'NMMS ' : ''}प्रश्नपत्रिकांच्या पद्धतीचे प्रश्न, प्रत्येक उत्तराची युक्तीसह.\nदर रविवारी पूर्ण पेपरसारखा महा-Test आणि क्रमांक.\n✅ आधी Free test`,
           `📄 Questions in the pattern of past ${f.nmms ? 'NMMS ' : ''}papers, every answer with a trick.\nA full-paper Maha-Test every Sunday with ranks.\n✅ Free test first`],
         headline: ['खऱ्या पेपरसारखा सराव', 'Practice like the real paper'],
       },
+      // ── students ──
+      rank: {
+        aud: 'student', name: '🏅 तुझा क्रमांक कितवा?', ok: true,
+        hook: ['या रविवारी तुझा क्रमांक कितवा?', 'What will your rank be this Sunday?'],
+        hook2: [`${L} · महा-Test`, `${L} · Maha-Test`],
+        scenes: ['hook', 'question', 'result', 'offer'],
+        copy: [`🏅 दर रविवारी महा-Test — ${f.players ? f.players + ' मुलांमध्ये ' : ''}तुझा क्रमांक लगेच.\nआधी Free test देऊन सराव कर. Login नाही.`, `🏅 A Maha-Test every Sunday — your rank${f.players ? ' among ' + f.players + ' students' : ''} right away.\nPractise with a free test first. No login.`],
+        headline: ['तुझा क्रमांक पाहा 🏅', 'See your rank 🏅'],
+      },
+      beat: {
+        aud: 'student', name: '⚔️ मित्राला हरव', ok: true,
+        hook: ['तुझ्या मित्रापेक्षा जास्त गुण मिळवशील?', 'Can you beat your friend’s score?'],
+        hook2: ['Test दे · Link पाठव · हरव!', 'Take it · Send the link · Win!'],
+        scenes: ['hook', 'question', 'result', 'offer'],
+        copy: [`⚔️ Free test दे, तुझे गुण मित्राला पाठव आणि बघ कोण जिंकतं!\n${L} चे प्रश्न, लगेच Result.`, `⚔️ Take the free test, send your score to a friend and see who wins!\n${L} questions, instant result.`],
+        headline: ['मित्राला हरव ⚔️', 'Beat your friend ⚔️'],
+      },
+      // ── school teachers / tutors (registration; commission from Admin › Partners) ──
+      'sc-tools': {
+        aud: 'school', name: '📄 पेपर 2 मिनिटात', ok: true,
+        hook: ['उद्याचा पेपर 2 मिनिटात तयार', 'Tomorrow’s paper ready in 2 minutes'],
+        hook2: ['प्रश्न निवडा · PDF · Answer key', 'Pick questions · PDF · Answer key'],
+        scenes: ['hook', 'paper', 'tools', 'earn', 'toffer'],
+        copy: [`📄 Class / Tuition साठी: तयार प्रश्नांमधून पेपर 2 मिनिटात, PDF आणि Answer key.\nमुलांचे tests, गुण एका ठिकाणी, Board pen.\n💰 तुमच्या मुलांनी app घेतलं तर ${f.pct}% तुम्हाला.\n✅ नोंदणी Free`,
+          `📄 For your class / tuition: a paper in 2 minutes from ready questions, PDF and answer key.\nStudents' tests and marks in one place, a board pen.\n💰 Earn ${f.pct}% when your students subscribe.\n✅ Free registration`],
+        headline: ['पेपर 2 मिनिटात · Free', 'Papers in 2 minutes · Free'],
+      },
+      'sc-earn': {
+        aud: 'school', name: `💰 ${f.pct}% कमाई`, ok: true,
+        hook: [`तुमच्या मुलांच्या app मधून तुम्हाला ${f.pct}%`, `Earn ${f.pct}% from your students' app`],
+        hook2: ['काम नाही · फक्त तुमची link', 'No extra work · just your link'],
+        scenes: ['hook', 'earn', 'tools', 'toffer'],
+        copy: [`💰 तुमच्या class link मधून मुलांनी app घेतलं की प्रत्येक पहिल्या payment वर ${f.pct}% तुम्हाला, दर महिन्याला UPI वर.\nसोबत Free: पेपर, tests, गुण.\n✅ आजच नोंदणी करा`,
+          `💰 When students join through your class link, you get ${f.pct}% of each first payment, monthly by UPI.\nFree tools too: papers, tests, marks.\n✅ Register today`],
+        headline: [`${f.pct}% कमाई + Free tools`, `${f.pct}% earnings + free tools`],
+      },
+      // ── YouTube teachers ──
+      'yt-earn': {
+        aud: 'youtube', name: `▶️ ₹${f.flat} प्रति student`, ok: true,
+        hook: ['Video खाली एक link = कमाई', 'One link under your video = earnings'],
+        hook2: [`प्रत्येक paid student मागे ₹${f.flat}`, `₹${f.flat} for every paying student`],
+        scenes: ['hook', 'earn', 'tools', 'toffer'],
+        copy: [`▶️ YouTube वर शिकवता? Video च्या description मध्ये तुमची link द्या.\nतुमच्या viewers नी app घेतलं की प्रत्येक student मागे ₹${f.flat}, दर महिन्याला UPI वर.\n✅ नोंदणी Free`,
+          `▶️ Teach on YouTube? Put your link in the video description.\nEarn ₹${f.flat} for every viewer who subscribes, paid monthly by UPI.\n✅ Free registration`],
+        headline: [`₹${f.flat} प्रति student`, `₹${f.flat} per student`],
+      },
+      'yt-viewers': {
+        aud: 'youtube', name: '🎯 Viewers ना Free tests', ok: true,
+        hook: ['तुमच्या viewers ना Free tests द्या', 'Give your viewers free tests'],
+        hook2: ['Video पाहिला → Test दिला → Rank', 'Watched → Tested → Ranked'],
+        scenes: ['hook', 'question', 'earn', 'toffer'],
+        copy: [`🎯 तुमच्या video नंतर viewers ना लगेच सराव: Free tests, लगेच Result आणि क्रमांक.\nतुम्हाला प्रत्येक paid student मागे ₹${f.flat}.\n✅ नोंदणी Free`,
+          `🎯 Give your viewers practice right after the video: free tests, instant result and rank.\nYou earn ₹${f.flat} per paying student.\n✅ Free registration`],
+        headline: ['Viewers ना Free tests', 'Free tests for your viewers'],
+      },
     };
   }
-  const DUR = { hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, result: 4000, features: 4000, offer: 4000 };
+  const DUR = { tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, result: 4000, features: 4000, offer: 4000 };
 
   // ── drawing ──
   let cv = null, x = null;
@@ -328,6 +395,40 @@ const AD_STUDIO = (() => {
       x.fillStyle = C.red; rr(-170, -55, 340, 110, 20); x.fill(); text(st.lang === 'en' ? 'Real pattern' : 'खरी पद्धत', 0, 2, 44, C.white, 800);
       x.restore();
     },
+    tools(W, H, lt) {
+      const tall = st.fmt === '916', sq = st.fmt === '11';
+      both(['काय मिळतं? (Free)', 'What you get (free)'], W / 2, tall ? 330 : 140, tall ? 76 : 60, tall ? 76 : 60);
+      const rows = [['📄', 'पेपर + PDF + Answer key', 'Paper + PDF + answer key'], ['📝', 'मुलांचे tests आणि गुण', "Students' tests & marks"], ['🖊️', 'Board pen / Whiteboard', 'Board pen / whiteboard'], ['🏆', 'दर रविवारी महा-Test', 'Weekly Maha-Test']];
+      rows.forEach(([ic, mr, en], i) => {
+        const a = outBack(p(lt, 300 + i * 450, 800 + i * 450)); if (a <= 0) return;
+        const rowH = tall ? 230 : sq ? 165 : 190, y0 = (tall ? 560 : sq ? 260 : 300) + i * rowH;
+        x.save(); x.translate(W / 2, y0); x.scale(a, a);
+        x.fillStyle = 'rgba(255,255,255,.95)'; rr(-450, -rowH / 2 + 14, 900, rowH - 28, 40); x.fill();
+        text(ic, -360, 0, tall ? 80 : 64, C.ink, 800);
+        text(st.lang === 'en' ? en : mr, 40, st.lang === 'both' ? -22 : 0, tall ? 50 : 44, C.ink, 800, 'center', 640);
+        if (st.lang === 'both') text(en, 40, 36, 32, '#8a83b3', 700, 'center', 640);
+        x.restore();
+      });
+    },
+    earn(W, H, lt, v, f) {
+      const tall = st.fmt === '916', yt = v.aud === 'youtube';
+      both(yt ? ['प्रत्येक paid student मागे', 'For every paying student'] : ['प्रत्येक पहिल्या payment वर', 'On every first payment'], W / 2, H * .22, tall ? 64 : 52, tall ? 66 : 54, C.white, W - 100);
+      const goal = yt ? f.flat : f.pct, n = Math.round(goal * outCubic(p(lt, 200, 1400)));
+      const s = 1 + Math.sin(lt / 160) * .03;
+      x.save(); x.translate(W / 2, H * .45); x.scale(s, s); text(yt ? `₹${n}` : `${n}%`, 0, 0, tall ? 330 : 260, C.gold, 800); x.restore();
+      both(['दर महिन्याला UPI वर', 'Paid monthly by UPI'], W / 2, H * .45 + (tall ? 240 : 180), tall ? 58 : 48, tall ? 60 : 50);
+      if (lt > 900) confetti(lt - 900, 0, 0, W);
+    },
+    toffer(W, H, lt) {
+      const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), c = outBack(p(lt, 900, 1500)), cy = tall ? H * .3 : H * .24;
+      x.save(); x.translate(W / 2, cy); x.scale(a, a);
+      both(['नोंदणी Free', 'Free registration'], 0, 0, tall ? 96 : 76, tall ? 90 : 72);
+      text(st.lang === 'en' ? 'Commission rules: in the app' : 'Commission चे नियम app मध्ये', 0, tall ? 170 : 135, 38, C.white, 700, 'center', W - 100);
+      x.restore();
+      x.save(); x.translate(W / 2, cy + (tall ? 520 : 360)); const pulse = 1 + Math.sin(lt / 180) * .03; x.scale(c * pulse, c * pulse);
+      x.fillStyle = C.white; rr(-400, -75, 800, 150, 75); x.fill(); text(st.lang === 'en' ? '▶ Become a partner' : '▶ Partner व्हा', 0, 2, 58, C.violet, 800, 'center', 740);
+      x.restore();
+    },
     offer(W, H, lt) {
       const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), b = outBack(p(lt, 800, 1400)), c = outBack(p(lt, 1500, 2100)), cy = tall ? H * .27 : H * .2;
       x.save(); x.translate(W / 2, cy); x.scale(a, a);
@@ -360,12 +461,16 @@ const AD_STUDIO = (() => {
 
   // ── ad id + link + text ──
   const _slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'class';
-  const adId = (v = st.v) => `${_slug(st.batch)}-${v}`;
-  const adLink = (v = st.v) => `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}&src=meta&ad=${encodeURIComponent(adId(v))}`;
+  const _audOf = v => _variants(_facts())[v]?.aud || 'parent';
+  // teacher ads are not tied to a class: t-<variant>
+  const adId = (v = st.v) => isTeacher(_audOf(v)) ? `t-${v}` : `${_slug(st.batch)}-${v}`;
+  const adLink = (v = st.v) => isTeacher(_audOf(v))
+    ? `${SITE}/student-app/?treg=${_audOf(v)}&src=meta&ad=${encodeURIComponent(adId(v))}`
+    : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}&src=meta&ad=${encodeURIComponent(adId(v))}`;
   function adText(v = st.v) {
     const f = _facts(), a = _variants(f)[v];
     const body = st.lang === 'mr' ? a.copy[0] : st.lang === 'en' ? a.copy[1] : `${a.copy[0]}\n\n${a.copy[1]}`;
-    return `Primary text:\n${body}\n\nHeadline: ${st.lang === 'en' ? a.headline[1] : a.headline[0]}\nButton: Learn more\nLink: ${adLink(v)}`;
+    return `Primary text:\n${body}\n\nHeadline: ${st.lang === 'en' ? a.headline[1] : a.headline[0]}\nButton: ${isTeacher(a.aud) ? 'Sign up' : 'Learn more'}\nLink: ${adLink(v)}`;
   }
 
   // ── recording: the canvas as a video, in this browser ──
@@ -422,17 +527,33 @@ const AD_STUDIO = (() => {
       const days = Number($('ads-days')?.value || 30);
       const f = await API.fetchGuestFunnel(days);
       const spend = await _spend();
-      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(spend)]);
-      const rows = verdicts([...ids].map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: Number(spend[id]) || 0 })))
-        .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt) || b.opened - a.opened);
-      if (!rows.length) { box.innerHTML = '<p class="import-hint">अजून कोणत्याही ad मधून कोणी आलं नाही. Ad चालू केल्यावर इथे आकडे येतील.</p>'; return; }
+      const V = _variants(_facts());
+      // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
+      const audOfId = id => { const m = /^t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).find(v => id.endsWith('-' + v)); return V[k]?.aud || 'parent'; };
+      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend)]);
       const rs = n => Number.isFinite(n) ? '₹' + Math.round(n) : '—';
-      box.innerHTML = `<table class="ads-table"><thead><tr><th>Ad</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
-        ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
-          <td><input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" /></td>
-          <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b></td></tr>`).join('')}
-      </tbody></table>
-      <p class="import-hint">निर्णय ${rows[0]?.by === 'paid' ? '"₹ प्रति paid student"' : '"₹ प्रति test देणारा"'} वरून (किमान 2 ads ना 3+ paid झाले की paid वर). ₹500 खर्च किंवा 30 जणांनी link उघडल्यावरच निर्णय. Meta मधला खर्च इथे लिहा.</p>`;
+      const groups = Object.keys(AUD).map(aud => {
+        const mine = [...ids].filter(id => audOfId(id) === aud);
+        if (!mine.length) return '';
+        const sp = id => Number(spend[id]) || 0;
+        if (isTeacher(aud)) {
+          const rows = verdicts(mine.map(id => { const t = f.by_teacher_ad?.[id] || {}; return { id, opened: 0, tested: t.registered || 0, paid: t.paid || 0, spend: sp(id), approved: t.approved || 0, students: t.students || 0 }; }))
+            .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt));
+          return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>नोंदणी</th><th>Approve</th><th>त्यांनी आणलेली मुलं</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / नोंदणी</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
+            ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
+              <td><input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" /></td>
+              <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b></td></tr>`).join('')}</tbody></table>`;
+        }
+        const rows = verdicts(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id) })))
+          .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt) || b.opened - a.opened);
+        return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
+          ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
+            <td><input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" /></td>
+            <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b></td></tr>`).join('')}</tbody></table>`;
+      }).join('');
+      if (!groups) { box.innerHTML = '<p class="import-hint">अजून कोणत्याही ad मधून कोणी आलं नाही. Ad चालू केल्यावर इथे आकडे येतील.</p>'; return; }
+      box.innerHTML = `${groups}
+      <p class="import-hint">प्रत्येक गटातल्या ads ची तुलना त्याच गटातल्या ads शी. पालक / विद्यार्थी: "₹ प्रति test", teachers: "₹ प्रति नोंदणी"; 2 ads ना 3+ paid झाले की "₹ प्रति paid" वरून. ₹500 खर्च किंवा 30 जणांनी link उघडल्यावरच निर्णय. Meta मधला खर्च इथे लिहा.</p>`;
       box.querySelectorAll('.ads-spend').forEach(inp => inp.addEventListener('change', async () => { await _saveSpend(inp.dataset.id, inp.value); _loadBoard(); }));
     } catch (err) { box.innerHTML = `<p class="import-hint">आकडे आणता आले नाहीत: ${_esc(err?.message || '')}</p>`; }
   }
@@ -440,10 +561,20 @@ const AD_STUDIO = (() => {
   // ── panel ──
   function _paintSide() {
     const f = _facts(), V = _variants(f);
-    $('ads-variants').innerHTML = Object.entries(V).map(([k, a]) => `<button type="button" class="ads-var" data-v="${k}" aria-pressed="${k === st.v}" ${a.ok ? '' : 'disabled'} title="${_esc(a.ok ? '' : a.why)}"><b>${a.name}</b><small>${a.who}${a.ok ? '' : ' · ' + _esc(a.why)}</small></button>`).join('');
-    if (!V[st.v].ok) st.v = 'loss';
+    const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud);
+    if (!V[st.v] || V[st.v].aud !== st.aud || !V[st.v].ok) st.v = (mine.find(([, a]) => a.ok) || mine[0])[0];
+    document.querySelectorAll('.ads-aud').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.aud === st.aud)));
+    $('ads-variants').innerHTML = mine.map(([k, a]) => `<button type="button" class="ads-var" data-v="${k}" aria-pressed="${k === st.v}" ${a.ok ? '' : 'disabled'} title="${_esc(a.ok ? '' : a.why)}"><b>${a.name}</b><small>${a.ok ? (st.v === k ? '▶ पाहत आहात' : '') : _esc(a.why)}</small></button>`).join('');
+    $('ads-recvars').innerHTML = mine.map(([k, a]) => `<label><input type="checkbox" class="ads-var-rec" value="${k}" ${a.ok ? 'checked' : 'disabled'} /> ${_esc(a.name)}</label>`).join(' ');
+    const teach = isTeacher(st.aud);
+    $('ads-class-row').hidden = teach;
+    $('ads-teacher-warn').hidden = !teach;
     $('ads-copy').textContent = adText();
-    $('ads-facts').textContent = [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
+    $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student` : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
+  }
+  function _paintBudget() {
+    const total = Math.max(0, Number($('ads-budget')?.value) || 0);
+    $('ads-split').innerHTML = Object.values(AUD).map(a => `<span class="ads-split-i">${a.name}: <b>${a.share}%${total ? ` = ₹${Math.round(total * a.share / 100)}` : ''}</b></span>`).join('');
   }
   let _raf = 0;
   function _loop(now) {
@@ -477,10 +608,16 @@ const AD_STUDIO = (() => {
       _ready = true;
       host.innerHTML = `
         <h3 class="admin-section-title">📣 Facebook / Instagram Ads</h3>
-        <p class="import-hint">एका class च्या 6 ads — फक्त सुरुवात वेगळी. सहाही एकदम चालवा, सगळ्यात स्वस्तात test/paid आणणारी ठेवा, बाकी बंद. Video इथेच (या browser मध्ये) बनतो; server / Cloudinary वर काही जात नाही.</p>
+        <p class="import-hint">प्रत्येक गटाच्या ads — फक्त सुरुवात वेगळी. एका गटाच्या सगळ्या ads एकदम चालवा, सगळ्यात स्वस्तात test / नोंदणी / paid आणणारी ठेवा, बाकी बंद. Video इथेच (या browser मध्ये) बनतो; server / Cloudinary वर काही जात नाही.</p>
+        <div class="ads-auds" role="group" aria-label="कोणासाठी">${Object.entries(AUD).map(([k, a]) => `<button type="button" class="ads-aud" data-aud="${k}" aria-pressed="${k === st.aud}">${a.name}<small>बजेट ${a.share}%</small></button>`).join('')}</div>
+        <div class="ads-budget">रोजचं एकूण बजेट ₹ <input id="ads-budget" type="number" min="0" step="50" class="admin-input" placeholder="उदा. 500" aria-label="रोजचं बजेट" /> <span id="ads-split"></span>
+          <p class="import-hint">पैसे मुख्यतः पालकांच्या ads वर: पैसे पालक भरतात, आणि 13–17 वयाच्या मुलांना Meta फक्त वय / ठिकाणावरून ad दाखवू देतं.</p></div>
+        <p class="ads-warn" id="ads-teacher-warn" hidden>⚠️ Teacher ads मध्ये कमाईचं आश्वासन आहे — ही ad चालवण्याआधी Partner terms page (तारीख, कंपनीचं नाव, शहर, email, फोन) भरा.</p>
         <div class="ads-row">
+          <span class="ads-row" id="ads-class-row" style="margin:0">
           <label>Class <select id="ads-batch" class="admin-input"></select></label>
           <label>Ad मध्ये नाव <input id="ads-label" class="admin-input" maxlength="30" placeholder="उदा. 8वी NMMS" /></label>
+          </span>
           <label>भाषा <select id="ads-lang" class="admin-input"><option value="both">मराठी + English</option><option value="mr">मराठी</option><option value="en">English</option></select></label>
           <label>पाहा <select id="ads-fmt" class="admin-input"><option value="916">9:16 Reels / Stories</option><option value="45">4:5 Feed</option><option value="11">1:1</option></select></label>
         </div>
@@ -493,7 +630,7 @@ const AD_STUDIO = (() => {
             <div class="admin-toolbar"><button type="button" class="admin-btn-secondary" id="ads-copy-btn">📋 मजकूर Copy</button></div>
             <div class="ads-recbox">
               <b>📥 Video download</b>
-              <div>${['loss', 'challenge', 'proof', 'days', 'free', 'paper'].map(k => `<label><input type="checkbox" class="ads-var-rec" value="${k}" checked /> ${k}</label>`).join(' ')}</div>
+              <div id="ads-recvars"></div>
               <div><label><input type="checkbox" class="ads-fmt-rec" value="916" checked /> 9:16</label> <label><input type="checkbox" class="ads-fmt-rec" value="45" checked /> 4:5</label> <label><input type="checkbox" class="ads-fmt-rec" value="11" /> 1:1</label></div>
               <button type="button" class="admin-btn-primary" id="ads-rec">🎬 निवडलेले video बनवा</button>
               <p class="import-hint" id="ads-msg">प्रत्येक video त्याच्या लांबीइतका (≈20 सेकंद) वेळ घेतो.</p>
@@ -508,6 +645,9 @@ const AD_STUDIO = (() => {
       $('ads-label').addEventListener('input', e => { st.label = e.target.value.trim(); _paintSide(); });
       $('ads-lang').addEventListener('change', e => { st.lang = e.target.value; _paintSide(); });
       $('ads-fmt').addEventListener('change', e => { st.fmt = e.target.value; });
+      host.querySelectorAll('.ads-aud').forEach(b => b.addEventListener('click', () => { st.aud = b.dataset.aud; st.t0 = performance.now(); _paintSide(); }));
+      $('ads-budget').addEventListener('input', _paintBudget);
+      _paintBudget();
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
@@ -516,12 +656,13 @@ const AD_STUDIO = (() => {
       st.t0 = performance.now();
       _raf = requestAnimationFrame(_loop);
     }
-    const [b, ex, ev] = await Promise.all([
+    const [b, ex, ev, cfgRes] = await Promise.all([
       API.fetchGuestBatches().catch(() => []),
       API.fetchExamDates().catch(() => []),
       API.adminWeekly('GET', '/events').then(r => r?.data || []).catch(() => []),
+      Promise.resolve(API.fetchPartnerConfig?.()).catch(() => ({})),
     ]);
-    _batches = b; _exams = ex; _events = ev;
+    _batches = b; _exams = ex; _events = ev; _cfg = cfgRes || {};
     const sel = $('ads-batch');
     sel.innerHTML = _batches.map(x0 => `<option value="${_esc(x0.name)}">${_esc(x0.name)} (${Number(x0.free_tests) || 0} free tests)</option>`).join('');
     if (!st.batch || !_batches.some(x0 => x0.name === st.batch)) st.batch = (_batches.find(x0 => /nmms/i.test(x0.name)) || _batches[0] || {}).name || '';
