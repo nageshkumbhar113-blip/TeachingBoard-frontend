@@ -125,6 +125,8 @@ const GUEST = (() => {
       ref: (q.get('ref') || '').slice(0, 40),
       teacher: (q.get('teacher') || '').slice(0, 40),
       shop: (q.get('shop') || '').slice(0, 40),
+      // a Facebook / Instagram ad's own link (Admin › Sync › Ads): ?src=meta&ad=ID
+      ad: (q.get('ad') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40),
     };
   }
   function wantsEntry() { return entryParams().free; }
@@ -148,8 +150,8 @@ const GUEST = (() => {
     const challenge = p.quiz && p.batch ? { quiz: p.quiz, batch: p.batch, from: p.from, fp: p.fp, ref: p.ref } : null;
     // ?ref=CODE without a test = a student's own share link (Refer & Earn)
     // ?shop=CODE = a guide / book shop's link or QR poster
-    const src = challenge ? 'friend' : p.shop ? 'shop' : p.teacher ? 'teacher' : p.ref ? 'student' : p.free ? 'admin' : '';
-    const ref = challenge ? p.ref : p.shop || p.teacher || p.ref;
+    const src = challenge ? 'friend' : p.ad ? 'ad' : p.shop ? 'shop' : p.teacher ? 'teacher' : p.ref ? 'student' : p.free ? 'admin' : '';
+    const ref = challenge ? p.ref : p.ad || p.shop || p.teacher || p.ref;
 
     return new Promise(resolve => {
       const floaters = ['📚', '🏆', '✏️', '🎯', '⭐', '🚀', '🧠', '📝', '🎉', '💡']

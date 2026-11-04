@@ -236,7 +236,7 @@ const ADMIN = (() => {
         const content = $('atab-' + tab.dataset.tab);
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
         if (tab.dataset.tab === 'words')       _loadWordBank();
-        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); _loadFreeLinkClasses(); }
+        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); _loadFreeLinkClasses(); window.AD_STUDIO?.init(); }
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();

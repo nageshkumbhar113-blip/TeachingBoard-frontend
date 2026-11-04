@@ -2633,3 +2633,23 @@ body.admin-app {
 .wka-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .wka-table th, .wka-table td { padding: 6px 8px; border-bottom: 1px solid #ece6ff; text-align: left; }
 .wka-table th { background: #f6f3ff; }
+
+/* Admin › Sync › Ads (adStudio.js) */
+.ads-row { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 8px 0; }
+.ads-row label { display: flex; flex-direction: column; gap: 3px; font-weight: 700; font-size: .82rem; }
+.ads-vars { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
+.ads-var { text-align: left; border: 2px solid #e2dcf7; background: #fff; border-radius: 12px; padding: 7px 9px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.ads-var[aria-pressed="true"] { border-color: #6d3cf0; background: #f3eeff; }
+.ads-var:disabled { opacity: .5; cursor: not-allowed; }
+.ads-var small { color: #6b6290; font-size: .74rem; }
+.ads-stage { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+#ads-cv { width: 270px; max-width: 100%; height: auto; border-radius: 14px; box-shadow: 0 6px 20px rgba(40,20,90,.25); background: #2a0e6b; }
+.ads-side { flex: 1 1 280px; min-width: 0; }
+.ads-recbox { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding: 10px; border-radius: 12px; background: #f6f3ff; }
+.ads-recbox label { font-size: .82rem; margin-right: 8px; }
+.ads-table { width: 100%; border-collapse: collapse; font-size: .84rem; display: block; overflow-x: auto; }
+.ads-table th, .ads-table td { padding: 6px 7px; border-bottom: 1px solid #ece8ff; text-align: left; white-space: nowrap; }
+.ads-table .ads-spend { width: 90px; }
+.ads-table tr.good td { background: #ecfdf3; }
+.ads-table tr.bad td { background: #fff1f2; }
+.ads-table tr.muted td { color: #8a83b3; }
