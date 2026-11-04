@@ -28,10 +28,10 @@ const AD_STUDIO = (() => {
   const SPEND_KEY = 'ad_spend';   // { [adId]: rupees } on this admin device
   // who the ad is for, and the share of the daily budget (parents first: they pay)
   const AUD = {
-    parent:  { name: '👨‍👩‍👧 पालक', share: 70 },
-    student: { name: '🎓 विद्यार्थी', share: 15 },
-    school:  { name: '🏫 School teacher / Tutor', share: 10 },
-    youtube: { name: '▶️ YouTube teacher', share: 5 },
+    parent:  { name: '👨‍👩‍👧 पालक', share: 70, ages: [28, 50] },
+    student: { name: '🎓 विद्यार्थी', share: 15, ages: [13, 17] },
+    school:  { name: '🏫 School teacher / Tutor', share: 10, ages: [22, 55] },
+    youtube: { name: '▶️ YouTube teacher', share: 5, ages: [20, 50] },
   };
   const isTeacher = a => a === 'school' || a === 'youtube';
 
@@ -680,6 +680,8 @@ const AD_STUDIO = (() => {
   async function sendToMeta(v = st.v) {
     const btn = $('ads-meta-send'), msg = $('ads-meta-msg'), id = adId(v), parts = adParts(v);
     const budget = Math.max(100, Number($('ads-meta-budget')?.value) || 0);
+    const ageMin = parseInt($('ads-meta-age-min')?.value, 10), ageMax = parseInt($('ads-meta-age-max')?.value, 10);
+    if (!(ageMin >= 13 && ageMax <= 65 && ageMin <= ageMax)) { $('ads-meta-msg').textContent = '⚠️ वय 13 ते 65 मध्ये, आणि पहिलं वय दुसऱ्यापेक्षा लहान हवं'; return null; }
     btn.disabled = true;
     try {
       let up = _sent[id];
@@ -694,7 +696,7 @@ const AD_STUDIO = (() => {
         up = _sent[id] = { video_id: vid.video_id, image_hash: img.image_hash };
       }
       msg.textContent = '⏳ Meta मध्ये ad बनत आहे (video तयार व्हायला 1–2 मिनिटं लागू शकतात)…';
-      const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
+      const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
       if (out.exists) msg.innerHTML = `ℹ️ <b>${_esc(id)}</b> ही ad Meta मध्ये आधीच आहे — दुसरी बनवली नाही.`;
       else if (out.pending) msg.textContent = '⏳ Meta अजून video तयार करत आहे. 2 मिनिटांनी पुन्हा "Meta वर पाठवा" दाबा (video पुन्हा जाणार नाही).';
       else msg.innerHTML = `✅ <b>${_esc(id)}</b> Meta मध्ये बनली — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये उघडा</a>, तपासा आणि चालू करा.`;
@@ -711,6 +713,9 @@ const AD_STUDIO = (() => {
     const inp = $('ads-meta-budget');
     if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * AUD[st.aud].share / 100 : 150));
     const n = $('ads-meta-name'); if (n) n.textContent = `Ad: ${adId()} · Ad set: ${adsetName()}`;
+    // ages: the audience's, until the admin changes them (per audience)
+    const [lo, hi] = AUD[st.aud].ages, a1 = $('ads-meta-age-min'), a2 = $('ads-meta-age-max');
+    if (a1 && a1.dataset.aud !== st.aud) { a1.value = lo; a2.value = hi; a1.dataset.aud = st.aud; }
   }
 
   // ── recording: the canvas as a video, in this browser ──
@@ -898,6 +903,8 @@ const AD_STUDIO = (() => {
               <b>📤 Meta वर पाठवा</b>
               <small id="ads-meta-name"></small>
               <label>या ad set चं रोजचं बजेट ₹ <input id="ads-meta-budget" type="number" min="100" step="50" class="admin-input" /></label>
+              <label>वय <input id="ads-meta-age-min" type="number" min="13" max="65" class="admin-input ads-age" aria-label="किमान वय" /> ते <input id="ads-meta-age-max" type="number" min="13" max="65" class="admin-input ads-age" aria-label="कमाल वय" /></label>
+              <small class="ads-age-note">वय आणि बजेट नवीन ad set बनताना लागतात — तो ad set आधीच बनला असेल तर Ads Manager मध्ये बदला.</small>
               <button type="button" class="admin-btn-primary" id="ads-meta-send">📤 ही ad Meta वर पाठवा (बंद स्थितीत)</button>
               <p class="import-hint" id="ads-meta-msg">9:16 video इथे बनतो आणि Meta वर जातो. Ad <b>बंद (Paused)</b> बनते — Ads Manager मध्ये तपासून तुम्ही चालू करायची.</p>
             </div>

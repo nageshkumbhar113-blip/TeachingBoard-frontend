@@ -2674,3 +2674,6 @@ body.admin-app {
 .ads-metabox[hidden] { display: none !important; }
 .ads-metabox small { color: #3b4a6b; font-weight: 700; }
 .ads-metabox input { width: 110px; display: inline-block; }
+
+.ads-metabox .ads-age { width: 70px; }
+.ads-age-note { font-weight: 600 !important; color: #6b6290 !important; font-size: .74rem; }
