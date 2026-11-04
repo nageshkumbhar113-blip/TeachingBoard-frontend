@@ -162,6 +162,7 @@ const GUEST = (() => {
           ${challenge && challenge.from ? `<div class="gx-challenge">🏁 ${_esc(challenge.from)} चे ${challenge.fp}% — त्याला मागे टाका!</div>` : ''}
           ${!challenge && p.teacher ? '<div class="gx-challenge">👩‍🏫 तुमच्या सरांनी सुचवलेले Free tests</div>' : ''}
           ${!challenge && p.shop ? '<div class="gx-challenge">🏪 तुमच्या पुस्तक दुकानाकडून Free tests</div>' : ''}
+          ${!challenge && p.batch ? `<div class="gx-challenge">🎯 ${_esc(p.batch)} साठी Free tests</div>` : ''}
           <p class="gx-sub">4थी पासून पुढे आणि स्पर्धा परीक्षा: सगळ्या विषयांचे Free Tests, Notes आणि सराव</p>
           <div class="gx-chips">
             <span class="gx-chip" style="animation-delay:.1s">✅ Login नाही</span>
@@ -169,15 +170,25 @@ const GUEST = (() => {
             <span class="gx-chip" style="animation-delay:.3s">⚡ लगेच Result</span>
             <span class="gx-chip" style="animation-delay:.4s">🏆 तुमचा क्रमांक</span>
           </div>
-          <button type="button" class="gx-btn gx-big gx-shine" id="gx-go">▶ सुरू करा</button>
+          <button type="button" class="gx-btn gx-big gx-shine" id="gx-go">${!challenge && p.batch ? `▶ ${_esc(p.batch)} चे Free tests सुरू करा` : '▶ सुरू करा'}</button>
+          ${!challenge && p.batch ? '<button type="button" class="gx-link" id="gx-other">🔄 दुसरा class निवडा</button>' : ''}
           <button type="button" class="gx-link" id="gx-login">माझं account आहे — Login करा</button>
           <p class="gx-msg" id="gx-msg" role="alert"></p>
         </div>`);
       el.querySelector('#gx-login').onclick = () => { _close(el); resolve(false); };
+      el.querySelector('#gx-other')?.addEventListener('click', () => { _close(el); _pickClass({ src, ref }).then(resolve); });
       el.querySelector('#gx-go').onclick = async () => {
         if (challenge) {
           const ok = await _openSession(el, { batch: challenge.batch, src, ref }, { challenge });
           if (ok) { _close(el); resolve(true); }
+          return;
+        }
+        // a per-class link (Admin › Free link › class): straight into that class
+        if (p.batch) {
+          const ok = await _openSession(el, { batch: p.batch, src, ref, link_batch: p.batch });
+          if (ok) { _close(el); resolve(true); return; }
+          if (!navigator.onLine) return;          // the message says so; they can try again
+          _close(el); _pickClass({ src, ref }).then(resolve);   // that class is gone: pick one
           return;
         }
         _close(el);

@@ -479,7 +479,7 @@ const API = (() => {
   }
 
   // New guest, or the same guest picking another class / giving a name.
-  async function startGuestSession({ batch, name, src, ref, resume_gid } = {}) {
+  async function startGuestSession({ batch, name, src, ref, resume_gid, link_batch } = {}) {
     const state = await getGuestState();
     const body = {
       resume_gid: resume_gid || undefined,
@@ -487,6 +487,7 @@ const API = (() => {
       name: name !== undefined ? name : (state.name || ''),
       src: src || state.src || '',
       ref: ref || state.ref || '',
+      link_batch: link_batch || undefined,
     };
     const payload = await request('/guest/session', {
       method: 'POST',

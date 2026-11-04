@@ -236,7 +236,7 @@ const ADMIN = (() => {
         const content = $('atab-' + tab.dataset.tab);
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
         if (tab.dataset.tab === 'words')       _loadWordBank();
-        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); }
+        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); _loadFreeLinkClasses(); }
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
@@ -1959,31 +1959,58 @@ const ADMIN = (() => {
   // ── Free part (student-app/guest.js): the link to share, funnel, leads ──
   const FREE_SITE = 'https://teachingboard-frontend.vercel.app';
 
-  function _freeLinkMessage(url) {
-    return `📚 *NKs EduOrbit — Free Tests*\n` +
-      `4थी पासून पुढे आणि स्पर्धा परीक्षा (NMMS, Scholarship…): सगळ्या विषयांचे\n` +
-      `✅ Free Tests  ✅ Notes  ✅ सराव प्रश्न\n` +
-      `🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल\n` +
-      `👉 आत्ताच test द्या: ${url}`;
+  // What the class is for, from its name (NMMS / शिष्यवृत्ती / a plain class).
+  function _freeClassLine(name) {
+    const n = String(name || '');
+    if (/nmms/i.test(n)) return 'NMMS परीक्षेच्या तयारीसाठी: बुद्धिमत्ता चाचणी (आकृती, वेन, मनोरा…) + शालेय क्षमता';
+    if (/scholar|शिष्यवृत्ती/i.test(n)) return 'शिष्यवृत्ती परीक्षेच्या तयारीसाठी: बुद्धिमत्ता चाचणी + भाषा + गणित';
+    return `${n} च्या सगळ्या विषयांचे`;
   }
 
+  function _freeLinkMessage(url, batch) {
+    if (!batch) {
+      return `📚 *NKs EduOrbit — Free Tests*\n` +
+        `4थी पासून पुढे आणि स्पर्धा परीक्षा (NMMS, Scholarship…): सगळ्या विषयांचे\n` +
+        `✅ Free Tests  ✅ Notes  ✅ सराव प्रश्न\n` +
+        `🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल\n` +
+        `👉 आत्ताच test द्या: ${url}`;
+    }
+    const n = Number(batch.free_tests) || 0;
+    return `📚 *NKs EduOrbit — ${batch.name} Free Tests*\n` +
+      `${_freeClassLine(batch.name)}\n` +
+      `✅ ${n ? n + ' ' : ''}Free Tests  ✅ Notes  ✅ सराव प्रश्न\n` +
+      `🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल\n` +
+      `👉 ${batch.name} ची test आत्ताच द्या: ${url}`;
+  }
+
+  // One free link per class: the message names the class and its free tests, and the
+  // link opens that class straight away (student-app/guest.js, ?batch=…).
+  let _freeBatches = [];
   function _renderFreeLink() {
     const box = $('free-link-box');
     if (!box) return;
-    const url = `${FREE_SITE}/student-app/?free=1`;
-    const msg = _freeLinkMessage(url);
+    const sel = $('free-link-class')?.value || '';
+    const batch = _freeBatches.find(b => b.name === sel) || null;
+    const url = `${FREE_SITE}/student-app/?free=1${batch ? '&batch=' + encodeURIComponent(batch.name) : ''}`;
+    const msg = _freeLinkMessage(url, batch);
     box.innerHTML = `
       <div class="batch-admin-item">
         <div>
-          <div class="batch-admin-name">🎁 Free Tests (सगळे classes)</div>
+          <label class="batch-admin-name" for="free-link-class">🎁 Free Tests —
+            <select id="free-link-class" class="admin-input" style="width:auto;display:inline-block;margin-left:6px">
+              <option value="">सगळे classes</option>
+              ${_freeBatches.map(b => `<option value="${_esc(b.name)}" ${b.name === sel ? 'selected' : ''}>${_esc(b.name)} (${Number(b.free_tests) || 0} free tests)</option>`).join('')}
+            </select>
+          </label>
           <div class="batch-admin-meta" style="word-break:break-all">${_esc(url)}</div>
-          <pre class="gxa-msg">${_esc(msg)}</pre>
+          <pre class="gxa-msg" id="free-link-msg">${_esc(msg)}</pre>
         </div>
         <div class="batch-admin-actions">
           <button class="admin-btn-secondary" type="button" id="btn-free-copy">📋 Copy</button>
           <button class="admin-btn-primary" type="button" id="btn-free-wa">📱 WhatsApp</button>
         </div>
       </div>`;
+    $('free-link-class').addEventListener('change', _renderFreeLink);
     $('btn-free-copy').addEventListener('click', () => {
       navigator.clipboard?.writeText(msg).catch(() => {});
       APP.toast('Copied!', 'success');
@@ -1991,6 +2018,10 @@ const ADMIN = (() => {
     $('btn-free-wa').addEventListener('click', () => {
       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     });
+  }
+  async function _loadFreeLinkClasses() {
+    try { _freeBatches = await API.fetchGuestBatches(); } catch { _freeBatches = []; }
+    _renderFreeLink();
   }
 
   const _FUNNEL_LABELS = {
@@ -2239,7 +2270,9 @@ const ADMIN = (() => {
         const n = f.total?.[s] || 0;
         return `<div class="gxa-step"><span>${_FUNNEL_LABELS[s] || s}</span><b>${n}</b><i style="width:${Math.round((n / max) * 100)}%"></i></div>`;
       }).join('') + (Object.keys(f.by_source || {}).length
-        ? `<p class="import-hint" style="margin-top:8px">कुठून आले: ${Object.entries(f.by_source).map(([k, v]) => `${_esc(k)} ${v.opened} → ✅ ${v.paid}`).join(' · ')}</p>` : '');
+        ? `<p class="import-hint" style="margin-top:8px">कुठून आले: ${Object.entries(f.by_source).map(([k, v]) => `${_esc(k)} ${v.opened} → ✅ ${v.paid}`).join(' · ')}</p>` : '')
+        + (Object.keys(f.by_link || {}).length
+        ? `<p class="import-hint">Class च्या link मधून: ${Object.entries(f.by_link).map(([k, v]) => `${_esc(k)} — उघडली ${v.opened}, test ${v.tested}, ✅ ${v.paid}`).join(' · ')}</p>` : '');
       if (!leads.length) { listEl.innerHTML = '<p class="import-hint">अजून कोणी नाही.</p>'; return; }
       listEl.innerHTML = '';
       leads.forEach(l => {
