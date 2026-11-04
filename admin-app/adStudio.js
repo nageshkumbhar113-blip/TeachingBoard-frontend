@@ -569,6 +569,7 @@ const AD_STUDIO = (() => {
     const teach = isTeacher(st.aud);
     $('ads-class-row').hidden = teach;
     $('ads-teacher-warn').hidden = !teach;
+    const tl = $('ads-teacher-warn').querySelector('a'); if (tl) tl.href = `../partner-terms.html?type=${st.aud === 'youtube' ? 'youtube' : 'school'}`;
     $('ads-copy').textContent = adText();
     $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student` : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
   }
@@ -612,7 +613,7 @@ const AD_STUDIO = (() => {
         <div class="ads-auds" role="group" aria-label="कोणासाठी">${Object.entries(AUD).map(([k, a]) => `<button type="button" class="ads-aud" data-aud="${k}" aria-pressed="${k === st.aud}">${a.name}<small>बजेट ${a.share}%</small></button>`).join('')}</div>
         <div class="ads-budget">रोजचं एकूण बजेट ₹ <input id="ads-budget" type="number" min="0" step="50" class="admin-input" placeholder="उदा. 500" aria-label="रोजचं बजेट" /> <span id="ads-split"></span>
           <p class="import-hint">पैसे मुख्यतः पालकांच्या ads वर: पैसे पालक भरतात, आणि 13–17 वयाच्या मुलांना Meta फक्त वय / ठिकाणावरून ad दाखवू देतं.</p></div>
-        <p class="ads-warn" id="ads-teacher-warn" hidden>⚠️ Teacher ads मध्ये कमाईचं आश्वासन आहे — ही ad चालवण्याआधी Partner terms page (तारीख, कंपनीचं नाव, शहर, email, फोन) भरा.</p>
+        <p class="ads-warn" id="ads-teacher-warn" hidden>ℹ️ Teacher ads मध्ये कमाईचा उल्लेख आहे — नियम: <a href="../partner-terms.html?type=${st.aud === 'youtube' ? 'youtube' : 'school'}" target="_blank" rel="noopener">Partner terms</a>. Commission चे आकडे बदलले तर ads आपोआप बदलतात.</p>
         <div class="ads-row">
           <span class="ads-row" id="ads-class-row" style="margin:0">
           <label>Class <select id="ads-batch" class="admin-input"></select></label>

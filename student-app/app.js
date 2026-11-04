@@ -800,14 +800,17 @@ const APP = (() => {
     }
 
     // ── Returning guest (free part, no login): no PIN, straight in ─────────────
-    if (profile?.guest && profile.student_code) {
+    // …except from a teacher ad (?treg=school|youtube): a teacher who tried the free
+    // tests first must land on the teacher registration, not back in the free part.
+    const tregLink = /^(school|youtube)$/i.test(_linkParam('treg'));
+    if (profile?.guest && profile.student_code && !tregLink) {
       beforePrompt?.();
       await _completeStudentLogin(profile);
       return;
     }
 
     // ── Returning Student ──────────────────────────────────────────────────────
-    if (profile?.student_code) {
+    if (profile?.student_code && !(profile.guest && tregLink)) {
       // ── Returning user: show PIN lock ──
       beforePrompt?.();
       const unlocked = await _showPinLock(profile, 'student');
