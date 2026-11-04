@@ -2259,6 +2259,18 @@ const API = (() => {
     return request(`/guest/admin/meta?days=${days}${fresh ? '&fresh=1' : ''}${check ? '&check=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } });
   }
 
+  // Admin › Ads › "Meta वर पाठवा": video / thumbnail bytes go through our server to Meta
+  async function metaUpload(kind, blob, name) {
+    const token = await ensureAdminSession();
+    return request(`/guest/admin/meta/upload?kind=${kind}&name=${encodeURIComponent(name || '')}`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': blob.type || 'application/octet-stream' }, body: blob,
+    });
+  }
+  async function metaCreateAd(body) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/meta/ad', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+  }
+
   async function fetchGuestFunnel(days = 30) {
     const token = await ensureAdminSession();
     return request(`/guest/admin/funnel?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -3009,7 +3021,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

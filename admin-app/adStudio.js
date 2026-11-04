@@ -648,10 +648,69 @@ const AD_STUDIO = (() => {
   const adLink = (v = st.v) => isTeacher(_audOf(v))
     ? `${SITE}/student-app/?treg=${_audOf(v)}&src=meta&ad=${encodeURIComponent(adId(v))}`
     : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}${_variants(_facts())[v]?.kind === 'reg' ? '&k=r' : ''}&src=meta&ad=${encodeURIComponent(adId(v))}`;
-  function adText(v = st.v) {
+  // the ad's parts (also what goes to Meta)
+  function adParts(v = st.v) {
     const f = _facts(), a = _variants(f)[v];
-    const body = st.lang === 'mr' ? a.copy[0] : st.lang === 'en' ? a.copy[1] : `${a.copy[0]}\n\n${a.copy[1]}`;
-    return `Primary text:\n${body}\n\nHeadline: ${st.lang === 'en' ? a.headline[1] : a.headline[0]}\nButton: ${isTeacher(a.aud) ? 'Sign up' : 'Learn more'}\nLink: ${adLink(v)}`;
+    return {
+      message: st.lang === 'mr' ? a.copy[0] : st.lang === 'en' ? a.copy[1] : `${a.copy[0]}\n\n${a.copy[1]}`,
+      headline: st.lang === 'en' ? a.headline[1] : a.headline[0],
+      cta: isTeacher(a.aud) ? 'SIGN_UP' : 'LEARN_MORE',
+      link: adLink(v), aud: a.aud,
+    };
+  }
+  function adText(v = st.v) {
+    const p0 = adParts(v);
+    return `Primary text:\n${p0.message}\n\nHeadline: ${p0.headline}\nButton: ${p0.cta === 'SIGN_UP' ? 'Sign up' : 'Learn more'}\nLink: ${p0.link}`;
+  }
+  // the Meta ad set an ad goes into: one per class + kind + audience (teachers: one per audience)
+  const adsetName = (v = st.v) => { const a = _audOf(v); return isTeacher(a) ? `t-${a}` : `${_slug(st.batch)}-${st.kind === 'reg' ? 'r' : 'c'}-${a}`; };
+
+  // ── "📤 Meta वर पाठवा": record the 9:16 video here, send it + a thumbnail through our server to
+  // Meta, which makes the ad PAUSED (the admin checks it in Ads Manager and turns it on) ──
+  let _metaOk = false;
+  const _sent = {};   // ad id → { video_id, image_hash } (a retry does not upload again)
+  async function _thumb(v) {
+    const keep = { v: st.v, fmt: st.fmt, paused: st.paused, pausedAt: st.pausedAt };
+    Object.assign(st, { v, fmt: '916', paused: true, pausedAt: 1600 });
+    drawAt(1600);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9));
+    Object.assign(st, keep);
+    return blob;
+  }
+  async function sendToMeta(v = st.v) {
+    const btn = $('ads-meta-send'), msg = $('ads-meta-msg'), id = adId(v), parts = adParts(v);
+    const budget = Math.max(100, Number($('ads-meta-budget')?.value) || 0);
+    btn.disabled = true;
+    try {
+      let up = _sent[id];
+      if (!up) {
+        msg.textContent = '⏳ 9:16 video बनत आहे (≈20 सेकंद, हे tab उघडं ठेवा)…';
+        const r = await record(v, '916');
+        if (r.ext !== 'mp4') throw new Error('हा browser MP4 बनवत नाही — Chrome / Edge वापरा');
+        const thumb = await _thumb(v);
+        msg.textContent = '⏳ Video Meta वर जात आहे…';
+        const vid = await API.metaUpload('video', r.blob, id);
+        const img = await API.metaUpload('image', thumb, id);
+        up = _sent[id] = { video_id: vid.video_id, image_hash: img.image_hash };
+      }
+      msg.textContent = '⏳ Meta मध्ये ad बनत आहे (video तयार व्हायला 1–2 मिनिटं लागू शकतात)…';
+      const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
+      if (out.exists) msg.innerHTML = `ℹ️ <b>${_esc(id)}</b> ही ad Meta मध्ये आधीच आहे — दुसरी बनवली नाही.`;
+      else if (out.pending) msg.textContent = '⏳ Meta अजून video तयार करत आहे. 2 मिनिटांनी पुन्हा "Meta वर पाठवा" दाबा (video पुन्हा जाणार नाही).';
+      else msg.innerHTML = `✅ <b>${_esc(id)}</b> Meta मध्ये बनली — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये उघडा</a>, तपासा आणि चालू करा.`;
+      return out;
+    } catch (err) {
+      msg.textContent = `⚠️ ${err?.message || 'Meta वर पाठवता आलं नाही'}`;
+      return null;
+    } finally { btn.disabled = false; }
+  }
+  function _paintMetaBox() {
+    const box = $('ads-metabox'); if (!box) return;
+    box.hidden = !_metaOk;
+    const total = Math.max(0, Number($('ads-budget')?.value) || 0);
+    const inp = $('ads-meta-budget');
+    if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * AUD[st.aud].share / 100 : 150));
+    const n = $('ads-meta-name'); if (n) n.textContent = `Ad: ${adId()} · Ad set: ${adsetName()}`;
   }
 
   // ── recording: the canvas as a video, in this browser ──
@@ -712,6 +771,7 @@ const AD_STUDIO = (() => {
         Promise.resolve(API.fetchMetaAds?.(days, { fresh })).catch(err => ({ connected: false, error: err?.message || '' })),
       ]);
       const M = meta?.connected ? (meta.by_name || {}) : {};
+      _metaOk = !!meta?.connected; _paintMetaBox();
       const spend = await _spend();
       const V = _variants(_facts());
       // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
@@ -770,6 +830,7 @@ const AD_STUDIO = (() => {
     $('ads-teacher-warn').hidden = !teach;
     const tl = $('ads-teacher-warn').querySelector('a'); if (tl) tl.href = `../partner-terms.html?type=${st.aud === 'youtube' ? 'youtube' : 'school'}`;
     $('ads-copy').textContent = adText();
+    _paintMetaBox();
     if ($('ads-kind')) $('ads-kind').value = st.kind;
     const R = f.reg;
     $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student`
@@ -833,6 +894,13 @@ const AD_STUDIO = (() => {
           <div class="ads-side">
             <pre class="gxa-msg" id="ads-copy"></pre>
             <div class="admin-toolbar"><button type="button" class="admin-btn-secondary" id="ads-copy-btn">📋 मजकूर Copy</button></div>
+            <div class="ads-recbox ads-metabox" id="ads-metabox" hidden>
+              <b>📤 Meta वर पाठवा</b>
+              <small id="ads-meta-name"></small>
+              <label>या ad set चं रोजचं बजेट ₹ <input id="ads-meta-budget" type="number" min="100" step="50" class="admin-input" /></label>
+              <button type="button" class="admin-btn-primary" id="ads-meta-send">📤 ही ad Meta वर पाठवा (बंद स्थितीत)</button>
+              <p class="import-hint" id="ads-meta-msg">9:16 video इथे बनतो आणि Meta वर जातो. Ad <b>बंद (Paused)</b> बनते — Ads Manager मध्ये तपासून तुम्ही चालू करायची.</p>
+            </div>
             <div class="ads-recbox">
               <b>📥 Video download</b>
               <div id="ads-recvars"></div>
@@ -856,11 +924,13 @@ const AD_STUDIO = (() => {
       $('ads-lang').addEventListener('change', e => { st.lang = e.target.value; _paintSide(); });
       $('ads-fmt').addEventListener('change', e => { st.fmt = e.target.value; });
       host.querySelectorAll('.ads-aud').forEach(b => b.addEventListener('click', () => { st.aud = b.dataset.aud; st.t0 = performance.now(); _paintSide(); }));
-      $('ads-budget').addEventListener('input', _paintBudget);
+      $('ads-budget').addEventListener('input', () => { _paintBudget(); _paintMetaBox(); });
       _paintBudget();
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
+      $('ads-meta-send').addEventListener('click', () => sendToMeta());
+      $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
       $('ads-refresh').addEventListener('click', () => _loadBoard(true));
       $('ads-days').addEventListener('change', () => _loadBoard());
       st.t0 = performance.now();
@@ -897,7 +967,7 @@ const AD_STUDIO = (() => {
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, record, drawAt, __st: st, __content: _content };
+  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, __st: st, __content: _content };
 })();
 
 window.AD_STUDIO = AD_STUDIO;

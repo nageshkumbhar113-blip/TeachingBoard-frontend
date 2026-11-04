@@ -2669,3 +2669,8 @@ body.admin-app {
 .ads-meta-line.ok { background: #ecfdf3; color: #14532d; }
 .ads-meta-line.bad { background: #fff7d6; color: #5a3b00; }
 .ads-meta { font-size: .7rem; font-weight: 800; color: #1877f2; }
+
+.ads-metabox { background: #eef4ff; border: 1px solid #c7d8ff; }
+.ads-metabox[hidden] { display: none !important; }
+.ads-metabox small { color: #3b4a6b; font-weight: 700; }
+.ads-metabox input { width: 110px; display: inline-block; }
