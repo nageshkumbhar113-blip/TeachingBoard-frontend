@@ -2247,6 +2247,12 @@ const API = (() => {
     return request(`/weekly/admin${path}`, { method, headers: await _adminAuth(), body: body ? JSON.stringify(body) : undefined });
   }
 
+  // Admin › Sync › Ads: a regular class's real notes / exercise answers, subject by subject
+  async function fetchAdContent(batch) {
+    const token = await ensureAdminSession();
+    return request(`/guest/admin/ad-content?batch=${encodeURIComponent(batch)}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
   async function fetchGuestFunnel(days = 30) {
     const token = await ensureAdminSession();
     return request(`/guest/admin/funnel?days=${days}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -2997,7 +3003,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

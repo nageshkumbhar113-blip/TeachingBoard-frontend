@@ -36,7 +36,13 @@ const AD_STUDIO = (() => {
   const isTeacher = a => a === 'school' || a === 'youtube';
 
   let _batches = [], _exams = [], _events = [], _cfg = {}, _ready = false;
-  const st = { aud: 'parent', batch: '', label: '', v: 'loss', lang: 'both', fmt: '916', t0: 0, paused: false, pausedAt: 0, rec: null };
+  // what a class is: 'comp' = स्पर्धा परीक्षा (MCQ ads), 'reg' = regular class (notes + exercise
+  // answers ads). Guessed from the name, the admin's choice kept on this device.
+  const KIND_KEY = 'ad_kind';
+  let _kinds = {}, _content = {};
+  const _autoKind = n => /nmms|scholar|शिष्यवृत्ती|navodaya|नवोदय|ntse|olymp|mts|स्पर्धा|competitive/i.test(String(n || '')) ? 'comp' : 'reg';
+  const _kindOf = b => _kinds[b] || _autoKind(b);
+  const st = { aud: 'parent', kind: 'comp', batch: '', label: '', v: 'loss', lang: 'both', fmt: '916', t0: 0, paused: false, pausedAt: 0, rec: null };
 
   // ── what the ads say (filled per class) ──
   const T = {
@@ -48,7 +54,7 @@ const AD_STUDIO = (() => {
     resCap: ['🎯 लगेच Result आणि क्रमांक', '🎯 Instant result & rank'],
     get: ['काय मिळतं?', 'What you get'],
     free: ['आधी Free Test द्या', 'Start with a Free Test'],
-    sub: ['Login नाही · लगेच Result', 'No login · Instant result'],
+    sub: ['Login नाही · लगेच Result · Offline पण', 'No login · Instant result · Works offline'],
     off: ['पहिल्या महिन्यावर 50% सूट*', '50% off the first month*'],
     btn: ['▶ आत्ताच Test द्या', '▶ Take the test now'],
     note: ['*Free test दिल्यावर 12 तास', '*for 12 hours after a free test'],
@@ -67,7 +73,24 @@ const AD_STUDIO = (() => {
       players: ev ? (ev.participants || ev.submitted || 0) : 0,
       topName: top ? short(top.name) : '', topScore: top ? `${top.score}/${top.total}` : '',
       pct: Number(_cfg.school_percent ?? 15), flat: Number(_cfg.youtube_flat ?? 30),
+      reg: _regFacts(),
     };
+  }
+  // a regular class's real content: subjects with notes / answers, one real chapter's notes
+  // and one real exercise question + answer for the demo screens
+  function _regFacts() {
+    // विज्ञान and गणित first (on the subjects screen and for the two demo screens)
+    const SCI = /sci|विज्ञान|phys|chem|bio/i, MATH = /math|गणित|algebra|geometry|बीजगणित|भूमिती/i;
+    const rank = s => SCI.test(s.subject) ? 0 : MATH.test(s.subject) ? 1 : 2;
+    const subs = (_content[st.batch]?.subjects || []).filter(s => s.notes || s.answers).sort((a, b) => rank(a) - rank(b));
+    const sum = k => subs.reduce((t, s) => t + (s[k] || 0), 0);
+    const withNotes = subs.filter(s => s.notes && s.demo_chapter);
+    const ns = withNotes.find(s => SCI.test(s.subject)) || withNotes.find(s => MATH.test(s.subject)) || withNotes.sort((a, b) => b.notes - a.notes)[0];
+    const note = ns ? { subject: ns.subject, chapter: ns.demo_chapter.name, title: ns.demo_chapter.note_title } : null;
+    // exercise demo: गणित (so notes = विज्ञान, exercise = गणित), else विज्ञान, else any
+    const es = subs.find(s => s.sample && MATH.test(s.subject)) || subs.find(s => s.sample && SCI.test(s.subject)) || subs.find(s => s.sample);
+    const ex = es ? { subject: es.subject, chapter: es.demo_chapter?.name || '', ...es.sample } : null;
+    return { subs, notes: sum('notes'), answers: sum('answers'), chapters: sum('chapters'), note, ex, has: subs.length > 0 };
   }
   function _nextExam() {
     const now = new Date().setHours(0, 0, 0, 0);
@@ -79,10 +102,16 @@ const AD_STUDIO = (() => {
 
   // the six ads; `ok(f)` says whether the class has what the ad needs
   function _variants(f) {
-    const L = f.label;
+    const L = f.label, R = f.reg, NO_REG = 'या class मध्ये अजून Notes / स्वाध्याय उत्तरं नाहीत';
+    // a demo screen only when the class has that content
+    const rs = list => list.filter(k => (k !== 'notes' || R.note) && (k !== 'exdemo' || R.ex));
+    const regLine = [
+      [R.subs.length && `${R.subs.length} विषय`, R.notes && `${R.notes} Notes`, R.answers && `${R.answers} स्वाध्याय उत्तरं`].filter(Boolean).join(', '),
+      [R.subs.length && `${R.subs.length} subjects`, R.notes && `${R.notes} notes`, R.answers && `${R.answers} exercise answers`].filter(Boolean).join(', '),
+    ];
     return {
       loss: {
-        aud: 'parent', name: '💰 नुकसानाची भीती', ok: true,
+        aud: 'parent', kind: 'comp', name: '💰 नुकसानाची भीती', ok: true,
         hook: f.nmms ? ['फक्त 2 गुण कमी पडले…', 'Missed by just 2 marks…'] : [`${L}: फक्त 2 गुण कमी पडले…`, `${L}: missed by just 2 marks…`],
         hook2: f.nmms ? ['…आणि ₹48,000 ची NMMS शिष्यवृत्ती गेली', '…and lost the ₹48,000 NMMS scholarship'] : ['…आणि मेरिट लिस्ट हुकली', '…and missed the merit list'],
         scenes: ['hook', 'question', 'result', 'features', 'offer'],
@@ -91,7 +120,7 @@ const AD_STUDIO = (() => {
         headline: [f.nmms ? 'NMMS: 2 गुणांनी शिष्यवृत्ती जाऊ देऊ नका' : `${L}: 2 गुणांनी मागे पडू नका`, f.nmms ? 'Don\'t lose NMMS by 2 marks' : `${L}: don't miss by 2 marks`],
       },
       challenge: {
-        aud: 'student', name: '🧩 10 सेकंद challenge', ok: true,
+        aud: 'student', kind: 'comp', name: '🧩 10 सेकंद challenge', ok: true,
         hook: [`हा ${f.nmms ? 'NMMS ' : ''}प्रश्न 10 सेकंदात सोडवा!`, `Solve this ${f.nmms ? 'NMMS ' : ''}question in 10 seconds!`],
         scenes: ['challenge', 'question', 'features', 'offer'],
         copy: [`🧩 हा प्रश्न 10 सेकंदात सोडवता येतो का?\nउत्तर आणि युक्ती video मध्ये. ${f.freeTests ? f.freeTests + ' ' : ''}Free tests, दर रविवारी महा-Test आणि तुमचा क्रमांक.\n✅ Login नाही`,
@@ -99,14 +128,14 @@ const AD_STUDIO = (() => {
         headline: ['10 सेकंदात सोडवा 🧩', 'Solve it in 10 seconds 🧩'],
       },
       proof: {
-        aud: 'parent', name: '🏆 या आठवड्याचा Topper', ok: !!(f.players && f.topScore), why: 'आधी या class चा एक महा-Test होऊन result लागायला हवा',
+        aud: 'parent', kind: 'comp', name: '🏆 या आठवड्याचा Topper', ok: !!(f.players && f.topScore), why: 'आधी या class चा एक महा-Test होऊन result लागायला हवा',
         scenes: ['topper', 'question', 'features', 'offer'],
         copy: [`🏆 या रविवारी ${f.players} मुलांनी महा-Test दिला. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nतुमचं मूल कितव्या क्रमांकावर? आधी Free test द्या.\n✅ Login नाही · लगेच Result`,
           `🏆 ${f.players} students took the Maha-Test this Sunday. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nWhere does your child stand? Start with a free test.\n✅ No login · Instant result`],
         headline: [`या आठवड्याचा Topper ${f.topScore}`, `This week's topper: ${f.topScore}`],
       },
       days: {
-        aud: 'parent', name: '⏰ परीक्षेला दिवस बाकी', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा मध्ये या class ची तारीख टाका',
+        aud: 'parent', kind: 'comp', name: '⏰ परीक्षेला दिवस बाकी', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा मध्ये या class ची तारीख टाका',
         hook: [`${f.examTitle || 'परीक्षेला'} फक्त`, `${f.examTitle || 'Exam'} in just`], hook2: ['दिवस बाकी', 'days'],
         scenes: ['days', 'features', 'question', 'offer'],
         copy: [`⏰ ${f.examTitle || 'परीक्षेला'} फक्त ${f.days} दिवस बाकी.\nरोज 20 मिनिटं: प्रश्न + युक्ती, सराव tests, दर रविवारी महा-Test.\n✅ आजच Free test द्या`,
@@ -114,14 +143,14 @@ const AD_STUDIO = (() => {
         headline: [`${f.days} दिवस बाकी ⏰`, `${f.days} days left ⏰`],
       },
       free: {
-        aud: 'parent', name: '🎁 धोका नाही', ok: true,
+        aud: 'parent', kind: 'comp', name: '🎁 धोका नाही', ok: true,
         hook: ['आधी Free Test द्या, मग ठरवा', 'Try a free test first, then decide'],
         scenes: ['free', 'question', 'result', 'offer'],
         copy: [`🎁 आधी Free test द्या, मग ठरवा.\nLogin नाही, फॉर्म नाही. ${L} चे प्रश्न, लगेच गुण आणि क्रमांक.`, `🎁 Take a free test first, then decide.\nNo login, no form. ${L} questions, instant score and rank.`],
         headline: [`Free ${L} Test`, `Free ${L} Test`],
       },
       paper: {
-        aud: 'parent', name: '📄 खऱ्या पेपरसारखे', ok: true,
+        aud: 'parent', kind: 'comp', name: '📄 खऱ्या पेपरसारखे', ok: true,
         hook: [f.nmms ? 'NMMS च्या खऱ्या पेपरसारखे प्रश्न' : `${L}: खऱ्या पेपरसारखे प्रश्न`, f.nmms ? 'Questions like the real NMMS paper' : `${L}: questions like the real paper`],
         scenes: ['paper', 'question', 'features', 'offer'],
         copy: [`📄 मागील ${f.nmms ? 'NMMS ' : ''}प्रश्नपत्रिकांच्या पद्धतीचे प्रश्न, प्रत्येक उत्तराची युक्तीसह.\nदर रविवारी पूर्ण पेपरसारखा महा-Test आणि क्रमांक.\n✅ आधी Free test`,
@@ -130,7 +159,7 @@ const AD_STUDIO = (() => {
       },
       // ── students ──
       rank: {
-        aud: 'student', name: '🏅 तुझा क्रमांक कितवा?', ok: true,
+        aud: 'student', kind: 'comp', name: '🏅 तुझा क्रमांक कितवा?', ok: true,
         hook: ['या रविवारी तुझा क्रमांक कितवा?', 'What will your rank be this Sunday?'],
         hook2: [`${L} · महा-Test`, `${L} · Maha-Test`],
         scenes: ['hook', 'question', 'result', 'offer'],
@@ -138,12 +167,64 @@ const AD_STUDIO = (() => {
         headline: ['तुझा क्रमांक पाहा 🏅', 'See your rank 🏅'],
       },
       beat: {
-        aud: 'student', name: '⚔️ मित्राला हरव', ok: true,
+        aud: 'student', kind: 'comp', name: '⚔️ मित्राला हरव', ok: true,
         hook: ['तुझ्या मित्रापेक्षा जास्त गुण मिळवशील?', 'Can you beat your friend’s score?'],
         hook2: ['Test दे · Link पाठव · हरव!', 'Take it · Send the link · Win!'],
         scenes: ['hook', 'question', 'result', 'offer'],
         copy: [`⚔️ Free test दे, तुझे गुण मित्राला पाठव आणि बघ कोण जिंकतं!\n${L} चे प्रश्न, लगेच Result.`, `⚔️ Take the free test, send your score to a friend and see who wins!\n${L} questions, instant result.`],
         headline: ['मित्राला हरव ⚔️', 'Beat your friend ⚔️'],
+      },
+      // ── regular classes: notes + exercise answers + offline (parents) ──
+      'r-guide': {
+        aud: 'parent', kind: 'reg', name: '📚 Guide ची गरज नाही', ok: R.has, why: NO_REG,
+        hook: ['Guide विकत घ्यायची गरज नाही!', 'No need to buy guides!'],
+        hook2: [`${L}: सगळे विषय · Notes + स्वाध्याय उत्तरं`, `${L}: every subject · notes + exercise answers`],
+        scenes: rs(['hook', 'notes', 'exdemo', 'subjects', 'offer']),
+        copy: [`📚 Guide विकत घ्यायची गरज नाही!\n${L}: ${regLine[0]} — धड्यानुसार.\n✈️ Internet नसलं तरी चालतं (Offline).\n✅ आधी Free धडा पाहा`,
+          `📚 No need to buy guides!\n${L}: ${regLine[1]} — chapter by chapter.\n✈️ Works without internet (offline).\n✅ See a free chapter first`],
+        headline: ['Guide ची गरज नाही 📚', 'No guide needed 📚'],
+      },
+      'r-offline': {
+        aud: 'parent', kind: 'reg', name: '✈️ Internet शिवाय', ok: R.has, why: NO_REG,
+        scenes: rs(['offline', 'notes', 'exdemo', 'subjects', 'offer']),
+        copy: [`✈️ Internet नाही? तरीही अभ्यास चालू!\nएकदा download केलं की ${L} चे Notes आणि स्वाध्याय उत्तरं Offline उघडतात.\n${regLine[0]}.\n✅ आधी Free धडा पाहा`,
+          `✈️ No internet? Studying goes on!\nDownload once and ${L} notes and exercise answers open offline.\n${regLine[1]}.\n✅ See a free chapter first`],
+        headline: ['Internet शिवाय अभ्यास ✈️', 'Study without internet ✈️'],
+      },
+      'r-hw': {
+        aud: 'parent', kind: 'reg', name: '📝 स्वाध्यायात अडलं?', ok: R.has, why: NO_REG,
+        hook: ['स्वाध्यायात अडलं? उत्तर इथे आहे', 'Stuck on an exercise? The answer is here'],
+        hook2: ['धड्यानुसार · step-by-step', 'Chapter by chapter · step by step'],
+        scenes: rs(['hook', 'exdemo', 'notes', 'subjects', 'offer']),
+        copy: [`📝 मुलाचा स्वाध्याय अडला? पुस्तकातल्या प्रत्येक धड्याच्या स्वाध्यायाची उत्तरं app मध्ये.\n${L}: ${regLine[0]}.\n✈️ Offline पण चालतं.\n✅ आधी Free धडा पाहा`,
+          `📝 Child stuck on homework? Answers to every chapter's textbook exercise, in the app.\n${L}: ${regLine[1]}.\n✈️ Works offline too.\n✅ See a free chapter first`],
+        headline: ['स्वाध्यायाची उत्तरं एका app मध्ये', 'Exercise answers in one app'],
+      },
+      'r-cost': {
+        aud: 'parent', kind: 'reg', name: '💰 प्रत्येक विषयाची guide?', ok: R.has, why: NO_REG,
+        hook: ['प्रत्येक विषयाची वेगळी guide?', 'A separate guide for every subject?'],
+        hook2: [`${R.subs.length || ''} विषय · एकच app`.trim(), `${R.subs.length || ''} subjects · one app`.trim()],
+        scenes: rs(['hook', 'subjects', 'notes', 'exdemo', 'offer']),
+        copy: [`💰 प्रत्येक विषयाची वेगळी guide घेण्यापेक्षा: ${L} चे सगळे विषय एकाच app मध्ये.\n${regLine[0]}.\n✈️ Offline पण चालतं.\n✅ आधी Free धडा पाहा`,
+          `💰 Instead of a guide for every subject: all ${L} subjects in one app.\n${regLine[1]}.\n✈️ Works offline too.\n✅ See a free chapter first`],
+        headline: ['सगळे विषय · एकच app', 'All subjects · one app'],
+      },
+      // ── regular classes (students) ──
+      'r-shw': {
+        aud: 'student', kind: 'reg', name: '✍️ स्वाध्याय समजला नाही?', ok: R.has, why: NO_REG,
+        hook: ['स्वाध्याय समजला नाही?', "Didn't get the exercise?"],
+        hook2: ['उत्तर पाहा · समजून घे', 'See the answer · understand it'],
+        scenes: rs(['hook', 'exdemo', 'notes', 'offer']),
+        copy: [`✍️ स्वाध्याय समजला नाही? प्रत्येक धड्याचं उत्तर app मध्ये.\n${L}: ${regLine[0]}. Offline पण.`, `✍️ Didn't get the exercise? Every chapter's answers are in the app.\n${L}: ${regLine[1]}. Offline too.`],
+        headline: ['स्वाध्यायाची उत्तरं ✍️', 'Exercise answers ✍️'],
+      },
+      'r-srev': {
+        aud: 'student', kind: 'reg', name: '🌙 परीक्षेआधी revision', ok: R.has, why: NO_REG,
+        hook: ['परीक्षेआधी झटपट revision', 'Quick revision before the exam'],
+        hook2: ['धड्याचे Notes · Internet शिवाय', 'Chapter notes · no internet needed'],
+        scenes: rs(['hook', 'notes', 'offline', 'offer']),
+        copy: [`🌙 परीक्षेआधी झटपट revision: ${L} चे धड्यानुसार Notes, Internet शिवाय पण.\n${regLine[0]}.`, `🌙 Quick revision before the exam: ${L} chapter notes, even without internet.\n${regLine[1]}.`],
+        headline: ['झटपट revision 🌙', 'Quick revision 🌙'],
       },
       // ── school teachers / tutors (registration; commission from Admin › Partners) ──
       'sc-tools': {
@@ -185,7 +266,7 @@ const AD_STUDIO = (() => {
       },
     };
   }
-  const DUR = { tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, result: 4000, features: 4000, offer: 4000 };
+  const DUR = { notes: 3500, exdemo: 4500, subjects: 3500, offline: 3500, tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, result: 4000, features: 4000, offer: 4000 };
 
   // ── drawing ──
   let cv = null, x = null;
@@ -229,7 +310,74 @@ const AD_STUDIO = (() => {
     x.beginPath(); x.arc(s * .22, s * .22, s * .06, 0, 7); x.fillStyle = C.pink; x.fill();
     x.restore();
   }
-  function phoneShell(f, draw) {
+  function wrapText(s, X, Y, maxW, lineH, px, color, w = 700, maxLines = 4, align = 'left') {
+    x.font = font(w, px); x.fillStyle = color; x.textAlign = align; x.textBaseline = 'middle';
+    const words = String(s || '').split(/\s+/); let line = '', n = 0;
+    for (let i = 0; i < words.length; i++) {
+      const tryL = line ? line + ' ' + words[i] : words[i];
+      if (x.measureText(tryL).width > maxW && line) {
+        if (n === maxLines - 1) { x.fillText(line + ' …', X, Y + n * lineH); return n + 1; }
+        x.fillText(line, X, Y + n * lineH); n++; line = words[i];
+      } else line = tryL;
+    }
+    if (line) { x.fillText(line, X, Y + n * lineH); n++; }
+    return n;
+  }
+  const ICONS = [[/math|गणित|algebra|geometry|बीजगणित|भूमिती/i, '➗'], [/sci|विज्ञान|phys|chem|bio/i, '🔬'], [/hist|इतिहास|civic|राज्यशास्त्र|पौर/i, '🏛️'], [/geo|भूगोल/i, '🌍'], [/eng/i, '🔤'], [/marathi|मराठी/i, '📝'], [/hindi|हिंदी/i, '📖'], [/sanskrit|संस्कृत/i, '🕉️']];
+  const subjIcon = n => (ICONS.find(([re]) => re.test(n)) || [0, '📘'])[1];
+  // the notes screen of a real chapter (also the "offline" screen: Internet off, notes still open)
+  function notesScreen(f, lt, offline) {
+    const n = f.reg.note || { subject: '', chapter: '', title: '' };
+    phoneShell(f, () => {
+      if (offline) {
+        x.save(); x.fillStyle = '#0d0b18'; rr(380, 196, 160, 44, 22); x.fill(); x.restore();
+        text('✈️  📶', 460, 219, 24, C.white, 700);
+        const k = p(lt, 400, 800);
+        if (k > 0) { x.save(); x.strokeStyle = C.red; x.lineWidth = 5; x.beginPath(); x.moveTo(470, 202); x.lineTo(470 + 36 * k, 236); x.stroke(); x.restore(); }
+      }
+      text(`${subjIcon(n.subject)} ${n.subject}`, 80, 225, 26, C.violet, 800, 'left', offline ? 290 : 460);
+      wrapText(n.chapter, 80, 290, 450, 40, 34, C.ink, 800, 2);
+      if (n.title && n.title !== n.chapter) text(n.title, 80, 380, 22, '#8a83b3', 600, 'left', 450);
+      const shown = Math.min(11, Math.floor(p(lt, 300, 2300) * 11) + 1);
+      for (let i = 0; i < shown; i++) {
+        const y = 430 + i * 50, w0 = [440, 400, 450, 330, 420, 380, 445, 300, 410, 430, 360][i];
+        if (i === 6) { x.save(); x.strokeStyle = C.violet; x.lineWidth = 4; rr(80, y - 20, 200, 120, 14); x.stroke(); x.beginPath(); x.arc(140, y + 40, 28, 0, 7); x.stroke(); x.beginPath(); x.moveTo(180, y + 40); x.lineTo(260, y + 40); x.stroke(); x.restore(); i += 2; continue; }
+        if (i === 2) { x.save(); x.fillStyle = '#fff3a8'; rr(76, y - 16, w0 * outCubic(p(lt, 900, 1700)) + 8, 32, 8); x.fill(); x.restore(); }
+        x.fillStyle = i === 0 || i === 4 ? '#3b2d6b' : '#d9d3ee'; rr(80, y - 9, w0, 18, 9); x.fill();
+      }
+      const b = outBack(p(lt, offline ? 1200 : 2000, offline ? 1700 : 2500));
+      if (b > 0) {
+        x.save(); x.translate(300, 1060); x.scale(b, b); x.fillStyle = C.green; rr(-210, -38, 420, 76, 38); x.fill();
+        text(st.lang === 'en' ? '✈️ Opens offline' : '✈️ Offline पण उघडतं', 0, 2, 30, C.white, 800, 'center', 400);
+        x.restore();
+      }
+    }, `📘 ${f.label}`);
+  }
+  // a real exercise question; "answer" is tapped and the real answer appears
+  function exScreen(f, lt) {
+    const e = f.reg.ex || { subject: '', chapter: '', exercise_no: '', question: '', answer: '' };
+    phoneShell(f, () => {
+      text(`${subjIcon(e.subject)} ${e.subject}${e.exercise_no ? ' · स्वाध्याय ' + e.exercise_no : ''}`, 80, 225, 24, C.violet, 800, 'left', 460);
+      text(e.chapter, 80, 265, 22, '#8a83b3', 600, 'left', 460);
+      x.save(); x.fillStyle = '#f6f3ff'; rr(60, 295, 480, 250, 20); x.fill(); x.restore();
+      text(st.lang === 'en' ? 'Q.' : 'प्रश्न', 84, 325, 24, C.pink, 800, 'left');
+      wrapText(e.question, 84, 365, 430, 38, 28, C.ink, 700, 4);
+      const tapAt = 1300, tap = lt > tapAt;
+      x.save(); x.fillStyle = tap ? '#dcfce7' : C.violet; rr(170, 570, 260, 64, 32); x.fill(); x.restore();
+      text(tap ? (st.lang === 'en' ? 'Answer ✓' : 'उत्तर ✓') : (st.lang === 'en' ? 'Show answer' : 'उत्तर पाहा'), 300, 603, 28, tap ? C.green : C.white, 800);
+      if (lt > 300 && lt < tapAt + 400) {
+        const a = outCubic(p(lt, 300, tapAt)), X = 520 + (330 - 520) * a, Y = 1100 + (640 - 1100) * a;
+        x.save(); x.font = font(800, 88); x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('👆', X, Y); x.restore();
+      }
+      if (tap) {
+        const k = p(lt, tapAt + 200, tapAt + 2400), full = String(e.answer || '');
+        x.save(); x.fillStyle = '#ecfdf3'; x.strokeStyle = C.green; x.lineWidth = 3; rr(60, 660, 480, 440, 20); x.fill(); x.stroke(); x.restore();
+        text(st.lang === 'en' ? 'Answer' : 'उत्तर', 84, 690, 24, C.green, 800, 'left');
+        wrapText(full.slice(0, Math.max(1, Math.round(full.length * k))), 84, 730, 430, 38, 27, '#14532d', 700, 9);
+      }
+    }, `📘 ${f.label}`);
+  }
+  function phoneShell(f, draw, title) {
     x.save();
     x.fillStyle = '#0d0b18'; rr(0, 0, 600, 1200, 70); x.fill();
     x.fillStyle = '#f6f4ff'; rr(18, 18, 564, 1164, 54); x.fill();
@@ -237,7 +385,7 @@ const AD_STUDIO = (() => {
     x.save(); rr(18, 18, 564, 1164, 54); x.clip();
     const g = x.createLinearGradient(18, 0, 582, 0); g.addColorStop(0, '#6d3cf0'); g.addColorStop(1, '#ff4d8d');
     x.fillStyle = g; x.fillRect(18, 18, 564, 150);
-    text(f.nmms ? LL(T.head) : `🏆 ${f.label}`, 300, 120, 30, C.white, 800, 'center', 520);
+    text(title || (f.nmms ? LL(T.head) : `🏆 ${f.label}`), 300, 120, 30, C.white, 800, 'center', 520);
     x.fillStyle = C.white; rr(40, 190, 520, 940, 34); x.fill();
     draw();
     x.restore(); x.restore();
@@ -329,10 +477,10 @@ const AD_STUDIO = (() => {
     features(W, H, lt, v, f) {
       const tall = st.fmt === '916', sq = st.fmt === '11';
       both(T.get, W / 2, tall ? 330 : 140, tall ? 84 : 66, tall ? 80 : 65);
-      const rows = [['✅', `${f.freeTests || ''} Free Tests`.trim(), `${f.freeTests || ''} Free Tests`.trim()], ['📚', 'Notes + सराव प्रश्न', 'Notes + Practice'], ['🏆', 'दर रविवारी महा-Test', 'Weekly Maha-Test'], ['💡', 'प्रत्येक उत्तराची युक्ती', 'A trick with every answer']];
+      const rows = [['✅', `${f.freeTests || ''} Free Tests`.trim(), `${f.freeTests || ''} Free Tests`.trim()], ['📚', 'Notes + सराव प्रश्न', 'Notes + Practice'], ['🏆', 'दर रविवारी महा-Test', 'Weekly Maha-Test'], ['💡', 'प्रत्येक उत्तराची युक्ती', 'A trick with every answer'], ['✈️', 'Internet शिवाय पण चालतं', 'Works without internet']];
       rows.forEach(([ic, mr, en], i) => {
-        const a = outBack(p(lt, 300 + i * 450, 800 + i * 450)); if (a <= 0) return;
-        const rowH = tall ? 230 : sq ? 165 : 190, y0 = (tall ? 560 : sq ? 260 : 300) + i * rowH;
+        const a = outBack(p(lt, 300 + i * 380, 800 + i * 380)); if (a <= 0) return;
+        const rowH = tall ? 210 : sq ? 150 : 175, y0 = (tall ? 540 : sq ? 240 : 280) + i * rowH;
         x.save(); x.translate(W / 2, y0); x.scale(a, a);
         x.fillStyle = 'rgba(255,255,255,.95)'; rr(-450, -rowH / 2 + 14, 900, rowH - 28, 40); x.fill();
         text(ic, -360, 0, tall ? 80 : 64, C.ink, 800);
@@ -395,6 +543,35 @@ const AD_STUDIO = (() => {
       x.fillStyle = C.red; rr(-170, -55, 340, 110, 20); x.fill(); text(st.lang === 'en' ? 'Real pattern' : 'खरी पद्धत', 0, 2, 44, C.white, 800);
       x.restore();
     },
+    notes(W, H, lt, v, f) { placePhone(W, H, lt, true, () => notesScreen(f, lt, false), ['📒 धड्यानुसार Notes', '📒 Chapter-wise notes']); },
+    exdemo(W, H, lt, v, f) { placePhone(W, H, lt, true, () => exScreen(f, lt), ['✍️ पुस्तकातल्या स्वाध्यायाची उत्तरं', '✍️ Textbook exercise answers']); },
+    offline(W, H, lt, v, f) { placePhone(W, H, lt, true, () => notesScreen(f, lt, true), ['Internet नाही? तरीही अभ्यास ✈️', 'No internet? Still studying ✈️']); },
+    subjects(W, H, lt, v, f) {
+      const tall = st.fmt === '916', sq = st.fmt === '11', subs = f.reg.subs.slice(0, 8);
+      both(['सगळे विषय एकाच app मध्ये', 'Every subject in one app'], W / 2, tall ? 250 : sq ? 95 : 120, tall ? 72 : 56, tall ? 70 : 52, C.white, W - 100);
+      const cols = 2, rows = Math.max(1, Math.ceil(subs.length / cols));
+      const top = tall ? 400 : sq ? 200 : 240, bottom = H - (tall ? 330 : sq ? 170 : 200);
+      const th = Math.min(tall ? 260 : 200, (bottom - top) / rows), tw = 470;
+      subs.forEach((s, i) => {
+        const a = outBack(p(lt, 200 + i * 160, 600 + i * 160)); if (a <= 0) return;
+        // the grid sits in the middle of the free space (few subjects = not stuck at the top)
+        const y0 = top + Math.max(0, (bottom - top - rows * th) / 2);
+        const cx = W / 2 + (i % cols ? 1 : -1) * (tw / 2 + 10), cy = y0 + Math.floor(i / cols) * th + th / 2;
+        x.save(); x.translate(cx, cy); x.scale(a, a);
+        x.fillStyle = 'rgba(255,255,255,.96)'; rr(-tw / 2, -th / 2 + 8, tw, th - 16, 30); x.fill();
+        const big = th > 170;
+        text(subjIcon(s.subject), -tw / 2 + 60, big ? -20 : 0, big ? 64 : 48, C.ink, 800);
+        text(s.subject, 40, big ? -32 : -22, big ? 42 : 34, C.ink, 800, 'center', tw - 150);
+        const stat = st.lang === 'en' ? `📒 ${s.notes} · ✍️ ${s.answers}` : `📒 ${s.notes} Notes · ✍️ ${s.answers} उत्तरं`;
+        text(stat, 40, big ? 30 : 22, big ? 30 : 24, '#6b6290', 700, 'center', tw - 150);
+        x.restore();
+      });
+      const b = outBack(p(lt, 1600, 2100));
+      x.save(); x.translate(W / 2, H - (tall ? 230 : sq ? 120 : 140)); x.scale(b, b);
+      x.fillStyle = C.gold; rr(-380, -50, 760, 100, 50); x.fill();
+      text(st.lang === 'en' ? '✈️ Works without internet' : '✈️ Internet शिवाय पण चालतं', 0, 2, 40, '#3b1d00', 800, 'center', 720);
+      x.restore();
+    },
     tools(W, H, lt) {
       const tall = st.fmt === '916', sq = st.fmt === '11';
       both(['काय मिळतं? (Free)', 'What you get (free)'], W / 2, tall ? 330 : 140, tall ? 76 : 60, tall ? 76 : 60);
@@ -429,18 +606,22 @@ const AD_STUDIO = (() => {
       x.fillStyle = C.white; rr(-400, -75, 800, 150, 75); x.fill(); text(st.lang === 'en' ? '▶ Become a partner' : '▶ Partner व्हा', 0, 2, 58, C.violet, 800, 'center', 740);
       x.restore();
     },
-    offer(W, H, lt) {
+    offer(W, H, lt, v) {
+      const reg = v?.kind === 'reg';
+      const FREE = reg ? ['आधी Free धडा पाहा', 'See a free chapter first'] : T.free;
+      const SUB = reg ? ['Notes + स्वाध्याय · Offline पण', 'Notes + answers · Works offline'] : T.sub;
+      const BTN = reg ? ['▶ Free धडा पाहा', '▶ See a free chapter'] : T.btn;
       const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), b = outBack(p(lt, 800, 1400)), c = outBack(p(lt, 1500, 2100)), cy = tall ? H * .27 : H * .2;
       x.save(); x.translate(W / 2, cy); x.scale(a, a);
-      both(T.free, 0, 0, tall ? 88 : 72, tall ? 84 : 68, C.white, W - 100);
-      text(LL(T.sub), 0, tall ? 165 : 130, 40, C.white, 700, 'center', W - 100);
+      both(FREE, 0, 0, tall ? 88 : 72, tall ? 84 : 68, C.white, W - 100);
+      text(LL(SUB), 0, tall ? 165 : 130, 40, C.white, 700, 'center', W - 100);
       x.restore();
       x.save(); x.translate(W / 2, cy + (tall ? 460 : 300)); x.rotate(-.05 + Math.sin(lt / 300) * .02); x.scale(b, b);
       x.fillStyle = C.gold; rr(-430, -110, 860, 220, 50); x.fill();
       text('50% OFF', 0, -38, 100, '#3b1d00', 800); text(LL(T.off), 0, 58, 42, '#3b1d00', 800, 'center', 800);
       x.restore();
       x.save(); x.translate(W / 2, cy + (tall ? 790 : 560)); const pulse = 1 + Math.sin(lt / 180) * .03; x.scale(c * pulse, c * pulse);
-      x.fillStyle = C.white; rr(-400, -75, 800, 150, 75); x.fill(); text(LL(T.btn), 0, 2, 58, C.violet, 800, 'center', 740);
+      x.fillStyle = C.white; rr(-400, -75, 800, 150, 75); x.fill(); text(LL(BTN), 0, 2, 58, C.violet, 800, 'center', 740);
       x.restore();
       if (c > .5) { text(SITE.replace(/^https:\/\//, ''), W / 2, cy + (tall ? 930 : 680), 38, C.white, 700); text(LL(T.note), W / 2, cy + (tall ? 990 : 730), 30, '#ffd6e7', 600); }
     },
@@ -466,7 +647,7 @@ const AD_STUDIO = (() => {
   const adId = (v = st.v) => isTeacher(_audOf(v)) ? `t-${v}` : `${_slug(st.batch)}-${v}`;
   const adLink = (v = st.v) => isTeacher(_audOf(v))
     ? `${SITE}/student-app/?treg=${_audOf(v)}&src=meta&ad=${encodeURIComponent(adId(v))}`
-    : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}&src=meta&ad=${encodeURIComponent(adId(v))}`;
+    : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}${_variants(_facts())[v]?.kind === 'reg' ? '&k=r' : ''}&src=meta&ad=${encodeURIComponent(adId(v))}`;
   function adText(v = st.v) {
     const f = _facts(), a = _variants(f)[v];
     const body = st.lang === 'mr' ? a.copy[0] : st.lang === 'en' ? a.copy[1] : `${a.copy[0]}\n\n${a.copy[1]}`;
@@ -561,7 +742,7 @@ const AD_STUDIO = (() => {
   // ── panel ──
   function _paintSide() {
     const f = _facts(), V = _variants(f);
-    const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud);
+    const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud && (isTeacher(st.aud) || (a.kind || 'comp') === st.kind));
     if (!V[st.v] || V[st.v].aud !== st.aud || !V[st.v].ok) st.v = (mine.find(([, a]) => a.ok) || mine[0])[0];
     document.querySelectorAll('.ads-aud').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.aud === st.aud)));
     $('ads-variants').innerHTML = mine.map(([k, a]) => `<button type="button" class="ads-var" data-v="${k}" aria-pressed="${k === st.v}" ${a.ok ? '' : 'disabled'} title="${_esc(a.ok ? '' : a.why)}"><b>${a.name}</b><small>${a.ok ? (st.v === k ? '▶ पाहत आहात' : '') : _esc(a.why)}</small></button>`).join('');
@@ -571,7 +752,11 @@ const AD_STUDIO = (() => {
     $('ads-teacher-warn').hidden = !teach;
     const tl = $('ads-teacher-warn').querySelector('a'); if (tl) tl.href = `../partner-terms.html?type=${st.aud === 'youtube' ? 'youtube' : 'school'}`;
     $('ads-copy').textContent = adText();
-    $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student` : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
+    if ($('ads-kind')) $('ads-kind').value = st.kind;
+    const R = f.reg;
+    $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student`
+      : st.kind === 'reg' ? (_content[st.batch] ? (R.has ? `${R.subs.length} विषय (${R.subs.map(s => s.subject).join(', ')}) · ${R.notes} Notes · ${R.answers} स्वाध्याय उत्तरं${R.note ? ' · Notes demo: ' + R.note.chapter : ''}${R.ex ? ' · स्वाध्याय demo: ' + R.ex.chapter : ''}` : 'या class मध्ये अजून Notes / स्वाध्याय उत्तरं नाहीत') : '⏳ उघडत आहे…')
+      : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
   }
   function _paintBudget() {
     const total = Math.max(0, Number($('ads-budget')?.value) || 0);
@@ -617,6 +802,7 @@ const AD_STUDIO = (() => {
         <div class="ads-row">
           <span class="ads-row" id="ads-class-row" style="margin:0">
           <label>Class <select id="ads-batch" class="admin-input"></select></label>
+          <label>प्रकार <select id="ads-kind" class="admin-input"><option value="comp">🏆 स्पर्धा परीक्षा (MCQ)</option><option value="reg">📘 Regular (Notes + स्वाध्याय)</option></select></label>
           <label>Ad मध्ये नाव <input id="ads-label" class="admin-input" maxlength="30" placeholder="उदा. 8वी NMMS" /></label>
           </span>
           <label>भाषा <select id="ads-lang" class="admin-input"><option value="both">मराठी + English</option><option value="mr">मराठी</option><option value="en">English</option></select></label>
@@ -642,7 +828,12 @@ const AD_STUDIO = (() => {
         <div class="admin-toolbar"><select id="ads-days" class="admin-input" aria-label="दिवस"><option value="7">7 दिवस</option><option value="30" selected>30 दिवस</option></select><button type="button" class="admin-btn-secondary" id="ads-refresh">Refresh</button></div>
         <div id="ads-board"></div>`;
       cv = $('ads-cv'); x = cv.getContext('2d');
-      $('ads-batch').addEventListener('change', e => { st.batch = e.target.value; st.label = ''; $('ads-label').value = _defaultLabel(); _paintSide(); });
+      $('ads-batch').addEventListener('change', e => { st.batch = e.target.value; st.label = ''; $('ads-label').value = _defaultLabel(); _setBatchKind(); });
+      $('ads-kind').addEventListener('change', async e => {
+        _kinds[st.batch] = e.target.value;
+        await DB.setSetting(KIND_KEY, _kinds).catch(() => {});
+        _setBatchKind();
+      });
       $('ads-label').addEventListener('input', e => { st.label = e.target.value.trim(); _paintSide(); });
       $('ads-lang').addEventListener('change', e => { st.lang = e.target.value; _paintSide(); });
       $('ads-fmt').addEventListener('change', e => { st.fmt = e.target.value; });
@@ -670,13 +861,25 @@ const AD_STUDIO = (() => {
     sel.value = st.batch;
     if (!st.label) $('ads-label').value = _defaultLabel();
     st.label = $('ads-label').value.trim();
-    _paintSide();
+    _kinds = (await DB.getSetting(KIND_KEY, {}).catch(() => ({}))) || {};
+    _setBatchKind();
     _loadBoard();
+  }
+  // the class's kind (guessed / chosen) and, for a regular class, its real content
+  function _setBatchKind() {
+    st.kind = _kindOf(st.batch);
+    st.t0 = performance.now();
+    _paintSide();
+    if (st.kind === 'reg' && st.batch && !_content[st.batch]) {
+      const b = st.batch;
+      API.fetchAdContent(b).then(r => { _content[b] = r || { subjects: [] }; if (st.batch === b) _paintSide(); })
+        .catch(() => { _content[b] = { subjects: [] }; if (st.batch === b) _paintSide(); });
+    }
   }
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, record, drawAt, __st: st };
+  return { init, verdicts, adLink, adText, record, drawAt, __st: st, __content: _content };
 })();
 
 window.AD_STUDIO = AD_STUDIO;

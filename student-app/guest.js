@@ -127,6 +127,8 @@ const GUEST = (() => {
       shop: (q.get('shop') || '').slice(0, 40),
       // a Facebook / Instagram ad's own link (Admin › Sync › Ads): ?src=meta&ad=ID
       ad: (q.get('ad') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40),
+      // k=r: a regular class's ad (notes + exercise answers, not MCQ tests)
+      regular: q.get('k') === 'r',
     };
   }
   function wantsEntry() { return entryParams().free; }
@@ -166,13 +168,18 @@ const GUEST = (() => {
           ${!challenge && p.shop ? '<div class="gx-challenge">🏪 तुमच्या पुस्तक दुकानाकडून Free tests</div>' : ''}
           ${!challenge && p.batch ? `<div class="gx-challenge">🎯 ${_esc(p.batch)} साठी Free tests</div>` : ''}
           <p class="gx-sub">4थी पासून पुढे आणि स्पर्धा परीक्षा: सगळ्या विषयांचे Free Tests, Notes आणि सराव</p>
-          <div class="gx-chips">
+          <div class="gx-chips">${!challenge && p.regular ? `
+            <span class="gx-chip" style="animation-delay:.1s">📒 धड्यानुसार Notes</span>
+            <span class="gx-chip" style="animation-delay:.2s">✍️ स्वाध्याय उत्तरं</span>
+            <span class="gx-chip" style="animation-delay:.3s">✈️ Internet शिवाय पण</span>
+            <span class="gx-chip" style="animation-delay:.4s">✅ Login नाही</span>
+          </div><div hidden>` : ''}
             <span class="gx-chip" style="animation-delay:.1s">✅ Login नाही</span>
             <span class="gx-chip" style="animation-delay:.2s">🎁 पूर्ण Free</span>
             <span class="gx-chip" style="animation-delay:.3s">⚡ लगेच Result</span>
             <span class="gx-chip" style="animation-delay:.4s">🏆 तुमचा क्रमांक</span>
           </div>
-          <button type="button" class="gx-btn gx-big gx-shine" id="gx-go">${!challenge && p.batch ? `▶ ${_esc(p.batch)} चे Free tests सुरू करा` : '▶ सुरू करा'}</button>
+          <button type="button" class="gx-btn gx-big gx-shine" id="gx-go">${!challenge && p.batch ? (p.regular ? `▶ ${_esc(p.batch)} चा Free धडा पाहा` : `▶ ${_esc(p.batch)} चे Free tests सुरू करा`) : '▶ सुरू करा'}</button>
           ${!challenge && p.batch ? '<button type="button" class="gx-link" id="gx-other">🔄 दुसरा class निवडा</button>' : ''}
           <button type="button" class="gx-link" id="gx-login">माझं account आहे — Login करा</button>
           <p class="gx-msg" id="gx-msg" role="alert"></p>
