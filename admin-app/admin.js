@@ -1548,7 +1548,7 @@ const ADMIN = (() => {
         }
       });
       item.querySelector('.btn-share-batch').addEventListener('click', () => {
-        const url = `https://teachingboard-frontend.vercel.app/get-app.html?batch=${encodeURIComponent(b.name)}`;
+        const url = `https://nkseduorbit.in/get-app.html?batch=${encodeURIComponent(b.name)}`;
         navigator.clipboard?.writeText(url).catch(() => {});
         const waMsg = `📚 ${b.name} — Nks EduOrbit वर join करा!\n${url}`;
         window.open('https://wa.me/?text=' + encodeURIComponent(waMsg), '_blank', 'noopener');
@@ -1958,7 +1958,7 @@ const ADMIN = (() => {
   // ════════════════════════
 
   // ── Free part (student-app/guest.js): the link to share, funnel, leads ──
-  const FREE_SITE = 'https://teachingboard-frontend.vercel.app';
+  const FREE_SITE = 'https://nkseduorbit.in';
 
   // What the class is for, from its name (NMMS / शिष्यवृत्ती / a plain class).
   function _freeClassLine(name) {
@@ -2412,7 +2412,7 @@ const ADMIN = (() => {
     const list = $('quick-links-list');
     if (!list) return;
 
-    const SITE = 'https://teachingboard-frontend.vercel.app';
+    const SITE = 'https://nkseduorbit.in';
     const links = [
       { icon: '🖥️', label: 'Web Admin',                   url: `${SITE}/admin` },
       { icon: '🎓', label: 'Web Student',                  url: `${SITE}/student` },

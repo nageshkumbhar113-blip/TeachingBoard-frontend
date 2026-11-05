@@ -83,9 +83,9 @@ const PAYMENT = (() => {
           ${bodyHtml}
           <button id="pay-close" class="onboarding-skip" style="margin-top:2px">नंतर करेन (बंद करा)</button>
           <p style="text-align:center;margin-top:12px;font-size:0.72rem;color:var(--text2,#8b949e)">
-            <a href="https://teachingboard-frontend.vercel.app/terms-and-conditions.html" target="_blank" rel="noopener noreferrer" style="color:inherit">Terms</a> ·
-            <a href="https://teachingboard-frontend.vercel.app/privacy-policy.html" target="_blank" rel="noopener noreferrer" style="color:inherit">Privacy</a> ·
-            <a href="https://teachingboard-frontend.vercel.app/refund-policy.html" target="_blank" rel="noopener noreferrer" style="color:inherit">Refund Policy</a>
+            <a href="https://nkseduorbit.in/terms-and-conditions.html" target="_blank" rel="noopener noreferrer" style="color:inherit">Terms</a> ·
+            <a href="https://nkseduorbit.in/privacy-policy.html" target="_blank" rel="noopener noreferrer" style="color:inherit">Privacy</a> ·
+            <a href="https://nkseduorbit.in/refund-policy.html" target="_blank" rel="noopener noreferrer" style="color:inherit">Refund Policy</a>
           </p>
         </div>
       </div>`;
@@ -343,7 +343,7 @@ const PAYMENT = (() => {
       name:     student.name || '',
       contact:  student.contact || '',
     });
-    const payUrl = `https://teachingboard-frontend.vercel.app/pay.html?${params.toString()}`;
+    const payUrl = `https://nkseduorbit.in/pay.html?${params.toString()}`;
 
     const BrowserPlugin = window.Capacitor?.Plugins?.Browser;
     if (BrowserPlugin) {

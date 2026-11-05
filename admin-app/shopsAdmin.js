@@ -11,7 +11,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const toast = (m, t = 'info') => (typeof APP !== 'undefined' && APP?.toast) ? APP.toast(m, t) : console.log(m);
   const rs = n => `₹${(Math.round(Number(n || 0) * 100) / 100).toLocaleString('en-IN')}`;
-  const SITE = 'https://teachingboard-frontend.vercel.app';
+  const SITE = 'https://nkseduorbit.in';
 
   let _bound = false;
   let _shops = [];

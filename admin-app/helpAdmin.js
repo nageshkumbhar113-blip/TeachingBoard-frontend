@@ -49,7 +49,7 @@
   // ── PIN requests ────────────────────────────────────────
   function _waText(d) {
     const label = d.role === 'student' ? 'Student Code' : d.role === 'shop' ? 'दुकानाचा code' : 'Teacher code';
-    const where = d.role === 'shop' ? 'https://teachingboard-frontend.vercel.app/shop' : 'NKs EduOrbit app';
+    const where = d.role === 'shop' ? 'https://nkseduorbit.in/shop' : 'NKs EduOrbit app';
     return `नमस्कार 🙏 ${d.name} साठी नवीन login माहिती:\n${label}: ${d.code}\nनवीन PIN: ${d.pin}\n\n${where} मध्ये login करा.${d.role === 'student' ? '\n(आता नवीन phone वर login करता येईल.)' : ''}`;
   }
 

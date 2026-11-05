@@ -2240,7 +2240,7 @@ const APP = (() => {
   // (get-app.html, already live) instead of a Play Store link — once the
   // Play Store listing is actually published, swapping APP_SHARE_URL to
   // that is a one-line change, not a rebuild of this feature.
-  const APP_SHARE_URL = 'https://teachingboard-frontend.vercel.app/get-app.html';
+  const APP_SHARE_URL = 'https://nkseduorbit.in/get-app.html';
 
   async function _shareApp() {
     // Real correction: the app itself is paid (subscription after a free

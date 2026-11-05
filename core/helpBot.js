@@ -102,7 +102,7 @@ const HELP_DEFAULTS = [
 
 const HELP_BOT = (() => {
   const WHATSAPP = '918390484545';
-  const SITE = 'https://teachingboard-frontend.vercel.app';
+  const SITE = 'https://nkseduorbit.in';
   const PLAY = 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
   const CACHE = 'tb_help_faq';
   const LANG_KEY = 'tb_help_lang';

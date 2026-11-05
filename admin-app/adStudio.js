@@ -23,7 +23,7 @@
 const AD_STUDIO = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const SITE = 'https://teachingboard-frontend.vercel.app';
+  const SITE = 'https://nkseduorbit.in';
   const FMT = { 916: [1080, 1920], 45: [1080, 1350], 11: [1080, 1080] };
   const SPEND_KEY = 'ad_spend';   // { [adId]: rupees } on this admin device
   // who the ad is for, and the share of the daily budget (parents first: they pay)

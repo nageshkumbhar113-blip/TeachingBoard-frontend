@@ -12,7 +12,7 @@
 
 const GUEST = (() => {
   const $ = id => document.getElementById(id);
-  const SITE = 'https://teachingboard-frontend.vercel.app';
+  const SITE = 'https://nkseduorbit.in';
   const OFFER_POPUP_GAP_MS = 24 * 3600 * 1000;   // automatic "all tests?" popup: once a day
 
   let _active = false;
@@ -676,7 +676,7 @@ const GUEST = (() => {
     g.fillText('तू मला मागे टाकू शकतोस? 😎', W / 2, 1050);
     g.fillStyle = '#fff'; g.font = font(800, 52);
     g.fillText('Free test द्या — login नाही', W / 2, 1200);
-    g.font = font(700, 40); g.fillText('teachingboard-frontend.vercel.app', W / 2, 1270);
+    g.font = font(700, 40); g.fillText('nkseduorbit.in', W / 2, 1270);
     return cv;
   }
 

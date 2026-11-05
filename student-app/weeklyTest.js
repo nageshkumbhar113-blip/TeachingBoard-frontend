@@ -156,7 +156,7 @@ const WEEKLY = (() => {
       const done = v => { el.remove(); resolve(v); };
       el.querySelector('.gx-close').onclick = () => done(false);
       el.querySelector('#wk-r-app')?.addEventListener('click', () => {
-        const site = /^https?:$/.test(location.protocol) && !/localhost$/.test(location.hostname) ? location.origin : 'https://teachingboard-frontend.vercel.app';
+        const site = /^https?:$/.test(location.protocol) && !/localhost$/.test(location.hostname) ? location.origin : 'https://nkseduorbit.in';
         const q = new URLSearchParams(gs.gid ? { guest: gs.gid } : {});
         if (gs.src === 'teacher' && gs.ref) q.set('teacher', gs.ref);
         window.open(`${site}/get-app.html${q.toString() ? '?' + q : ''}`, '_blank', 'noopener');
@@ -376,8 +376,8 @@ const WEEKLY = (() => {
     el.querySelector('#wk-photo')?.addEventListener('click', () => _sharePhoto(d).catch(() => _toast('Photo तयार करता आला नाही', 'error')));
     el.querySelector('#wk-share').onclick = () => {
       const text = me
-        ? `🏆 NKs EduOrbit महा-Test (${d.subject}) मध्ये ${d.participants} students पैकी माझा क्रमांक *${me.rank ? '#' + me.rank : '-'}* — गुण ${me.score}/${me.total}!\nपुढच्या आठवड्यात तू पण ये 👉 https://teachingboard-frontend.vercel.app/student-app/?free=1`
-        : `🏆 NKs EduOrbit चा दर आठवड्याचा महा-Test! 👉 https://teachingboard-frontend.vercel.app/student-app/?free=1`;
+        ? `🏆 NKs EduOrbit महा-Test (${d.subject}) मध्ये ${d.participants} students पैकी माझा क्रमांक *${me.rank ? '#' + me.rank : '-'}* — गुण ${me.score}/${me.total}!\nपुढच्या आठवड्यात तू पण ये 👉 https://nkseduorbit.in/student-app/?free=1`
+        : `🏆 NKs EduOrbit चा दर आठवड्याचा महा-Test! 👉 https://nkseduorbit.in/student-app/?free=1`;
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
       if (window.Capacitor?.isNativePlatform?.()) window.open(url, '_system'); else window.open(url, '_blank', 'noopener');
     };
@@ -417,7 +417,7 @@ const WEEKLY = (() => {
     g.fillText(top10 ? `🎉 महा-Test (${String(d.subject).slice(0, 18)}) Topper!` : 'पुढच्या आठवड्यात मला हरवून दाखव! 😎', W / 2, 1030);
     g.fillStyle = '#fff'; g.font = font(800, 50);
     g.fillText('दर आठवड्याला Free महा-Test', W / 2, 1180);
-    g.font = font(700, 40); g.fillText('teachingboard-frontend.vercel.app', W / 2, 1255);
+    g.font = font(700, 40); g.fillText('nkseduorbit.in', W / 2, 1255);
     return cv;
   }
 
@@ -426,7 +426,7 @@ const WEEKLY = (() => {
     const cv = await _photoCanvas(d);
     const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
     if (!blob) throw new Error('no image');
-    const text = `🏆 महा-Test (${d.subject}) मध्ये ${d.participants} students पैकी माझा क्रमांक #${d.me?.rank || '-'}! 👉 https://teachingboard-frontend.vercel.app/student-app/?free=1`;
+    const text = `🏆 महा-Test (${d.subject}) मध्ये ${d.participants} students पैकी माझा क्रमांक #${d.me?.rank || '-'}! 👉 https://nkseduorbit.in/student-app/?free=1`;
     if (!window.Capacitor?.isNativePlatform?.()) {
       const file = new File([blob], 'maha-test.png', { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {

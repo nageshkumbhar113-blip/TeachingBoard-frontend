@@ -164,7 +164,7 @@ const TEACHER_DASHBOARD = (() => {
   }
 
   // ── Share tab: ready-made message students use to join this teacher ─────────
-  const _SHARE_BASE = 'https://teachingboard-frontend.vercel.app/get-app.html';
+  const _SHARE_BASE = 'https://nkseduorbit.in/get-app.html';
   let _shareBound = false;
   let _shareCode = '';
 
@@ -180,7 +180,7 @@ const TEACHER_DASHBOARD = (() => {
       '🎁 The first chapter of every subject is free.',
       '',
       'Try a free test right now (no login needed):',
-      `https://teachingboard-frontend.vercel.app/student-app/?free=1&teacher=${encodeURIComponent(_shareCode)}`,
+      `https://nkseduorbit.in/student-app/?free=1&teacher=${encodeURIComponent(_shareCode)}`,
       '',
       'Download / open the app:',
       link,

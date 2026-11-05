@@ -13,7 +13,7 @@
 ════════════════════════════════════════ */
 
 const TEACHER_CONNECT = (() => {
-  const SITE = 'https://teachingboard-frontend.vercel.app';
+  const SITE = 'https://nkseduorbit.in';
   const PENDING = 'tb_pending_join';
   const QR_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
   const $ = id => document.getElementById(id);

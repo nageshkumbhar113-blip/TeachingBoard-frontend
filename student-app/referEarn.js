@@ -8,14 +8,14 @@ const REFER_EARN = (() => {
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const toast = (m, t = 'info') => (typeof APP !== 'undefined' && APP?.toast) ? APP.toast(m, t) : console.log(m);
-  const SHARE_BASE = 'https://teachingboard-frontend.vercel.app/get-app.html';
+  const SHARE_BASE = 'https://nkseduorbit.in/get-app.html';
 
   let _data = null;
 
   const _link = () => `${SHARE_BASE}?ref=${encodeURIComponent(_data?.code || '')}`;
   // Free test without login, carrying this student's code: a friend who pays
   // after it counts for this student's Refer & Earn (backend guest checkout).
-  const _freeLink = () => `https://teachingboard-frontend.vercel.app/student-app/?free=1&ref=${encodeURIComponent(_data?.code || '')}`;
+  const _freeLink = () => `https://nkseduorbit.in/student-app/?free=1&ref=${encodeURIComponent(_data?.code || '')}`;
   const _message = () => [
     '📚 *Nks EduOrbit*: notes, exercises and MCQ tests for Maharashtra Board students.',
     '🎁 The first chapter of every subject is free.',

@@ -6,7 +6,7 @@
 ════════════════════════════════════════ */
 
 window.SHOP_POSTER = (() => {
-  const SITE = 'https://teachingboard-frontend.vercel.app';
+  const SITE = 'https://nkseduorbit.in';
   const QRCODE_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
   const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   // PDF keeps the real paper size, so a xerox / print shop prints it right;

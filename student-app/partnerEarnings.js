@@ -12,7 +12,7 @@ const PARTNER_EARNINGS = (() => {
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthLabel = m => { const [y, mo] = String(m).split('-'); return `${MONTHS[Number(mo) - 1] || mo} ${y}`; };
 
-  const SHARE_BASE = 'https://teachingboard-frontend.vercel.app/get-app.html';
+  const SHARE_BASE = 'https://nkseduorbit.in/get-app.html';
   let _bound = false;
   let _enabled = null;
   let _code = '';
