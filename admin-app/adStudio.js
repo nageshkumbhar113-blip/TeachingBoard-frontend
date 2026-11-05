@@ -24,7 +24,8 @@ const AD_STUDIO = (() => {
   const $ = id => document.getElementById(id);
   const _esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const SITE = 'https://nkseduorbit.in';
-  const FMT = { 916: [1080, 1920], 45: [1080, 1350], 11: [1080, 1080] };
+  const FMT = { 916: [1080, 1920], 45: [1080, 1350], 11: [1080, 1080], 169: [1920, 1080] };   // 16:9 = YouTube
+  const FMT_TAG = { 916: '9x16', 45: '4x5', 11: '1x1', 169: '16x9' };
   const SPEND_KEY = 'ad_spend';   // { [adId]: rupees } on this admin device
   // who the ad is for, and the share of the daily budget (parents first: they pay)
   const AUD = {
@@ -47,7 +48,7 @@ const AD_STUDIO = (() => {
   let _kinds = {}, _content = {};
   const _autoKind = n => /nmms|scholar|शिष्यवृत्ती|navodaya|नवोदय|ntse|olymp|mts|स्पर्धा|competitive|\bjee\b|neet|\bcet\b|cuet|\bnda\b|sainik|सैनिक|aissee|\brms\b|rimc|military|lateral/i.test(String(n || '')) ? 'comp' : 'reg';
   const _kindOf = b => _kinds[b] || _autoKind(b);
-  const st = { aud: 'parent', kind: 'comp', batch: '', label: '', v: 'loss', lang: 'both', fmt: '916', t0: 0, paused: false, pausedAt: 0, rec: null };
+  const st = { plat: 'meta', aud: 'parent', kind: 'comp', batch: '', label: '', v: 'loss', lang: 'both', fmt: '916', t0: 0, paused: false, pausedAt: 0, rec: null };
 
   // ── what the ads say (filled per class) ──
   const T = {
@@ -718,16 +719,41 @@ const AD_STUDIO = (() => {
   const timeline = v => { let at = 0; return v.scenes.map(k => { const s = { k, at, d: DUR[k] }; at += s.d; return s; }); };
   const lengthOf = v => v.scenes.reduce((n, k) => n + DUR[k], 0);
 
+  let _sq = null, _wide = false;   // _wide: drawing the square half of a 16:9 ad
   function drawAt(t) {
     if (!cv) return;
+    cv.classList.toggle('wide', st.fmt === '169');
+    if (st.fmt === '169') return _drawWide(t);
     const [W, H] = FMT[st.fmt];
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    _drawAd(W, H, t);
+  }
+  function _drawWide(t) {
+    if (cv.width !== 1920 || cv.height !== 1080) { cv.width = 1920; cv.height = 1080; }
+    if (!_sq) { _sq = document.createElement('canvas'); _sq.width = 1080; _sq.height = 1080; }
+    const main = x;
+    const f0 = _facts(), cur0 = timeline(_variants(f0)[st.v]).find(s0 => t >= s0.at && t < s0.at + s0.d);
+    bg(1920, 1080, t, st.v === 'loss' && cur0?.k === 'hook');   // one background under both halves
+    x = _sq.getContext('2d'); st.fmt = '11'; _wide = true;
+    try { x.clearRect(0, 0, 1080, 1080); _drawAd(1080, 1080, t); } finally { st.fmt = '169'; x = main; _wide = false; }
+    x.drawImage(_sq, 840, 0);
+    x.save(); x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(0, 0, 840, 1080); x.restore();
+    const f = _facts(), a = _variants(f)[st.v], p0 = adParts(st.v);
+    if (logoOk()) logo(420, 190, 150); else text('🚀', 420, 190, 120, C.white, 800);
+    text('NKs EduOrbit', 420, 320, 64, C.white, 800, 'center', 760);
+    if (!isTeacher(a.aud)) text(f.label, 420, 400, 44, '#ffd6e7', 700, 'center', 760);
+    wrapText(p0.headline, 420, 520, 740, 70, 58, C.white, 800, 3, 'center');
+    x.save(); x.fillStyle = C.gold; rr(130, 760, 580, 110, 55); x.fill(); x.restore();
+    text(isTeacher(a.aud) ? '▶ नोंदणी Free' : '▶ आधी Free Test', 420, 816, 46, '#3b1d00', 800, 'center', 540);
+    text(SITE.replace(/^https:\/\//, ''), 420, 940, 38, C.white, 700, 'center', 760);
+  }
+  function _drawAd(W, H, t) {
     const f = _facts(), v = _variants(f)[st.v], tl = timeline(v), cur = tl.find(s => t >= s.at && t < s.at + s.d) || tl[tl.length - 1];
-    bg(W, H, t, st.v === 'loss' && cur.k === 'hook');
+    if (!_wide) bg(W, H, t, st.v === 'loss' && cur.k === 'hook');
     const prev = tl[tl.indexOf(cur) - 1];
     S[cur.k](W, H, t - cur.at, v, f, cur.k === 'question' && prev?.k === 'challenge');
     const last = cur.k === 'offer' || cur.k === 'toffer';
-    if (!last && logoOk()) {
+    if (!last && logoOk() && !_wide) {
       // small logo + name, top-left, from the first second (brand recall without stealing the hook)
       const sz = st.fmt === '916' ? 84 : 64, m = st.fmt === '916' ? 36 : 22;
       x.save(); x.globalAlpha = .95; x.fillStyle = 'rgba(0,0,0,.28)'; rr(m, m, sz + 250, sz + 16, (sz + 16) / 2); x.fill(); x.restore();
@@ -743,10 +769,12 @@ const AD_STUDIO = (() => {
   const _slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'class';
   const _audOf = v => _variants(_facts())[v]?.aud || 'parent';
   // teacher ads are not tied to a class: t-<variant>
-  const adId = (v = st.v) => isTeacher(_audOf(v)) ? `t-${v}` : `${_slug(st.batch)}-${v}`;
+  // YouTube ads: the same id with yt- in front (its own row on the leaderboard)
+  const adId = (v = st.v) => (st.plat === 'yt' ? 'yt-' : '') + (isTeacher(_audOf(v)) ? `t-${v}` : `${_slug(st.batch)}-${v}`);
+  const _src = () => (st.plat === 'yt' ? 'yt' : 'meta');
   const adLink = (v = st.v) => isTeacher(_audOf(v))
-    ? `${SITE}/student-app/?treg=${_audOf(v)}&src=meta&ad=${encodeURIComponent(adId(v))}`
-    : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}${_variants(_facts())[v]?.kind === 'reg' ? '&k=r' : ''}&src=meta&ad=${encodeURIComponent(adId(v))}`;
+    ? `${SITE}/student-app/?treg=${_audOf(v)}&src=${_src()}&ad=${encodeURIComponent(adId(v))}`
+    : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}${_variants(_facts())[v]?.kind === 'reg' ? '&k=r' : ''}&src=${_src()}&ad=${encodeURIComponent(adId(v))}`;
   // the ad's parts (also what goes to Meta)
   function adParts(v = st.v) {
     const f = _facts(), a = _variants(f)[v];
@@ -759,7 +787,28 @@ const AD_STUDIO = (() => {
   }
   function adText(v = st.v) {
     const p0 = adParts(v);
+    if (st.plat === 'yt') return ytKit(v);
     return `Primary text:\n${p0.message}\n\nHeadline: ${p0.headline}\nButton: ${p0.cta === 'SIGN_UP' ? 'Sign up' : 'Learn more'}\nLink: ${p0.link}`;
+  }
+  // what to type in YouTube Studio + Google Ads (limits: headline 15, long headline 90, description 70, button 10)
+  function ytKit(v = st.v) {
+    const p0 = adParts(v), id = adId(v), teach = isTeacher(p0.aud);
+    const cut = (t, n) => { const a = [...String(t).replace(/\s+/g, ' ').trim()]; return a.length <= n ? a.join('') : a.slice(0, n - 1).join('') + '…'; };
+    const first = String(p0.message).split('\n')[0];
+    return [
+      '▶️ YouTube Studio (upload):',
+      `  File: ${id}-16x9.mp4  (Shorts साठी: ${id}-9x16.mp4)`,
+      `  Title: ${cut(p0.headline + ' | NKs EduOrbit', 100)}`,
+      '  Visibility: Unlisted',
+      '',
+      '📣 Google Ads (Video campaign):',
+      `  Ad name: ${id}`,
+      `  Final URL: ${p0.link}`,
+      `  Call to action: ${teach ? 'Sign up' : 'Free Test'}`,
+      `  Headline (15): ${cut(teach ? 'नोंदणी Free' : 'Free Test द्या', 15)}`,
+      `  Long headline (90): ${cut(p0.headline, 90)}`,
+      `  Description (70): ${cut(first, 70)}`,
+    ].join('\n');
   }
   // the Meta ad set an ad goes into: one per class + kind + audience (teachers: one per audience)
   const adsetName = (v = st.v) => { const a = _audOf(v); return isTeacher(a) ? `t-${a}` : `${_slug(st.batch)}-${st.kind === 'reg' ? 'r' : 'c'}-${a}`; };
@@ -844,7 +893,8 @@ const AD_STUDIO = (() => {
   }
   function _paintMetaBox() {
     const box = $('ads-metabox'); if (!box) return;
-    box.hidden = !_metaOk;
+    box.hidden = !_metaOk || st.plat !== 'meta';
+    if ($('ads-ytbox')) { $('ads-ytbox').hidden = st.plat !== 'yt'; $('ads-yt-name').textContent = `Ad: ${adId()}`; }
     const total = Math.max(0, Number($('ads-budget')?.value) || 0);
     const inp = $('ads-meta-budget');
     if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * _share(st.aud) / 100 : 150));
@@ -876,7 +926,7 @@ const AD_STUDIO = (() => {
     rec.stop(); await done; st.rec = null;
     Object.assign(st, keep, { t0: performance.now() });
     const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
-    return { blob: new Blob(chunks, { type: mime.split(';')[0] }), name: `${adId(v)}-${fmt === '916' ? '9x16' : fmt === '45' ? '4x5' : '1x1'}.${ext}`, ext };
+    return { blob: new Blob(chunks, { type: mime.split(';')[0] }), name: `${adId(v)}-${FMT_TAG[fmt] || fmt}.${ext}`, ext };
   }
 
   // ── leaderboard: which ad brings test takers / paying students cheapest ──
@@ -913,29 +963,40 @@ const AD_STUDIO = (() => {
     try {
       const days = Number($('ads-days')?.value || 30);
       // Meta's own numbers (spend, views, link clicks) when Meta is connected on the server
-      const [f, meta] = await Promise.all([
+      const [f, meta, gads] = await Promise.all([
         API.fetchGuestFunnel(days),
         Promise.resolve(API.fetchMetaAds?.(days, { fresh })).catch(err => ({ connected: false, error: err?.message || '' })),
+        Promise.resolve(API.fetchGoogleAds?.(days, { fresh })).catch(err => ({ connected: false, error: err?.message || '' })),
       ]);
-      const M = meta?.connected ? (meta.by_name || {}) : {};
+      const G = gads?.connected ? (gads.by_name || {}) : {}, GS = gads?.connected ? (gads.ads || {}) : {};
+      const M = { ...(meta?.connected ? (meta.by_name || {}) : {}), ...Object.fromEntries(Object.entries(G).map(([k, g]) => [k, { ...g, google: true }])) };
       _metaOk = !!meta?.connected; _paintMetaBox();
       const spend = await _spend();
       const V = _variants(_facts());
       // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
-      const ours = id => /^t-/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
-      const audOfId = id => { const m = /^t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).filter(v => id.endsWith('-' + v)).sort((a, b) => b.length - a.length)[0]; return V[k]?.aud || 'parent'; };
+      const ours = id => /^(yt-)?t-/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
+      const audOfId = id => { const m = /^(?:yt-)?t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).filter(v => id.endsWith('-' + v)).sort((a, b) => b.length - a.length)[0]; return V[k]?.aud || 'parent'; };
       // every ad that is in Meta under our name shows up (also a new one with no spend yet)
-      const inMeta = meta?.connected ? Object.keys(meta.ads || {}).filter(ours) : [];
+      const inMeta = [...(meta?.connected ? Object.keys(meta.ads || {}) : []), ...Object.keys(GS)].filter(ours);
       const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend), ...Object.keys(M).filter(ours), ...inMeta]);
       const odd = Object.values(M).filter(m => !ours(m.name.toLowerCase()));
       const rs = n => Number.isFinite(n) ? '₹' + Math.round(n) : '—';
       const num = n => n >= 1e5 ? (n / 1e5).toFixed(1) + 'L' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
       // spend: from Meta when the ad is there (read-only), else typed by the admin
-      const spendCell = r => M[r.id] ? `<b>₹${Math.round(r.spend)}</b> <small class="ads-meta">Meta</small>`
+      const spendCell = r => M[r.id] ? `<b>₹${Math.round(r.spend)}</b> <small class="ads-meta">${M[r.id].google ? 'Google' : 'Meta'}</small>`
         : `<input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" />`;
       // the ad's state in Meta + the buttons: ⏸ / ▶ for the ad, 🏆 +20% for a winning ad set
       const S = meta?.connected ? (meta.ads || {}) : {};
       const actCell = r => {
+        const g = GS[r.id];
+        if (g) {
+          const on = g.status === 'ENABLED';
+          const btns = [`<small class="ads-st ${on ? 'on' : 'off'}">${on ? '● चालू' : '○ बंद'}${g.campaign_status && g.campaign_status !== 'ENABLED' ? ' (campaign बंद)' : ''}</small>`];
+          btns.push(on ? `<button type="button" class="ads-act${r.tone === 'bad' ? ' warn' : ''}" data-gact="pause" data-ad="${_esc(g.ad)}">⏸ बंद करा</button>`
+            : `<button type="button" class="ads-act" data-gact="resume" data-ad="${_esc(g.ad)}">▶ चालू करा</button>`);
+          if (r.tone === 'good' && g.budget && g.budget_id) btns.push(`<button type="button" class="ads-act good" data-gact="budget" data-budget="${_esc(g.budget_id)}">🏆 बजेट ₹${Math.round(g.budget)} → ₹${Math.round(g.budget * 1.2)}</button>`);
+          return `<div class="ads-acts">${btns.join('')}</div>`;
+        }
         const a = S[r.id]; if (!a) return '';
         const on = a.status === 'ACTIVE';
         const btns = [`<small class="ads-st ${on ? 'on' : 'off'}">${on ? '● चालू' : '○ बंद'}</small>`];
@@ -944,26 +1005,32 @@ const AD_STUDIO = (() => {
         if (r.tone === 'good' && a.budget) btns.push(`<button type="button" class="ads-act good" data-act="budget" data-adset="${_esc(a.adset_id)}">🏆 बजेट ₹${Math.round(a.budget)} → ₹${Math.round(a.budget * 1.2)}</button>`);
         return `<div class="ads-acts">${btns.join('')}</div>`;
       };
-      const setName = id => S[id]?.adset ? `<small class="ads-set">${_esc(S[id].adset)}${S[id].budget ? ` · ₹${Math.round(S[id].budget)}/दिवस` : ''}</small>` : '';
-      const metaCell = id => M[id] ? `${num(M[id].impressions)} · ${M[id].clicks}${M[id].clicks ? ` <small>(₹${Math.round(M[id].spend / M[id].clicks)}/click)</small>` : ''}` : '—';
+      const setName = id => GS[id] ? `<small class="ads-set">▶️ YouTube · ${_esc(GS[id].campaign)}${GS[id].budget ? ` · ₹${Math.round(GS[id].budget)}/दिवस` : ''}</small>` : /^yt-/.test(id) ? '<small class="ads-set">▶️ YouTube</small>' : S[id]?.adset ? `<small class="ads-set">${_esc(S[id].adset)}${S[id].budget ? ` · ₹${Math.round(S[id].budget)}/दिवस` : ''}</small>` : '';
+      const metaCell = id => M[id] ? `${num(M[id].impressions)}${M[id].google && M[id].views ? ` (${num(M[id].views)} views)` : ''} · ${M[id].clicks}${M[id].clicks ? ` <small>(₹${Math.round(M[id].spend / M[id].clicks)}/click)</small>` : ''}` : '—';
       const status = !meta ? '' : meta.connected
         ? `<p class="ads-meta-line ok">🔗 Meta जोडलं: <b>${_esc(meta.account?.name || '')}</b> · ${_esc(meta.account?.currency || '')} · ${_esc(meta.since || '')} ते ${_esc(meta.until || '')} · ${Object.keys(M).length} ads
             <br>${meta.config?.dataset ? `🎯 Free test चा निकाल Meta ला जातो: ${meta.capi?.leads || 0} Free test (नवीन ad sets "Free test" वर चालतात; payment ची माहिती जात नाही)` : '🎯 निकाल अजून Meta ला जात नाहीत — Render मध्ये META_DATASET_ID टाका (ad sets सध्या "click" वर चालतात)'}</p>`
         : meta.error ? `<p class="ads-meta-line bad">⚠️ ${_esc(meta.error)}</p>`
         : '<p class="ads-meta-line">🔗 Meta जोडलेलं नाही — खर्च हाताने लिहा.</p>';
+      const gStatus = !gads ? '' : gads.connected
+        ? `<p class="ads-meta-line ok">▶️ Google Ads (YouTube) जोडलं: <b>${_esc(gads.account?.name || '')}</b> · ${_esc(gads.account?.currency || '')} · ${Object.keys(G).length} ads${gads.config?.lead_action ? ` · 🎯 Free test Google ला जातो: ${gads.leads || 0}` : ' · 🎯 Google ला निकाल अजून जात नाहीत (GOOGLE_ADS_LEAD_ACTION_ID नाही)'}</p>`
+        : gads.error ? `<p class="ads-meta-line bad">▶️ Google Ads: ⚠️ ${_esc(gads.error)}</p>`
+        : (Object.keys(f.by_ad || {}).some(k => k.startsWith('yt-')) || Object.keys(spend).some(k => k.startsWith('yt-'))) ? '<p class="ads-meta-line">▶️ Google Ads जोडलेलं नाही — YouTube ads चा खर्च हाताने लिहा.</p>' : '';
+      // ads compete inside their own Meta ad set / YouTube campaign (Meta and YouTube never against each other)
+      const keyOf = id => GS[id] ? 'yt:' + GS[id].campaign_id : /^yt-/.test(id) ? 'yt:' : S[id]?.adset;
       const groups = Object.keys(AUD).map(aud => {
         const mine = [...ids].filter(id => audOfId(id) === aud);
         if (!mine.length) return '';
         const sp = id => M[id] ? M[id].spend : (Number(spend[id]) || 0);
         if (isTeacher(aud)) {
-          const rows = verdictsBy(mine.map(id => { const t = f.by_teacher_ad?.[id] || {}; return { id, opened: 0, tested: t.registered || 0, paid: t.paid || 0, spend: sp(id), approved: t.approved || 0, students: t.students || 0, meta: !!(S[id] || M[id]) }; }), id => S[id]?.adset)
+          const rows = verdictsBy(mine.map(id => { const t = f.by_teacher_ad?.[id] || {}; return { id, opened: 0, tested: t.registered || 0, paid: t.paid || 0, spend: sp(id), approved: t.approved || 0, students: t.students || 0, meta: !!(S[id] || M[id] || GS[id]) }; }), keyOf)
             .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt));
           return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>नोंदणी</th><th>Approve</th><th>त्यांनी आणलेली मुलं</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / नोंदणी</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
             ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
               <td>${spendCell(r)}</td>
               <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b>${actCell(r)}</td></tr>`).join('')}</tbody></table>`;
         }
-        const rows = verdictsBy(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id), meta: !!(S[id] || M[id]) })), id => S[id]?.adset)
+        const rows = verdictsBy(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id), meta: !!(S[id] || M[id] || GS[id]) })), keyOf)
           .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt) || b.opened - a.opened);
         return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
           ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
@@ -972,8 +1039,8 @@ const AD_STUDIO = (() => {
       }).join('');
       // Meta ads whose name is not one of our ad ids: their numbers can't be matched
       const oddHtml = odd.length ? `<p class="ads-meta-line bad">ℹ️ Meta मधल्या या ads चं नाव आपल्या ad id सारखं नाही, म्हणून त्यांचे आकडे जुळत नाहीत: ${odd.map(m => `<b>${_esc(m.name)}</b> (₹${Math.round(m.spend)})`).join(', ')}. Ads Manager मध्ये ad चं नाव ad id सारखं ठेवा (उदा. 10th-r-guide).</p>` : '';
-      if (!groups) { box.innerHTML = `${status}${oddHtml}<p class="import-hint">अजून कोणत्याही ad मधून कोणी आलं नाही. Ad चालू केल्यावर इथे आकडे येतील.</p>`; return; }
-      box.innerHTML = `${status}${groups}${oddHtml}
+      if (!groups) { box.innerHTML = `${status}${gStatus}${oddHtml}<p class="import-hint">अजून कोणत्याही ad मधून कोणी आलं नाही. Ad चालू केल्यावर इथे आकडे येतील.</p>`; return; }
+      box.innerHTML = `${status}${gStatus}${groups}${oddHtml}
       <p class="import-hint">प्रत्येक गटातल्या ads ची तुलना त्याच गटातल्या ads शी. पालक / विद्यार्थी: "₹ प्रति test", teachers: "₹ प्रति नोंदणी"; 2 ads ना 3+ paid झाले की "₹ प्रति paid" वरून. ₹500 खर्च किंवा 30 जणांनी link उघडल्यावरच निर्णय. ${meta?.connected ? 'खर्च Meta कडून आपोआप येतो (10 मिनिटांत एकदा ताजा).' : 'Meta मधला खर्च इथे लिहा.'}</p>`;
       // buttons act in Meta: first press asks "पक्कं?", the second does it
       box.querySelectorAll('.ads-act').forEach(btn => btn.addEventListener('click', async () => {
@@ -984,12 +1051,19 @@ const AD_STUDIO = (() => {
         }
         btn.disabled = true; btn.textContent = '⏳';
         try {
+          const ga = btn.dataset.gact;
+          if (ga) {
+            const out = ga === 'budget' ? await API.googleAction({ action: 'budget', budget: btn.dataset.budget }) : await API.googleAction({ action: ga, ad: btn.dataset.ad });
+            APP.toast(ga === 'budget' ? `YouTube: बजेट ₹${out.from} → ₹${out.to}` : `YouTube ad ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}`, 'success');
+            _loadBoard(true);
+            return;
+          }
           const out = btn.dataset.act === 'budget' ? await API.metaAction({ action: 'budget', adset_id: btn.dataset.adset })
             : await API.metaAction({ action: btn.dataset.act, ad_id: btn.dataset.ad });
           APP.toast(btn.dataset.act === 'budget' ? `${out.name}: बजेट ₹${out.from} → ₹${out.to}` : `${out.name}: ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}`, 'success');
           _loadBoard(true);
         } catch (err) {
-          APP.toast(err?.message || 'Meta मध्ये बदल झाला नाही', 'error');
+          APP.toast(err?.message || (btn.dataset.gact ? 'Google Ads मध्ये बदल झाला नाही' : 'Meta मध्ये बदल झाला नाही'), 'error');
           btn.disabled = false; delete btn.dataset.sure; btn.textContent = btn.dataset.label;
         }
       }));
@@ -1056,7 +1130,11 @@ const AD_STUDIO = (() => {
     if (!_ready) {
       _ready = true;
       host.innerHTML = `
-        <h3 class="admin-section-title">📣 Facebook / Instagram Ads</h3>
+        <h3 class="admin-section-title">📣 Ads — Facebook / Instagram आणि YouTube</h3>
+        <div class="ads-plats" role="group" aria-label="कुठे">
+          <button type="button" class="ads-plat" data-plat="meta" aria-pressed="true">📘 Facebook / Instagram</button>
+          <button type="button" class="ads-plat" data-plat="yt" aria-pressed="false">▶️ YouTube</button>
+        </div>
         <p class="import-hint">प्रत्येक गटाच्या ads — फक्त सुरुवात वेगळी. एका गटाच्या सगळ्या ads एकदम चालवा, सगळ्यात स्वस्तात test / नोंदणी / paid आणणारी ठेवा, बाकी बंद. Video इथेच (या browser मध्ये) बनतो; server / Cloudinary वर काही जात नाही.</p>
         <div class="ads-auds" role="group" aria-label="कोणासाठी">${Object.entries(AUD).map(([k, a]) => `<button type="button" class="ads-aud" data-aud="${k}" aria-pressed="${k === st.aud}">${a.name}<small>बजेट ${a.share}%</small></button>`).join('')}</div>
         <div class="ads-budget">रोजचं एकूण बजेट ₹ <input id="ads-budget" type="number" min="0" step="50" class="admin-input" placeholder="उदा. 500" aria-label="रोजचं बजेट" /> <span id="ads-split"></span>
@@ -1069,7 +1147,7 @@ const AD_STUDIO = (() => {
           <label>Ad मध्ये नाव <input id="ads-label" class="admin-input" maxlength="30" placeholder="उदा. 8वी NMMS" /></label>
           </span>
           <label>भाषा <select id="ads-lang" class="admin-input"><option value="both">मराठी + English</option><option value="mr">मराठी</option><option value="en">English</option></select></label>
-          <label>पाहा <select id="ads-fmt" class="admin-input"><option value="916">9:16 Reels / Stories</option><option value="45">4:5 Feed</option><option value="11">1:1</option></select></label>
+          <label>पाहा <select id="ads-fmt" class="admin-input"><option value="916">9:16 Reels / Stories</option><option value="45">4:5 Feed</option><option value="11">1:1</option><option value="169">16:9 YouTube</option></select></label>
         </div>
         <p class="import-hint" id="ads-facts"></p>
         <button type="button" class="admin-btn-secondary" id="ads-nextq" hidden>🔄 दुसरा प्रश्न</button>
@@ -1090,10 +1168,21 @@ const AD_STUDIO = (() => {
               <div id="ads-meta-bulk" class="import-hint"></div>
               <p class="import-hint" id="ads-meta-msg">9:16 video इथे बनतो आणि Meta वर जातो. Ad <b>बंद (Paused)</b> बनते — Ads Manager मध्ये तपासून तुम्ही चालू करायची.</p>
             </div>
+            <div class="ads-recbox ads-ytbox" id="ads-ytbox" hidden>
+              <b>▶️ YouTube ad</b>
+              <small id="ads-yt-name"></small>
+              <button type="button" class="admin-btn-primary" id="ads-yt-rec">🎬 16:9 + 9:16 (Shorts) video बनवा</button>
+              <ol class="import-hint">
+                <li>दोन्ही video YouTube Studio मध्ये <b>Unlisted</b> म्हणून upload करा (title वरच्या मजकुरात).</li>
+                <li>Google Ads › नवीन Video campaign: ad चं <b>नाव = ad id</b>, Final URL = वरचा link (त्यात <code>ad=yt-…</code> आहे — त्यावरून आकडे जुळतात).</li>
+                <li>Google Ads जोडलं (Render मध्ये GOOGLE_ADS_*) की खर्च / views आपोआप खाली येतात; तोपर्यंत खर्च हाताने लिहा.</li>
+              </ol>
+              <p class="import-hint" id="ads-yt-msg"></p>
+            </div>
             <div class="ads-recbox">
               <b>📥 Video download</b>
               <div id="ads-recvars"></div>
-              <div><label><input type="checkbox" class="ads-fmt-rec" value="916" checked /> 9:16</label> <label><input type="checkbox" class="ads-fmt-rec" value="45" checked /> 4:5</label> <label><input type="checkbox" class="ads-fmt-rec" value="11" /> 1:1</label></div>
+              <div><label><input type="checkbox" class="ads-fmt-rec" value="916" checked /> 9:16</label> <label><input type="checkbox" class="ads-fmt-rec" value="45" checked /> 4:5</label> <label><input type="checkbox" class="ads-fmt-rec" value="11" /> 1:1</label> <label><input type="checkbox" class="ads-fmt-rec" value="169" /> 16:9 YouTube</label></div>
               <button type="button" class="admin-btn-primary" id="ads-rec">🎬 निवडलेले video बनवा</button>
               <p class="import-hint" id="ads-msg">प्रत्येक video त्याच्या लांबीइतका (≈20 सेकंद) वेळ घेतो.</p>
             </div>
@@ -1114,6 +1203,26 @@ const AD_STUDIO = (() => {
       $('ads-lang').addEventListener('change', e => { st.lang = e.target.value; _paintSide(); });
       $('ads-fmt').addEventListener('change', e => { st.fmt = e.target.value; });
       host.querySelectorAll('.ads-aud').forEach(b => b.addEventListener('click', () => { st.aud = b.dataset.aud; st.t0 = performance.now(); _paintSide(); }));
+      host.querySelectorAll('.ads-plat').forEach(b => b.addEventListener('click', () => {
+        st.plat = b.dataset.plat;
+        host.querySelectorAll('.ads-plat').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+        st.fmt = st.plat === 'yt' ? '169' : '916'; $('ads-fmt').value = st.fmt; st.t0 = performance.now();
+        _paintSide();
+      }));
+      $('ads-yt-rec').addEventListener('click', async () => {
+        const btn = $('ads-yt-rec'), msg = $('ads-yt-msg');
+        btn.disabled = true;
+        try {
+          for (const [i, fm] of [['1', '169'], ['2', '916']]) {
+            msg.textContent = `⏳ video ${i} / 2 बनत आहे… (हे tab उघडं ठेवा)`;
+            const r = await record(st.v, fm);
+            await FILE_EXPORT.saveAndShare(r.blob, r.name);
+            if (r.ext !== 'mp4') msg.textContent = 'हा browser WebM देतो — Chrome / Edge वापरा';
+          }
+          msg.textContent = '✅ दोन्ही video download झाले — आता YouTube Studio मध्ये upload करा';
+        } catch (err) { msg.textContent = err?.message || 'Video बनला नाही'; }
+        btn.disabled = false;
+      });
       $('ads-budget').addEventListener('input', () => { _paintBudget(); _paintMetaBox(); });
       _paintBudget();
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });

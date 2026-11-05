@@ -482,6 +482,10 @@ const API = (() => {
   // Meta's click id on a Facebook / Instagram ad link (&fbclid=…), read once at load
   // (the address bar can be cleaned up later). Goes to our server only with a new guest session.
   const _FBCLID = (() => { try { return (new URLSearchParams(location.search).get('fbclid') || '').slice(0, 300); } catch { return ''; } })();
+  // Google's click id on a Google / YouTube ad link (&gclid=… / &gbraid=… / &wbraid=…), same rules
+  const _GCLICK = (() => {
+    try { const q = new URLSearchParams(location.search), o = {}; for (const k of ['gclid', 'gbraid', 'wbraid']) { const v = (q.get(k) || '').slice(0, 300); if (v) o[k] = v; } return o; } catch { return {}; }
+  })();
 
   async function startGuestSession({ batch, name, src, ref, resume_gid, link_batch } = {}) {
     const state = await getGuestState();
@@ -493,6 +497,7 @@ const API = (() => {
       ref: ref || state.ref || '',
       link_batch: link_batch || undefined,
       fbclid: src === 'ad' && _FBCLID ? _FBCLID : undefined,
+      ...(src === 'ad' ? _GCLICK : {}),
     };
     const payload = await request('/guest/session', {
       method: 'POST',
@@ -1672,6 +1677,7 @@ const API = (() => {
   // Public: a teacher registers themselves; the account is pending until an admin approves.
   async function registerTeacher(data = {}) {
     if (data.signup_ad && _FBCLID && !data.fbclid) data = { ...data, fbclid: _FBCLID };
+    if (data.signup_ad) data = { ..._GCLICK, ...data };
     return request('/teachers/register', { method: 'POST', body: JSON.stringify(data) });
   }
 
@@ -2287,6 +2293,16 @@ const API = (() => {
   const siteSeed = () => _siteReq('/seed', { method: 'POST', body: '{}' });
   const siteSave = (slug, body) => _siteReq('/exams/' + encodeURIComponent(slug), { method: 'PUT', body: JSON.stringify(body) });
   const sitePublish = () => _siteReq('/publish', { method: 'POST', body: '{}' });
+
+  // Admin › Ads › ▶️ YouTube: Google Ads numbers (the server holds the Google tokens)
+  async function fetchGoogleAds(days = 30, { fresh = false } = {}) {
+    const token = await ensureAdminSession();
+    return request(`/guest/admin/google?days=${days}${fresh ? '&fresh=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function googleAction(body) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/google/action', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+  }
 
   async function metaAction(body) {
     const token = await ensureAdminSession();
@@ -3043,7 +3059,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

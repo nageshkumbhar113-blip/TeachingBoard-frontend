@@ -2751,3 +2751,10 @@ body.admin-app {
 .site-ai ol { margin: 6px 0; padding-left: 20px; }
 
 .site-seo { display: block; font-weight: 700; font-size: .75rem; color: #6b5fa8; margin-top: 2px; }
+
+/* Ads: platform switch + YouTube box */
+.ads-plats { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.ads-plat { border: 2px solid #e2dcf7; background: #fff; border-radius: 12px; padding: 8px 14px; font: inherit; font-weight: 800; cursor: pointer; }
+.ads-plat[aria-pressed="true"] { border-color: #6d3cf0; background: #f3eeff; }
+.ads-ytbox ol { margin: 6px 0; padding-left: 18px; }
+#ads-cv.wide { width: 480px; }
