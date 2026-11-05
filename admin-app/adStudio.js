@@ -737,9 +737,9 @@ const AD_STUDIO = (() => {
       msg.textContent = '⏳ Meta मध्ये ad बनत आहे (video तयार व्हायला 1–2 मिनिटं लागू शकतात)…';
       const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
       if (out.exists) msg.innerHTML = `ℹ️ <b>${_esc(id)}</b> ही ad Meta मध्ये आधीच आहे — दुसरी बनवली नाही.`;
-      else if (out.pending) msg.textContent = '⏳ Meta अजून video तयार करत आहे. 2 मिनिटांनी पुन्हा "Meta वर पाठवा" दाबा (video पुन्हा जाणार नाही).';
+      else if (out.pending) msg.textContent = (out.note ? out.note + ' · ' : '') + '⏳ Meta अजून video तयार करत आहे. 2 मिनिटांनी पुन्हा "Meta वर पाठवा" दाबा (video पुन्हा जाणार नाही).';
       else {
-        msg.innerHTML = `✅ <b>${_esc(id)}</b> Meta मध्ये बनली — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये पाहा</a> किंवा इथूनच
+        msg.innerHTML = (out.note ? `⚠️ ${_esc(out.note)}<br>` : '') + `✅ <b>${_esc(id)}</b> Meta मध्ये बनली${out.mode === 'lead' ? ' ("Free test" वर चालणाऱ्या ad set मध्ये)' : ''} — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये पाहा</a> किंवा इथूनच
           <button type="button" class="ads-act good" id="ads-meta-on">▶ आत्ता चालू करा</button>`;
         const on = $('ads-meta-on');
         on.addEventListener('click', async () => {
@@ -833,13 +833,19 @@ const AD_STUDIO = (() => {
     const best = Math.min(...judged.map(cost).filter(Number.isFinite));
     return rows.map(r => {
       let v = '▶ चालू ठेवा', tone = '';
-      if (!r.spend) { v = '₹ खर्च लिहा'; tone = 'muted'; }
+      if (!r.spend) { v = r.meta ? '⏳ Meta मध्ये अजून खर्च सुरू नाही' : '₹ खर्च लिहा'; tone = 'muted'; }
       else if (!enough(r)) { v = '⏳ अजून data कमी'; tone = 'muted'; }
       else if (!(usePaid ? r.paid : r.tested)) { v = '⏸ बंद करा (काहीच येत नाही)'; tone = 'bad'; }
       else if (Number.isFinite(best) && cost(r) === best) { v = '🏆 जिंकतेय — बजेट 20–25% वाढवा'; tone = 'good'; }
       else if (Number.isFinite(best) && cost(r) > best * 1.5) { v = '⏸ बंद करा (दीडपट महाग)'; tone = 'bad'; }
       return { ...r, cpt: cpt(r), cpp: cpp(r), verdict: v, tone, by: usePaid ? 'paid' : 'test' };
     });
+  }
+  // verdicts inside each Meta ad set (ads compete with the ads they share a budget with)
+  function verdictsBy(rows, keyOf) {
+    const g = new Map();
+    for (const r of rows) { const k = keyOf(r.id) || '·'; if (!g.has(k)) g.set(k, []); g.get(k).push(r); }
+    return [...g.values()].flatMap(verdicts);
   }
   async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
@@ -878,6 +884,7 @@ const AD_STUDIO = (() => {
         if (r.tone === 'good' && a.budget) btns.push(`<button type="button" class="ads-act good" data-act="budget" data-adset="${_esc(a.adset_id)}">🏆 बजेट ₹${Math.round(a.budget)} → ₹${Math.round(a.budget * 1.2)}</button>`);
         return `<div class="ads-acts">${btns.join('')}</div>`;
       };
+      const setName = id => S[id]?.adset ? `<small class="ads-set">${_esc(S[id].adset)}${S[id].budget ? ` · ₹${Math.round(S[id].budget)}/दिवस` : ''}</small>` : '';
       const metaCell = id => M[id] ? `${num(M[id].impressions)} · ${M[id].clicks}${M[id].clicks ? ` <small>(₹${Math.round(M[id].spend / M[id].clicks)}/click)</small>` : ''}` : '—';
       const status = !meta ? '' : meta.connected
         ? `<p class="ads-meta-line ok">🔗 Meta जोडलं: <b>${_esc(meta.account?.name || '')}</b> · ${_esc(meta.account?.currency || '')} · ${_esc(meta.since || '')} ते ${_esc(meta.until || '')} · ${Object.keys(M).length} ads
@@ -889,17 +896,17 @@ const AD_STUDIO = (() => {
         if (!mine.length) return '';
         const sp = id => M[id] ? M[id].spend : (Number(spend[id]) || 0);
         if (isTeacher(aud)) {
-          const rows = verdicts(mine.map(id => { const t = f.by_teacher_ad?.[id] || {}; return { id, opened: 0, tested: t.registered || 0, paid: t.paid || 0, spend: sp(id), approved: t.approved || 0, students: t.students || 0 }; }))
+          const rows = verdictsBy(mine.map(id => { const t = f.by_teacher_ad?.[id] || {}; return { id, opened: 0, tested: t.registered || 0, paid: t.paid || 0, spend: sp(id), approved: t.approved || 0, students: t.students || 0, meta: !!(S[id] || M[id]) }; }), id => S[id]?.adset)
             .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt));
           return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>नोंदणी</th><th>Approve</th><th>त्यांनी आणलेली मुलं</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / नोंदणी</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
-            ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
+            ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
               <td>${spendCell(r)}</td>
               <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b>${actCell(r)}</td></tr>`).join('')}</tbody></table>`;
         }
-        const rows = verdicts(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id) })))
+        const rows = verdictsBy(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id), meta: !!(S[id] || M[id]) })), id => S[id]?.adset)
           .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt) || b.opened - a.opened);
         return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
-          ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
+          ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
             <td>${spendCell(r)}</td>
             <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b>${actCell(r)}</td></tr>`).join('')}</tbody></table>`;
       }).join('');

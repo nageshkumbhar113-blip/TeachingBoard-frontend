@@ -2686,3 +2686,5 @@ body.admin-app {
 .ads-st { font-size: .72rem; font-weight: 800; }
 .ads-st.on { color: #15803d; }
 .ads-st.off { color: #8a83b3; }
+
+.ads-set { display: block; font-size: .7rem; color: #8a83b3; font-weight: 600; }
