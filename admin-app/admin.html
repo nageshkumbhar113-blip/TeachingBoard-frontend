@@ -234,6 +234,10 @@
               <span class="atab-icon" aria-hidden="true">🎯</span>
               <span class="atab-label">Banners</span>
             </button>
+            <button class="atab" role="tab" data-tab="ads" aria-controls="atab-ads" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">📣</span>
+              <span class="atab-label">Ads</span>
+            </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
               <span class="atab-label">Settings</span>
@@ -943,7 +947,6 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <div id="guest-leads" class="batch-admin-list" role="list" aria-label="Leads"></div>
             </section>
 
-            <section class="sync-section admin-card" id="ad-studio" aria-label="Facebook / Instagram Ads"></section>
 
             <section class="sync-section admin-card" aria-label="Quick Links Share">
               <h3 class="admin-section-title">🔗 सर्व Links Share करा</h3>
@@ -2060,6 +2063,11 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <!-- ── Ads (Facebook / Instagram) — admin-app/adStudio.js ── -->
+          <div class="atab-content hidden" id="atab-ads" role="tabpanel" aria-labelledby="atab-btn-ads">
+            <section class="sync-section admin-card" id="ad-studio" aria-label="Facebook / Instagram Ads"></section>
+          </div>
+
           <!-- ── Home Banners Panel ───────────────── -->
           <div class="atab-content hidden" id="atab-banners" role="tabpanel" aria-labelledby="atab-btn-banners">
             <div id="banner-container" class="bp-container">
@@ -2244,6 +2252,9 @@ Marks: 1"></textarea>
       </button>
       <button class="abn-drawer-item" data-tab="banners">
         <span>🎯</span> Banners
+      </button>
+      <button class="abn-drawer-item" data-tab="ads">
+        <span>📣</span> Ads
       </button>
       <button class="abn-drawer-item" data-tab="settings">
         <span>⚙️</span> Settings

@@ -934,7 +934,7 @@ const AD_STUDIO = (() => {
   function _paintSide() {
     const f = _facts(), V = _variants(f);
     const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud && (isTeacher(st.aud) || (a.kind || 'comp') === st.kind));
-    if (!V[st.v] || V[st.v].aud !== st.aud || !V[st.v].ok) st.v = (mine.find(([, a]) => a.ok) || mine[0])[0];
+    if (!V[st.v] || V[st.v].aud !== st.aud || !V[st.v].ok || (!isTeacher(st.aud) && (V[st.v].kind || 'comp') !== st.kind)) st.v = (mine.find(([, a]) => a.ok) || mine[0])[0];
     document.querySelectorAll('.ads-aud').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.aud === st.aud)));
     $('ads-variants').innerHTML = mine.map(([k, a]) => `<button type="button" class="ads-var" data-v="${k}" aria-pressed="${k === st.v}" ${a.ok ? '' : 'disabled'} title="${_esc(a.ok ? '' : a.why)}"><b>${a.name}</b><small>${a.ok ? (st.v === k ? '▶ पाहत आहात' : '') : _esc(a.why)}</small></button>`).join('');
     $('ads-recvars').innerHTML = mine.map(([k, a]) => `<label><input type="checkbox" class="ads-var-rec" value="${k}" ${a.ok ? 'checked' : 'disabled'} /> ${_esc(a.name)}</label>`).join(' ');
