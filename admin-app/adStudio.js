@@ -814,7 +814,8 @@ const AD_STUDIO = (() => {
       };
       const metaCell = id => M[id] ? `${num(M[id].impressions)} · ${M[id].clicks}${M[id].clicks ? ` <small>(₹${Math.round(M[id].spend / M[id].clicks)}/click)</small>` : ''}` : '—';
       const status = !meta ? '' : meta.connected
-        ? `<p class="ads-meta-line ok">🔗 Meta जोडलं: <b>${_esc(meta.account?.name || '')}</b> · ${_esc(meta.account?.currency || '')} · ${_esc(meta.since || '')} ते ${_esc(meta.until || '')} · ${Object.keys(M).length} ads</p>`
+        ? `<p class="ads-meta-line ok">🔗 Meta जोडलं: <b>${_esc(meta.account?.name || '')}</b> · ${_esc(meta.account?.currency || '')} · ${_esc(meta.since || '')} ते ${_esc(meta.until || '')} · ${Object.keys(M).length} ads
+            <br>${meta.config?.dataset ? `🎯 निकाल Meta ला जातात: ${meta.capi?.leads || 0} Free test · ${meta.capi?.paid || 0} paid (नवीन ad sets "Free test" वर चालतात)` : '🎯 निकाल अजून Meta ला जात नाहीत — Render मध्ये META_DATASET_ID टाका (ad sets सध्या "click" वर चालतात)'}</p>`
         : meta.error ? `<p class="ads-meta-line bad">⚠️ ${_esc(meta.error)}</p>`
         : '<p class="ads-meta-line">🔗 Meta जोडलेलं नाही — खर्च हाताने लिहा.</p>';
       const groups = Object.keys(AUD).map(aud => {

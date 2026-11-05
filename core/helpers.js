@@ -479,6 +479,10 @@ const API = (() => {
   }
 
   // New guest, or the same guest picking another class / giving a name.
+  // Meta's click id on a Facebook / Instagram ad link (&fbclid=…), read once at load
+  // (the address bar can be cleaned up later). Goes to our server only with a new guest session.
+  const _FBCLID = (() => { try { return (new URLSearchParams(location.search).get('fbclid') || '').slice(0, 300); } catch { return ''; } })();
+
   async function startGuestSession({ batch, name, src, ref, resume_gid, link_batch } = {}) {
     const state = await getGuestState();
     const body = {
@@ -488,6 +492,7 @@ const API = (() => {
       src: src || state.src || '',
       ref: ref || state.ref || '',
       link_batch: link_batch || undefined,
+      fbclid: src === 'ad' && _FBCLID ? _FBCLID : undefined,
     };
     const payload = await request('/guest/session', {
       method: 'POST',
@@ -1666,6 +1671,7 @@ const API = (() => {
 
   // Public: a teacher registers themselves; the account is pending until an admin approves.
   async function registerTeacher(data = {}) {
+    if (data.signup_ad && _FBCLID && !data.fbclid) data = { ...data, fbclid: _FBCLID };
     return request('/teachers/register', { method: 'POST', body: JSON.stringify(data) });
   }
 
