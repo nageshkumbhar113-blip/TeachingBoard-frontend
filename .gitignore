@@ -40,3 +40,11 @@ dist-student/
 
 # Misc
 New Text Document.txt
+
+# Site pages built locally (Vercel builds them itself)
+site-out/
+# Pages the Vercel build writes (never commit them)
+/exams/
+/sitemap.xml
+/robots.txt
+.vercel/output/

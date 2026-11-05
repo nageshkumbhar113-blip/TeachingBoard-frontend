@@ -34,13 +34,18 @@ const AD_STUDIO = (() => {
     youtube: { name: '▶️ YouTube teacher', share: 5, ages: [20, 50] },
   };
   const isTeacher = a => a === 'school' || a === 'youtube';
+  // 11वी–12वी (JEE / NEET / CET / CUET / NDA): the student chooses as much as the parent
+  const SENIOR = { parent: { share: 45, ages: [38, 55] }, student: { share: 40, ages: [16, 21] } };
+  const _senior = () => (_content[st.batch]?.exam?.group === 'senior') || /\b(11|12)(th|वी)?\b|\bjee\b|neet|\bcet\b|cuet|\bnda\b/i.test(st.batch || '');
+  const _share = k => (_senior() && SENIOR[k]?.share) || AUD[k].share;
+  const _ages = k => (_senior() && SENIOR[k]?.ages) || AUD[k].ages;
 
   let _batches = [], _exams = [], _events = [], _cfg = {}, _ready = false;
   // what a class is: 'comp' = स्पर्धा परीक्षा (MCQ ads), 'reg' = regular class (notes + exercise
   // answers ads). Guessed from the name, the admin's choice kept on this device.
   const KIND_KEY = 'ad_kind';
   let _kinds = {}, _content = {};
-  const _autoKind = n => /nmms|scholar|शिष्यवृत्ती|navodaya|नवोदय|ntse|olymp|mts|स्पर्धा|competitive/i.test(String(n || '')) ? 'comp' : 'reg';
+  const _autoKind = n => /nmms|scholar|शिष्यवृत्ती|navodaya|नवोदय|ntse|olymp|mts|स्पर्धा|competitive|\bjee\b|neet|\bcet\b|cuet|\bnda\b|sainik|सैनिक|aissee|\brms\b|rimc|military|lateral/i.test(String(n || '')) ? 'comp' : 'reg';
   const _kindOf = b => _kinds[b] || _autoKind(b);
   const st = { aud: 'parent', kind: 'comp', batch: '', label: '', v: 'loss', lang: 'both', fmt: '916', t0: 0, paused: false, pausedAt: 0, rec: null };
 
@@ -62,12 +67,18 @@ const AD_STUDIO = (() => {
   function _facts() {
     const b = _batches.find(x => x.name === st.batch) || {};
     const nmms = /nmms/i.test(st.batch);
-    const exam = _nextExam();
+    const C = _content[st.batch] || {}, sx = C.exam || null, mcqs = C.mcqs || [];
+    // Sync › परीक्षेच्या तारखा first, else the date in Site / Exams
+    const exam = _nextExam() || (sx?.next_date ? { title: sx.name, date: sx.next_date.date } : null);
     const ev = _lastWeekly();
     const top = ev?.toppers?.find(t => !t.hidden) || null;
     const short = n => { const p = String(n || '').trim().split(/\s+/); return p.length > 1 ? `${p[0]} ${p[p.length - 1][0]}.` : p[0] || ''; };
     return {
       nmms, label: st.label || st.batch, freeTests: Number(b.free_tests) || 0,
+      mcqs, mcq: mcqs.length ? mcqs[(st.qi || 0) % mcqs.length] : null, site: sx, loaded: !!_content[st.batch],
+      // the figure question (बाण फिरतो) fits only school-level ability tests
+      matType: /nmms|navodaya|नवोदय|scholar|शिष्यवृत्ती|aissee|sainik|सैनिक|\brms\b|rimc|mts|olymp|ntse/i.test(st.batch || ''),
+      loss: sx?.ad_loss_mr ? [sx.ad_loss_mr, sx.ad_loss_en || sx.ad_loss_mr] : nmms ? ['…आणि ₹48,000 ची NMMS शिष्यवृत्ती गेली', '…and lost the ₹48,000 NMMS scholarship'] : null,
       days: exam ? Math.max(0, Math.ceil((new Date(exam.date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 864e5)) : null,
       examTitle: exam?.title || '',
       players: ev ? (ev.participants || ev.submitted || 0) : 0,
@@ -102,6 +113,14 @@ const AD_STUDIO = (() => {
 
   // the six ads; `ok(f)` says whether the class has what the ad needs
   function _variants(f) {
+    const V = _variants0(f);
+    if (!f.mcq && !f.matType) {
+      const why = !f.loaded ? '⏳ उघडत आहे…' : 'या class च्या free test मध्ये अजून ad साठी योग्य प्रश्न नाही (चित्र / सूत्र नसलेला, 4 पर्यायांचा)';
+      for (const v of Object.values(V)) if (v.kind === 'comp' && !isTeacher(v.aud) && v.scenes.some(k => k === 'question' || k === 'challenge')) { v.ok = false; v.why = why; }
+    }
+    return V;
+  }
+  function _variants0(f) {
     const L = f.label, R = f.reg, NO_REG = 'या class मध्ये अजून Notes / स्वाध्याय उत्तरं नाहीत';
     // a demo screen only when the class has that content
     const rs = list => list.filter(k => (k !== 'notes' || R.note) && (k !== 'exdemo' || R.ex));
@@ -113,10 +132,10 @@ const AD_STUDIO = (() => {
       loss: {
         aud: 'parent', kind: 'comp', name: '💰 नुकसानाची भीती', ok: true,
         hook: f.nmms ? ['फक्त 2 गुण कमी पडले…', 'Missed by just 2 marks…'] : [`${L}: फक्त 2 गुण कमी पडले…`, `${L}: missed by just 2 marks…`],
-        hook2: f.nmms ? ['…आणि ₹48,000 ची NMMS शिष्यवृत्ती गेली', '…and lost the ₹48,000 NMMS scholarship'] : ['…आणि मेरिट लिस्ट हुकली', '…and missed the merit list'],
+        hook2: f.loss || ['…आणि मेरिट लिस्ट हुकली', '…and missed the merit list'],
         scenes: ['hook', 'question', 'result', 'features', 'offer'],
-        copy: [`${f.nmms ? 'NMMS मध्ये फक्त 2 गुण कमी पडले आणि ₹48,000 ची शिष्यवृत्ती गेली' : 'फक्त 2 गुणांनी मेरिट लिस्ट हुकली'} — असं तुमच्या मुलाचं होऊ नये.\n${L}: प्रश्न + सोपी युक्ती, दर रविवारी महा-Test आणि क्रमांक.\n✅ आधी Free test · Login नाही`,
-          `${f.nmms ? 'Missed NMMS by 2 marks and lost a ₹48,000 scholarship' : 'Missed the merit list by 2 marks'}? Don't let that be your child.\n${L}: questions with easy tricks, a weekly Maha-Test with ranks.\n✅ Free test first · No login`],
+        copy: [`${f.loss ? 'फक्त 2 गुण कमी पडले ' + f.loss[0].replace(/^…\s*/, '') : 'फक्त 2 गुणांनी मेरिट लिस्ट हुकली'} — असं तुमच्या मुलाचं होऊ नये.\n${L}: प्रश्न + सोपी युक्ती, दर रविवारी महा-Test आणि क्रमांक.\n✅ आधी Free test · Login नाही`,
+          `${f.loss ? 'Missed by just 2 marks ' + f.loss[1].replace(/^…\s*/, '') : 'Missed the merit list by 2 marks'}? Don't let that be your child.\n${L}: questions with easy tricks, a weekly Maha-Test with ranks.\n✅ Free test first · No login`],
         headline: [f.nmms ? 'NMMS: 2 गुणांनी शिष्यवृत्ती जाऊ देऊ नका' : `${L}: 2 गुणांनी मागे पडू नका`, f.nmms ? 'Don\'t lose NMMS by 2 marks' : `${L}: don't miss by 2 marks`],
       },
       challenge: {
@@ -142,7 +161,7 @@ const AD_STUDIO = (() => {
         headline: ['तुमच्या मुलाचा क्रमांक पाहा 🏅', "See your child's rank 🏅"],
       },
       days: {
-        aud: 'parent', kind: 'comp', name: '⏰ परीक्षेला दिवस बाकी', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा मध्ये या class ची तारीख टाका',
+        aud: 'parent', kind: 'comp', name: '⏰ परीक्षेला दिवस बाकी', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा किंवा Site / Exams मध्ये या class च्या परीक्षेची तारीख टाका',
         hook: [`${f.examTitle || 'परीक्षेला'} फक्त`, `${f.examTitle || 'Exam'} in just`], hook2: ['दिवस बाकी', 'days'],
         scenes: ['days', 'features', 'question', 'offer'],
         copy: [`⏰ ${f.examTitle || 'परीक्षेला'} फक्त ${f.days} दिवस बाकी.\nरोज 20 मिनिटं: प्रश्न + युक्ती, सराव tests, दर रविवारी महा-Test.\n✅ आजच Free test द्या`,
@@ -407,7 +426,48 @@ const AD_STUDIO = (() => {
     draw();
     x.restore(); x.restore();
   }
-  function questionScreen(f, lt, { tapAt = 4000, tipAt = 5200, timer = 0 } = {}) {
+  function mcqScreen(f, lt, { tapAt = 4000, tipAt = 5200, timer = 0 } = {}) {
+    const m = f.mcq;
+    phoneShell(f, () => {
+      text(m.subject ? m.subject.slice(0, 22) : 'Q 7 / 20', 80, 235, 24, '#8a83b3', 700, 'left', 320);
+      if (timer) {
+        const left = Math.max(0, Math.ceil((timer - lt) / 1000));
+        x.save(); x.fillStyle = left <= 3 ? C.red : C.violet; rr(420, 210, 120, 50, 25); x.fill(); x.restore();
+        text(`⏱ ${left}s`, 480, 236, 26, C.white, 800);
+      }
+      const n = wrapText(m.q, 300, 310, 470, 44, 32, C.ink, 800, 4, 'center');
+      const tap = lt > tapAt, top = 330 + n * 44;
+      m.options.forEach((o, i) => {
+        const oy = top + i * 120, on = tap && i === m.answer;
+        x.save(); x.fillStyle = on ? '#dcfce7' : '#faf8ff'; x.strokeStyle = on ? C.green : '#e2dcf7'; x.lineWidth = on ? 6 : 3;
+        rr(70, oy, 460, 100, 22); x.fill(); x.stroke(); x.restore();
+        text('ABCD'[i], 110, oy + 50, 28, on ? C.green : C.violet, 800);
+        text(o, 330, oy + 50, 28, C.ink, 700, 'center', 360);
+      });
+      const okY = Math.min(1010, top + 4 * 120 + 30);
+      if (tap && lt < tipAt) {
+        const sc = outBack(p(lt, tapAt, tapAt + 400));
+        x.save(); x.translate(300, okY); x.scale(sc, sc); x.fillStyle = C.green; rr(-150, -40, 300, 80, 40); x.fill(); text(LL(T.ok), 0, 2, 36, C.white, 800); x.restore();
+      }
+      const fy = top + m.answer * 120 + 50, a = outCubic(p(lt, tapAt - 1400, tapAt - 200));
+      if (lt > tapAt - 1600 && lt < tapAt + 700) {
+        const X = 520 + (440 - 520) * a, Y = 1150 + (fy - 1150) * a, press = lt > tapAt - 200 && lt < tapAt + 200;
+        x.save(); x.globalAlpha = .9; x.font = font(800, press ? 84 : 96); x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('👆', X + 10, Y + 40); x.restore();
+      }
+      const tp = outCubic(p(lt, tipAt, tipAt + 600));
+      if (tp > 0) {
+        x.save(); x.translate(0, (1 - tp) * 300); x.globalAlpha = tp;
+        x.fillStyle = '#fff7d6'; x.strokeStyle = C.gold; x.lineWidth = 4; rr(40, 925, 520, 190, 26); x.fill(); x.stroke();
+        const why = m.why || `बरोबर उत्तर: ${'ABCD'[m.answer]}) ${m.options[m.answer]}`;
+        wrapText('💡 ' + why, 300, 970, 470, 36, 26, '#5a3b00', 800, 4, 'center');
+        x.restore();
+      }
+    });
+  }
+  const MCQ_CAP = { q: ['हा प्रश्न सोडवा', 'Solve this question'], tip: ['💡 उत्तर आणि युक्ती', '💡 Answer and trick'] };
+  function questionScreen(f, lt, opts = {}) {
+    if (f.mcq) return mcqScreen(f, lt, opts);
+    const { tapAt = 4000, tipAt = 5200, timer = 0 } = opts;
     phoneShell(f, () => {
       text('Q 7 / 20', 80, 235, 24, '#8a83b3', 700, 'left');
       if (timer) {
@@ -489,7 +549,7 @@ const AD_STUDIO = (() => {
       }
     },
     challenge(W, H, lt, v, f) { placePhone(W, H, lt, true, () => questionScreen(f, lt, { tapAt: 3600, tipAt: 99999, timer: 4400 }), v.hook); },
-    question(W, H, lt, v, f, after) { placePhone(W, H, lt, !after, () => questionScreen(f, lt, after ? { tapAt: -1, tipAt: 200 } : {}), lt < 5200 && !after ? T.q : T.tip); },
+    question(W, H, lt, v, f, after) { const cap = f.mcq ? MCQ_CAP : T; placePhone(W, H, lt, !after, () => questionScreen(f, lt, after ? { tapAt: -1, tipAt: 200 } : {}), lt < 5200 && !after ? cap.q : cap.tip); },
     result(W, H, lt, v, f) { placePhone(W, H, lt, false, () => resultScreen(f, lt), T.resCap); },
     features(W, H, lt, v, f) {
       const tall = st.fmt === '916', sq = st.fmt === '11';
@@ -787,10 +847,10 @@ const AD_STUDIO = (() => {
     box.hidden = !_metaOk;
     const total = Math.max(0, Number($('ads-budget')?.value) || 0);
     const inp = $('ads-meta-budget');
-    if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * AUD[st.aud].share / 100 : 150));
+    if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * _share(st.aud) / 100 : 150));
     const n = $('ads-meta-name'); if (n) n.textContent = `Ad: ${adId()} · Ad set: ${adsetName()}`;
     // ages: the audience's, until the admin changes them (per audience)
-    const [lo, hi] = AUD[st.aud].ages, a1 = $('ads-meta-age-min'), a2 = $('ads-meta-age-max');
+    const [lo, hi] = _ages(st.aud), a1 = $('ads-meta-age-min'), a2 = $('ads-meta-age-max');
     if (a1 && a1.dataset.aud !== st.aud) { a1.value = lo; a2.value = hi; a1.dataset.aud = st.aud; }
   }
 
@@ -942,7 +1002,8 @@ const AD_STUDIO = (() => {
     const f = _facts(), V = _variants(f);
     const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud && (isTeacher(st.aud) || (a.kind || 'comp') === st.kind));
     if (!V[st.v] || V[st.v].aud !== st.aud || !V[st.v].ok || (!isTeacher(st.aud) && (V[st.v].kind || 'comp') !== st.kind)) st.v = (mine.find(([, a]) => a.ok) || mine[0])[0];
-    document.querySelectorAll('.ads-aud').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.aud === st.aud)));
+    document.querySelectorAll('.ads-aud').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.aud === st.aud)); const sm = b.querySelector('small'); if (sm) sm.textContent = `बजेट ${_share(b.dataset.aud)}%`; });
+    _paintBudget();
     $('ads-variants').innerHTML = mine.map(([k, a]) => `<button type="button" class="ads-var" data-v="${k}" aria-pressed="${k === st.v}" ${a.ok ? '' : 'disabled'} title="${_esc(a.ok ? '' : a.why)}"><b>${a.name}</b><small>${a.ok ? (st.v === k ? '▶ पाहत आहात' : '') : _esc(a.why)}</small></button>`).join('');
     $('ads-recvars').innerHTML = mine.map(([k, a]) => `<label><input type="checkbox" class="ads-var-rec" value="${k}" ${a.ok ? 'checked' : 'disabled'} /> ${_esc(a.name)}</label>`).join(' ');
     const teach = isTeacher(st.aud);
@@ -953,13 +1014,16 @@ const AD_STUDIO = (() => {
     _paintMetaBox();
     if ($('ads-kind')) $('ads-kind').value = st.kind;
     const R = f.reg;
+    if ($('ads-nextq')) $('ads-nextq').hidden = teach || st.kind !== 'comp' || (f.mcqs || []).length < 2;
     $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student`
       : st.kind === 'reg' ? (_content[st.batch] ? (R.has ? `${R.subs.length} विषय (${R.subs.map(s => s.subject).join(', ')}) · ${R.notes} Notes · ${R.answers} स्वाध्याय उत्तरं${R.note ? ' · Notes demo: ' + R.note.chapter : ''}${R.ex ? ' · स्वाध्याय demo: ' + R.ex.chapter : ''}` : 'या class मध्ये अजून Notes / स्वाध्याय उत्तरं नाहीत') : '⏳ उघडत आहे…')
-      : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
+      : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही',
+        !f.loaded ? '⏳ उघडत आहे…' : f.mcq ? `प्रश्न ${((st.qi || 0) % f.mcqs.length) + 1}/${f.mcqs.length} (free test मधला खरा)` : f.matType ? 'प्रश्न: आकृतीचा नमुना (free test मध्ये योग्य प्रश्न नाही)' : 'ad साठी योग्य प्रश्न नाही',
+        f.site ? `🗺️ ${f.site.name}` : '🗺️ Site / Exams मध्ये जोडलेली नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
   }
   function _paintBudget() {
     const total = Math.max(0, Number($('ads-budget')?.value) || 0);
-    $('ads-split').innerHTML = Object.values(AUD).map(a => `<span class="ads-split-i">${a.name}: <b>${a.share}%${total ? ` = ₹${Math.round(total * a.share / 100)}` : ''}</b></span>`).join('');
+    $('ads-split').innerHTML = Object.entries(AUD).map(([k, a]) => `<span class="ads-split-i">${a.name}: <b>${_share(k)}%${total ? ` = ₹${Math.round(total * _share(k) / 100)}` : ''}</b></span>`).join('') + (_senior() ? ' <small>(11वी–12वी: विद्यार्थी स्वतः ठरवतात, म्हणून त्यांचा वाटा जास्त)</small>' : '');
   }
   let _raf = 0;
   function _loop(now) {
@@ -1008,6 +1072,7 @@ const AD_STUDIO = (() => {
           <label>पाहा <select id="ads-fmt" class="admin-input"><option value="916">9:16 Reels / Stories</option><option value="45">4:5 Feed</option><option value="11">1:1</option></select></label>
         </div>
         <p class="import-hint" id="ads-facts"></p>
+        <button type="button" class="admin-btn-secondary" id="ads-nextq" hidden>🔄 दुसरा प्रश्न</button>
         <div class="ads-vars" id="ads-variants" role="group" aria-label="Ads"></div>
         <div class="ads-stage">
           <canvas id="ads-cv" width="1080" height="1920" aria-label="Ad preview"></canvas>
@@ -1045,6 +1110,7 @@ const AD_STUDIO = (() => {
         _setBatchKind();
       });
       $('ads-label').addEventListener('input', e => { st.label = e.target.value.trim(); _paintSide(); });
+      $('ads-nextq').addEventListener('click', () => { st.qi = (st.qi || 0) + 1; st.t0 = performance.now(); _paintSide(); });
       $('ads-lang').addEventListener('change', e => { st.lang = e.target.value; _paintSide(); });
       $('ads-fmt').addEventListener('change', e => { st.fmt = e.target.value; });
       host.querySelectorAll('.ads-aud').forEach(b => b.addEventListener('click', () => { st.aud = b.dataset.aud; st.t0 = performance.now(); _paintSide(); }));
@@ -1083,9 +1149,9 @@ const AD_STUDIO = (() => {
     st.kind = _kindOf(st.batch);
     st.t0 = performance.now();
     _paintSide();
-    if (st.kind === 'reg' && st.batch && !_content[st.batch]) {
+    if (st.batch && !_content[st.batch]) {
       const b = st.batch;
-      API.fetchAdContent(b).then(r => { _content[b] = r || { subjects: [] }; if (st.batch === b) _paintSide(); })
+      API.fetchAdContent(b).then(r => { _content[b] = r || { subjects: [] }; if (st.batch === b) { st.qi = 0; _paintSide(); } })
         .catch(() => { _content[b] = { subjects: [] }; if (st.batch === b) _paintSide(); });
     }
   }

@@ -1,0 +1,205 @@
+/* ════════════════════════════════════════
+   siteAdmin.js — Admin › 🗺️ Site / Exams
+   Global: SITE_ADMIN
+
+   The public exam pages on nkseduorbit.in (/, /exams, /exams/<slug>, sitemap.xml).
+   Each exam: facts (purpose, eligibility, paper pattern, syllabus, dates, FAQ, official link),
+   the app class it sells, the page animation, and the ads' "loss" line. "✅ तपासलं" marks the
+   facts as checked against the official site (180 days later it turns red). "🚀 Publish" puts
+   every enabled + checked exam live and asks Vercel to rebuild the site. Preview uses the same
+   renderer as the real build (site-build/render.mjs).
+════════════════════════════════════════ */
+
+const SITE_ADMIN = (() => {
+  const $ = id => document.getElementById(id);
+  const _esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const fmt = d => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const day = d => d ? new Date(d).toISOString().slice(0, 10) : '';
+  let _data = null, _open = '', _ready = false, _pubArm = 0;
+
+  function _status(e) {
+    if (!e.enabled) return '<span class="site-chip off">⏸ बंद</span>';
+    const out = [];
+    if (!e.verified_on) out.push('<span class="site-chip warn">⚠️ तपासा</span>');
+    else if (e.stale) out.push('<span class="site-chip bad">🔴 माहिती जुनी — पुन्हा तपासा</span>');
+    if (e.is_live) out.push(e.changed ? '<span class="site-chip edit">✏️ बदल publish बाकी</span>' : '<span class="site-chip ok">🟢 Live</span>');
+    else if (e.verified_on) out.push('<span class="site-chip edit">⏳ Publish बाकी</span>');
+    return out.join(' ');
+  }
+  function _next(e) {
+    const today = new Date().setHours(0, 0, 0, 0);
+    const n = (e.dates || []).filter(d => d.date && new Date(d.date).getTime() >= today).sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+    return n ? `${_esc(n.label)}: ${fmt(n.date)}` : '<span class="site-muted">तारीख नाही</span>';
+  }
+
+  function _paintList() {
+    const d = _data; if (!d) return;
+    const missing = d.seed_count - d.exams.length;
+    $('site-status').innerHTML = [
+      d.hook ? '✅ Vercel जोडलेलं (Publish दाबलं की site 1–2 मिनिटांत बदलते)' : '⚠️ Render मध्ये <b>VERCEL_DEPLOY_HOOK</b> नाही — Publish नंतर pages पुढच्या push ला बदलतील',
+      `Live: <b>${d.exams.filter(e => e.is_live && e.enabled).length}</b> / ${d.exams.length}`,
+      d.last_publish ? `शेवटचं Publish: ${fmt(d.last_publish)}` : 'अजून Publish नाही',
+      `<a href="${_esc(d.site)}/exams" target="_blank" rel="noopener">${_esc(d.site.replace(/^https:\/\//, ''))}/exams ↗</a>`,
+    ].join(' · ');
+    $('site-seed').hidden = !(missing > 0);
+    $('site-seed').textContent = `➕ सुरुवातीची माहिती भरा (${missing} परीक्षा)`;
+    $('site-list').innerHTML = d.exams.length ? `<table class="ads-table site-table"><thead><tr><th>परीक्षा</th><th>App class</th><th>पुढची तारीख</th><th>स्थिती</th><th></th></tr></thead><tbody>${
+      d.exams.map(e => `<tr${e.slug === _open ? ' class="site-open"' : ''}><td><b>${_esc(e.name)}</b><small class="ads-set">/exams/${_esc(e.slug)} · ${e.group === 'senior' ? '11वी–12वी' : 'शाळा'}</small></td>
+        <td>${e.batch ? _esc(e.batch) : '<span class="site-muted">— (लवकरच)</span>'}</td><td>${_next(e)}</td><td>${_status(e)}</td>
+        <td><button type="button" class="admin-btn-secondary" data-open="${_esc(e.slug)}">${e.slug === _open ? 'बंद' : 'उघडा'}</button></td></tr>`).join('')
+    }</tbody></table>` : '<p class="import-hint">अजून एकही परीक्षा नाही. "सुरुवातीची माहिती भरा" दाबा.</p>';
+  }
+
+  const row = (k, label, inner, hint = '') => `<label class="site-f" data-k="${k}"><span>${label}</span>${inner}${hint ? `<small>${hint}</small>` : ''}</label>`;
+  const inp = (k, v, ph = '', max = 80) => `<input class="admin-input" data-f="${k}" value="${_esc(v)}" placeholder="${_esc(ph)}" maxlength="${max}">`;
+  const area = (k, v, rows = 3, ph = '', max = 2000) => `<textarea class="admin-input" data-f="${k}" rows="${rows}" placeholder="${_esc(ph)}" maxlength="${max}">${_esc(v)}</textarea>`;
+  const dateRow = (d = {}) => `<div class="site-date"><input class="admin-input" data-d="label" value="${_esc(d.label || '')}" placeholder="उदा. परीक्षा / Form शेवटची तारीख" maxlength="60">
+    <input class="admin-input" type="date" data-d="date" value="${day(d.date)}" title="रिकामं = अजून जाहीर नाही">
+    <input class="admin-input" data-d="note" value="${_esc(d.note || '')}" placeholder="टीप (ऐच्छिक)" maxlength="80">
+    <button type="button" class="admin-btn-secondary" data-del-row aria-label="काढा">✕</button></div>`;
+  const faqRow = (f = {}) => `<div class="site-faq"><input class="admin-input" data-q value="${_esc(f.q || '')}" placeholder="प्रश्न" maxlength="200">
+    <textarea class="admin-input" data-a rows="2" placeholder="उत्तर" maxlength="1200">${_esc(f.a || '')}</textarea>
+    <button type="button" class="admin-btn-secondary" data-del-row aria-label="काढा">✕</button></div>`;
+
+  function _paintEditor() {
+    const box = $('site-editor');
+    const e = _open === '+new' ? { slug: '', name: '', group: 'school', enabled: true, animation: 'auto', dates: [{ label: 'परीक्षा' }], faq: [], order: 100 }
+      : _data?.exams.find(x => x.slug === _open);
+    if (!e) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    const batches = _data.batches || [];
+    box.innerHTML = `
+      <h4 class="site-h">${e.slug ? '✏️ ' + _esc(e.name) : '➕ नवीन परीक्षा'}</h4>
+      ${e.verified_on ? `<p class="${e.stale ? 'site-bad' : 'import-hint'}">माहिती तपासली: <b>${fmt(e.verified_on)}</b>${e.stale ? ' — 6 महिन्यांपेक्षा जुनी, official site वर पुन्हा तपासा' : ''}</p>`
+        : '<p class="site-bad">⚠️ ही माहिती अजून कोणी तपासलेली नाही (सुरुवातीची माहिती सर्वसाधारण माहितीवरून भरली आहे). Official site वर तपासून "✅ तपासलं" दाबा — त्याशिवाय ही परीक्षा website वर जाणार नाही.</p>'}
+      <div class="site-grid">
+        ${row('slug', 'Link (slug)', `<input class="admin-input" data-f="slug" value="${_esc(e.slug)}" placeholder="उदा. nmms" maxlength="40" ${e.slug ? 'readonly' : ''}>`, 'nkseduorbit.in/exams/… — नंतर बदलत नाही')}
+        ${row('name', 'नाव', inp('name', e.name, 'उदा. NMMS (8वी)'))}
+        ${row('name_en', 'English नाव', inp('name_en', e.name_en, 'NMMS (Class 8)'))}
+        ${row('class_label', 'कोणती इयत्ता देते', inp('class_label', e.class_label, 'उदा. 8वी', 40))}
+        ${row('group', 'Landing page tab', `<select class="admin-input" data-f="group"><option value="school"${e.group !== 'senior' ? ' selected' : ''}>🏫 शाळा स्तर (4थी–8वी)</option><option value="senior"${e.group === 'senior' ? ' selected' : ''}>🎓 11वी–12वी</option></select>`)}
+        ${row('order', 'क्रम', `<input class="admin-input" type="number" data-f="order" value="${_esc(e.order ?? 100)}" min="0" max="9999">`, 'लहान आकडा आधी')}
+        ${row('batch', 'App मधील class', `<select class="admin-input" data-f="batch"><option value="">— अजून नाही (लवकरच + WhatsApp वर कळवा)</option>${batches.map(b => `<option${b === e.batch ? ' selected' : ''}>${_esc(b)}</option>`).join('')}</select>`, 'निवडलं की page वर "▶ Free Test" येतं, आणि Ads पण याच परीक्षेची माहिती वापरतात')}
+        ${row('animation', 'Page वरचं animation', `<select class="admin-input" data-f="animation">${[['auto', 'आपोआप (तारीख असेल तर दिवस बाकी, नाहीतर प्रश्न)'], ['days', '⏰ दिवस बाकी'], ['question', '🧩 Free test मधला खरा प्रश्न'], ['none', 'काहीच नको']].map(([v, t]) => `<option value="${v}"${v === (e.animation || 'auto') ? ' selected' : ''}>${t}</option>`).join('')}</select>`)}
+        ${row('benefit', 'फायदा (छोटं)', inp('benefit', e.benefit, 'उदा. ₹48,000 शिष्यवृत्ती (9वी–12वी)'))}
+        ${row('official_url', 'Official link', inp('official_url', e.official_url, 'https://…', 300))}
+      </div>
+      ${row('purpose', 'परीक्षा कशासाठी (एक परिच्छेद)', area('purpose', e.purpose, 3, '', 400))}
+      ${row('eligibility', 'पात्रता', area('eligibility', e.eligibility, 3, '', 1500), 'प्रत्येक मुद्दा नवीन ओळीवर')}
+      ${row('pattern', 'पेपरची रचना', area('pattern', e.pattern, 4), 'प्रत्येक ओळ: भाग | प्रश्न | गुण | वेळ (उदा. MAT | 90 | 90 | 90 मिनिटे)')}
+      ${row('syllabus', 'अभ्यासक्रम', area('syllabus', e.syllabus, 3), 'प्रत्येक मुद्दा नवीन ओळीवर')}
+      <div class="site-f"><span>📅 तारखा (दर वर्षी बदला; तारीख रिकामी = "अजून जाहीर नाही")</span><div id="site-dates">${(e.dates || []).map(dateRow).join('')}</div>
+        <button type="button" class="admin-btn-secondary" id="site-add-date">+ तारीख</button></div>
+      <div class="site-f"><span>❓ नेहमीचे प्रश्न (Google मध्ये प्रश्न-उत्तर म्हणून दिसू शकतात)</span><div id="site-faqs">${(e.faq || []).map(faqRow).join('')}</div>
+        <button type="button" class="admin-btn-secondary" id="site-add-faq">+ प्रश्न</button></div>
+      <div class="site-grid">
+        ${row('ad_loss_mr', 'Ads: "नुकसान" ओळ (मराठी)', inp('ad_loss_mr', e.ad_loss_mr, '…आणि ₹48,000 ची शिष्यवृत्ती गेली'), 'रिकामं = "…आणि मेरिट लिस्ट हुकली"')}
+        ${row('ad_loss_en', 'Ads: "loss" line (English)', inp('ad_loss_en', e.ad_loss_en, '…and lost the ₹48,000 scholarship'))}
+      </div>
+      <label class="site-check"><input type="checkbox" data-f="enabled"${e.enabled !== false ? ' checked' : ''}> Website वर दाखवा</label>
+      <div class="site-btns">
+        <button type="button" class="admin-btn-primary" data-save="1">💾 Save</button>
+        <button type="button" class="admin-btn-secondary" data-save="verify">✅ Official site वर तपासलं — Save</button>
+        <button type="button" class="admin-btn-secondary" id="site-preview">👁 Preview</button>
+        <span id="site-msg" class="import-hint" role="status"></span>
+      </div>
+      <div id="site-preview-box" hidden><iframe id="site-frame" title="Preview"></iframe></div>`;
+  }
+
+  function _collect() {
+    const box = $('site-editor'), o = {};
+    box.querySelectorAll('[data-f]').forEach(el => { o[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value; });
+    o.dates = [...box.querySelectorAll('.site-date')].map(r => ({ label: r.querySelector('[data-d="label"]').value.trim(), date: r.querySelector('[data-d="date"]').value || null, note: r.querySelector('[data-d="note"]').value.trim() })).filter(d => d.label);
+    o.faq = [...box.querySelectorAll('.site-faq')].map(r => ({ q: r.querySelector('[data-q]').value.trim(), a: r.querySelector('[data-a]').value.trim() })).filter(f => f.q && f.a);
+    return o;
+  }
+
+  async function _save(verify) {
+    const msg = $('site-msg'), body = _collect();
+    const slug = String(body.slug || '').trim().toLowerCase();
+    if (!slug) { msg.textContent = 'Link (slug) टाका, उदा. nmms'; return; }
+    if (verify) body.verified = true;
+    msg.textContent = '⏳ Save होत आहे…';
+    try {
+      const r = await API.siteSave(slug, body);
+      const i = _data.exams.findIndex(x => x.slug === slug);
+      if (i >= 0) _data.exams[i] = r.exam; else _data.exams.push(r.exam);
+      _open = slug; _paintList(); _paintEditor();
+      $('site-msg').textContent = verify ? '✅ Save केलं आणि "तपासलं" अशी खूण केली. Website वर नेण्यासाठी वरचं 🚀 Publish दाबा.' : '✅ Save केलं. Website वर नेण्यासाठी 🚀 Publish दाबा.';
+    } catch (err) { msg.textContent = '⚠️ ' + (err?.message || 'Save झालं नाही'); }
+  }
+
+  async function _preview() {
+    const box = $('site-preview-box'), msg = $('site-msg');
+    try {
+      const R = await import('../site-build/render.mjs');
+      const e = { ..._collect(), samples: [] };
+      e.slug = e.slug || 'preview';
+      const cur = _data.exams.find(x => x.slug === e.slug);
+      e.verified_on = cur?.verified_on || null;
+      $('site-frame').srcdoc = R.examPage(e, { preview: true });
+      box.hidden = false;
+      msg.textContent = 'Preview खाली (Free test चा खरा प्रश्न Publish नंतर दिसतो)';
+    } catch (err) { msg.textContent = '⚠️ Preview उघडलं नाही: ' + (err?.message || ''); }
+  }
+
+  async function _publish() {
+    const b = $('site-publish'), msg = $('site-pub-msg');
+    if (Date.now() - _pubArm > 6000) { _pubArm = Date.now(); b.textContent = '🚀 पक्कं? पुन्हा दाबा'; msg.textContent = 'तपासलेल्या आणि चालू असलेल्या सगळ्या परीक्षा website वर जातील.'; return; }
+    _pubArm = 0; b.disabled = true; b.textContent = '⏳ Publish…';
+    try {
+      const r = await API.sitePublish();
+      const dep = { started: '✅ Site 1–2 मिनिटांत बदलेल.', 'no-hook': '⚠️ VERCEL_DEPLOY_HOOK नाही — pages पुढच्या frontend push ला बदलतील.', 'bad-hook': '⚠️ VERCEL_DEPLOY_HOOK चुकीचा आहे (https://api.vercel.com/v1/integrations/deploy/… हवा).' }[r.deploy] || `⚠️ Vercel ला सांगता आलं नाही (${_esc(r.deploy)}) — थोड्या वेळाने पुन्हा Publish करा.`;
+      msg.innerHTML = `Live: <b>${r.live}</b>${r.off ? ` · बंद केल्या: ${r.off}` : ''}. ${dep}${r.unchecked?.length ? `<br>⚠️ तपासल्या नाहीत म्हणून गेल्या नाहीत: ${r.unchecked.map(_esc).join(', ')}` : ''}`;
+      await _load();
+    } catch (err) { msg.textContent = '⚠️ ' + (err?.message || 'Publish झालं नाही'); }
+    b.disabled = false; b.textContent = '🚀 Publish (website वर)';
+  }
+
+  async function _load() {
+    $('site-list').innerHTML = '<p class="import-hint">⏳ उघडत आहे…</p>';
+    try { _data = await API.siteExams(); _paintList(); _paintEditor(); }
+    catch (err) { $('site-list').innerHTML = `<p class="import-hint">⚠️ ${_esc(err?.message || 'उघडलं नाही')}</p>`; }
+  }
+
+  function init() {
+    const host = $('site-admin'); if (!host) return;
+    if (!_ready) {
+      _ready = true;
+      host.innerHTML = `
+        <h3 class="admin-section-title">🗺️ Site / Exams — nkseduorbit.in</h3>
+        <p class="import-hint">प्रत्येक परीक्षेचं स्वतःचं page (Google साठी) + मुख्य page वर tabs. दर वर्षी फक्त तारखा बदला आणि Publish दाबा. तपासलेली (✅) माहितीच website वर जाते. Ads पण याच माहितीतून बनतात.</p>
+        <p class="import-hint" id="site-status"></p>
+        <div class="site-btns">
+          <button type="button" class="admin-btn-secondary" id="site-seed" hidden></button>
+          <button type="button" class="admin-btn-secondary" id="site-new">➕ नवीन परीक्षा</button>
+          <button type="button" class="admin-btn-primary" id="site-publish">🚀 Publish (website वर)</button>
+          <span id="site-pub-msg" class="import-hint" role="status"></span>
+        </div>
+        <div id="site-list"></div>
+        <div id="site-editor" class="site-editor" hidden></div>`;
+      host.addEventListener('click', ev => {
+        const t = ev.target;
+        const op = t.closest('[data-open]');
+        if (op) { _open = _open === op.dataset.open ? '' : op.dataset.open; _paintList(); _paintEditor(); if (_open) $('site-editor').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+        if (t.closest('[data-del-row]')) { t.closest('.site-date, .site-faq')?.remove(); return; }
+        if (t.id === 'site-add-date') { $('site-dates').insertAdjacentHTML('beforeend', dateRow()); return; }
+        if (t.id === 'site-add-faq') { $('site-faqs').insertAdjacentHTML('beforeend', faqRow()); return; }
+        if (t.closest('[data-save]')) { _save(t.closest('[data-save]').dataset.save === 'verify'); return; }
+        if (t.id === 'site-preview') { _preview(); return; }
+        if (t.id === 'site-new') { _open = '+new'; _paintList(); _paintEditor(); return; }
+        if (t.id === 'site-publish') { _publish(); return; }
+        if (t.id === 'site-seed') {
+          t.disabled = true;
+          API.siteSeed().then(r => { $('site-pub-msg').textContent = `✅ ${r.added} परीक्षा भरल्या — प्रत्येक official site वर तपासा.`; return _load(); })
+            .catch(err => { $('site-pub-msg').textContent = '⚠️ ' + (err?.message || ''); }).finally(() => { t.disabled = false; });
+        }
+      });
+    }
+    _load();
+  }
+
+  return { init };
+})();
+
+window.SITE_ADMIN = SITE_ADMIN;

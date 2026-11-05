@@ -1,4 +1,7 @@
 {
+  "installCommand": "echo no-install-needed",
+  "buildCommand": "node site-build/build.mjs",
+  "outputDirectory": ".",
   "cleanUrls": false,
   "trailingSlash": false,
   "redirects": [
@@ -10,6 +13,8 @@
     { "source": "/teachers", "destination": "/teacher-portal/index.html","permanent": false }
   ],
   "rewrites": [
+    { "source": "/exams",        "destination": "/exams/index.html" },
+    { "source": "/exams/:slug",  "destination": "/exams/:slug/index.html" },
     { "source": "/student/:path*",  "destination": "/student-app/index.html" },
     { "source": "/admin/:path*",    "destination": "/admin-app/admin.html" },
     { "source": "/teachers/:path*", "destination": "/teacher-portal/index.html" },

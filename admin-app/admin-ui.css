@@ -2688,3 +2688,23 @@ body.admin-app {
 .ads-st.off { color: #8a83b3; }
 
 .ads-set { display: block; font-size: .7rem; color: #8a83b3; font-weight: 600; }
+
+/* Admin › Site / Exams */
+.site-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.site-table td { vertical-align: top; }
+.site-table tr.site-open td { background: #f3eeff; }
+.site-chip { display: inline-block; font-size: .72rem; font-weight: 800; border-radius: 999px; padding: 2px 8px; margin: 1px 0; white-space: nowrap; }
+.site-chip.ok { background: #dcfce7; color: #166534; } .site-chip.warn { background: #fef3c7; color: #92400e; }
+.site-chip.bad { background: #fee2e2; color: #b91c1c; } .site-chip.edit { background: #e0e7ff; color: #3730a3; } .site-chip.off { background: #eee; color: #555; }
+.site-muted { color: #8a83b3; } .site-bad { color: #b91c1c; font-weight: 700; font-size: .85rem; }
+.site-editor { border: 2px solid #e2dcf7; border-radius: 14px; padding: 12px; margin-top: 12px; }
+.site-h { margin: 0 0 6px; }
+.site-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 12px; }
+.site-f { display: flex; flex-direction: column; gap: 3px; font-weight: 700; font-size: .82rem; margin: 8px 0; }
+.site-f small { font-weight: 500; color: #8a83b3; }
+.site-f textarea { font: inherit; font-weight: 500; resize: vertical; }
+.site-date, .site-faq { display: grid; grid-template-columns: 1fr 150px 1fr auto; gap: 6px; margin: 4px 0; }
+.site-faq { grid-template-columns: 1fr 2fr auto; }
+@media (max-width: 640px) { .site-date, .site-faq { grid-template-columns: 1fr auto; } }
+.site-check { display: flex; gap: 6px; align-items: center; font-weight: 700; margin: 8px 0; }
+#site-preview-box iframe { width: 100%; height: 640px; border: 2px solid #e2dcf7; border-radius: 12px; background: #fff; }

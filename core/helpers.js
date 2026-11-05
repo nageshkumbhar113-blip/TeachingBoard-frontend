@@ -2278,6 +2278,16 @@ const API = (() => {
   }
 
   // Admin › Ads leaderboard buttons: pause / resume an ad, +20% ad set budget (in Meta)
+  // Admin › 🗺️ Site / Exams (the public exam pages on nkseduorbit.in)
+  async function _siteReq(path, opts = {}) {
+    const token = await ensureAdminSession();
+    return request('/site/admin' + path, { ...opts, headers: { Authorization: `Bearer ${token}` } });
+  }
+  const siteExams = () => _siteReq('/exams');
+  const siteSeed = () => _siteReq('/seed', { method: 'POST', body: '{}' });
+  const siteSave = (slug, body) => _siteReq('/exams/' + encodeURIComponent(slug), { method: 'PUT', body: JSON.stringify(body) });
+  const sitePublish = () => _siteReq('/publish', { method: 'POST', body: '{}' });
+
   async function metaAction(body) {
     const token = await ensureAdminSession();
     return request('/guest/admin/meta/action', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
@@ -3033,7 +3043,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

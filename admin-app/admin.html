@@ -238,6 +238,10 @@
               <span class="atab-icon" aria-hidden="true">📣</span>
               <span class="atab-label">Ads</span>
             </button>
+            <button class="atab" role="tab" data-tab="site" aria-controls="atab-site" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">🗺️</span>
+              <span class="atab-label">Site / Exams</span>
+            </button>
             <button class="atab" role="tab" data-tab="settings" aria-controls="atab-settings" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">⚙️</span>
               <span class="atab-label">Settings</span>
@@ -2068,6 +2072,11 @@ Marks: 1"></textarea>
             <section class="sync-section admin-card" id="ad-studio" aria-label="Facebook / Instagram Ads"></section>
           </div>
 
+          <!-- ── Site / Exams (nkseduorbit.in exam pages) — admin-app/siteAdmin.js ── -->
+          <div class="atab-content hidden" id="atab-site" role="tabpanel" aria-labelledby="atab-btn-site">
+            <section class="sync-section admin-card" id="site-admin" aria-label="Site / Exams"></section>
+          </div>
+
           <!-- ── Home Banners Panel ───────────────── -->
           <div class="atab-content hidden" id="atab-banners" role="tabpanel" aria-labelledby="atab-btn-banners">
             <div id="banner-container" class="bp-container">
@@ -2255,6 +2264,9 @@ Marks: 1"></textarea>
       </button>
       <button class="abn-drawer-item" data-tab="ads">
         <span>📣</span> Ads
+      </button>
+      <button class="abn-drawer-item" data-tab="site">
+        <span>🗺️</span> Site / Exams
       </button>
       <button class="abn-drawer-item" data-tab="settings">
         <span>⚙️</span> Settings
@@ -2543,6 +2555,7 @@ Marks: 1"></textarea>
   <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="bannerAdmin.js" defer></script>
   <script src="adStudio.js" defer></script>
+  <script src="siteAdmin.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>

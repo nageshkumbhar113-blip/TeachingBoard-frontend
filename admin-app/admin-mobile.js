@@ -189,6 +189,7 @@
       if (tab === 'papers')     window.PAPER_BUILDER?.init();
       if (tab === 'pricing')    window.BATCH_PRICING?.init();
       if (tab === 'ads')        window.AD_STUDIO?.init();
+      if (tab === 'site')       window.SITE_ADMIN?.init();
       if (tab === 'dashboard')  window.ADMIN?.loadDashboard?.();
     }
 

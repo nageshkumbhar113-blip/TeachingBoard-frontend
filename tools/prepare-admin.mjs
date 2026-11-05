@@ -10,7 +10,7 @@ rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
 // Admin app needs: admin-app/, core/, css/, js/ (testBuilder etc.), icons/
-const assets = ['admin-app', 'core', 'css', 'js', 'icons'];
+const assets = ['admin-app', 'core', 'css', 'js', 'icons', 'site-build', 'site'];   // site-build: Site / Exams preview
 for (const asset of assets) {
   const src = path.join(rootDir, asset);
   if (existsSync(src)) cpSync(src, path.join(outDir, asset), { recursive: true });

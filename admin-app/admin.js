@@ -238,6 +238,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'words')       _loadWordBank();
         if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); _loadFreeLinkClasses(); }
         if (tab.dataset.tab === 'ads')         window.AD_STUDIO?.init();
+        if (tab.dataset.tab === 'site')        window.SITE_ADMIN?.init();
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
