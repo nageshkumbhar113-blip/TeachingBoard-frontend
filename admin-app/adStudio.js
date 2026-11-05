@@ -978,7 +978,8 @@ const AD_STUDIO = (() => {
       const audOfId = id => { const m = /^(?:yt-)?t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).filter(v => id.endsWith('-' + v)).sort((a, b) => b.length - a.length)[0]; return V[k]?.aud || 'parent'; };
       // every ad that is in Meta under our name shows up (also a new one with no spend yet)
       const inMeta = [...(meta?.connected ? Object.keys(meta.ads || {}) : []), ...Object.keys(GS)].filter(ours);
-      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend), ...Object.keys(M).filter(ours), ...inMeta]);
+      // web-<exam>: visitors from our own exam pages (Sync › Leads shows them) — not an ad, no spend
+      const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend), ...Object.keys(M).filter(ours), ...inMeta].filter(id => !/^web-/.test(id)));
       const odd = Object.values(M).filter(m => !ours(m.name.toLowerCase()));
       const rs = n => Number.isFinite(n) ? '₹' + Math.round(n) : '—';
       const num = n => n >= 1e5 ? (n / 1e5).toFixed(1) + 'L' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
