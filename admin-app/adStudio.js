@@ -904,26 +904,154 @@ const AD_STUDIO = (() => {
     if (a1 && a1.dataset.aud !== st.aud) { a1.value = lo; a2.value = hi; a1.dataset.aud = st.aud; }
   }
 
-  // ── recording: the canvas as a video, in this browser ──
-  function _mime() {
-    const want = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+  // ── sound: music + effects made in this browser (Web Audio), following the animation ──
+  // Each scene has its own loudness (calm while the question is read, full on the hook / result /
+  // offer) and its own effects (whoosh on every cut, ✅ ding on the right answer, ticks while the
+  // timer / day counter runs, pop + sparkle on the rank, ta-da on the offer). Nothing is downloaded:
+  // no copyright music. The admin's own voice (🎤) can go on top; the music then stays low.
+  const LEVEL = { hook: .85, challenge: .4, question: .35, result: 1, features: .7, offer: 1, topper: .85, days: .6, free: .7, paper: .7,
+    notes: .55, exdemo: .5, subjects: .65, offline: .6, tools: .7, earn: .8, toffer: 1 };
+  const _voice = {};   // ad id → { buf: ArrayBuffer, name, secs }
+  st.sound = true;
+  // what happens when (ms from the start) — also used by the test
+  function audioPlan(v = st.v) {
+    const a = _variants(_facts())[v], tl = timeline(a), ev = [];
+    tl.forEach((s, i) => {
+      const prev = tl[i - 1]?.k;
+      ev.push({ at: s.at, k: 'level', level: LEVEL[s.k] ?? .6, ramp: i ? 350 : 10 });
+      if (i) ev.push({ at: s.at, k: 'whoosh' });
+      if (s.k === 'hook' && v === 'loss') ev.push({ at: s.at + 150, k: 'boom' });
+      if (s.k === 'hook' || s.k === 'topper') ev.push({ at: s.at + 200, k: 'pop' });
+      if (s.k === 'challenge') { for (let t = 0; t < 3600; t += 1000) ev.push({ at: s.at + t, k: 'tick' }); ev.push({ at: s.at + 3600, k: 'ding' }); }
+      if (s.k === 'question') {
+        if (prev === 'challenge') ev.push({ at: s.at + 200, k: 'chime' });
+        else { ev.push({ at: s.at + 4000, k: 'ding' }); ev.push({ at: s.at + 5200, k: 'chime' }); ev.push({ at: s.at + 4000, k: 'level', level: .8, ramp: 300 }); }
+      }
+      if (s.k === 'days') for (let t = 300; t < 1600; t += 100) ev.push({ at: s.at + t, k: 'tick', soft: true });
+      if (s.k === 'result') { ev.push({ at: s.at + 300, k: 'riser', d: 1300 }); ev.push({ at: s.at + 1600, k: 'pop' }); ev.push({ at: s.at + 1650, k: 'sparkle' }); }
+      if (s.k === 'exdemo') ev.push({ at: s.at + 1300, k: 'ding' });
+      if (s.k === 'features') for (let j = 0; j < 5; j++) ev.push({ at: s.at + 300 + j * 380, k: 'blip', n: j });
+      if (s.k === 'offer' || s.k === 'toffer') { ev.push({ at: s.at + 100, k: 'tada' }); ev.push({ at: s.at + 900, k: 'sparkle' }); }
+    });
+    return { len: lengthOf(a), events: ev.sort((p0, q) => p0.at - q.at) };
+  }
+  // schedule everything on `ctx` into `out`, starting at ctx time `t0` (seconds)
+  function _score(ctx, out, v, t0) {
+    const { len, events } = audioPlan(v), end = t0 + len / 1000;
+    const voice = _voice[adId(v)];
+    const master = ctx.createGain(); master.gain.value = .9; master.connect(out);
+    // music bus: the loudness follows the scenes (and stays low under the admin's voice)
+    const music = ctx.createGain(), duck = voice ? .35 : 1;
+    music.gain.setValueAtTime(0, t0); music.connect(master);
+    for (const e of events.filter(x => x.k === 'level')) {
+      const at = t0 + e.at / 1000;
+      music.gain.setValueAtTime(music.gain.value, at);
+      music.gain.linearRampToValueAtTime(e.level * .55 * duck, at + e.ramp / 1000);
+    }
+    music.gain.setValueAtTime(.55 * duck, end - .8); music.gain.linearRampToValueAtTime(0, end);
+    const fx = ctx.createGain(); fx.gain.value = voice ? .6 : .9; fx.connect(master);
+    const osc = (type, f, at, d, gain, dest = fx, glideTo) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(f, at); if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, at + d);
+      g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(gain, at + .01); g.gain.exponentialRampToValueAtTime(.0005, at + d);
+      o.connect(g); g.connect(dest); o.start(at); o.stop(at + d + .05);
+    };
+    let _nb = null;
+    const noise = () => { if (_nb) return _nb; _nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = _nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return _nb; };
+    const hiss = (at, d, gain, from, to, type = 'bandpass', dest = fx) => {
+      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = noise(); s.loop = true; f.type = type; f.frequency.setValueAtTime(from, at); f.frequency.exponentialRampToValueAtTime(to, at + d); f.Q.value = 1.2;
+      g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(gain, at + d * .4); g.gain.linearRampToValueAtTime(0, at + d);
+      s.connect(f); f.connect(g); g.connect(dest); s.start(at); s.stop(at + d + .05);
+    };
+    // the music: 112 bpm, C – G – Am – F; kick + off-beat hats, bass, soft chords
+    const beat = 60 / 112, bars = Math.ceil(len / 1000 / (beat * 4)) + 1;
+    const CH = [[261.6, 329.6, 392], [196, 246.9, 293.7], [220, 261.6, 329.6], [174.6, 220, 261.6]], BASS = [65.4, 49, 55, 43.7];
+    const pad = ctx.createBiquadFilter(); pad.type = 'lowpass'; pad.frequency.value = 1400; pad.connect(music);
+    for (let b = 0; b < bars; b++) {
+      const bt = t0 + b * beat * 4, ch = CH[b % 4];
+      if (bt >= end) break;
+      ch.forEach(f => osc('triangle', f, bt, beat * 4, .045, pad));
+      for (let q = 0; q < 4; q++) {
+        const at = bt + q * beat; if (at >= end) break;
+        osc('sine', 120, at, .22, .5, music, 45);                         // kick
+        osc('triangle', BASS[b % 4] * (q % 2 ? 2 : 1), at, beat * .9, .16, music);   // bass
+        hiss(at + beat / 2, .06, .08, 7000, 9000, 'highpass', music);    // hat
+      }
+    }
+    // the effects
+    for (const e of events) {
+      const at = t0 + e.at / 1000;
+      if (e.k === 'whoosh') hiss(at - .12, .45, .35, 400, 5000);
+      if (e.k === 'boom') { osc('sine', 90, at, .9, .9, fx, 35); hiss(at, .5, .25, 200, 80, 'lowpass'); }
+      if (e.k === 'pop') osc('sine', 600, at, .12, .5, fx, 1200);
+      if (e.k === 'tick') osc('square', e.soft ? 1800 : 1100, at, .03, e.soft ? .06 : .14);
+      if (e.k === 'ding') { osc('sine', 1318.5, at, .7, .35); osc('sine', 1975.5, at + .08, .8, .25); }
+      if (e.k === 'chime') [880, 1108.7, 1318.5].forEach((f, i) => osc('sine', f, at + i * .07, .6, .18));
+      if (e.k === 'blip') osc('sine', 660 * Math.pow(1.122, e.n), at, .12, .18);
+      if (e.k === 'riser') hiss(at, e.d / 1000, .3, 300, 6000);
+      if (e.k === 'sparkle') for (let i = 0; i < 8; i++) osc('sine', 2000 + ((i * 337) % 1500), at + i * .05, .15, .08);
+      if (e.k === 'tada') [523.3, 659.3, 784, 1046.5].forEach((f, i) => { osc('triangle', f, at + i * .09, i === 3 ? 1.2 : .25, .3); osc('sine', f * 2, at + i * .09, .3, .08); });
+    }
+    // the admin's own voice, a little after the start
+    if (voice?.decoded) {
+      const s = ctx.createBufferSource(), g = ctx.createGain();
+      s.buffer = voice.decoded; g.gain.value = 1; s.connect(g); g.connect(master);
+      s.start(t0 + .3, 0, Math.max(0, len / 1000 - .4));
+    }
+    return end;
+  }
+  async function _decodeVoice(ctx, v) {
+    const vo = _voice[adId(v)];
+    if (vo && !vo.decoded) vo.decoded = await ctx.decodeAudioData(vo.buf.slice(0));
+  }
+  // preview with sound (one play from the start)
+  let _playCtx = null;
+  async function playWithSound() {
+    try { await _playCtx?.close(); } catch { /* ignore */ }
+    const ctx = _playCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await _decodeVoice(ctx, st.v);
+    st.paused = false;
+    const start = ctx.currentTime + .1;
+    st.t0 = performance.now() + 100;
+    _score(ctx, ctx.destination, st.v, start);
+    const len = lengthOf(_variants(_facts())[st.v]);
+    setTimeout(() => { if (_playCtx === ctx) { ctx.close().catch(() => {}); _playCtx = null; } }, len + 600);
+  }
+
+  // ── recording: the canvas as a video (+ the sound), in this browser ──
+  function _mime(audio) {
+    const want = audio
+      ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm']
+      : ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
     return want.find(m => window.MediaRecorder?.isTypeSupported?.(m)) || '';
   }
   async function record(v, fmt) {
-    const mime = _mime();
+    const audio = st.sound !== false && !!(window.AudioContext || window.webkitAudioContext);
+    const mime = _mime(audio);
     if (!mime || !cv.captureStream) throw new Error('हा browser video बनवू शकत नाही — Chrome वापरा');
     const keep = { v: st.v, fmt: st.fmt, paused: st.paused };
     st.v = v; st.fmt = fmt; st.paused = false; st.t0 = performance.now();
     drawAt(0);
-    const stream = cv.captureStream(30), chunks = [];
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
+    let actx = null, dest = null;
+    if (audio) {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      await actx.resume().catch(() => {});
+      await _decodeVoice(actx, v);
+      dest = actx.createMediaStreamDestination();
+    }
+    const stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...(dest ? dest.stream.getAudioTracks() : [])]), chunks = [];
+    st.lastTracks = stream.getTracks().map(t => t.kind);
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000, ...(audio ? { audioBitsPerSecond: 128_000 } : {}) });
     rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
     const done = new Promise(r => { rec.onstop = r; });
     st.rec = rec; rec.start(500);
     const f = _facts(), len = lengthOf(_variants(f)[v]);
     st.t0 = performance.now();
+    if (actx) _score(actx, dest, v, actx.currentTime);
     await new Promise(r => setTimeout(r, len + 300));
     rec.stop(); await done; st.rec = null;
+    if (actx) actx.close().catch(() => {});
     Object.assign(st, keep, { t0: performance.now() });
     const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
     return { blob: new Blob(chunks, { type: mime.split(';')[0] }), name: `${adId(v)}-${FMT_TAG[fmt] || fmt}.${ext}`, ext };
@@ -1087,6 +1215,7 @@ const AD_STUDIO = (() => {
     const tl = $('ads-teacher-warn').querySelector('a'); if (tl) tl.href = `../partner-terms.html?type=${st.aud === 'youtube' ? 'youtube' : 'school'}`;
     $('ads-copy').textContent = adText();
     _paintMetaBox();
+    _paintVoice();
     if ($('ads-kind')) $('ads-kind').value = st.kind;
     const R = f.reg;
     if ($('ads-nextq')) $('ads-nextq').hidden = teach || st.kind !== 'comp' || (f.mcqs || []).length < 2;
@@ -1095,6 +1224,14 @@ const AD_STUDIO = (() => {
       : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही',
         !f.loaded ? '⏳ उघडत आहे…' : f.mcq ? `प्रश्न ${((st.qi || 0) % f.mcqs.length) + 1}/${f.mcqs.length} (free test मधला खरा)` : f.matType ? 'प्रश्न: आकृतीचा नमुना (free test मध्ये योग्य प्रश्न नाही)' : 'ad साठी योग्य प्रश्न नाही',
         f.site ? `🗺️ ${f.site.name}` : '🗺️ Site / Exams मध्ये जोडलेली नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
+  }
+  // the 🎤 line: this ad's voice (if any) and whether it fits the video
+  function _paintVoice() {
+    const m = $('ads-voice-msg'), del = $('ads-voice-del'); if (!m) return;
+    const vo = _voice[adId()], len = lengthOf(_variants(_facts())[st.v]) / 1000;
+    del.hidden = !vo;
+    m.textContent = !vo ? 'आवाज phone वर रेकॉर्ड करा (उदा. "NMMS ला फक्त 45 दिवस बाकी…") — असेल तर music आपोआप हळू होतं.'
+      : `🎤 ${vo.name} · ${vo.secs.toFixed(1)} सेकंद${vo.secs > len - .4 ? ` ⚠️ video ${len.toFixed(0)} सेकंदांचा आहे — शेवटचा भाग कापला जाईल` : ' ✅'}`;
   }
   function _paintBudget() {
     const total = Math.max(0, Number($('ads-budget')?.value) || 0);
@@ -1158,6 +1295,14 @@ const AD_STUDIO = (() => {
           <div class="ads-side">
             <pre class="gxa-msg" id="ads-copy"></pre>
             <div class="admin-toolbar"><button type="button" class="admin-btn-secondary" id="ads-copy-btn">📋 मजकूर Copy</button></div>
+            <div class="ads-recbox ads-soundbox">
+              <b>🔊 आवाज</b>
+              <label><input type="checkbox" id="ads-sound" checked /> सगळ्या video मध्ये music + आवाज (Facebook, Instagram, YouTube)</label>
+              <button type="button" class="admin-btn-secondary" id="ads-play">▶ आवाजासह पाहा</button>
+              <label class="ads-voice">🎤 माझा आवाज (या ad साठी, ऐच्छिक) <input type="file" id="ads-voice" accept="audio/*" /></label>
+              <small id="ads-voice-msg" class="import-hint">आवाज phone वर रेकॉर्ड करा (उदा. "NMMS ला फक्त 45 दिवस बाकी…") — असेल तर music आपोआप हळू होतं.</small>
+              <button type="button" class="admin-btn-secondary" id="ads-voice-del" hidden>✕ आवाज काढा</button>
+            </div>
             <div class="ads-recbox ads-metabox" id="ads-metabox" hidden>
               <b>📤 Meta वर पाठवा</b>
               <small id="ads-meta-name"></small>
@@ -1229,6 +1374,21 @@ const AD_STUDIO = (() => {
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
+      $('ads-sound').addEventListener('change', e => { st.sound = e.target.checked; });
+      $('ads-play').addEventListener('click', () => playWithSound().catch(err => APP.toast(err?.message || 'आवाज चालला नाही', 'error')));
+      $('ads-voice').addEventListener('change', async e => {
+        const file = e.target.files?.[0]; if (!file) return;
+        if (file.size > 15 * 1024 * 1024) { $('ads-voice-msg').textContent = '⚠️ File 15 MB पेक्षा मोठी आहे'; return; }
+        const buf = await file.arrayBuffer(), id = adId();
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const decoded = await ctx.decodeAudioData(buf.slice(0)); ctx.close().catch(() => {});
+          _voice[id] = { buf, name: file.name, secs: decoded.duration, decoded };
+        } catch { $('ads-voice-msg').textContent = '⚠️ ही audio file उघडली नाही — MP3 / M4A / WAV वापरा'; return; }
+        e.target.value = '';
+        _paintVoice();
+      });
+      $('ads-voice-del').addEventListener('click', () => { delete _voice[adId()]; _paintVoice(); });
       $('ads-meta-send').addEventListener('click', () => sendToMeta());
       $('ads-meta-send-all').addEventListener('click', sendAllToMeta);
       $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
@@ -1268,7 +1428,7 @@ const AD_STUDIO = (() => {
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, __st: st, __content: _content };
+  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, audioPlan, playWithSound, __score: (...a) => _score(...a), __st: st, __content: _content, __voice: _voice };
 })();
 
 window.AD_STUDIO = AD_STUDIO;
