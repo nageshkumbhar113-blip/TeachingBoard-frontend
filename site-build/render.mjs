@@ -40,6 +40,7 @@ header.top a{color:#fff;text-decoration:none}
 .brand img{width:34px;height:34px;border-radius:9px;background:#fff}
 .nav a{font-weight:700;padding:6px 10px;border-radius:10px}
 .nav a.app{background:#fff;color:#5b21d6}
+.full{margin:-4px 0 10px;color:var(--muted)}
 .crumb{font-size:.85rem;color:var(--muted);margin:14px 0 4px}.crumb a{color:var(--muted)}
 h1{font-size:1.7rem;line-height:1.3;margin:6px 0 10px}h2{font-size:1.25rem;margin:28px 0 10px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
@@ -153,6 +154,7 @@ export function examPage(e, { preview = false } = {}) {
 <div class="hero">
   <div>
     <h1>${esc(e.name)}: संपूर्ण माहिती आणि तयारी</h1>
+    ${e.full_name && e.full_name !== e.name ? `<p class="full">पूर्ण नाव: <b>${esc(e.full_name)}</b></p>` : ''}
     <div class="chips">${e.class_label ? `<span class="chip">🎓 ${esc(e.class_label)}</span>` : ''}${e.benefit ? `<span class="chip gold">🏆 ${esc(e.benefit)}</span>` : ''}</div>
     ${e.purpose ? `<p>${esc(e.purpose)}</p>` : ''}
     <div class="card cta">

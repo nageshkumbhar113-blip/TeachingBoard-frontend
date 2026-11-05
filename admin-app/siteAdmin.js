@@ -82,7 +82,7 @@ const SITE_ADMIN = (() => {
       '4. "sources" मध्ये तू वापरलेल्या official pages / PDF चे पूर्ण links दे.',
       '',
       'Google साठी लिहिण्याचे नियम:',
-      '5. "name": लहान, 40 अक्षरांपेक्षा कमी, परीक्षेचा लोक शोधतात तो शब्द सुरुवातीला. उदा. "NMMS शिष्यवृत्ती परीक्षा (8वी)" — पूर्ण अधिकृत लांब नाव इथे नको.',
+      '5. "name": लहान, 40 अक्षरांपेक्षा कमी, परीक्षेचा लोक शोधतात तो शब्द सुरुवातीला. उदा. "NMMS शिष्यवृत्ती परीक्षा (8वी)". पूर्ण अधिकृत लांब नाव "full_name" मध्ये दे (उदा. "राष्ट्रीय आर्थिक दुर्बल घटक गुणवत्ता शिष्यवृत्ती परीक्षा (NMMS)").',
       '6. "purpose": 2 वाक्यं, एकूण 120–155 अक्षरं (हेच Google च्या निकालात खाली दिसतं). परीक्षेचं नाव, ' + year + ', इयत्ता आणि मुख्य फायदा त्यात हवा.',
       '7. "faq": 5 ते 8 प्रश्न — पालक Google वर जसे टाइप करतात तसे (उदा. "NMMS ' + year + ' परीक्षा कधी आहे?", "NMMS साठी पात्रता काय?", "NMMS form कसा भरायचा?", "NMMS निकाल कधी लागतो?", "NMMS पास होण्यासाठी किती गुण लागतात?"). प्रत्येक उत्तर 1–3 वाक्यांत, स्वतंत्रपणे वाचलं तरी समजेल असं, आकड्यांसह.',
       '8. तारखांची "label" ही साधी, नेहमीची नावं: "Online अर्ज सुरू", "अर्जाची शेवटची तारीख", "प्रवेशपत्र (Admit card)", "परीक्षा", "निकाल".',
@@ -91,7 +91,7 @@ const SITE_ADMIN = (() => {
       '11. उत्तरात फक्त खालील JSON दे — त्याआधी किंवा नंतर एकही शब्द नको.',
       '',
       JSON.stringify({
-        name: 'लहान नाव (इयत्ता) — 40 अक्षरांपेक्षा कमी', name_en: 'Short English name', class_label: 'उदा. 8वी',
+        name: 'लहान नाव (इयत्ता) — 40 अक्षरांपेक्षा कमी', full_name: 'पूर्ण अधिकृत नाव (लांब असलं तरी चालेल)', name_en: 'Short English name', class_label: 'उदा. 8वी',
         purpose: '2 वाक्यं, 120–155 अक्षरं: नाव + वर्ष + इयत्ता + फायदा', benefit: 'मुख्य फायदा, 6-8 शब्दांत',
         eligibility: ['पात्रतेचा एक मुद्दा', 'दुसरा मुद्दा'],
         pattern: [{ part: 'पेपर / विषय', questions: 90, marks: 90, time: '90 मिनिटे' }],
@@ -117,7 +117,7 @@ const SITE_ADMIN = (() => {
       el.value = String(val).trim().slice(0, Number(el.maxLength) > 0 ? el.maxLength : 5000); return 1;
     };
     let n = 0;
-    for (const k of ['name', 'name_en', 'class_label', 'purpose', 'benefit', 'ad_loss_mr', 'ad_loss_en']) n += set(k, j[k]);
+    for (const k of ['name', 'full_name', 'name_en', 'class_label', 'purpose', 'benefit', 'ad_loss_mr', 'ad_loss_en']) n += set(k, j[k]);
     if (/^https:\/\//.test(String(j.official_url || ''))) n += set('official_url', j.official_url);
     n += set('eligibility', lines(j.eligibility));
     n += set('syllabus', lines(j.syllabus));
@@ -181,6 +181,7 @@ const SITE_ADMIN = (() => {
       <div class="site-grid">
         ${row('slug', 'Link (slug)', `<input class="admin-input" data-f="slug" value="${_esc(e.slug)}" placeholder="उदा. nmms" maxlength="40" ${e.slug ? 'readonly' : ''}>`, 'nkseduorbit.in/exams/… — नंतर बदलत नाही')}
         ${row('name', 'नाव', inp('name', e.name, 'उदा. NMMS (8वी)'))}
+        ${row('full_name', 'पूर्ण अधिकृत नाव', inp('full_name', e.full_name, 'उदा. राष्ट्रीय आर्थिक दुर्बल घटक गुणवत्ता शिष्यवृत्ती परीक्षा', 200), 'Page वर नावाखाली दिसतं (Google ला दोन्ही नावं कळतात)')}
         ${row('name_en', 'English नाव', inp('name_en', e.name_en, 'NMMS (Class 8)'))}
         ${row('class_label', 'कोणती इयत्ता देते', inp('class_label', e.class_label, 'उदा. 8वी', 40))}
         ${row('group', 'Landing page tab', `<select class="admin-input" data-f="group"><option value="school"${e.group !== 'senior' ? ' selected' : ''}>🏫 शाळा स्तर (4थी–8वी)</option><option value="senior"${e.group === 'senior' ? ' selected' : ''}>🎓 11वी–12वी</option></select>`)}
