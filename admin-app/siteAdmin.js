@@ -61,6 +61,70 @@ const SITE_ADMIN = (() => {
     <textarea class="admin-input" data-a rows="2" placeholder="उत्तर" maxlength="1200">${_esc(f.a || '')}</textarea>
     <button type="button" class="admin-btn-secondary" data-del-row aria-label="काढा">✕</button></div>`;
 
+  // ── 🤖 AI कडून माहिती: a ready prompt for ChatGPT / Claude; its answer (JSON) fills the form ──
+  function _aiPrompt() {
+    const box = $('site-editor'), v = k => box.querySelector('[data-f="' + k + '"]')?.value?.trim() || '';
+    const today = new Date().toISOString().slice(0, 10);
+    return [
+      'तू भारतातील स्पर्धा परीक्षांचा माहितीतज्ज्ञ आहेस. खालील परीक्षेची या वर्षाची ताजी आणि अचूक माहिती दे.',
+      '',
+      'परीक्षा: ' + (v('name') || v('name_en')) + (v('name_en') && v('name') ? ' (' + v('name_en') + ')' : ''),
+      'इयत्ता: ' + (v('class_label') || '—'),
+      'Official site: ' + (v('official_url') || '—'),
+      'आजची तारीख: ' + today,
+      '',
+      'नियम (काटेकोर):',
+      '1. फक्त official notification / official website वरची माहिती दे. अंदाज करू नकोस.',
+      '2. एखादी तारीख अजून जाहीर झाली नसेल किंवा खात्री नसेल तर "date": null ठेव आणि "note" मध्ये "अजून जाहीर नाही" लिही.',
+      '3. सगळा मजकूर सोप्या मराठीत (पालकांना समजेल असा). परीक्षा / विषयांची नावं English मध्ये चालतील.',
+      '4. "sources" मध्ये तू वापरलेल्या official pages चे पूर्ण links दे.',
+      '5. उत्तरात फक्त खालील JSON दे — त्याआधी किंवा नंतर एकही शब्द नको.',
+      '',
+      JSON.stringify({
+        name: 'मराठी नाव (इयत्ता)', name_en: 'English name', class_label: 'उदा. 8वी',
+        purpose: 'परीक्षा कशासाठी — 2-3 वाक्यं', benefit: 'मुख्य फायदा, 6-8 शब्दांत',
+        eligibility: ['पात्रतेचा एक मुद्दा', 'दुसरा मुद्दा'],
+        pattern: [{ part: 'पेपर / विषय', questions: 90, marks: 90, time: '90 मिनिटे' }],
+        syllabus: ['अभ्यासक्रमाचा एक मुद्दा', 'दुसरा'],
+        official_url: 'https://…',
+        dates: [{ label: 'Form भरण्याची शेवटची तारीख', date: 'YYYY-MM-DD', note: '' }, { label: 'परीक्षा', date: null, note: 'अजून जाहीर नाही' }],
+        faq: [{ q: 'पालक नेहमी विचारतात तो प्रश्न', a: 'थोडक्यात उत्तर' }],
+        ad_loss_mr: '…आणि [फायदा] गेला / गेली (ad साठी, 8-10 शब्द)', ad_loss_en: '…and lost [benefit]',
+        sources: ['https://…'],
+      }, null, 2),
+    ].join('\n');
+  }
+  function _aiFill() {
+    const box = $('site-editor'), msg = $('site-ai-msg');
+    const raw = $('site-ai-in').value.trim();
+    const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+    let j;
+    try { j = JSON.parse(raw.slice(a, b + 1)); } catch { msg.innerHTML = '⚠️ उत्तर JSON मध्ये नाही. AI ला सांगा: "फक्त JSON दे" आणि पुन्हा paste करा.'; return; }
+    const lines = x => Array.isArray(x) ? x.map(t => String(t).trim()).filter(Boolean).join('\n') : String(x || '').trim();
+    const set = (k, val) => {
+      const el = box.querySelector('[data-f="' + k + '"]');
+      if (!el || val === undefined || val === null || String(val).trim() === '') return 0;
+      el.value = String(val).trim().slice(0, Number(el.maxLength) > 0 ? el.maxLength : 5000); return 1;
+    };
+    let n = 0;
+    for (const k of ['name', 'name_en', 'class_label', 'purpose', 'benefit', 'ad_loss_mr', 'ad_loss_en']) n += set(k, j[k]);
+    if (/^https:\/\//.test(String(j.official_url || ''))) n += set('official_url', j.official_url);
+    n += set('eligibility', lines(j.eligibility));
+    n += set('syllabus', lines(j.syllabus));
+    n += set('pattern', Array.isArray(j.pattern)
+      ? j.pattern.map(p => typeof p === 'string' ? p : [p.part, p.questions, p.marks, p.time].map(c => String(c ?? '').trim()).join(' | ')).join('\n')
+      : lines(j.pattern));
+    if (Array.isArray(j.dates) && j.dates.length) {
+      $('site-dates').innerHTML = j.dates.slice(0, 8).filter(d => d && d.label).map(d => dateRow({ label: d.label, date: /^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')) ? d.date : null, note: d.note || (d.date ? '' : 'अजून जाहीर नाही') })).join('');
+      n++;
+    }
+    if (Array.isArray(j.faq) && j.faq.length) { $('site-faqs').innerHTML = j.faq.slice(0, 12).filter(x => x && x.q && x.a).map(faqRow).join(''); n++; }
+    const src = (Array.isArray(j.sources) ? j.sources : []).filter(u => /^https?:\/\//.test(u)).slice(0, 8);
+    msg.innerHTML = '✅ ' + n + ' भाग भरले. <b>अजून Save केलेलं नाही</b> — खाली वाचा, official site शी जुळवा, मग "✅ Official site वर तपासलं — Save" दाबा.'
+      + (src.length ? '<br>AI ने वापरलेले links (हे उघडून तारखा तपासा):<br>' + src.map(u => '<a href="' + _esc(u) + '" target="_blank" rel="noopener">' + _esc(u) + '</a>').join('<br>')
+        : '<br>⚠️ AI ने links (sources) दिले नाहीत — तारखा official site वर नक्की तपासा.');
+  }
+
   function _paintEditor() {
     const box = $('site-editor');
     const e = _open === '+new' ? { slug: '', name: '', group: 'school', enabled: true, animation: 'auto', dates: [{ label: 'परीक्षा' }], faq: [], order: 100 }
@@ -72,6 +136,18 @@ const SITE_ADMIN = (() => {
       <h4 class="site-h">${e.slug ? '✏️ ' + _esc(e.name) : '➕ नवीन परीक्षा'}</h4>
       ${e.verified_on ? `<p class="${e.stale ? 'site-bad' : 'import-hint'}">माहिती तपासली: <b>${fmt(e.verified_on)}</b>${e.stale ? ' — 6 महिन्यांपेक्षा जुनी, official site वर पुन्हा तपासा' : ''}</p>`
         : '<p class="site-bad">⚠️ ही माहिती अजून कोणी तपासलेली नाही (सुरुवातीची माहिती सर्वसाधारण माहितीवरून भरली आहे). Official site वर तपासून "✅ तपासलं" दाबा — त्याशिवाय ही परीक्षा website वर जाणार नाही.</p>'}
+      <details class="site-ai">
+        <summary>🤖 AI (ChatGPT / Claude) कडून ताजी माहिती भरा</summary>
+        <ol class="import-hint">
+          <li>"📋 Prompt copy करा" दाबा आणि ChatGPT / Claude मध्ये paste करा (शक्यतो web search चालू ठेवून).</li>
+          <li>AI चं पूर्ण उत्तर खालच्या box मध्ये paste करा आणि "⬇ Form मध्ये भरा" दाबा.</li>
+          <li>भरलेली माहिती official site शी जुळवा, मग "✅ तपासलं — Save" आणि 🚀 Publish.</li>
+        </ol>
+        <div class="site-btns"><button type="button" class="admin-btn-secondary" id="site-ai-copy">📋 Prompt copy करा</button><span id="site-ai-copied" class="import-hint" role="status"></span></div>
+        <textarea id="site-ai-in" class="admin-input" rows="6" placeholder="AI चं उत्तर (JSON) इथे paste करा"></textarea>
+        <div class="site-btns"><button type="button" class="admin-btn-primary" id="site-ai-fill">⬇ Form मध्ये भरा</button></div>
+        <p id="site-ai-msg" class="import-hint" role="status"></p>
+      </details>
       <div class="site-grid">
         ${row('slug', 'Link (slug)', `<input class="admin-input" data-f="slug" value="${_esc(e.slug)}" placeholder="उदा. nmms" maxlength="40" ${e.slug ? 'readonly' : ''}>`, 'nkseduorbit.in/exams/… — नंतर बदलत नाही')}
         ${row('name', 'नाव', inp('name', e.name, 'उदा. NMMS (8वी)'))}
@@ -187,6 +263,16 @@ const SITE_ADMIN = (() => {
         if (t.id === 'site-add-faq') { $('site-faqs').insertAdjacentHTML('beforeend', faqRow()); return; }
         if (t.closest('[data-save]')) { _save(t.closest('[data-save]').dataset.save === 'verify'); return; }
         if (t.id === 'site-preview') { _preview(); return; }
+        if (t.id === 'site-ai-fill') { _aiFill(); return; }
+        if (t.id === 'site-ai-copy') {
+          const p = _aiPrompt();
+          const done = ok => {
+            $('site-ai-copied').textContent = ok ? '✅ Copy झालं — आता AI मध्ये paste करा' : 'Copy झालं नाही — खालच्या box मधला prompt select करून copy करा';
+            if (!ok) { $('site-ai-in').value = p; $('site-ai-in').select(); }
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(p).then(() => done(true), () => done(false)); else done(false);
+          return;
+        }
         if (t.id === 'site-new') { _open = '+new'; _paintList(); _paintEditor(); return; }
         if (t.id === 'site-publish') { _publish(); return; }
         if (t.id === 'site-seed') {
