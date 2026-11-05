@@ -277,6 +277,16 @@ const AD_STUDIO = (() => {
 
   // ── drawing ──
   let cv = null, x = null;
+  // the app's logo (same site, so the canvas can still be recorded): small in the corner all
+  // through the ad, big on the last card
+  const LOGO = new Image();
+  LOGO.src = '../icons/icon-512.png';
+  const logoOk = () => LOGO.complete && LOGO.naturalWidth > 0;
+  function logo(cx, cy, size) {
+    if (!logoOk()) return;
+    x.save(); x.shadowColor = 'rgba(0,0,0,.25)'; x.shadowBlur = size * .12; x.shadowOffsetY = size * .04;
+    x.drawImage(LOGO, cx - size / 2, cy - size / 2, size, size); x.restore();
+  }
   const LL = a => st.lang === 'en' ? a[1] : a[0];
   const L2 = a => st.lang === 'both' ? a[1] : '';
   const cl = v => Math.max(0, Math.min(1, v));
@@ -612,7 +622,9 @@ const AD_STUDIO = (() => {
       if (lt > 900) confetti(lt - 900, 0, 0, W);
     },
     toffer(W, H, lt) {
-      const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), c = outBack(p(lt, 900, 1500)), cy = tall ? H * .3 : H * .24;
+      const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), c = outBack(p(lt, 900, 1500)), cy = tall ? H * .3 : H * .24 + 40;
+      const lg = outBack(p(lt, 0, 500));
+      x.save(); x.translate(W / 2, cy - (tall ? 290 : 190)); x.scale(lg, lg); logo(0, 0, tall ? 240 : 150); x.restore();
       x.save(); x.translate(W / 2, cy); x.scale(a, a);
       both(['नोंदणी Free', 'Free registration'], 0, 0, tall ? 96 : 76, tall ? 90 : 72);
       text(st.lang === 'en' ? 'Commission rules: in the app' : 'Commission चे नियम app मध्ये', 0, tall ? 170 : 135, 38, C.white, 700, 'center', W - 100);
@@ -626,7 +638,9 @@ const AD_STUDIO = (() => {
       const FREE = reg ? ['आधी Free धडा पाहा', 'See a free chapter first'] : T.free;
       const SUB = reg ? ['Notes + स्वाध्याय · Offline पण', 'Notes + answers · Works offline'] : T.sub;
       const BTN = reg ? ['▶ Free धडा पाहा', '▶ See a free chapter'] : T.btn;
-      const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), b = outBack(p(lt, 800, 1400)), c = outBack(p(lt, 1500, 2100)), cy = tall ? H * .27 : H * .2;
+      const tall = st.fmt === '916', sq = st.fmt === '11', a = outBack(p(lt, 100, 700)), b = outBack(p(lt, 800, 1400)), c = outBack(p(lt, 1500, 2100)), cy = tall ? H * .27 : H * .2 + (sq ? 30 : 40);
+      const lg = outBack(p(lt, 0, 500));
+      x.save(); x.translate(W / 2, cy - (tall ? 270 : sq ? 135 : 160)); x.scale(lg, lg); logo(0, 0, tall ? 230 : sq ? 110 : 140); x.restore();
       x.save(); x.translate(W / 2, cy); x.scale(a, a);
       both(FREE, 0, 0, tall ? 88 : 72, tall ? 84 : 68, C.white, W - 100);
       text(LL(SUB), 0, tall ? 165 : 130, 40, C.white, 700, 'center', W - 100);
@@ -652,7 +666,17 @@ const AD_STUDIO = (() => {
     bg(W, H, t, st.v === 'loss' && cur.k === 'hook');
     const prev = tl[tl.indexOf(cur) - 1];
     S[cur.k](W, H, t - cur.at, v, f, cur.k === 'question' && prev?.k === 'challenge');
-    text('🚀 NKs EduOrbit', W / 2, H - (st.fmt === '916' ? 80 : 45), 44, C.white, 800);
+    const last = cur.k === 'offer' || cur.k === 'toffer';
+    if (!last && logoOk()) {
+      // small logo + name, top-left, from the first second (brand recall without stealing the hook)
+      const sz = st.fmt === '916' ? 84 : 64, m = st.fmt === '916' ? 36 : 22;
+      x.save(); x.globalAlpha = .95; x.fillStyle = 'rgba(0,0,0,.28)'; rr(m, m, sz + 250, sz + 16, (sz + 16) / 2); x.fill(); x.restore();
+      logo(m + 8 + sz / 2, m + 8 + sz / 2, sz);
+      text('NKs EduOrbit', m + sz + 24, m + 8 + sz / 2 + 2, sz * .42, C.white, 800, 'left', 230);
+    }
+    const fy = H - (st.fmt === '916' ? 80 : 45);
+    if (logoOk()) { logo(W / 2 - 170, fy, 58); text('NKs EduOrbit', W / 2 + 34, fy, 44, C.white, 800); }
+    else text('🚀 NKs EduOrbit', W / 2, fy, 44, C.white, 800);
   }
 
   // ── ad id + link + text ──
