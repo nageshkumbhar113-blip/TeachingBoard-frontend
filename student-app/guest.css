@@ -69,6 +69,7 @@
 .gx-close {
   position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border-radius: 50%;
   border: 0; background: rgba(0, 0, 0, .06); color: inherit; font-size: 1.1rem; cursor: pointer;
+  z-index: 3;   /* above the bouncing logo (its animation puts it on top and it ate the clicks) */
 }
 .gx-glass .gx-close { background: rgba(255, 255, 255, .16); }
 
@@ -103,7 +104,7 @@
 /* ── Welcome ─────────────────────────────────────────────────────── */
 .gx-floaters { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 .gx-floaters span { position: absolute; font-size: 2rem; opacity: .55; animation: gxFloat 6s ease-in-out infinite; }
-.gx-logo { font-size: 3.4rem; text-align: center; animation: gxBounce 2.2s ease-in-out infinite; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .3)); }
+.gx-logo { pointer-events: none; font-size: 3.4rem; text-align: center; animation: gxBounce 2.2s ease-in-out infinite; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .3)); }
 .gx-welcome-title { color: #fff; font-size: 2rem; }
 .gx-welcome-title b { display: block; font-size: 2.4rem; background: linear-gradient(90deg, #ffd27a, #fff, #ffd27a); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: gxShine 3s linear infinite; }
 .gx-challenge {
