@@ -2365,11 +2365,140 @@ const ADMIN = (() => {
     return chips.map(([k, label]) => `<span class="gxa-chip${done.has(k) ? ' gxa-done' : ''}">${done.has(k) ? '✓ ' : ''}${label}</span>`).join('') + offer;
   }
 
+  // ── Leads table: search, filters (class, step, source, number, dates), sort, pages, CSV ──
+  const GL_KEY = 'gl_filters_v1';
+  const GL_STEPS = ['browsed', 'engaged', 'tested', 'shared_friend', 'shared_parent', 'lead', 'offer_seen', 'checkout', 'paid'];
+  const GL_STEP_NAME = { browsed: '📚 Class', engaged: '▶ Free भाग', tested: '📝 Test', shared_friend: '👫 मित्रांना share', shared_parent: '👨‍👩‍👧 पालकांना share', lead: '📱 नंबर', offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Paid' };
+  const GL_PER = 25;
+  let _leads = [], _glPage = 0, _glOpen = '';
+  let _glF = { q: '', batch: '', step: '', source: '', mobile: '', which: 'created', from: '', to: '', sort: 'last_seen_at', dir: -1 };
+  try { Object.assign(_glF, JSON.parse(localStorage.getItem(GL_KEY) || '{}')); } catch { /* private window */ }
+  const _glSave = () => { try { localStorage.setItem(GL_KEY, JSON.stringify(_glF)); } catch { /* ignore */ } };
+  const _reach = l => { const s = new Set(l.steps || []); if (l.paid) s.add('paid'); let r = -1; GL_STEPS.forEach((k, i) => { if (s.has(k)) r = i; }); return r; };
+  const _srcOf = l => l.source === 'ad' && l.ref ? (String(l.ref).startsWith('web-') ? 'web' : 'ad') : (l.source || 'direct');
+  const _dayStr = d => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
+  function _glFiltered() {
+    const q = _glF.q.trim().toLowerCase();
+    return _leads.filter(l => {
+      if (q && ![l.name, l.parent_mobile, l.student_code, l.batch, l.ref].some(v => String(v || '').toLowerCase().includes(q))) return false;
+      if (_glF.batch && l.batch !== _glF.batch) return false;
+      if (_glF.step !== '' && _reach(l) < Number(_glF.step)) return false;
+      if (_glF.source && _srcOf(l) !== _glF.source) return false;
+      if (_glF.mobile === 'yes' && !l.parent_mobile) return false;
+      if (_glF.mobile === 'no' && l.parent_mobile) return false;
+      const d = _dayStr(_glF.which === 'seen' ? l.last_seen_at : l.created_at);
+      if (_glF.from && d < _glF.from) return false;
+      if (_glF.to && d > _glF.to) return false;
+      return true;
+    }).sort((a, b) => {
+      const k = _glF.sort, va = k === 'reach' ? _reach(a) : a[k], vb = k === 'reach' ? _reach(b) : b[k];
+      if (k === 'last_seen_at' || k === 'created_at') return (new Date(va) - new Date(vb)) * _glF.dir;
+      if (typeof va === 'number' || typeof vb === 'number') return ((va || 0) - (vb || 0)) * _glF.dir;
+      return String(va || '').localeCompare(String(vb || ''), 'mr') * _glF.dir;
+    });
+  }
+  function _renderLeadFilters() {
+    const box = $('gl-filters'); if (!box) return;
+    const uniq = arr => [...new Set(arr.filter(Boolean))].sort();
+    const batches = uniq(_leads.map(l => l.batch)), sources = uniq(_leads.map(_srcOf));
+    const opt = (v, t, cur) => `<option value="${_esc(v)}"${String(cur) === String(v) ? ' selected' : ''}>${_esc(t)}</option>`;
+    const today = _dayStr(new Date()), yest = _dayStr(Date.now() - 864e5), week = _dayStr(Date.now() - 6 * 864e5);
+    const quick = [
+      ['today', '📅 आज', _glF.from === today && _glF.to === today],
+      ['yest', '📅 काल', _glF.from === yest && _glF.to === yest],
+      ['week', '📅 7 दिवस', _glF.from === week && !_glF.to],
+      ['call', '📱 नंबर आहे · Pay नाही', _glF.mobile === 'yes' && $('gl-status')?.value === 'unpaid'],
+      ['pay', '💳 Pay page पर्यंत आले', String(_glF.step) === String(GL_STEPS.indexOf('checkout'))],
+    ];
+    box.innerHTML = `
+      <div class="gl-row">
+        <input id="gl-q" class="admin-input gl-q" type="search" placeholder="🔍 नाव / नंबर / code शोधा" value="${_esc(_glF.q)}" aria-label="शोधा">
+        <select id="gl-batch" class="admin-input" aria-label="Class">${opt('', 'Class: सर्व', _glF.batch)}${batches.map(b => opt(b, b, _glF.batch)).join('')}</select>
+        <select id="gl-step" class="admin-input" aria-label="कुठे पोचले">${opt('', 'कुठे पोचले: सर्व', _glF.step)}${GL_STEPS.map((k, i) => opt(i, 'किमान ' + GL_STEP_NAME[k], _glF.step)).join('')}</select>
+        <select id="gl-source" class="admin-input" aria-label="कुठून">${opt('', 'कुठून: सर्व', _glF.source)}${sources.map(s => opt(s, s === 'web' ? 'web (exam pages)' : s, _glF.source)).join('')}</select>
+        <select id="gl-mobile" class="admin-input" aria-label="नंबर">${opt('', 'नंबर: सर्व', _glF.mobile)}${opt('yes', '📱 नंबर आहे', _glF.mobile)}${opt('no', 'नंबर नाही', _glF.mobile)}</select>
+      </div>
+      <div class="gl-row">
+        <select id="gl-which" class="admin-input" aria-label="कोणती तारीख">${opt('created', 'तारीख: पहिल्यांदा आले', _glF.which)}${opt('seen', 'तारीख: शेवटचं आले', _glF.which)}</select>
+        <label class="gl-date">पासून <input id="gl-from" class="admin-input" type="date" value="${_esc(_glF.from)}" max="${today}"></label>
+        <label class="gl-date">पर्यंत <input id="gl-to" class="admin-input" type="date" value="${_esc(_glF.to)}" max="${today}"></label>
+        <button type="button" class="admin-btn-secondary" id="gl-clear">✕ Filters काढा</button>
+        <button type="button" class="admin-btn-secondary" id="gl-csv">⬇ CSV</button>
+      </div>
+      <div class="gl-quick">${quick.map(([k, t, on]) => `<button type="button" class="gl-chip" data-quick="${k}" aria-pressed="${!!on}">${t}</button>`).join('')}</div>`;
+    const set = (k, v, refetch) => { _glF[k] = v; _glPage = 0; _glSave(); if (refetch) _loadGuestFunnel(); else { _renderLeadFilters(); _renderLeads(); } };
+    $('gl-q').addEventListener('input', e => { _glF.q = e.target.value; _glPage = 0; _glSave(); _renderLeads(); });
+    for (const k of ['batch', 'step', 'source', 'mobile', 'which']) $('gl-' + k).addEventListener('change', e => set(k, e.target.value));
+    $('gl-from').addEventListener('change', e => set('from', e.target.value, true));
+    $('gl-to').addEventListener('change', e => set('to', e.target.value));
+    $('gl-clear').addEventListener('click', () => { Object.assign(_glF, { q: '', batch: '', step: '', source: '', mobile: '', from: '', to: '' }); _glPage = 0; _glSave(); _renderLeadFilters(); _renderLeads(); });
+    $('gl-csv').addEventListener('click', _leadsCsv);
+    box.querySelectorAll('[data-quick]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.quick, on = b.getAttribute('aria-pressed') === 'true';
+      if (k === 'today') Object.assign(_glF, on ? { from: '', to: '' } : { from: today, to: today, which: 'created' });
+      if (k === 'yest') Object.assign(_glF, on ? { from: '', to: '' } : { from: yest, to: yest, which: 'created' });
+      if (k === 'week') Object.assign(_glF, on ? { from: '', to: '' } : { from: week, to: '', which: 'created' });
+      if (k === 'call') { _glF.mobile = on ? '' : 'yes'; if (!on && $('gl-status')) $('gl-status').value = 'unpaid'; }
+      if (k === 'pay') _glF.step = on ? '' : String(GL_STEPS.indexOf('checkout'));
+      _glPage = 0; _glSave();
+      if (k === 'call' && !on) return _loadGuestFunnel();
+      _renderLeadFilters(); _renderLeads();
+    }));
+  }
+  function _renderLeads() {
+    const el = $('guest-leads'); if (!el) return;
+    const rows = _glFiltered(), pages = Math.max(1, Math.ceil(rows.length / GL_PER));
+    if (_glPage >= pages) _glPage = pages - 1;
+    const view = rows.slice(_glPage * GL_PER, (_glPage + 1) * GL_PER);
+    const when = d => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const th = (k, t) => `<th><button type="button" class="gl-sort" data-sort="${k}">${t}${_glF.sort === k ? (_glF.dir > 0 ? ' ▲' : ' ▼') : ''}</button></th>`;
+    const dots = l => { const r = _reach(l); return `<span class="gl-dots" aria-label="${r + 1} / ${GL_STEPS.length}">${GL_STEPS.map((_, i) => `<i class="${i <= r ? 'on' : ''}"></i>`).join('')}</span><small>${r >= 0 ? GL_STEP_NAME[GL_STEPS[r]] : 'उघडली'}</small>`; };
+    el.innerHTML = !_leads.length ? '<p class="import-hint">अजून कोणी नाही.</p>' : `
+      <p class="import-hint gl-count">${_leads.length} पैकी <b>${rows.length}</b> दिसत आहेत</p>
+      ${rows.length ? `<div class="gl-tablebox"><table class="gl-table">
+        <thead><tr>${th('name', 'नाव')}${th('batch', 'Class')}${th('tests', 'Tests')}${th('reach', 'कुठे पोचले')}${th('best_pct', 'Best')}<th>नंबर</th><th>कुठून</th>${th('created_at', 'आले')}${th('last_seen_at', 'शेवटचं')}<th></th></tr></thead>
+        <tbody>${view.map(l => `<tr data-gid="${_esc(l.gid)}" class="${l.gid === _glOpen ? 'open' : ''}${l.paid ? ' paid' : ''}">
+          <td data-l="नाव"><b>${_esc(l.name || 'नाव नाही')}</b>${l.paid ? ` <span class="gxa-badge gxa-paid">✅ ${_esc(l.student_code)}</span>` : l.student_code ? ` <span class="gxa-badge">${_esc(l.student_code)}</span>` : ''}</td>
+          <td data-l="Class">${_esc(l.batch || '—')}</td>
+          <td data-l="Tests">${l.tests || 0}</td>
+          <td data-l="कुठे">${dots(l)}</td>
+          <td data-l="Best">${l.best_pct || 0}%</td>
+          <td data-l="नंबर">${l.parent_mobile ? '📱 ' + _esc(l.parent_mobile) : '—'}</td>
+          <td data-l="कुठून">${_esc(_srcOf(l))}${l.ref ? `<small>${_esc(l.ref)}</small>` : ''}</td>
+          <td data-l="आले">${_esc(when(l.created_at))}</td>
+          <td data-l="शेवटचं">${_esc(when(l.last_seen_at))}</td>
+          <td>${l.parent_mobile && !l.paid ? '<button class="admin-btn-primary btn-gl-wa" type="button">📱 WhatsApp</button>' : ''}</td>
+        </tr>${l.gid === _glOpen ? `<tr class="gl-more"><td colspan="10"><div class="gxa-steps">${_leadSteps(l)}</div>${l.last_test ? `<p class="import-hint">शेवटची test: ${_esc(l.last_test)}</p>` : ''}</td></tr>` : ''}`).join('')}</tbody></table></div>
+      ${pages > 1 ? `<div class="gl-pages"><button type="button" class="admin-btn-secondary" data-page="-1"${_glPage ? '' : ' disabled'}>◀ मागे</button> पान ${_glPage + 1} / ${pages} <button type="button" class="admin-btn-secondary" data-page="1"${_glPage < pages - 1 ? '' : ' disabled'}>पुढे ▶</button></div>` : ''}`
+      : '<p class="import-hint">या filters मध्ये कोणी नाही.</p>'}`;
+    el.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.sort; _glF.dir = _glF.sort === k ? -_glF.dir : (k === 'name' || k === 'batch' ? 1 : -1); _glF.sort = k; _glSave(); _renderLeads();
+    }));
+    el.querySelectorAll('[data-page]').forEach(b => b.addEventListener('click', () => { _glPage += Number(b.dataset.page); _renderLeads(); el.scrollIntoView({ block: 'start' }); }));
+    el.querySelectorAll('tbody tr[data-gid]').forEach(tr => tr.addEventListener('click', e => {
+      const l = _leads.find(x => x.gid === tr.dataset.gid); if (!l) return;
+      if (e.target.closest('.btn-gl-wa')) { window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(_leadFollowUp(l))}`, '_blank'); return; }
+      _glOpen = _glOpen === l.gid ? '' : l.gid; _renderLeads();
+    }));
+  }
+  function _leadsCsv() {
+    const rows = _glFiltered();
+    const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const head = ['नाव', 'Class', 'Tests', 'Best %', 'कुठे पोचले', 'पालकांचा नंबर', 'कुठून', 'Ad / ref', 'Student code', 'Paid', 'पहिल्यांदा आले', 'शेवटचं आले'];
+    const body = rows.map(l => [l.name, l.batch, l.tests, l.best_pct, _reach(l) >= 0 ? GL_STEP_NAME[GL_STEPS[_reach(l)]] : '', l.parent_mobile, _srcOf(l), l.ref, l.student_code, l.paid ? 'हो' : '', new Date(l.created_at).toLocaleString('en-IN'), new Date(l.last_seen_at).toLocaleString('en-IN')]);
+    const csv = '\ufeff' + [head, ...body].map(r => r.map(cell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }), name = `leads-${_dayStr(new Date())}.csv`;
+    if (window.FILE_EXPORT?.saveAndShare) return window.FILE_EXPORT.saveAndShare(blob, name).catch(() => {});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
   async function _loadGuestFunnel() {
     const funnelEl = $('guest-funnel'), listEl = $('guest-leads');
     if (!funnelEl || !listEl) return;
-    const days = Number($('gl-days')?.value || 30);
+    let days = Number($('gl-days')?.value || 30);
     const status = $('gl-status')?.value || 'unpaid';
+    // a "from" date older than the chosen days → fetch far enough back (max 1 year)
+    if (_glF.from) days = Math.min(365, Math.max(days, Math.ceil((Date.now() - new Date(_glF.from + 'T00:00:00').getTime()) / 864e5) + 1));
     funnelEl.innerHTML = '<p class="import-hint">⏳ उघडत आहे…</p>';
     try {
       const [f, leads] = await Promise.all([API.fetchGuestFunnel(days), API.fetchGuestLeads({ status, days })]);
@@ -2381,28 +2510,8 @@ const ADMIN = (() => {
         ? `<p class="import-hint" style="margin-top:8px">कुठून आले: ${Object.entries(f.by_source).map(([k, v]) => `${_esc(k)} ${v.opened} → ✅ ${v.paid}`).join(' · ')}</p>` : '')
         + (Object.keys(f.by_link || {}).length
         ? `<p class="import-hint">Class च्या link मधून: ${Object.entries(f.by_link).map(([k, v]) => `${_esc(k)} — उघडली ${v.opened}, test ${v.tested}, ✅ ${v.paid}`).join(' · ')}</p>` : '');
-      if (!leads.length) { listEl.innerHTML = '<p class="import-hint">अजून कोणी नाही.</p>'; return; }
-      listEl.innerHTML = '';
-      leads.forEach(l => {
-        const item = document.createElement('div');
-        item.className = 'batch-admin-item';
-        item.setAttribute('role', 'listitem');
-        const seen = new Date(l.last_seen_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-        item.innerHTML = `
-          <div>
-            <div class="batch-admin-name">${_esc(l.name || 'नाव नाही')} ${l.paid ? `<span class="gxa-badge gxa-paid">✅ Paid · ${_esc(l.student_code)}</span>` : l.student_code ? `<span class="gxa-badge">Account: ${_esc(l.student_code)}</span>` : ''}</div>
-            <div class="batch-admin-meta">${_esc(l.batch)} · ${l.tests} tests · best ${l.best_pct}% · ${_esc(seen)}</div>
-            <div class="batch-admin-meta">${l.parent_mobile ? '📱 ' + _esc(l.parent_mobile) : 'नंबर नाही'}${l.source ? ' · ' + _esc(l.source) : ''}</div>
-            <div class="gxa-steps">${_leadSteps(l)}</div>
-          </div>
-          <div class="batch-admin-actions">
-            ${l.parent_mobile && !l.paid ? '<button class="admin-btn-primary btn-gl-wa" type="button">📱 WhatsApp</button>' : ''}
-          </div>`;
-        item.querySelector('.btn-gl-wa')?.addEventListener('click', () => {
-          window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(_leadFollowUp(l))}`, '_blank');
-        });
-        listEl.appendChild(item);
-      });
+      _leads = leads; _glPage = 0;
+      _renderLeadFilters(); _renderLeads();
     } catch (err) {
       funnelEl.innerHTML = `<p class="import-hint">आकडे आणता आले नाहीत: ${_esc(err?.message || '')}</p>`;
       listEl.innerHTML = '';
