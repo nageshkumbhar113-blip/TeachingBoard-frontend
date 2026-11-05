@@ -134,6 +134,13 @@ const AD_STUDIO = (() => {
           `🏆 ${f.players} students took the Maha-Test this Sunday. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nWhere does your child stand? Start with a free test.\n✅ No login · Instant result`],
         headline: [`या आठवड्याचा Topper ${f.topScore}`, `This week's topper: ${f.topScore}`],
       },
+      'demo-rank': {
+        aud: 'parent', kind: 'comp', name: '🏅 Rank कसा दिसतो (नमुना)', ok: true, demo: true,
+        scenes: ['topper', 'question', 'result', 'offer'],
+        copy: [`🏅 दर रविवारी महा-Test: तुमच्या मुलाचे गुण आणि ${f.label} मधला क्रमांक लगेच app मध्ये.\n(Video मधली rank screen नमुना आहे.)\n✅ आधी Free test · Login नाही`,
+          `🏅 A Maha-Test every Sunday: your child's score and rank in ${f.label}, right away in the app.\n(The rank screen in the video is a sample.)\n✅ Free test first · No login`],
+        headline: ['तुमच्या मुलाचा क्रमांक पाहा 🏅', "See your child's rank 🏅"],
+      },
       days: {
         aud: 'parent', kind: 'comp', name: '⏰ परीक्षेला दिवस बाकी', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा मध्ये या class ची तारीख टाका',
         hook: [`${f.examTitle || 'परीक्षेला'} फक्त`, `${f.examTitle || 'Exam'} in just`], hook2: ['दिवस बाकी', 'days'],
@@ -490,15 +497,23 @@ const AD_STUDIO = (() => {
       });
     },
     topper(W, H, lt, v, f) {
+      // a sample screen (v.demo): example name + score, stamped नमुना / SAMPLE — never shown as a real result
+      if (v.demo) f = { ...f, topName: 'Rahul P.', topScore: '92/100', players: 0 };
       const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), cy = H * (tall ? .42 : .45);
-      both(['🏆 या रविवारचा महा-Test', "🏆 This Sunday's Maha-Test"], W / 2, tall ? 260 : 110, tall ? 64 : 54, tall ? 70 : 56);
+      both(v.demo ? ['📱 App मध्ये असा दिसतो क्रमांक', '📱 How the rank looks in the app'] : ['🏆 या रविवारचा महा-Test', "🏆 This Sunday's Maha-Test"], W / 2, tall ? 260 : 110, tall ? 64 : 54, tall ? 70 : 56, C.white, W - 100);
       x.save(); x.translate(W / 2, cy); x.scale(a, a);
       x.fillStyle = C.white; rr(-420, -330, 840, 660, 60); x.fill();
       x.fillStyle = C.gold; x.beginPath(); x.arc(0, -170, 110, 0, 7); x.fill();
       text(f.topName ? f.topName.split(/\s+/).map(w => w[0]).join('').slice(0, 2) : '🏆', 0, -168, 90, '#3b1d00', 800);
       text(`${f.topName || 'Topper'} · ${f.label}`, 0, 10, 56, C.ink, 800, 'center', 760);
       text(f.topScore, 0, 110, 96, C.violet, 800);
-      text(st.lang === 'en' ? `Rank #1 of ${f.players}` : `${f.players} मुलांमध्ये #1`, 0, 215, 44, '#8a83b3', 700, 'center', 760);
+      text(f.players ? (st.lang === 'en' ? `Rank #1 of ${f.players}` : `${f.players} मुलांमध्ये #1`) : (st.lang === 'en' ? 'Rank #1' : 'क्रमांक #1'), 0, 215, 44, '#8a83b3', 700, 'center', 760);
+      if (v.demo) {
+        x.save(); x.translate(300, -270); x.rotate(.2);
+        x.fillStyle = C.red; rr(-150, -42, 300, 84, 18); x.fill();
+        text(st.lang === 'en' ? 'SAMPLE' : st.lang === 'both' ? 'नमुना · SAMPLE' : 'नमुना', 0, 2, 38, C.white, 800, 'center', 280);
+        x.restore();
+      }
       x.restore();
       if (lt > 700) confetti(lt - 700, 0, 0, W);
       const b = outBack(p(lt, 1500, 2100));
@@ -716,6 +731,33 @@ const AD_STUDIO = (() => {
       return null;
     } finally { btn.disabled = false; }
   }
+  // all ads ticked under "Video download" (this audience), one after another; then one "turn all on"
+  async function sendAllToMeta() {
+    const all = $('ads-meta-send-all'), box = $('ads-meta-bulk');
+    const vars = [...document.querySelectorAll('.ads-var-rec')].filter(c => c.checked && !c.disabled).map(c => c.value);
+    if (!vars.length) { box.textContent = 'खाली "Video download" मध्ये किमान एका ad ला खूण करा'; return; }
+    all.disabled = true;
+    const done = [];
+    for (let i = 0; i < vars.length; i++) {
+      box.innerHTML = `⏳ ${i + 1} / ${vars.length}: <b>${_esc(adId(vars[i]))}</b>… (हे tab उघडं ठेवा)`;
+      const out = await sendToMeta(vars[i]);
+      done.push({ id: adId(vars[i]), out });
+    }
+    all.disabled = false;
+    const made = done.filter(d => d.out && (d.out.created || d.out.exists) && d.out.ad_id);
+    box.innerHTML = done.map(d => `${d.out?.created ? '✅' : d.out?.exists ? 'ℹ️' : d.out?.pending ? '⏳' : '⚠️'} ${_esc(d.id)}`).join(' · ')
+      + (made.length ? ` <button type="button" class="ads-act good" id="ads-meta-on-all">▶ या ${made.length} ads एकदम चालू करा</button>` : '');
+    const on = $('ads-meta-on-all');
+    on?.addEventListener('click', async () => {
+      if (!on.dataset.sure) { on.dataset.sure = '1'; on.textContent = 'पक्कं? पुन्हा दाबा (आजपासून खर्च सुरू)'; return; }
+      on.disabled = true;
+      let ok = 0;
+      for (const d of made) { try { await API.metaAction({ action: 'resume', ad_id: d.out.ad_id }); ok++; } catch (err) { APP.toast(`${d.id}: ${err?.message || 'चालू झाली नाही'}`, 'error'); } }
+      box.innerHTML += `<br>✅ ${ok} ads चालू झाल्या. Meta त्या तपासून (साधारण काही तासांत) दाखवायला सुरू करेल.`;
+      on.remove();
+      _loadBoard(true);
+    });
+  }
   function _paintMetaBox() {
     const box = $('ads-metabox'); if (!box) return;
     box.hidden = !_metaOk;
@@ -791,7 +833,7 @@ const AD_STUDIO = (() => {
       const V = _variants(_facts());
       // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
       const ours = id => /^t-/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
-      const audOfId = id => { const m = /^t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).find(v => id.endsWith('-' + v)); return V[k]?.aud || 'parent'; };
+      const audOfId = id => { const m = /^t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).filter(v => id.endsWith('-' + v)).sort((a, b) => b.length - a.length)[0]; return V[k]?.aud || 'parent'; };
       // every ad that is in Meta under our name shows up (also a new one with no spend yet)
       const inMeta = meta?.connected ? Object.keys(meta.ads || {}).filter(ours) : [];
       const ids = new Set([...Object.keys(f.by_ad || {}), ...Object.keys(f.by_teacher_ad || {}), ...Object.keys(spend), ...Object.keys(M).filter(ours), ...inMeta]);
@@ -948,6 +990,8 @@ const AD_STUDIO = (() => {
               <label>वय <input id="ads-meta-age-min" type="number" min="13" max="65" class="admin-input ads-age" aria-label="किमान वय" /> ते <input id="ads-meta-age-max" type="number" min="13" max="65" class="admin-input ads-age" aria-label="कमाल वय" /></label>
               <small class="ads-age-note">वय आणि बजेट नवीन ad set बनताना लागतात — तो ad set आधीच बनला असेल तर Ads Manager मध्ये बदला.</small>
               <button type="button" class="admin-btn-primary" id="ads-meta-send">📤 ही ad Meta वर पाठवा (बंद स्थितीत)</button>
+              <button type="button" class="admin-btn-secondary" id="ads-meta-send-all">📤 खाली खूण केलेल्या सगळ्या ads पाठवा</button>
+              <div id="ads-meta-bulk" class="import-hint"></div>
               <p class="import-hint" id="ads-meta-msg">9:16 video इथे बनतो आणि Meta वर जातो. Ad <b>बंद (Paused)</b> बनते — Ads Manager मध्ये तपासून तुम्ही चालू करायची.</p>
             </div>
             <div class="ads-recbox">
@@ -979,6 +1023,7 @@ const AD_STUDIO = (() => {
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
       $('ads-meta-send').addEventListener('click', () => sendToMeta());
+      $('ads-meta-send-all').addEventListener('click', sendAllToMeta);
       $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
       $('ads-refresh').addEventListener('click', () => _loadBoard(true));
       $('ads-days').addEventListener('change', () => _loadBoard());
@@ -1016,7 +1061,7 @@ const AD_STUDIO = (() => {
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, __st: st, __content: _content };
+  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, __st: st, __content: _content };
 })();
 
 window.AD_STUDIO = AD_STUDIO;
