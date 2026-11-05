@@ -2749,3 +2749,5 @@ body.admin-app {
 .site-ai summary { font-weight: 800; cursor: pointer; color: #4c3a9e; }
 .site-ai textarea { width: 100%; font: inherit; font-size: .82rem; }
 .site-ai ol { margin: 6px 0; padding-left: 20px; }
+
+.site-seo { display: block; font-weight: 700; font-size: .75rem; color: #6b5fa8; margin-top: 2px; }

@@ -65,30 +65,40 @@ const SITE_ADMIN = (() => {
   function _aiPrompt() {
     const box = $('site-editor'), v = k => box.querySelector('[data-f="' + k + '"]')?.value?.trim() || '';
     const today = new Date().toISOString().slice(0, 10);
+    const year = new Date().getFullYear();
     return [
-      'तू भारतातील स्पर्धा परीक्षांचा माहितीतज्ज्ञ आहेस. खालील परीक्षेची या वर्षाची ताजी आणि अचूक माहिती दे.',
+      'तू भारतातील स्पर्धा परीक्षांचा माहितीतज्ज्ञ आणि मराठी SEO writer आहेस. खालील परीक्षेची या वर्षाची ताजी, अचूक माहिती दे —',
+      'ती एका वेबसाइटच्या परीक्षा-page वर जाईल; पालक Google वर मराठीत / English मध्ये जे शोधतात त्याला या page ने थेट उत्तर द्यायला हवं.',
       '',
       'परीक्षा: ' + (v('name') || v('name_en')) + (v('name_en') && v('name') ? ' (' + v('name_en') + ')' : ''),
       'इयत्ता: ' + (v('class_label') || '—'),
       'Official site: ' + (v('official_url') || '—'),
       'आजची तारीख: ' + today,
       '',
-      'नियम (काटेकोर):',
-      '1. फक्त official notification / official website वरची माहिती दे. अंदाज करू नकोस.',
+      'अचूकतेचे नियम (काटेकोर):',
+      '1. फक्त official notification / official website वरची माहिती दे. अंदाज करू नकोस. Coaching / blog sites वर विश्वास ठेवू नकोस.',
       '2. एखादी तारीख अजून जाहीर झाली नसेल किंवा खात्री नसेल तर "date": null ठेव आणि "note" मध्ये "अजून जाहीर नाही" लिही.',
-      '3. सगळा मजकूर सोप्या मराठीत (पालकांना समजेल असा). परीक्षा / विषयांची नावं English मध्ये चालतील.',
-      '4. "sources" मध्ये तू वापरलेल्या official pages चे पूर्ण links दे.',
-      '5. उत्तरात फक्त खालील JSON दे — त्याआधी किंवा नंतर एकही शब्द नको.',
+      '3. आकडे (गुण, प्रश्न, वेळ, शिष्यवृत्तीची रक्कम, उत्पन्न मर्यादा) official notification मधलेच दे.',
+      '4. "sources" मध्ये तू वापरलेल्या official pages / PDF चे पूर्ण links दे.',
+      '',
+      'Google साठी लिहिण्याचे नियम:',
+      '5. "name": लहान, 40 अक्षरांपेक्षा कमी, परीक्षेचा लोक शोधतात तो शब्द सुरुवातीला. उदा. "NMMS शिष्यवृत्ती परीक्षा (8वी)" — पूर्ण अधिकृत लांब नाव इथे नको.',
+      '6. "purpose": 2 वाक्यं, एकूण 120–155 अक्षरं (हेच Google च्या निकालात खाली दिसतं). परीक्षेचं नाव, ' + year + ', इयत्ता आणि मुख्य फायदा त्यात हवा.',
+      '7. "faq": 5 ते 8 प्रश्न — पालक Google वर जसे टाइप करतात तसे (उदा. "NMMS ' + year + ' परीक्षा कधी आहे?", "NMMS साठी पात्रता काय?", "NMMS form कसा भरायचा?", "NMMS निकाल कधी लागतो?", "NMMS पास होण्यासाठी किती गुण लागतात?"). प्रत्येक उत्तर 1–3 वाक्यांत, स्वतंत्रपणे वाचलं तरी समजेल असं, आकड्यांसह.',
+      '8. तारखांची "label" ही साधी, नेहमीची नावं: "Online अर्ज सुरू", "अर्जाची शेवटची तारीख", "प्रवेशपत्र (Admit card)", "परीक्षा", "निकाल".',
+      '9. पात्रता / अभ्यासक्रम: प्रत्येक मुद्दा एक छोटं वाक्य (एका ओळीत एक).',
+      '10. दुसऱ्या वेबसाइटचा मजकूर जसाच्या तसा copy करू नकोस — स्वतःच्या सोप्या शब्दांत लिही. "सर्वोत्तम", "100% निवड" असे दावे नकोत.',
+      '11. उत्तरात फक्त खालील JSON दे — त्याआधी किंवा नंतर एकही शब्द नको.',
       '',
       JSON.stringify({
-        name: 'मराठी नाव (इयत्ता)', name_en: 'English name', class_label: 'उदा. 8वी',
-        purpose: 'परीक्षा कशासाठी — 2-3 वाक्यं', benefit: 'मुख्य फायदा, 6-8 शब्दांत',
+        name: 'लहान नाव (इयत्ता) — 40 अक्षरांपेक्षा कमी', name_en: 'Short English name', class_label: 'उदा. 8वी',
+        purpose: '2 वाक्यं, 120–155 अक्षरं: नाव + वर्ष + इयत्ता + फायदा', benefit: 'मुख्य फायदा, 6-8 शब्दांत',
         eligibility: ['पात्रतेचा एक मुद्दा', 'दुसरा मुद्दा'],
         pattern: [{ part: 'पेपर / विषय', questions: 90, marks: 90, time: '90 मिनिटे' }],
         syllabus: ['अभ्यासक्रमाचा एक मुद्दा', 'दुसरा'],
         official_url: 'https://…',
-        dates: [{ label: 'Form भरण्याची शेवटची तारीख', date: 'YYYY-MM-DD', note: '' }, { label: 'परीक्षा', date: null, note: 'अजून जाहीर नाही' }],
-        faq: [{ q: 'पालक नेहमी विचारतात तो प्रश्न', a: 'थोडक्यात उत्तर' }],
+        dates: [{ label: 'अर्जाची शेवटची तारीख', date: 'YYYY-MM-DD', note: '' }, { label: 'परीक्षा', date: null, note: 'अजून जाहीर नाही' }],
+        faq: [{ q: 'पालक Google वर टाइप करतात तसा प्रश्न', a: '1–3 वाक्यांत उत्तर, आकड्यांसह' }],
         ad_loss_mr: '…आणि [फायदा] गेला / गेली (ad साठी, 8-10 शब्द)', ad_loss_en: '…and lost [benefit]',
         sources: ['https://…'],
       }, null, 2),
@@ -123,6 +133,26 @@ const SITE_ADMIN = (() => {
     msg.innerHTML = '✅ ' + n + ' भाग भरले. <b>अजून Save केलेलं नाही</b> — खाली वाचा, official site शी जुळवा, मग "✅ Official site वर तपासलं — Save" दाबा.'
       + (src.length ? '<br>AI ने वापरलेले links (हे उघडून तारखा तपासा):<br>' + src.map(u => '<a href="' + _esc(u) + '" target="_blank" rel="noopener">' + _esc(u) + '</a>').join('<br>')
         : '<br>⚠️ AI ने links (sources) दिले नाहीत — तारखा official site वर नक्की तपासा.');
+  }
+
+  // Google: a short name (the search title), a 120–155 letter description, 4+ FAQ
+  function _seoHints() {
+    const box = $('site-editor'); if (!box || box.hidden) return;
+    const hint = (k, html) => {
+      const lab = box.querySelector('.site-f[data-k="' + k + '"]'); if (!lab) return;
+      let el = lab.querySelector('.site-seo'); if (!el) { el = document.createElement('small'); el.className = 'site-seo'; lab.appendChild(el); }
+      el.textContent = html;
+    };
+    const v = k => (box.querySelector('[data-f="' + k + '"]')?.value || '').trim();
+    const n = [...v('name')].length, p = [...v('purpose')].length, fq = box.querySelectorAll('.site-faq').length;
+    hint('name', n <= 40 ? `✅ Google साठी योग्य (${n} अक्षरं)` : `⚠️ ${n} अक्षरं — Google मध्ये कापलं जाईल; 40 पेक्षा कमी ठेवा, लोक शोधतात तो शब्द (उदा. NMMS) आधी`);
+    hint('purpose', p >= 120 && p <= 160 ? `✅ Google च्या निकालात हेच दिसेल (${p} अक्षरं)` : `⚠️ ${p} अक्षरं — 120–155 योग्य (Google च्या निकालात हेच दिसतं)`);
+    const add = $('site-add-faq');
+    if (add) {
+      let el = add.parentElement.querySelector(':scope > .site-seo');
+      if (!el) { el = document.createElement('small'); el.className = 'site-seo'; add.parentElement.insertBefore(el, add); }
+      el.textContent = fq >= 4 ? `✅ ${fq} प्रश्न` : `⚠️ ${fq} प्रश्न — किमान 4–5 ठेवा (पालक Google वर विचारतात तसे)`;
+    }
   }
 
   function _paintEditor() {
@@ -180,6 +210,7 @@ const SITE_ADMIN = (() => {
         <span id="site-msg" class="import-hint" role="status"></span>
       </div>
       <div id="site-preview-box" hidden><iframe id="site-frame" title="Preview"></iframe></div>`;
+    _seoHints();
   }
 
   function _collect() {
@@ -254,16 +285,17 @@ const SITE_ADMIN = (() => {
         </div>
         <div id="site-list"></div>
         <div id="site-editor" class="site-editor" hidden></div>`;
+      host.addEventListener('input', ev => { if (ev.target.closest('#site-editor')) _seoHints(); });
       host.addEventListener('click', ev => {
         const t = ev.target;
         const op = t.closest('[data-open]');
         if (op) { _open = _open === op.dataset.open ? '' : op.dataset.open; _paintList(); _paintEditor(); if (_open) $('site-editor').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-        if (t.closest('[data-del-row]')) { t.closest('.site-date, .site-faq')?.remove(); return; }
+        if (t.closest('[data-del-row]')) { t.closest('.site-date, .site-faq')?.remove(); _seoHints(); return; }
         if (t.id === 'site-add-date') { $('site-dates').insertAdjacentHTML('beforeend', dateRow()); return; }
-        if (t.id === 'site-add-faq') { $('site-faqs').insertAdjacentHTML('beforeend', faqRow()); return; }
+        if (t.id === 'site-add-faq') { $('site-faqs').insertAdjacentHTML('beforeend', faqRow()); _seoHints(); return; }
         if (t.closest('[data-save]')) { _save(t.closest('[data-save]').dataset.save === 'verify'); return; }
         if (t.id === 'site-preview') { _preview(); return; }
-        if (t.id === 'site-ai-fill') { _aiFill(); return; }
+        if (t.id === 'site-ai-fill') { _aiFill(); _seoHints(); return; }
         if (t.id === 'site-ai-copy') {
           const p = _aiPrompt();
           const done = ok => {
