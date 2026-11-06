@@ -1143,6 +1143,28 @@ const AD_STUDIO = (() => {
     if (acc.spend_cap) parts.push(`खर्च मर्यादा ${rs(acc.spend_cap)}`);
     return parts.length ? `<br>${parts.join(' · ')} · <a href="${BILLING}" target="_blank" rel="noopener">पैसे भरा / Billing ↗</a>` : '';
   }
+  // 💰 Google Ads: Google's API has no prepaid balance — an estimate from what the admin paid
+  // (less 18% GST) minus Google's own spend since the first payment
+  const G_BILLING = 'https://ads.google.com/aw/billing/summary?ocid=8650274639';
+  function _gMoneyLine(gads) {
+    const m = gads.money || {}, rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+    const perDay = Number(gads.active_budget) || 0;
+    let head;
+    if (m.error) head = `💰 शिल्लक काढता आली नाही: ${_esc(m.error)}`;
+    else if (!m.topups?.length) head = '💰 Google शिल्लक API मधून देत नाही — Google Ads मध्ये पैसे भरले की इथे लिहा, मग अंदाजे शिल्लक दिसेल';
+    else {
+      const days = perDay ? m.est_balance / perDay : null, low = m.est_balance <= 0 || (days !== null && days < 2);
+      head = `<b class="${low ? 'ads-low' : ''}">💰 अंदाजे शिल्लक: ${rs(Math.max(0, m.est_balance))}</b>${perDay ? ` (आत्ताच्या ₹${Math.round(perDay)}/दिवस खर्चाने ≈ ${days < 1 ? 'आजच संपेल' : Math.floor(days) + ' दिवस पुरेल'})` : ''}${low ? ' ⚠️ पैसे संपत आले — Google Ads मध्ये भरा' : ''}
+        <br><small>भरले ${rs(m.paid)} (18% GST वजा धरून) · ${_esc(m.since)} पासून Google चा खर्च ${rs(m.spent)} · अंदाज आहे, अचूक आकडा Billing मध्ये</small>`;
+    }
+    const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+    const list = (m.topups || []).map((t, i) => `<span class="ads-topup">${rs(t.amount)} · ${_esc(t.date)} <button type="button" class="ads-mini" data-gtop-del="${i}" aria-label="काढा">✕</button></span>`).join(' ');
+    return `${head}
+      <span class="ads-topup-form">भरलेले पैसे: ₹ <input id="gads-amt" type="number" min="1" step="100" class="admin-input" aria-label="रक्कम" />
+        <input id="gads-date" type="date" class="admin-input" value="${today}" max="${today}" aria-label="तारीख" />
+        <button type="button" class="ads-mini good" id="gads-add">+ लिहा</button> ${list}
+        <a href="${G_BILLING}" target="_blank" rel="noopener">Billing ↗</a></span>`;
+  }
   async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
     box.innerHTML = '<p class="import-hint">⏳ उघडत आहे…</p>';
@@ -1201,7 +1223,8 @@ const AD_STUDIO = (() => {
         : meta.error ? `<p class="ads-meta-line bad">⚠️ ${_esc(meta.error)}</p>`
         : '<p class="ads-meta-line">🔗 Meta जोडलेलं नाही — खर्च हाताने लिहा.</p>';
       const gStatus = !gads ? '' : gads.connected
-        ? `<p class="ads-meta-line ok">▶️ Google Ads (YouTube) जोडलं: <b>${_esc(gads.account?.name || '')}</b> · ${_esc(gads.account?.currency || '')} · ${Object.keys(G).length} ads${gads.config?.lead_action ? ` · 🎯 Free test Google ला जातो: ${gads.leads || 0}` : ' · 🎯 Google ला निकाल अजून जात नाहीत (GOOGLE_ADS_LEAD_ACTION_ID नाही)'}</p>`
+        ? `<p class="ads-meta-line ok">▶️ Google Ads (YouTube) जोडलं: <b>${_esc(gads.account?.name || '')}</b> · ${_esc(gads.account?.currency || '')} · ${Object.keys(G).length} ads${gads.config?.lead_action ? ` · 🎯 Free test Google ला जातो: ${gads.leads || 0}` : ' · 🎯 Google ला निकाल अजून जात नाहीत (GOOGLE_ADS_LEAD_ACTION_ID नाही)'}
+            <br>${_gMoneyLine(gads)}</p>`
         : gads.error ? `<p class="ads-meta-line bad">▶️ Google Ads: ⚠️ ${_esc(gads.error)}</p>`
         : (Object.keys(f.by_ad || {}).some(k => k.startsWith('yt-')) || Object.keys(spend).some(k => k.startsWith('yt-'))) ? '<p class="ads-meta-line">▶️ Google Ads जोडलेलं नाही — YouTube ads चा खर्च हाताने लिहा.</p>' : '';
       // ads compete inside their own Meta ad set / YouTube campaign (Meta and YouTube never against each other)
@@ -1254,6 +1277,15 @@ const AD_STUDIO = (() => {
           APP.toast(err?.message || (btn.dataset.gact ? 'Google Ads मध्ये बदल झाला नाही' : 'Meta मध्ये बदल झाला नाही'), 'error');
           btn.disabled = false; delete btn.dataset.sure; btn.textContent = btn.dataset.label;
         }
+      }));
+      // Google Ads: write down a payment / remove a wrong one
+      $('gads-add')?.addEventListener('click', async () => {
+        try { await API.googleTopup({ amount: Number($('gads-amt').value), date: $('gads-date').value }); APP.toast('लिहिलं', 'success'); _loadBoard(true); }
+        catch (err) { APP.toast(err?.message || 'लिहिता आलं नाही', 'error'); }
+      });
+      box.querySelectorAll('[data-gtop-del]').forEach(b => b.addEventListener('click', async () => {
+        if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'पक्कं?'; return; }
+        try { await API.googleTopupDelete(b.dataset.gtopDel); _loadBoard(true); } catch (err) { APP.toast(err?.message || '', 'error'); }
       }));
       box.querySelectorAll('.ads-spend').forEach(inp => inp.addEventListener('change', async () => { await _saveSpend(inp.dataset.id, inp.value); _loadBoard(); }));
     } catch (err) { box.innerHTML = `<p class="import-hint">आकडे आणता आले नाहीत: ${_esc(err?.message || '')}</p>`; }

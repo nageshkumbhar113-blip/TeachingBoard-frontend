@@ -2304,6 +2304,16 @@ const API = (() => {
     return request('/guest/admin/google/action', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
   }
 
+  // money paid into Google Ads (Google does not give the prepaid balance)
+  async function googleTopup(body) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/google/topup', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+  }
+  async function googleTopupDelete(i) {
+    const token = await ensureAdminSession();
+    return request(`/guest/admin/google/topup/${Number(i)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  }
+
   async function metaAction(body) {
     const token = await ensureAdminSession();
     return request('/guest/admin/meta/action', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
@@ -3059,7 +3069,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
