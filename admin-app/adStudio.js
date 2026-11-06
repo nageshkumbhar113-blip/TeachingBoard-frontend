@@ -1203,7 +1203,7 @@ const AD_STUDIO = (() => {
   // all ads ticked under "Video download" (this audience), one after another; then one "turn all on"
   async function sendAllToMeta() {
     const all = $('ads-meta-send-all'), box = $('ads-meta-bulk');
-    const vars = [...document.querySelectorAll('.ads-var-rec')].filter(c => c.checked && !c.disabled).map(c => c.value);
+    const vars = _recPicked();
     if (!vars.length) { box.textContent = 'खाली "Video download" मध्ये किमान एका ad ला खूण करा'; return; }
     all.disabled = true;
     const done = [];
@@ -1660,6 +1660,15 @@ const AD_STUDIO = (() => {
   }
 
   // ── panel ──
+  // ads the admin un-ticked under "Video download" (per class, so another class starts with all ticked)
+  const _untick = new Set();
+  const _tickKey = k => `${isTeacher(_audOf(k)) ? 't' : st.batch}|${k}`;
+  const _recPicked = () => [...document.querySelectorAll('.ads-var-rec')].filter(c => c.checked && !c.disabled).map(c => c.value);
+  function _paintPicked() {
+    const n = _recPicked().length, fm = [...document.querySelectorAll('.ads-fmt-rec')].filter(c => c.checked).length;
+    if ($('ads-rec')) $('ads-rec').textContent = n && fm ? `🎬 निवडलेले ${n * fm} video बनवा (${n} ads × ${fm} आकार)` : '🎬 निवडलेले video बनवा';
+    if ($('ads-meta-send-all')) $('ads-meta-send-all').textContent = n ? `📤 खाली खूण केलेल्या ${n} ads च पाठवा` : '📤 खाली खूण केलेल्या ads पाठवा';
+  }
   function _paintSide() {
     const f = _facts(), V = _variants(f);
     const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud && (a.custom || isTeacher(st.aud) || (a.kind || 'comp') === st.kind));
@@ -1667,7 +1676,9 @@ const AD_STUDIO = (() => {
     document.querySelectorAll('.ads-aud').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.aud === st.aud)); const sm = b.querySelector('small'); if (sm) sm.textContent = `बजेट ${_share(b.dataset.aud)}%`; });
     _paintBudget();
     $('ads-variants').innerHTML = mine.map(([k, a]) => `<button type="button" class="ads-var" data-v="${k}" aria-pressed="${k === st.v}" ${a.ok ? '' : 'disabled'} title="${_esc(a.ok ? '' : a.why)}"><b>${a.name}</b><small>${a.ok ? (st.v === k ? '▶ पाहत आहात' : '') : _esc(a.why)}</small></button>`).join('');
-    $('ads-recvars').innerHTML = mine.map(([k, a]) => `<label><input type="checkbox" class="ads-var-rec" value="${k}" ${a.ok ? 'checked' : 'disabled'} /> ${_esc(a.name)}</label>`).join(' ');
+    // the admin's ticks survive every repaint (they were reset to "all" on each click before)
+    $('ads-recvars').innerHTML = mine.map(([k, a]) => `<label><input type="checkbox" class="ads-var-rec" value="${k}" ${a.ok ? (_untick.has(_tickKey(k)) ? '' : 'checked') : 'disabled'} /> ${_esc(a.name)}</label>`).join(' ');
+    _paintPicked();
     const teach = isTeacher(st.aud);
     $('ads-class-row').hidden = teach;
     $('ads-teacher-warn').hidden = !teach;
@@ -1709,7 +1720,7 @@ const AD_STUDIO = (() => {
   async function _downloadSelected() {
     const btn = $('ads-rec'), msg = $('ads-msg');
     const fmts = [...document.querySelectorAll('.ads-fmt-rec')].filter(c => c.checked).map(c => c.value);
-    const vars = [...document.querySelectorAll('.ads-var-rec')].filter(c => c.checked).map(c => c.value);
+    const vars = _recPicked();
     if (!fmts.length || !vars.length) { msg.textContent = 'किमान एक ad आणि एक आकार निवडा'; return; }
     btn.disabled = true;
     try {
@@ -2057,6 +2068,8 @@ const AD_STUDIO = (() => {
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
+      $('ads-recvars').addEventListener('change', e => { const c = e.target.closest('.ads-var-rec'); if (!c) return; const k = _tickKey(c.value); if (c.checked) _untick.delete(k); else _untick.add(k); _paintPicked(); });
+      host.querySelectorAll('.ads-fmt-rec').forEach(c => c.addEventListener('change', _paintPicked));
       $('vid-prompt').addEventListener('click', _vidPrompt);
       $('vid-check').addEventListener('click', () => _vidCheck(true));
       $('vid-save').addEventListener('click', _vidSave);
