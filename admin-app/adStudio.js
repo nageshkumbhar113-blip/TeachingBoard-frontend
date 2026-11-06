@@ -68,7 +68,10 @@ const AD_STUDIO = (() => {
   function _facts() {
     const b = _batches.find(x => x.name === st.batch) || {};
     const nmms = /nmms/i.test(st.batch);
-    const C = _content[st.batch] || {}, sx = C.exam || null, mcqs = C.mcqs || [];
+    const C = _content[st.batch] || {}, sx = C.exam || null;
+    // an ability-test exam (NMMS, शिष्यवृत्ती, नवोदय…): a बुद्धिमत्ता question first, if the free tests have one
+    const ABILITY = /बुद्धिमत्ता|बौद्धिक|mental|reason|\bmat\b/i;
+    const mcqs = /nmms|navodaya|नवोदय|scholar|शिष्यवृत्ती/i.test(st.batch || '') ? [...(C.mcqs || [])].sort((a, b) => (ABILITY.test(b.subject) ? 1 : 0) - (ABILITY.test(a.subject) ? 1 : 0)) : (C.mcqs || []);
     // Sync › परीक्षेच्या तारखा first, else the date in Site / Exams
     const exam = _nextExam() || (sx?.next_date ? { title: sx.name, date: sx.next_date.date } : null);
     const ev = _lastWeekly();
@@ -77,6 +80,7 @@ const AD_STUDIO = (() => {
     return {
       nmms, label: st.label || st.batch, freeTests: Number(b.free_tests) || 0,
       mcqs, mcq: mcqs.length ? mcqs[(st.qi || 0) % mcqs.length] : null, site: sx, loaded: !!_content[st.batch],
+      trio: _trio(mcqs),
       // the figure question (बाण फिरतो) fits only school-level ability tests
       matType: /nmms|navodaya|नवोदय|scholar|शिष्यवृत्ती|aissee|sainik|सैनिक|\brms\b|rimc|mts|olymp|ntse/i.test(st.batch || ''),
       loss: sx?.ad_loss_mr ? [sx.ad_loss_mr, sx.ad_loss_en || sx.ad_loss_mr] : nmms ? ['…आणि ₹48,000 ची NMMS शिष्यवृत्ती गेली', '…and lost the ₹48,000 NMMS scholarship'] : null,
@@ -90,6 +94,19 @@ const AD_STUDIO = (() => {
   }
   // a regular class's real content: subjects with notes / answers, one real chapter's notes
   // and one real exercise question + answer for the demo screens
+  // the 3 question screens: one बुद्धिमत्ता, one इतिहास, one गणित when the free tests have them,
+  // else three different subjects; null when the class has fewer than 3 subjects in its free tests.
+  // "🔄 दुसरा प्रश्न" moves each screen to that subject's next question.
+  const TRIO_WANT = [/बुद्धिमत्ता|बौद्धिक|mental|reason|\bmat\b/i, /इतिहास|history/i, /गणित|math/i];
+  function _trio(mcqs) {
+    const bySub = new Map();
+    for (const m of mcqs || []) { const k = m.subject || '—'; if (!bySub.has(k)) bySub.set(k, []); bySub.get(k).push(m); }
+    if (bySub.size < 3) return null;
+    const subs = [...bySub.keys()], picked = [];
+    for (const re of TRIO_WANT) { const k = subs.find(x => re.test(x) && !picked.includes(x)); if (k) picked.push(k); }
+    for (const k of subs) if (picked.length < 3 && !picked.includes(k)) picked.push(k);
+    return picked.slice(0, 3).map(k => { const l = bySub.get(k); return l[(st.qi || 0) % l.length]; });
+  }
   function _regFacts() {
     // विज्ञान and गणित first (on the subjects screen and for the two demo screens)
     const SCI = /sci|विज्ञान|phys|chem|bio/i, MATH = /math|गणित|algebra|geometry|बीजगणित|भूमिती/i;
@@ -115,6 +132,10 @@ const AD_STUDIO = (() => {
   // the six ads; `ok(f)` says whether the class has what the ad needs
   function _variants(f) {
     const V = _variants0(f);
+    if (f.trio) for (const v of Object.values(V)) {
+      if (v.kind !== 'comp' || isTeacher(v.aud)) continue;
+      v.scenes = v.scenes.map((k, i) => (k === 'question' && v.scenes[i - 1] !== 'challenge' ? 'trio' : k));
+    }
     if (!f.mcq && !f.matType) {
       const why = !f.loaded ? '⏳ उघडत आहे…' : 'या class च्या free test मध्ये अजून ad साठी योग्य प्रश्न नाही (चित्र / सूत्र नसलेला, 4 पर्यायांचा)';
       for (const v of Object.values(V)) if (v.kind === 'comp' && !isTeacher(v.aud) && v.scenes.some(k => k === 'question' || k === 'challenge')) { v.ok = false; v.why = why; }
@@ -293,7 +314,7 @@ const AD_STUDIO = (() => {
       },
     };
   }
-  const DUR = { notes: 3500, exdemo: 4500, subjects: 3500, offline: 3500, tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, result: 4000, features: 4000, offer: 4000 };
+  const DUR = { notes: 3500, exdemo: 4500, subjects: 3500, offline: 3500, tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, trio: 10500, result: 4000, features: 4000, offer: 4000 };
 
   // ── drawing ──
   let cv = null, x = null;
@@ -422,7 +443,10 @@ const AD_STUDIO = (() => {
     x.save(); rr(18, 18, 564, 1164, 54); x.clip();
     const g = x.createLinearGradient(18, 0, 582, 0); g.addColorStop(0, '#6d3cf0'); g.addColorStop(1, '#ff4d8d');
     x.fillStyle = g; x.fillRect(18, 18, 564, 150);
-    text(title || (f.nmms ? LL(T.head) : `🏆 ${f.label}`), 300, 120, 30, C.white, 800, 'center', 520);
+    // the header names the subject of the question really shown (a free-test question can be इतिहास,
+    // गणित…); 'बुद्धिमत्ता चाचणी' only for the built-in figure question
+    const head = f.mcq ? `🏆 ${f.nmms ? 'NMMS' : f.label}${f.mcq.subject ? ' · ' + f.mcq.subject : ''}` : f.nmms ? LL(T.head) : `🏆 ${f.label}`;
+    text(title || head, 300, 120, 30, C.white, 800, 'center', 520);
     x.fillStyle = C.white; rr(40, 190, 520, 940, 34); x.fill();
     draw();
     x.restore(); x.restore();
@@ -430,7 +454,7 @@ const AD_STUDIO = (() => {
   function mcqScreen(f, lt, { tapAt = 4000, tipAt = 5200, timer = 0 } = {}) {
     const m = f.mcq;
     phoneShell(f, () => {
-      text(m.subject ? m.subject.slice(0, 22) : 'Q 7 / 20', 80, 235, 24, '#8a83b3', 700, 'left', 320);
+      text('Q 7 / 20', 80, 235, 24, '#8a83b3', 700, 'left', 320);   // the subject is in the header
       if (timer) {
         const left = Math.max(0, Math.ceil((timer - lt) / 1000));
         x.save(); x.fillStyle = left <= 3 ? C.red : C.violet; rr(420, 210, 120, 50, 25); x.fill(); x.restore();
@@ -550,6 +574,11 @@ const AD_STUDIO = (() => {
       }
     },
     challenge(W, H, lt, v, f) { placePhone(W, H, lt, true, () => questionScreen(f, lt, { tapAt: 3600, tipAt: 99999, timer: 4400 }), v.hook); },
+    trio(W, H, lt, v, f) {
+      const i = Math.min(2, Math.floor(lt / 3500)), local = lt - i * 3500, m = f.trio[i];
+      const cap = [`प्रश्न ${i + 1}/3 · ${m.subject || ''}`, `Question ${i + 1}/3 · ${m.subject || ''}`];
+      placePhone(W, H, local, true, () => mcqScreen({ ...f, mcq: m }, local, { tapAt: 1700, tipAt: 2400 }), cap);
+    },
     question(W, H, lt, v, f, after) { const cap = f.mcq ? MCQ_CAP : T; placePhone(W, H, lt, !after, () => questionScreen(f, lt, after ? { tapAt: -1, tipAt: 200 } : {}), lt < 5200 && !after ? cap.q : cap.tip); },
     result(W, H, lt, v, f) { placePhone(W, H, lt, false, () => resultScreen(f, lt), T.resCap); },
     features(W, H, lt, v, f) {
@@ -616,7 +645,7 @@ const AD_STUDIO = (() => {
       both(v.hook, W / 2, H * (tall ? .17 : .12), tall ? 70 : 56, tall ? 70 : 54, C.white, W - 100);
       x.save(); x.translate(W / 2, H * .52 + (1 - a) * 300); x.rotate(-.04);
       x.fillStyle = '#fffdf6'; rr(-pw / 2, -ph2 / 2, pw, ph2, 18); x.fill();
-      text(f.nmms ? 'NMMS · MAT' : f.label, 0, -ph2 / 2 + 70, 52, C.ink, 800, 'center', pw - 60);
+      text(f.nmms ? (f.mcq ? 'NMMS · MAT + SAT' : 'NMMS · MAT') : f.label, 0, -ph2 / 2 + 70, 52, C.ink, 800, 'center', pw - 60);
       for (let i = 0; i < 6; i++) {
         const y = -ph2 / 2 + 200 + i * (tall ? 120 : 80);
         text(`${i + 1}.`, -pw / 2 + 60, y, 30, C.ink, 800);
@@ -910,7 +939,7 @@ const AD_STUDIO = (() => {
   // timer / day counter runs, pop + sparkle on the rank, ta-da on the offer). Nothing is downloaded:
   // no copyright music. The admin's own voice (🎤) can go on top; the music then stays low.
   // the energetic track runs from the first frame to the last; scenes only move it a little
-  const LEVEL = { hook: .95, challenge: .75, question: .72, result: 1, features: .85, offer: 1, topper: .95, days: .8, free: .85, paper: .85,
+  const LEVEL = { hook: .95, challenge: .75, question: .72, trio: .8, result: 1, features: .85, offer: 1, topper: .95, days: .8, free: .85, paper: .85,
     notes: .75, exdemo: .72, subjects: .8, offline: .78, tools: .85, earn: .9, toffer: 1 };
   const _voice = {};   // ad id → { buf: ArrayBuffer, name, secs }
   st.sound = true;
@@ -925,6 +954,12 @@ const AD_STUDIO = (() => {
       if (s.k === 'hook' && v === 'loss') ev.push({ at: s.at + 150, k: 'boom' });
       if (s.k === 'hook' || s.k === 'topper') ev.push({ at: s.at + 200, k: 'pop' });
       if (s.k === 'challenge') { for (let t = 0; t < 3600; t += 1000) ev.push({ at: s.at + t, k: 'tick' }); ev.push({ at: s.at + 3600, k: 'ding' }); }
+      if (s.k === 'trio') for (let k = 0; k < 3; k++) {
+        if (k) ev.push({ at: s.at + k * 3500, k: 'whoosh' });
+        ev.push({ at: s.at + k * 3500 + 60, k: 'stab', n: k + 1 });
+        ev.push({ at: s.at + k * 3500 + 1700, k: 'ding' });
+        ev.push({ at: s.at + k * 3500 + 2400, k: 'chime' });
+      }
       if (s.k === 'question') {
         if (prev === 'challenge') ev.push({ at: s.at + 200, k: 'chime' });
         else { ev.push({ at: s.at + 4000, k: 'ding' }); ev.push({ at: s.at + 5200, k: 'chime' }); ev.push({ at: s.at + 4000, k: 'level', level: .9, ramp: 300 }); }
@@ -1313,7 +1348,7 @@ const AD_STUDIO = (() => {
     $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student`
       : st.kind === 'reg' ? (_content[st.batch] ? (R.has ? `${R.subs.length} विषय (${R.subs.map(s => s.subject).join(', ')}) · ${R.notes} Notes · ${R.answers} स्वाध्याय उत्तरं${R.note ? ' · Notes demo: ' + R.note.chapter : ''}${R.ex ? ' · स्वाध्याय demo: ' + R.ex.chapter : ''}` : 'या class मध्ये अजून Notes / स्वाध्याय उत्तरं नाहीत') : '⏳ उघडत आहे…')
       : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही',
-        !f.loaded ? '⏳ उघडत आहे…' : f.mcq ? `प्रश्न ${((st.qi || 0) % f.mcqs.length) + 1}/${f.mcqs.length} (free test मधला खरा)` : f.matType ? 'प्रश्न: आकृतीचा नमुना (free test मध्ये योग्य प्रश्न नाही)' : 'ad साठी योग्य प्रश्न नाही',
+        !f.loaded ? '⏳ उघडत आहे…' : f.trio ? `3 प्रश्न: ${f.trio.map(m => m.subject || '—').join(' → ')} (free test मधले खरे)` : f.mcq ? `प्रश्न ${((st.qi || 0) % f.mcqs.length) + 1}/${f.mcqs.length} (free test मधला खरा)` : f.matType ? 'प्रश्न: आकृतीचा नमुना (free test मध्ये योग्य प्रश्न नाही)' : 'ad साठी योग्य प्रश्न नाही',
         f.site ? `🗺️ ${f.site.name}` : '🗺️ Site / Exams मध्ये जोडलेली नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
   }
   // the 🎤 line: this ad's voice (if any) and whether it fits the video
