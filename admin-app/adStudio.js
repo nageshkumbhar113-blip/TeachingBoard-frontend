@@ -1573,7 +1573,11 @@ const AD_STUDIO = (() => {
         const g = GS[r.id];
         if (g) {
           const on = g.status === 'ENABLED';
-          const btns = [`<small class="ads-st ${on ? 'on' : 'off'}">${on ? '● चालू' : '○ बंद'}${g.campaign_status && g.campaign_status !== 'ENABLED' ? ' (campaign बंद)' : ''}</small>`];
+          // Google's own review first (in review / refused / limited), then on / off
+          const gst = g.review === 'REVIEW_IN_PROGRESS' ? ['🔍 Google तपासत आहे', 'wait'] : g.approval === 'DISAPPROVED' ? ['❌ Google ने नाकारली', 'bad']
+            : g.approval === 'APPROVED_LIMITED' ? ['⚠️ मर्यादित मंजुरी', 'bad'] : on ? ['🟢 चालू', 'on'] : ['⏸ बंद', 'off'];
+          const btns = [`<span class="lv-chip ${gst[1]}">${gst[0]}${g.campaign_status && g.campaign_status !== 'ENABLED' ? ' (campaign बंद)' : ''}</span>`,
+            '<a class="ads-act" href="https://ads.google.com/aw/ads" target="_blank" rel="noopener" title="Google Ads मध्ये उघडा (नाकारली असेल तर तिथे कारण दिसतं)">🔗</a>'];
           btns.push(on ? `<button type="button" class="ads-act${r.tone === 'bad' ? ' warn' : ''}" data-gact="pause" data-ad="${_esc(g.ad)}">⏸ बंद करा</button>`
             : `<button type="button" class="ads-act" data-gact="resume" data-ad="${_esc(g.ad)}">▶ चालू करा</button>`);
           if (r.tone === 'good' && g.budget && g.budget_id) btns.push(`<button type="button" class="ads-act good" data-gact="budget" data-budget="${_esc(g.budget_id)}">🏆 बजेट ₹${Math.round(g.budget)} → ₹${Math.round(g.budget * 1.2)}</button>`);
@@ -1678,13 +1682,18 @@ const AD_STUDIO = (() => {
     // turned on but Meta still checking → the review is what matters
     return ST[e] || [e || '—', 'off'];
   };
-  let _liveAcc = '', _liveTimer = 0, _liveAt = 0, _liveTick = 0;
+  let _liveAcc = '', _liveTimer = 0, _liveAt = 0, _liveTick = 0, _liveSeq = 0;
   const _amLink = (kind, id) => `https://adsmanager.facebook.com/adsmanager/manage/${kind}?act=${_liveAcc}&selected_${kind === 'ads' ? 'ad' : kind === 'adsets' ? 'adset' : 'campaign'}_ids=${id}`;
   async function _loadLive() {
     const box = $('ads-live'); if (!box) return;
     clearTimeout(_liveTimer);
     let r;
+    const seq = ++_liveSeq;
     try { r = await API.fetchMetaStatus(); } catch (err) { r = { connected: false, error: err?.message || '' }; }
+    if (seq !== _liveSeq) return;   // a newer check is on its way
+    // the admin is typing a budget: don't wipe it — look again a little later
+    const ed = document.activeElement;
+    if (box.contains(ed) && ed.classList.contains('lv-amt') && ed.value !== ed.dataset.old) { _liveTimer = setTimeout(_loadLive, 30000); return; }
     if (!r?.connected) { box.hidden = !r?.error; box.innerHTML = r?.error ? `<p class="ads-meta-line bad">📡 Meta: ${_esc(r.error)}</p>` : ''; return; }
     box.hidden = false;
     _liveAcc = r.account_id || ''; _liveAt = Date.now();
@@ -1706,6 +1715,8 @@ const AD_STUDIO = (() => {
         <span class="lv-btns">
           ${on ? `<button type="button" class="ads-act lv-do" data-act="pause" data-ad="${_esc(a.ad_id)}">⏸ बंद</button>` : `<button type="button" class="ads-act good lv-do" data-act="resume" data-ad="${_esc(a.ad_id)}">▶ चालू</button>`}
           <a class="ads-act" href="${_amLink('ads', a.ad_id)}" target="_blank" rel="noopener">🔗 Meta मध्ये उघडा</a>
+          ${a.fb_post ? `<a class="ads-act good" href="${_esc(a.fb_post)}" target="_blank" rel="noopener" title="लोकांना दिसणारी post — share करा, comments ना उत्तर द्या">👁 Facebook post + comments</a><button type="button" class="ads-act" data-copy="${_esc(a.fb_post)}" title="Post ची link copy">📋 post link</button>` : ''}
+          ${a.ig_post ? `<a class="ads-act good" href="${_esc(a.ig_post)}" target="_blank" rel="noopener">📸 Instagram post</a>` : ''}
           <button type="button" class="ads-act" data-copy="${_amLink('ads', a.ad_id)}">📋</button>
         </span></div>`;
     };
@@ -1724,6 +1735,7 @@ const AD_STUDIO = (() => {
         <span class="lv-sum"><span class="lv-chip on">🟢 ${n('on')} चालू</span><span class="lv-chip wait">🔍 ${waitN} तपासणीत / तयार होत</span><span class="lv-chip off">⏸ ${n('off')} बंद</span><span class="lv-chip bad">❌ ${n('bad')} अडचण</span></span>
         <span class="lv-tools"><button type="button" class="ads-act" id="lv-refresh">🔄 आत्ता तपासा</button>
           <a class="ads-act" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${_liveAcc}" target="_blank" rel="noopener">🔗 Ads Manager</a>
+          <a class="ads-act" href="https://business.facebook.com/latest/inbox/all" target="_blank" rel="noopener" title="सगळ्या ads वरचे comments आणि messages एका ठिकाणी — उत्तर द्या">💬 Comments / Inbox</a>
           <small id="lv-at">आत्ता तपासलं</small></span>
       </div>
       <div id="ads-advice"></div>
