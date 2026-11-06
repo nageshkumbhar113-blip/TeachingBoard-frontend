@@ -24,7 +24,7 @@
     screenshot: { need: [], text: { caption: 45, note: 60 }, ms: () => 3800 },
     cta:        { need: ['text'], text: { text: 32, button: 22 }, ms: () => 4000 },
     // ✍️ the pen writes a short solution fast (phone board mode / class smart board); timing = Ad Studio's PEN
-    pen:        { need: ['q', 'lines'], text: { q: 90, caption: 45 }, list: { lines: [1, 5, 32] }, ms: s => 800 + 1050 * (s.lines?.length || 0) + 1700 },
+    pen:        { need: ['q', 'lines'], text: { q: 90, caption: 45 }, list: { lines: [1, 5, 32] }, ms: s => 700 + 750 * (s.lines?.length || 0) + 1500 },
   };
   const SCREENS = ['notes', 'exercise', 'test', 'rank', 'subjects', 'smartboard', 'offline'];
   const AUDIENCES = ['parent', 'student', 'school', 'youtube'];

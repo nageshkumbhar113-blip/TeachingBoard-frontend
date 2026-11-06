@@ -170,6 +170,15 @@ const AD_STUDIO = (() => {
       if (v.kind !== 'comp' || isTeacher(v.aud)) continue;
       v.scenes = v.scenes.map((k, i) => (k === 'question' && v.scenes[i - 1] !== 'challenge' ? 'trio' : k));
     }
+    // ✍️ every ad gets the pen screen: after the question(s) (or the exercise demo) on the phone;
+    // teachers: the class smart board before the tools
+    for (const v of Object.values(V)) {
+      if (v.custom || v.scenes.some(k => k === 'penphone' || k === 'penboard')) continue;
+      if (isTeacher(v.aud)) { const i = v.scenes.indexOf('tools'); v.scenes.splice(i >= 0 ? i : v.scenes.length - 1, 0, 'penboard'); continue; }
+      let i = v.scenes.findIndex(k => k === 'trio' || k === 'question');
+      if (i < 0) i = v.scenes.indexOf('exdemo'); if (i < 0) i = v.scenes.indexOf('notes');
+      v.scenes.splice(i >= 0 ? i + 1 : v.scenes.length - 1, 0, 'penphone');
+    }
     if (!f.mcq && !f.matType) {
       const why = !f.loaded ? '⏳ उघडत आहे…' : 'या class च्या free test मध्ये अजून ad साठी योग्य प्रश्न नाही (चित्र / सूत्र नसलेला, 4 पर्यायांचा)';
       for (const v of Object.values(V)) if (v.kind === 'comp' && !isTeacher(v.aud) && v.scenes.some(k => k === 'question' || k === 'challenge')) { v.ok = false; v.why = why; }
@@ -256,15 +265,6 @@ const AD_STUDIO = (() => {
         copy: [`⚔️ Free test दे, तुझे गुण मित्राला पाठव आणि बघ कोण जिंकतं!\n${L} चे प्रश्न, लगेच Result.`, `⚔️ Take the free test, send your score to a friend and see who wins!\n${L} questions, instant result.`],
         headline: ['मित्राला हरव ⚔️', 'Beat your friend ⚔️'],
       },
-      pen: {
-        aud: 'student', kind: 'comp', name: '✍️ Pen ने सोडव', ok: true,
-        hook: ['47² − 43² = ? 5 सेकंदात!', '47² − 43² = ? In 5 seconds!'],
-        hook2: ['Mobile वरच board — pen ने सोडव', 'Your phone is a board — solve with a pen'],
-        scenes: ['hook', 'penphone', 'features', 'offer'],
-        copy: [`✍️ Mobile वरच board: प्रश्न उघड, pen ने सोडव, युक्ती शिक.\n${L}: Free tests + प्रत्येक उत्तराची युक्ती, दर रविवारी महा-Test.\n✅ आधी Free test · Login नाही`,
-          `✍️ Your phone is a board: open a question, solve it with a pen, learn the trick.\n${L}: free tests + a trick with every answer, a weekly Maha-Test.\n✅ Free test first · No login`],
-        headline: ['Mobile वरच board ✍️', 'Your phone is a board ✍️'],
-      },
       // ── regular classes: notes + exercise answers + offline (parents) ──
       'r-guide': {
         aud: 'parent', kind: 'reg', name: '📚 Guide ची गरज नाही', ok: R.has, why: NO_REG,
@@ -317,14 +317,6 @@ const AD_STUDIO = (() => {
         copy: [`🌙 परीक्षेआधी झटपट revision: ${L} चे धड्यानुसार Notes, Internet शिवाय पण.\n${regLine[0]}.`, `🌙 Quick revision before the exam: ${L} chapter notes, even without internet.\n${regLine[1]}.`],
         headline: ['झटपट revision 🌙', 'Quick revision 🌙'],
       },
-      'r-pen': {
-        aud: 'student', kind: 'reg', name: '✍️ Pen ने सोडव', ok: true,
-        hook: ['47² − 43² = ? 5 सेकंदात!', '47² − 43² = ? In 5 seconds!'],
-        hook2: ['Mobile वरच board — pen ने सोडव', 'Your phone is a board — solve with a pen'],
-        scenes: rs(['hook', 'penphone', 'notes', 'offer']),
-        copy: [`✍️ Mobile वरच board: स्वाध्याय उघड, pen ने सोडव, मग उत्तर तपास.\n${L}: ${regLine[0] || 'Notes + स्वाध्याय उत्तरं'}. Offline पण.`, `✍️ Your phone is a board: open the exercise, solve it with a pen, then check the answer.\n${L}: ${regLine[1] || 'notes + exercise answers'}. Offline too.`],
-        headline: ['Mobile वरच board ✍️', 'Your phone is a board ✍️'],
-      },
       // ── school teachers / tutors (registration; commission from Admin › Partners) ──
       'sc-tools': {
         aud: 'school', name: '📄 पेपर 2 मिनिटात', ok: true,
@@ -374,7 +366,7 @@ const AD_STUDIO = (() => {
       },
     };
   }
-  const DUR = { penphone: 6500, penboard: 7000, notes: 3500, exdemo: 4500, subjects: 3500, offline: 3500, tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, trio: 10500, result: 4000, features: 4000, offer: 4000 };
+  const DUR = { penphone: 4900, penboard: 5400, notes: 3500, exdemo: 4500, subjects: 3500, offline: 3500, tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, trio: 10500, result: 4000, features: 4000, offer: 4000 };
 
   // ── drawing ──
   let cv = null, x = null;
@@ -663,7 +655,7 @@ const AD_STUDIO = (() => {
   // ── ✍️ the pen writes a solution, fast: on the student's phone (board mode) or the class smart board ──
   // built-in example: a² − b²; a 🎬 script gives its own { q, lines }
   const PEN_DEMO = { q: ['सोडवा: 47² − 43² = ?', 'Solve: 47² − 43² = ?'], lines: ['a² − b² = (a + b)(a − b)', '= (47 + 43)(47 − 43)', '= 90 × 4', '= 360'], done: ['5 सेकंदात सुटलं!', 'Solved in 5 seconds!'] };
-  const PEN = { start: 800, line: 900, gap: 150, hold: 1500 };
+  const PEN = { start: 700, line: 650, gap: 100, hold: 1200 };
   const penMs = n => PEN.start + n * (PEN.line + PEN.gap) + PEN.hold;
   const HAND = px => `700 ${px}px Kalam, "Baloo 2", Mukta, "Nirmala UI", cursive`;
   const _penData = d => (d && d.lines ? { q: d.q || '', lines: d.lines, done: '' } : { q: LL(PEN_DEMO.q), lines: PEN_DEMO.lines, done: LL(PEN_DEMO.done) });
@@ -769,7 +761,7 @@ const AD_STUDIO = (() => {
         text(st.lang === 'en' ? '👩‍🏫 Ready questions + pen, live in class' : '👩‍🏫 तयार प्रश्न + pen, थेट वर्गात', 0, 2, 42, C.ink, 800, 'center', 820); x.restore(); }
     }
   }
-  const PEN_CAP = { phone: ['Mobile वरच board — pen ने सोडव!', 'Your phone is a board — solve with a pen!'], board: ['वर्गात smart board वर थेट solution', 'Solve it live on the class smart board'] };
+  const PEN_CAP = { parent: ['मूल mobile वरच pen ने सोडवतं', 'Your child solves it with a pen, on the phone'], phone: ['Mobile वरच board — pen ने सोडव!', 'Your phone is a board — solve with a pen!'], board: ['वर्गात smart board वर थेट solution', 'Solve it live on the class smart board'] };
   // one line of the script's text, in the chosen language (scripts are written in one language)
   const capOf = s0 => (s0 ? [s0, s0] : null);
   const S = {
@@ -861,10 +853,10 @@ const AD_STUDIO = (() => {
     x_pen(W, H, lt, v, f, after, d) {
       const board = d.board ? d.board === 'class' : isTeacher(v.aud);
       if (board) penBoard(W, H, lt, d, capOf(d.caption) || PEN_CAP.board);
-      else placePhone(W, H, lt, true, () => penPhone(f, lt, d), capOf(d.caption) || PEN_CAP.phone);
+      else placePhone(W, H, lt, true, () => penPhone(f, lt, d), capOf(d.caption) || (v.aud === 'parent' ? PEN_CAP.parent : PEN_CAP.phone));
     },
     // ✍️ built-in: a² − b² written fast by the pen
-    penphone(W, H, lt, v, f) { placePhone(W, H, lt, true, () => penPhone(f, lt, null), PEN_CAP.phone); },
+    penphone(W, H, lt, v, f) { placePhone(W, H, lt, true, () => penPhone(f, lt, null), v.aud === 'parent' ? PEN_CAP.parent : PEN_CAP.phone); },
     penboard(W, H, lt) { penBoard(W, H, lt, null, PEN_CAP.board); },
     hook(W, H, lt, v) {
       const tall = st.fmt === '916', a = outBack(p(lt, 200, 900)), b = outBack(p(lt, 900, 1600));
@@ -1094,6 +1086,15 @@ const AD_STUDIO = (() => {
       text('NKs EduOrbit', m + sz + 24, m + 8 + sz / 2 + 2, sz * .42, C.white, 800, 'left', 230);
     }
     const fy = H - (st.fmt === '916' ? 80 : 45);
+    // the last card ends with the call to action: tap the ad's button (Meta "Learn more" / "Sign up", YouTube's button)
+    if (last && t - cur.at > 1400) {
+      const k = outBack(p(t - cur.at, 1400, 1800)), bob = Math.sin((t - cur.at) / 140) * 8, tall = st.fmt === '916', y = H - (tall ? 110 : 52);
+      x.save(); x.translate(W / 2, y + bob); x.scale(k, k);
+      x.fillStyle = C.white; rr(-400, -40, 800, 80, 40); x.fill();
+      text(LL(isTeacher(v.aud) ? ['👇 खालच्या बटणावर टॅप करा — नोंदणी करा', '👇 Tap the button below to register'] : ['👇 खालच्या बटणावर टॅप करा — Free Test', '👇 Tap the button below — free test']), 0, 2, 38, C.violet, 800, 'center', 760);
+      x.restore();
+      return;
+    }
     if (logoOk()) { logo(W / 2 - 170, fy, 58); text('NKs EduOrbit', W / 2 + 34, fy, 44, C.white, 800); }
     else text('🚀 NKs EduOrbit', W / 2, fy, 44, C.white, 800);
   }
