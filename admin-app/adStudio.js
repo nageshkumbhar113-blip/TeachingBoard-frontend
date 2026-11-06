@@ -130,8 +130,42 @@ const AD_STUDIO = (() => {
   }
 
   // the six ads; `ok(f)` says whether the class has what the ad needs
+  // ── 🎬 the admin's own videos (AI scripts, adScript.js) ──
+  // _scripts: [{ sid, raw }] (saved on the server, Admin › Ads › 🎬); _shots: sid → { scene index: Image }
+  const _scripts = [], _shots = {}, _parsed = new Map();
+  const AUD_LETTER = { parent: 'p', student: 's', school: 't', youtube: 'y' };
+  const LETTER_AUD = { p: 'parent', s: 'student', t: 'school', y: 'youtube' };
+  // the app's real numbers for the { } placeholders
+  function _phValues(f) {
+    return {
+      youtube_commission: f.flat, school_commission: f.pct, student_discount: Number(_cfg.student_discount_percent ?? 50),
+      free_tests: f.freeTests || null, days_left: f.days || null, offer_percent: 50,
+      exam_name: f.site?.name || f.examTitle || null, class_name: f.label || null,
+    };
+  }
+  function _scriptOf(sid, f) {
+    const sc = _scripts.find(x => x.sid === sid); if (!sc || !window.AD_SCRIPT) return null;
+    const vals = _phValues(f), key = sc.raw + '|' + JSON.stringify(vals) + '|' + Object.keys(_shots[sid] || {}).length;
+    if (!_parsed.has(key)) { _parsed.set(key, AD_SCRIPT.parse(sc.raw, vals, { shots: Object.keys(_shots[sid] || {}).length })); if (_parsed.size > 60) _parsed.delete(_parsed.keys().next().value); }
+    return _parsed.get(key);
+  }
+  function _scriptVariants(f) {
+    const out = {};
+    for (const sc of _scripts) {
+      const r = _scriptOf(sc.sid, f); if (!r) continue;
+      const S0 = r.script, aud = AUD_LETTER[S0.audience] ? S0.audience : 'parent';
+      let ok = r.ok, why = r.errors[0] || '';
+      if (ok && S0.scenes.some(x => x.type === 'question' && x.use === 'class') && !f.mcq) { ok = false; why = 'या class च्या free test मध्ये ad साठी योग्य प्रश्न नाही ("use": "class")'; }
+      const scenes = S0.scenes.length ? S0.scenes.map((x, i) => ({ k: 'x_' + x.type, d: x.ms, data: { ...x, i } })) : [{ k: 'x_hook', d: 3000, data: { text: '⚠️ script मध्ये चूक', i: 0 } }];
+      const copy = S0.copy.text || `${S0.title} — NKs EduOrbit`;
+      out['s:' + sc.sid] = { aud, custom: true, sid: sc.sid, name: '🎬 ' + S0.title, ok, why, style: S0.style, link: S0.link, scenes,
+        copy: [copy, copy], headline: [S0.copy.headline || S0.title, S0.copy.headline || S0.title], errors: r.errors, warnings: r.warnings, ms: r.ms };
+    }
+    return out;
+  }
+  const _shotImg = (v, d) => _shots[v?.sid]?.[d?.i] || null;
   function _variants(f) {
-    const V = _variants0(f);
+    const V = Object.assign(_variants0(f), _scriptVariants(f));
     if (f.trio) for (const v of Object.values(V)) {
       if (v.kind !== 'comp' || isTeacher(v.aud)) continue;
       v.scenes = v.scenes.map((k, i) => (k === 'question' && v.scenes[i - 1] !== 'challenge' ? 'trio' : k));
@@ -343,10 +377,10 @@ const AD_STUDIO = (() => {
     x.fillText(s, X, Y);
   }
   const both = (a, X, Y, px, gap, color = C.white, maxW = 960) => { text(LL(a), X, Y, px, color, 800, 'center', maxW); if (L2(a)) text(a[1], X, Y + gap, Math.round(px * .55), '#ffd6e7', 700, 'center', maxW); };
-  function bg(W, H, t, warm) {
-    const g = x.createLinearGradient(0, 0, W, H);
-    if (warm) { g.addColorStop(0, '#3b0a14'); g.addColorStop(.55, '#b91c3c'); g.addColorStop(1, '#ff8a3d'); }
-    else { g.addColorStop(0, '#2a0e6b'); g.addColorStop(.55, '#5b21d6'); g.addColorStop(1, '#ff4d8d'); }
+  const THEME = { violet: ['#2a0e6b', '#5b21d6', '#ff4d8d'], orange: ['#4a1300', '#e8590c', '#ffb02e'], green: ['#03341f', '#0f9d58', '#38bdf8'], dark: ['#07060f', '#1d1838', '#6d3cf0'], warm: ['#3b0a14', '#b91c3c', '#ff8a3d'] };
+  function bg(W, H, t, warm, theme) {
+    const g = x.createLinearGradient(0, 0, W, H), c = THEME[warm ? 'warm' : theme] || THEME.violet;
+    g.addColorStop(0, c[0]); g.addColorStop(.55, c[1]); g.addColorStop(1, c[2]);
     x.fillStyle = g; x.fillRect(0, 0, W, H);
     x.save(); x.globalAlpha = .12; x.strokeStyle = C.white; x.lineWidth = 6;
     for (let i = 0; i < 9; i++) {
@@ -435,7 +469,7 @@ const AD_STUDIO = (() => {
       }
     }, `📘 ${f.label}`);
   }
-  function phoneShell(f, draw, title) {
+  function phoneShell(f, draw, title, bare) {
     x.save();
     x.fillStyle = '#0d0b18'; rr(0, 0, 600, 1200, 70); x.fill();
     x.fillStyle = '#f6f4ff'; rr(18, 18, 564, 1164, 54); x.fill();
@@ -564,7 +598,130 @@ const AD_STUDIO = (() => {
     const slide = slideIn ? outCubic(p(lt, 0, 700)) : 1;
     x.save(); x.translate((W - pw) / 2, topY + (tall ? 40 : sq ? -20 : 40) + (1 - slide) * H * .7); x.scale(sc, sc); draw(); x.restore();
   }
+  // the smart board (pen tools) inside the phone, for the app scene "smartboard"
+  function boardScreen(f, lt) {
+    phoneShell(f, () => {
+      x.save(); x.fillStyle = '#10301f'; rr(50, 200, 500, 700, 24); x.fill(); x.restore();
+      // tool bar
+      const tools = ['✏️', '🖍️', '⬛', '⭕', '↩️'];
+      tools.forEach((t0, i) => { x.save(); x.fillStyle = i === 0 ? '#ffd23f' : '#ffffff'; rr(70 + i * 96, 920, 80, 80, 20); x.fill(); x.restore(); text(t0, 110 + i * 96, 960, 40, C.ink, 800); });
+      // the pen writes: a heading, an underline, a circle, an arrow
+      const k = p(lt, 200, 2600);
+      x.save(); x.strokeStyle = '#ffffff'; x.lineWidth = 7; x.lineCap = 'round'; x.lineJoin = 'round';
+      x.save(); x.beginPath(); x.rect(70, 220, 460 * Math.min(1, k * 2), 120); x.clip();
+      text(st.lang === 'en' ? 'a² + b² = c²' : 'a² + b² = c²', 300, 280, 56, '#ffffff', 700, 'center', 440); x.restore();
+      if (k > .45) { x.beginPath(); x.moveTo(120, 340); x.lineTo(120 + 360 * p(k, .45, .6), 340); x.stroke(); }
+      if (k > .6) { x.strokeStyle = '#ffd23f'; x.beginPath(); x.arc(200, 560, 90, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * p(k, .6, .8)); x.stroke(); }
+      if (k > .8) { x.strokeStyle = '#ff6b9a'; const e = p(k, .8, 1); x.beginPath(); x.moveTo(310, 560); x.lineTo(310 + 160 * e, 560 - 120 * e); x.stroke();
+        if (e > .95) { x.beginPath(); x.moveTo(470, 440); x.lineTo(440, 448); x.moveTo(470, 440); x.lineTo(462, 470); x.stroke(); } }
+      x.restore();
+      // the pen tip follows the writing
+      const px0 = k < .45 ? 90 + 900 * k : k < .6 ? 120 + 360 * p(k, .45, .6) : k < .8 ? 200 + 90 * Math.cos(-Math.PI / 2 + 2 * Math.PI * p(k, .6, .8)) : 310 + 160 * p(k, .8, 1);
+      const py0 = k < .45 ? 280 : k < .6 ? 340 : k < .8 ? 560 + 90 * Math.sin(-Math.PI / 2 + 2 * Math.PI * p(k, .6, .8)) : 560 - 120 * p(k, .8, 1);
+      if (k < 1) { x.save(); x.font = font(800, 64); x.textAlign = 'left'; x.textBaseline = 'bottom'; x.fillText('✏️', px0 - 6, py0 + 6); x.restore(); }
+    }, '🖊️ Smart Board');
+  }
+  // the admin's own screenshot inside the phone (slow zoom); a placeholder until one is added
+  function shotScreen(f, lt, img) {
+    phoneShell(f, () => {
+      if (img && img.naturalWidth) {
+        const z = 1 + .06 * p(lt, 0, 3800), w0 = 564, h0 = 1014, r = Math.max(w0 / img.naturalWidth, h0 / img.naturalHeight) * z;
+        const dw = img.naturalWidth * r, dh = img.naturalHeight * r;
+        x.save(); x.beginPath(); x.rect(18, 168, w0, h0); x.clip(); x.drawImage(img, 18 + (w0 - dw) / 2, 168 + (h0 - dh) / 2 * .4, dw, dh); x.restore();
+      } else {
+        x.save(); x.strokeStyle = '#c9bdf5'; x.setLineDash([16, 12]); x.lineWidth = 5; rr(70, 300, 460, 620, 30); x.stroke(); x.restore();
+        text('🖼️', 300, 540, 120, C.violet, 800); text(st.lang === 'en' ? 'Add a screenshot' : 'Screenshot जोडा', 300, 680, 36, C.violet, 800);
+      }
+    }, '📱 NKs EduOrbit', !!(img && img.naturalWidth));
+  }
+  // one line of the script's text, in the chosen language (scripts are written in one language)
+  const capOf = s0 => (s0 ? [s0, s0] : null);
   const S = {
+    // ── 🎬 script scenes (adScript.js format) ──
+    x_hook(W, H, lt, v, f, after, d) {
+      const tall = st.fmt === '916', a = outBack(p(lt, 150, 800)), b = outBack(p(lt, 800, 1500));
+      x.save(); x.translate(W / 2, H * .38); x.scale(a, a); wrapText(d.text, 0, -40, W - 140, tall ? 110 : 88, tall ? 96 : 78, C.white, 800, 3, 'center'); x.restore();
+      if (d.sub) { x.save(); x.translate(W / 2, H * .38 + (tall ? 300 : 230)); x.scale(b, b); x.fillStyle = C.gold; rr(-460, -66, 920, 132, 60); x.fill(); text(d.sub, 0, 2, tall ? 54 : 46, '#3b1d00', 800, 'center', 860); x.restore(); }
+    },
+    x_points(W, H, lt, v, f, after, d) {
+      const tall = st.fmt === '916', sq = st.fmt === '11';
+      text(d.title, W / 2, tall ? 330 : 140, tall ? 80 : 64, C.white, 800, 'center', W - 100);
+      const n = d.items.length, rowH = tall ? 230 : sq ? 170 : 200, y0 = (tall ? 560 : sq ? 300 : 330);
+      d.items.forEach((it, i) => {
+        const a = outBack(p(lt, 400 + i * 700, 900 + i * 700)); if (a <= 0) return;
+        const y = y0 + i * rowH;
+        x.save(); x.translate(W / 2, y); x.scale(a, a);
+        x.fillStyle = 'rgba(255,255,255,.95)'; rr(-460, -rowH / 2 + 16, 920, rowH - 32, 36); x.fill();
+        text('✅', -380, 0, tall ? 64 : 52, C.green, 800);
+        text(it, 40, 2, tall ? 54 : 46, C.ink, 800, 'center', 700);
+        x.restore();
+      });
+      if (n === 0) text('—', W / 2, H / 2, 60);
+    },
+    x_number(W, H, lt, v, f, after, d) {
+      const tall = st.fmt === '916', k = outCubic(p(lt, 200, 1600)), shown = Math.round(d.value * k);
+      const a = outBack(p(lt, 0, 500));
+      x.save(); x.translate(W / 2, H * (tall ? .42 : .4)); x.scale(a, a);
+      x.fillStyle = 'rgba(255,255,255,.12)'; x.beginPath(); x.arc(0, 0, tall ? 330 : 270, 0, 7); x.fill();
+      text(`${d.prefix || ''}${shown.toLocaleString('en-IN')}${d.suffix || ''}`, 0, 0, tall ? 220 : 180, C.gold, 800, 'center', W - 160);
+      x.restore();
+      const b = outBack(p(lt, 1500, 2100)); if (b > 0) { x.save(); x.translate(W / 2, H * (tall ? .42 : .4) + (tall ? 420 : 330)); x.scale(b, b); wrapText(d.label, 0, 0, W - 160, tall ? 70 : 60, tall ? 60 : 50, C.white, 800, 2, 'center'); x.restore(); }
+    },
+    x_question(W, H, lt, v, f, after, d) {
+      const m = d.use === 'class' ? f.mcq : { q: d.q, options: d.options, answer: d.answer, why: d.why || '', subject: '' };
+      if (!m) { text(st.lang === 'en' ? 'No question for this class' : 'या class चा प्रश्न नाही', W / 2, H / 2, 56); return; }
+      placePhone(W, H, lt, true, () => mcqScreen({ ...f, mcq: m }, lt, {}), lt < 5200 ? MCQ_CAP.q : MCQ_CAP.tip);
+    },
+    x_steps(W, H, lt, v, f, after, d) {
+      const tall = st.fmt === '916', n = d.items.length, gap = tall ? 300 : 210, y0 = H / 2 - (n - 1) * gap / 2;
+      d.items.forEach((it, i) => {
+        const a = outBack(p(lt, 300 + i * 800, 800 + i * 800)); if (a <= 0) return;
+        const y = y0 + i * gap;
+        x.save(); x.translate(W / 2, y); x.scale(a, a);
+        x.fillStyle = C.gold; x.beginPath(); x.arc(-360, 0, tall ? 70 : 58, 0, 7); x.fill();
+        text(String(i + 1), -360, 4, tall ? 80 : 64, '#3b1d00', 800);
+        x.fillStyle = 'rgba(255,255,255,.95)'; rr(-260, -60, 680, 120, 40); x.fill();
+        text(it, 80, 2, tall ? 54 : 46, C.ink, 800, 'center', 640);
+        x.restore();
+        if (i < n - 1 && lt > 700 + i * 800) { x.save(); x.strokeStyle = C.gold; x.lineWidth = 8; x.beginPath(); x.moveTo(W / 2 - 360, y + 80); x.lineTo(W / 2 - 360, y + gap - 80); x.stroke(); x.restore(); }
+      });
+    },
+    x_compare(W, H, lt, v, f, after, d) {
+      const tall = st.fmt === '916';
+      if (d.title) text(d.title, W / 2, tall ? 300 : 120, tall ? 72 : 58, C.white, 800, 'center', W - 100);
+      const a = outBack(p(lt, 200, 800)), b = outBack(p(lt, 1500, 2100));
+      const cardW = W - 140, cardH = tall ? 420 : 300, y1 = tall ? 620 : H * .38, y2 = tall ? 1160 : H * .72;
+      x.save(); x.translate(W / 2, y1); x.scale(a, a); x.fillStyle = 'rgba(255,255,255,.9)'; rr(-cardW / 2, -cardH / 2, cardW, cardH, 40); x.fill();
+      text('❌', -cardW / 2 + 80, -cardH / 2 + 80, 64, C.red, 800); wrapText(d.before, 0, -30, cardW - 160, 64, 54, '#7f1d1d', 800, 3, 'center'); x.restore();
+      if (b > 0) { x.save(); x.translate(W / 2, y2); x.scale(b, b); x.fillStyle = '#dcfce7'; rr(-cardW / 2, -cardH / 2, cardW, cardH, 40); x.fill();
+        text('✅', -cardW / 2 + 80, -cardH / 2 + 80, 64, C.green, 800); wrapText(d.after, 0, -30, cardW - 160, 64, 54, '#14532d', 800, 3, 'center'); x.restore(); }
+    },
+    x_quote(W, H, lt, v, f, after, d) {
+      const tall = st.fmt === '916', a = outBack(p(lt, 150, 800));
+      x.save(); x.translate(W / 2, H / 2); x.scale(a, a);
+      text('❝', -W / 2 + 140, -260, 200, C.gold, 800);
+      wrapText(d.text, 0, -80, W - 200, tall ? 90 : 76, tall ? 72 : 60, C.white, 800, 4, 'center');
+      x.restore();
+    },
+    x_app(W, H, lt, v, f, after, d) {
+      const cap = capOf(d.caption);
+      const draw = { notes: () => notesScreen(f, lt, false), offline: () => notesScreen(f, lt, true), exercise: () => exScreen(f, lt),
+        test: () => (f.mcq ? mcqScreen(f, lt, { tapAt: 1600, tipAt: 2400 }) : questionScreen(f, lt, { tapAt: 1600, tipAt: 2400 })),
+        rank: () => resultScreen(f, lt), smartboard: () => boardScreen(f, lt) }[d.screen];
+      if (d.screen === 'subjects') { S.subjects(W, H, lt, v, f); return; }
+      placePhone(W, H, lt, true, draw || (() => boardScreen(f, lt)), cap);
+    },
+    x_screenshot(W, H, lt, v, f, after, d) {
+      placePhone(W, H, lt, true, () => shotScreen(f, lt, _shotImg(v, d)), capOf(d.caption));
+    },
+    x_cta(W, H, lt, v, f, after, d) {
+      const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), c = outBack(p(lt, 900, 1500)), cy = tall ? H * .3 : H * .24 + 40;
+      if (logoOk()) { x.save(); x.translate(W / 2, cy); x.scale(a, a); logo(0, 0, tall ? 300 : 220); x.restore(); }
+      wrapText(d.text, W / 2, cy + (tall ? 280 : 210), W - 140, tall ? 92 : 76, tall ? 80 : 64, C.white, 800, 2, 'center');
+      if (c > 0) { x.save(); x.translate(W / 2, cy + (tall ? 560 : 420)); x.scale(c, c); x.fillStyle = C.gold; rr(-420, -76, 840, 152, 76); x.fill();
+        text(d.button || (isTeacher(v.aud) ? '▶ नोंदणी करा' : '▶ आधी Free Test द्या'), 0, 4, tall ? 62 : 52, '#3b1d00', 800, 'center', 780); x.restore(); }
+      if (c > .5) text(SITE.replace(/^https:\/\//, ''), W / 2, cy + (tall ? 720 : 560), 40, C.white, 700);
+    },
     hook(W, H, lt, v) {
       const tall = st.fmt === '916', a = outBack(p(lt, 200, 900)), b = outBack(p(lt, 900, 1600));
       x.save(); x.translate(W / 2, H * .36); x.scale(a, a); both(v.hook, 0, 0, tall ? 92 : 76, tall ? 90 : 72); x.restore();
@@ -745,8 +902,9 @@ const AD_STUDIO = (() => {
       if (c > .5) { text(SITE.replace(/^https:\/\//, ''), W / 2, cy + (tall ? 930 : 680), 38, C.white, 700); text(LL(T.note), W / 2, cy + (tall ? 990 : 730), 30, '#ffd6e7', 600); }
     },
   };
-  const timeline = v => { let at = 0; return v.scenes.map(k => { const s = { k, at, d: DUR[k] }; at += s.d; return s; }); };
-  const lengthOf = v => v.scenes.reduce((n, k) => n + DUR[k], 0);
+  const _sk = sc => (typeof sc === 'string' ? sc : sc.k), _sd = sc => (typeof sc === 'string' ? DUR[sc] : sc.d);
+  const timeline = v => { let at = 0; return v.scenes.map(sc => { const s = { k: _sk(sc), at, d: _sd(sc), data: typeof sc === 'string' ? null : sc.data }; at += s.d; return s; }); };
+  const lengthOf = v => v.scenes.reduce((n, sc) => n + _sd(sc), 0);
 
   let _sq = null, _wide = false;   // _wide: drawing the square half of a 16:9 ad
   function drawAt(t) {
@@ -761,8 +919,8 @@ const AD_STUDIO = (() => {
     if (cv.width !== 1920 || cv.height !== 1080) { cv.width = 1920; cv.height = 1080; }
     if (!_sq) { _sq = document.createElement('canvas'); _sq.width = 1080; _sq.height = 1080; }
     const main = x;
-    const f0 = _facts(), cur0 = timeline(_variants(f0)[st.v]).find(s0 => t >= s0.at && t < s0.at + s0.d);
-    bg(1920, 1080, t, st.v === 'loss' && cur0?.k === 'hook');   // one background under both halves
+    const f0 = _facts(), cur0 = timeline(_variants(f0)[st.v] || { scenes: [] }).find(s0 => t >= s0.at && t < s0.at + s0.d);
+    bg(1920, 1080, t, st.v === 'loss' && cur0?.k === 'hook', _variants(f0)[st.v]?.style?.theme);   // one background under both halves
     x = _sq.getContext('2d'); st.fmt = '11'; _wide = true;
     try { x.clearRect(0, 0, 1080, 1080); _drawAd(1080, 1080, t); } finally { st.fmt = '169'; x = main; _wide = false; }
     x.drawImage(_sq, 840, 0);
@@ -777,11 +935,13 @@ const AD_STUDIO = (() => {
     text(SITE.replace(/^https:\/\//, ''), 420, 940, 38, C.white, 700, 'center', 760);
   }
   function _drawAd(W, H, t) {
-    const f = _facts(), v = _variants(f)[st.v], tl = timeline(v), cur = tl.find(s => t >= s.at && t < s.at + s.d) || tl[tl.length - 1];
-    if (!_wide) bg(W, H, t, st.v === 'loss' && cur.k === 'hook');
+    const f = _facts(), v = _variants(f)[st.v];
+    if (!v) return;   // the shown video is being swapped (see _loop)
+    const tl = timeline(v), cur = tl.find(s => t >= s.at && t < s.at + s.d) || tl[tl.length - 1];
+    if (!_wide) bg(W, H, t, st.v === 'loss' && cur.k === 'hook', v.style?.theme);
     const prev = tl[tl.indexOf(cur) - 1];
-    S[cur.k](W, H, t - cur.at, v, f, cur.k === 'question' && prev?.k === 'challenge');
-    const last = cur.k === 'offer' || cur.k === 'toffer';
+    S[cur.k](W, H, t - cur.at, v, f, cur.k === 'question' && prev?.k === 'challenge', cur.data);
+    const last = cur.k === 'offer' || cur.k === 'toffer' || cur.k === 'x_cta';
     if (!last && logoOk() && !_wide) {
       // small logo + name, top-left, from the first second (brand recall without stealing the hook)
       const sz = st.fmt === '916' ? 84 : 64, m = st.fmt === '916' ? 36 : 22;
@@ -799,7 +959,8 @@ const AD_STUDIO = (() => {
   const _audOf = v => _variants(_facts())[v]?.aud || 'parent';
   // teacher ads are not tied to a class: t-<variant>
   // YouTube ads: the same id with yt- in front (its own row on the leaderboard)
-  const adId = (v = st.v) => (st.plat === 'yt' ? 'yt-' : '') + (isTeacher(_audOf(v)) ? `t-${v}` : `${_slug(st.batch)}-${v}`);
+  const _vkey = v => (String(v).startsWith('s:') ? `v${AUD_LETTER[_audOf(v)] || 'p'}-${String(v).slice(2)}` : v);
+  const adId = (v = st.v) => (st.plat === 'yt' ? 'yt-' : '') + (isTeacher(_audOf(v)) ? `t-${_vkey(v)}` : `${_slug(st.batch)}-${_vkey(v)}`);
   const _src = () => (st.plat === 'yt' ? 'yt' : 'meta');
   const adLink = (v = st.v) => isTeacher(_audOf(v))
     ? `${SITE}/student-app/?treg=${_audOf(v)}&src=${_src()}&ad=${encodeURIComponent(adId(v))}`
@@ -939,7 +1100,8 @@ const AD_STUDIO = (() => {
   // timer / day counter runs, pop + sparkle on the rank, ta-da on the offer). Nothing is downloaded:
   // no copyright music. The admin's own voice (🎤) can go on top; the music then stays low.
   // the energetic track runs from the first frame to the last; scenes only move it a little
-  const LEVEL = { hook: .95, challenge: .75, question: .72, trio: .8, result: 1, features: .85, offer: 1, topper: .95, days: .8, free: .85, paper: .85,
+  const LEVEL = { x_hook: .95, x_points: .85, x_number: .9, x_question: .72, x_steps: .85, x_compare: .85, x_quote: .75, x_app: .8, x_screenshot: .8, x_cta: 1,
+    hook: .95, challenge: .75, question: .72, trio: .8, result: 1, features: .85, offer: 1, topper: .95, days: .8, free: .85, paper: .85,
     notes: .75, exdemo: .72, subjects: .8, offline: .78, tools: .85, earn: .9, toffer: 1 };
   const _voice = {};   // ad id → { buf: ArrayBuffer, name, secs }
   st.sound = true;
@@ -954,6 +1116,16 @@ const AD_STUDIO = (() => {
       if (s.k === 'hook' && v === 'loss') ev.push({ at: s.at + 150, k: 'boom' });
       if (s.k === 'hook' || s.k === 'topper') ev.push({ at: s.at + 200, k: 'pop' });
       if (s.k === 'challenge') { for (let t = 0; t < 3600; t += 1000) ev.push({ at: s.at + t, k: 'tick' }); ev.push({ at: s.at + 3600, k: 'ding' }); }
+      const d = s.data || {};
+      if (s.k === 'x_hook') { ev.push({ at: s.at + 150, k: 'boom' }); ev.push({ at: s.at + 800, k: 'pop' }); }
+      if (s.k === 'x_points') (d.items || []).forEach((_, j) => ev.push({ at: s.at + 400 + j * 700, k: 'blip', n: j }));
+      if (s.k === 'x_number') { for (let t = 200; t < 1600; t += 100) ev.push({ at: s.at + t, k: 'tick', soft: true }); ev.push({ at: s.at + 1600, k: 'ding' }); }
+      if (s.k === 'x_question') { ev.push({ at: s.at + 4000, k: 'ding' }); ev.push({ at: s.at + 5200, k: 'chime' }); }
+      if (s.k === 'x_steps') (d.items || []).forEach((_, j) => ev.push({ at: s.at + 300 + j * 800, k: 'pop' }));
+      if (s.k === 'x_compare') { ev.push({ at: s.at + 200, k: 'pop' }); ev.push({ at: s.at + 1500, k: 'whoosh' }); ev.push({ at: s.at + 1600, k: 'ding' }); }
+      if (s.k === 'x_quote') ev.push({ at: s.at + 300, k: 'chime' });
+      if (s.k === 'x_app' || s.k === 'x_screenshot') ev.push({ at: s.at + 200, k: 'pop' });
+      if (s.k === 'x_cta') { ev.push({ at: s.at + 100, k: 'tada' }); ev.push({ at: s.at + 900, k: 'sparkle' }); }
       if (s.k === 'trio') for (let k = 0; k < 3; k++) {
         if (k) ev.push({ at: s.at + k * 3500, k: 'whoosh' });
         ev.push({ at: s.at + k * 3500 + 60, k: 'stab', n: k + 1 });
@@ -984,8 +1156,9 @@ const AD_STUDIO = (() => {
     //           loudness follows the scenes. Both stay lower under the admin's own voice.
     const duck = voice ? .4 : 1;
     const bed = ctx.createGain();
-    bed.gain.setValueAtTime(0, t0); bed.gain.linearRampToValueAtTime(.3 * duck, t0 + .08);
-    bed.gain.setValueAtTime(.3 * duck, end - .8); bed.gain.linearRampToValueAtTime(0, end);
+    const light = _variants(_facts())[v]?.style?.music === 'light', bedLv = (light ? .17 : .3) * duck;
+    bed.gain.setValueAtTime(0, t0); bed.gain.linearRampToValueAtTime(bedLv, t0 + .08);
+    bed.gain.setValueAtTime(bedLv, end - .8); bed.gain.linearRampToValueAtTime(0, end);
     bed.connect(master);
     const music = ctx.createGain();   // = the animation layer
     music.gain.setValueAtTime(.45 * duck, t0); music.connect(master);
@@ -1024,10 +1197,10 @@ const AD_STUDIO = (() => {
         osc('sine', 120, at, .22, .55, bed, 45);                          // bed: kick
         osc('triangle', BASS[b % 4] * (q % 2 ? 2 : 1), at, beat * .9, .18, bed);   // bed: bass
         hiss(at + beat / 2, .06, .09, 7000, 9000, 'highpass', bed);      // bed: hat
-        if (q % 2) hiss(at, .12, .22, 1500, 1200, 'bandpass', music);     // anim: clap on 2 and 4
+        if (q % 2 && !light) hiss(at, .12, .22, 1500, 1200, 'bandpass', music);     // anim: clap on 2 and 4
         for (let x16 = 0; x16 < 4; x16++) {                              // the bright 16th-note arpeggio
           const t16 = at + x16 * beat / 4; if (t16 >= end) break;
-          osc('square', ch[(q * 4 + x16) % 3] * 2, t16, beat / 5, .028, arp);
+          osc('square', ch[(q * 4 + x16) % 3] * 2, t16, beat / 5, light ? .014 : .028, arp);
         }
       }
     }
@@ -1217,8 +1390,9 @@ const AD_STUDIO = (() => {
       const spend = await _spend();
       const V = _variants(_facts());
       // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
-      const ours = id => /^(yt-)?t-/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
-      const audOfId = id => { const m = /^(?:yt-)?t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).filter(v => id.endsWith('-' + v)).sort((a, b) => b.length - a.length)[0]; return V[k]?.aud || 'parent'; };
+      const ours = id => /^(yt-)?t-/.test(id) || /(^|-)v[psty]-[a-z0-9]+$/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
+      const audOfId = id => { const vm = /(?:^|-)v([psty])-[a-z0-9]+$/.exec(id); if (vm) return LETTER_AUD[vm[1]];
+        const m = /^(?:yt-)?t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).filter(v => id.endsWith('-' + v)).sort((a, b) => b.length - a.length)[0]; return V[k]?.aud || 'parent'; };
       // every ad that is in Meta under our name shows up (also a new one with no spend yet)
       const inMeta = [...(meta?.connected ? Object.keys(meta.ads || {}) : []), ...Object.keys(GS)].filter(ours);
       // web-<exam>: visitors from our own exam pages (Sync › Leads shows them) — not an ad, no spend
@@ -1329,8 +1503,8 @@ const AD_STUDIO = (() => {
   // ── panel ──
   function _paintSide() {
     const f = _facts(), V = _variants(f);
-    const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud && (isTeacher(st.aud) || (a.kind || 'comp') === st.kind));
-    if (!V[st.v] || V[st.v].aud !== st.aud || !V[st.v].ok || (!isTeacher(st.aud) && (V[st.v].kind || 'comp') !== st.kind)) st.v = (mine.find(([, a]) => a.ok) || mine[0])[0];
+    const mine = Object.entries(V).filter(([, a]) => a.aud === st.aud && (a.custom || isTeacher(st.aud) || (a.kind || 'comp') === st.kind));
+    if (!V[st.v] || V[st.v].aud !== st.aud || (!V[st.v].ok && !V[st.v].custom) || (!V[st.v].custom && !isTeacher(st.aud) && (V[st.v].kind || 'comp') !== st.kind)) st.v = (mine.find(([, a]) => a.ok) || mine[0])[0];
     document.querySelectorAll('.ads-aud').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.aud === st.aud)); const sm = b.querySelector('small'); if (sm) sm.textContent = `बजेट ${_share(b.dataset.aud)}%`; });
     _paintBudget();
     $('ads-variants').innerHTML = mine.map(([k, a]) => `<button type="button" class="ads-var" data-v="${k}" aria-pressed="${k === st.v}" ${a.ok ? '' : 'disabled'} title="${_esc(a.ok ? '' : a.why)}"><b>${a.name}</b><small>${a.ok ? (st.v === k ? '▶ पाहत आहात' : '') : _esc(a.why)}</small></button>`).join('');
@@ -1367,7 +1541,10 @@ const AD_STUDIO = (() => {
   function _loop(now) {
     _raf = requestAnimationFrame(_loop);
     if (!cv || !cv.isConnected || st.rec) { if (st.rec) drawAt(now - st.t0); return; }
-    const f = _facts(), len = lengthOf(_variants(f)[st.v]);
+    const f = _facts(), V = _variants(f);
+    // the shown video was removed (a draft saved / deleted): show this audience's first ad instead
+    if (!V[st.v]) { st.v = Object.keys(V).find(k => V[k].aud === st.aud && V[k].ok) || 'loss'; st.t0 = now; }
+    const len = lengthOf(V[st.v]);
     drawAt(st.paused ? st.pausedAt : (now - st.t0) % len);
   }
   async function _downloadSelected() {
@@ -1387,6 +1564,118 @@ const AD_STUDIO = (() => {
       msg.textContent = `✅ ${n} video download झाले`;
     } catch (err) { msg.textContent = err?.message || 'Video बनला नाही'; }
     btn.disabled = false;
+  }
+
+  // ── 🎬 माझा video: prompt → paste the AI's JSON → check → preview → save ──
+  const SHOTS_KEY = 'ad_shots';   // { sid: { scene index: dataURL } } on this device (never uploaded)
+  let _editing = '';               // the saved script being edited ('' = a new one)
+  async function _loadScripts() {
+    try {
+      const list = await API.adScripts();
+      _scripts.length = 0; for (const v of list) _scripts.push({ sid: v.sid, raw: v.raw, at: v.at });
+    } catch { /* offline: keep what we have */ }
+    const saved = (await DB.getSetting(SHOTS_KEY, {}).catch(() => ({}))) || {};
+    for (const [sid, m] of Object.entries(saved)) for (const [i, url] of Object.entries(m || {})) {
+      const img = new Image(); img.src = url; (_shots[sid] = _shots[sid] || {})[i] = img;
+    }
+    _paintVidList();
+  }
+  function _vidMsg(r) {
+    const box = $('vid-msg'); if (!box) return;
+    if (!r) { box.innerHTML = ''; return; }
+    const sec = Math.round(r.ms / 1000);
+    box.innerHTML = (r.errors.length ? `<div class="vid-bad"><b>❌ ${r.errors.length} चुका — AI ला सांगा किंवा हाताने दुरुस्त करा:</b><ul>${r.errors.map(e => `<li>${_esc(e)}</li>`).join('')}</ul></div>` : `<div class="vid-ok">✅ Script बरोबर — ${r.script.scenes.length} scenes · ≈ ${sec} सेकंद · ${_esc(r.script.audience)} · ${_esc(r.script.style.theme)} / ${_esc(r.script.style.pace)} / ${_esc(r.script.style.music)}</div>`)
+      + (r.warnings.length ? `<div class="vid-warn"><b>⚠️ लक्षात घ्या:</b><ul>${r.warnings.map(e => `<li>${_esc(e)}</li>`).join('')}</ul></div>` : '');
+  }
+  // screenshot scenes: a file picker for each (kept on this device only)
+  function _paintShots(sid, r) {
+    const box = $('vid-shots'); if (!box) return;
+    const list = (r?.script?.scenes || []).map((sc, i) => ({ sc, i })).filter(o => o.sc.type === 'screenshot');
+    box.innerHTML = list.map(({ sc, i }) => `<label class="vid-shot">🖼️ Scene ${i + 1}${sc.note ? ' — ' + _esc(sc.note) : ''}: ${_shots[sid]?.[i] ? '✅ जोडला' : '<b>screenshot जोडा</b>'} <input type="file" accept="image/*" data-shot="${i}" /></label>`).join('');
+    box.querySelectorAll('[data-shot]').forEach(inp => inp.addEventListener('change', async () => {
+      const file = inp.files?.[0]; if (!file) return;
+      const url = await _shrink(file).catch(() => '');
+      if (!url) { APP.toast('हे चित्र उघडलं नाही', 'error'); return; }
+      const img = new Image(); img.src = url; await img.decode().catch(() => {});
+      (_shots[sid] = _shots[sid] || {})[inp.dataset.shot] = img;
+      const saved = (await DB.getSetting(SHOTS_KEY, {}).catch(() => ({}))) || {};
+      (saved[sid] = saved[sid] || {})[inp.dataset.shot] = url;
+      await DB.setSetting(SHOTS_KEY, saved).catch(() => {});
+      _vidCheck(true);
+    }));
+  }
+  // a phone screenshot, made small (≤ 720 px wide JPEG) before it is kept
+  function _shrink(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        const r = Math.min(1, 720 / img.naturalWidth), c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', .85));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+      img.src = url;
+    });
+  }
+  // check what is in the box; show it on the canvas (as a draft) when it is right
+  function _vidCheck(show = true) {
+    const raw = $('vid-in').value.trim();
+    if (!raw) { _vidMsg(null); return null; }
+    const sid = _editing || 'draft';
+    const i = _scripts.findIndex(x => x.sid === sid);
+    if (i >= 0) _scripts[i].raw = raw; else _scripts.push({ sid, raw, draft: !_editing });
+    _parsed.clear();
+    const r = _scriptOf(sid, _facts());
+    _vidMsg(r); _paintShots(sid, r);
+    if (show && r?.script) {
+      const aud = AUD_LETTER[r.script.audience] ? r.script.audience : st.aud;
+      st.aud = aud; st.v = 's:' + sid; st.t0 = performance.now(); st.paused = false;
+      _paintSide();
+    }
+    return r;
+  }
+  async function _vidSave() {
+    const r = _vidCheck(false); const msg = $('vid-msg');
+    if (!r) { msg.textContent = 'आधी AI चं उत्तर paste करा'; return; }
+    if (!r.ok) { APP.toast('आधी चुका दुरुस्त करा', 'error'); return; }
+    try {
+      const out = await API.adScriptSave({ sid: _editing || undefined, raw: $('vid-in').value.trim() });
+      // the draft's screenshots move to the saved id
+      if (!_editing && _shots.draft) {
+        _shots[out.sid] = _shots.draft; delete _shots.draft;
+        const saved = (await DB.getSetting(SHOTS_KEY, {}).catch(() => ({}))) || {};
+        if (saved.draft) { saved[out.sid] = saved.draft; delete saved.draft; await DB.setSetting(SHOTS_KEY, saved).catch(() => {}); }
+      }
+      const di = _scripts.findIndex(x => x.sid === 'draft'); if (di >= 0) _scripts.splice(di, 1);
+      _editing = out.sid;
+      await _loadScripts();
+      st.v = 's:' + out.sid; _paintSide();
+      APP.toast('💾 Save केलं — आता हा video ads च्या यादीत आहे', 'success');
+    } catch (err) { APP.toast(err?.message || 'Save झालं नाही', 'error'); }
+  }
+  function _paintVidList() {
+    const box = $('vid-list'); if (!box) return;
+    const f = _facts(), V = _scriptVariants(f);
+    const saved = _scripts.filter(x => !x.draft);
+    box.innerHTML = saved.length ? saved.map(x => {
+      const a = V['s:' + x.sid]; if (!a) return '';
+      return `<div class="vid-item"><span><b>${_esc(a.name)}</b> <small>${_esc(AUD[a.aud]?.name || a.aud)} · ≈ ${Math.round((a.ms || 0) / 1000)} से${a.ok ? '' : ' · ⚠️ ' + _esc(a.why)}</small></span>
+        <button type="button" class="ads-mini" data-vid-show="${x.sid}">▶ पाहा</button><button type="button" class="ads-mini" data-vid-edit="${x.sid}">✏️ बदला</button><button type="button" class="ads-mini" data-vid-del="${x.sid}">🗑</button></div>`;
+    }).join('') : '<p class="import-hint">अजून save केलेले videos नाहीत.</p>';
+    box.querySelectorAll('[data-vid-show]').forEach(b => b.addEventListener('click', () => { const a = V['s:' + b.dataset.vidShow]; if (!a) return; st.aud = a.aud; st.v = 's:' + b.dataset.vidShow; st.t0 = performance.now(); st.paused = false; _paintSide(); $('ads-cv')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
+    box.querySelectorAll('[data-vid-edit]').forEach(b => b.addEventListener('click', () => { const sc = _scripts.find(x => x.sid === b.dataset.vidEdit); if (!sc) return; _editing = sc.sid; $('vid-in').value = sc.raw; $('ads-vid').open = true; $('vid-editing').textContent = '✏️ बदलत आहात — Save केल्यावर हाच video बदलेल'; _vidCheck(true); }));
+    box.querySelectorAll('[data-vid-del]').forEach(b => b.addEventListener('click', async () => {
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'पक्कं?'; return; }
+      try { await API.adScriptDelete(b.dataset.vidDel); if (_editing === b.dataset.vidDel) _vidNew(); await _loadScripts(); _paintSide(); } catch (err) { APP.toast(err?.message || '', 'error'); }
+    }));
+  }
+  function _vidNew() { _editing = ''; $('vid-in').value = ''; $('vid-editing').textContent = ''; _vidMsg(null); $('vid-shots').innerHTML = ''; const di = _scripts.findIndex(x => x.sid === 'draft'); if (di >= 0) _scripts.splice(di, 1); }
+  function _vidPrompt() {
+    const f = _facts();
+    const p0 = AD_SCRIPT.prompt({ want: $('vid-want').value.trim(), audience: st.aud, className: isTeacher(st.aud) ? '' : f.label, values: _phValues(f) });
+    const done = ok => { $('vid-copied').textContent = ok ? '✅ Copy झालं — ChatGPT / Claude मध्ये paste करा' : 'Copy झालं नाही — खालच्या box मधून copy करा'; if (!ok) { $('vid-in').value = p0; $('vid-in').select(); } };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(p0).then(() => done(true), () => done(false)); else done(false);
   }
 
   async function init() {
@@ -1414,6 +1703,28 @@ const AD_STUDIO = (() => {
           <label>पाहा <select id="ads-fmt" class="admin-input"><option value="916">9:16 Reels / Stories</option><option value="45">4:5 Feed</option><option value="11">1:1</option><option value="169">16:9 YouTube</option></select></label>
         </div>
         <p class="import-hint" id="ads-facts"></p>
+        <details class="ads-vid" id="ads-vid">
+          <summary>🎬 माझा video — ChatGPT / Claude कडून script, app मध्ये आवाजासह video</summary>
+          <ol class="import-hint">
+            <li>खाली लिहा तुम्हाला कसा video हवा (कोणासाठी, काय सांगायचं, किती सेकंद) → <b>📋 Prompt copy करा</b> → ChatGPT / Claude मध्ये paste.</li>
+            <li>AI चं पूर्ण उत्तर खालच्या box मध्ये paste करा → <b>✅ तपासा आणि पाहा</b>. चुका असतील तर app सांगतो.</li>
+            <li>आवडला तर <b>💾 Save</b> — मग तो ads च्या यादीत येतो: Download, Meta ला पाठवा, YouTube kit, leaderboard सगळं तसंच.</li>
+          </ol>
+          <p class="import-hint">आकडे (commission, सूट, free tests, दिवस) AI लिहीत नाही — <code>{ }</code> खुणा app स्वतः खऱ्या आकड्यांनी भरतो.</p>
+          <textarea id="vid-want" class="admin-input" rows="2" placeholder="उदा. YouTube शिक्षकांसाठी 20 सेकंदांचा video: स्वतःचं panel, subscribers ना सूट, प्रत्येक paid मागे कमाई"></textarea>
+          <div class="site-btns"><button type="button" class="admin-btn-secondary" id="vid-prompt">📋 Prompt copy करा</button><span id="vid-copied" class="import-hint"></span></div>
+          <textarea id="vid-in" class="admin-input" rows="8" placeholder="AI चं उत्तर (JSON) इथे paste करा"></textarea>
+          <p class="import-hint" id="vid-editing"></p>
+          <div class="site-btns">
+            <button type="button" class="admin-btn-primary" id="vid-check">✅ तपासा आणि पाहा</button>
+            <button type="button" class="admin-btn-primary" id="vid-save">💾 Save</button>
+            <button type="button" class="admin-btn-secondary" id="vid-new">+ नवीन</button>
+          </div>
+          <div id="vid-msg"></div>
+          <div id="vid-shots"></div>
+          <h5 class="ads-aud-h">💾 Save केलेले videos</h5>
+          <div id="vid-list"></div>
+        </details>
         <button type="button" class="admin-btn-secondary" id="ads-nextq" hidden>🔄 दुसरा प्रश्न</button>
         <div class="ads-vars" id="ads-variants" role="group" aria-label="Ads"></div>
         <div class="ads-stage">
@@ -1505,6 +1816,10 @@ const AD_STUDIO = (() => {
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
+      $('vid-prompt').addEventListener('click', _vidPrompt);
+      $('vid-check').addEventListener('click', () => _vidCheck(true));
+      $('vid-save').addEventListener('click', _vidSave);
+      $('vid-new').addEventListener('click', () => { _vidNew(); _paintSide(); });
       host.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => { navigator.clipboard?.writeText(b.dataset.copy).then(() => APP.toast('Link copy झाली', 'success'), () => APP.toast(b.dataset.copy, 'info')); }));
       $('ads-sound').addEventListener('change', e => { st.sound = e.target.checked; });
       $('ads-play').addEventListener('click', () => playWithSound().catch(err => APP.toast(err?.message || 'आवाज चालला नाही', 'error')));
@@ -1552,6 +1867,7 @@ const AD_STUDIO = (() => {
     $('ads-tgt-test').value = _targets.test; $('ads-tgt-paid').value = _targets.paid;
     _setBatchKind();
     _loadBoard();
+    _loadScripts().then(() => _paintSide());
   }
   // the class's kind (guessed / chosen) and, for a regular class, its real content
   function _setBatchKind() {
@@ -1567,7 +1883,7 @@ const AD_STUDIO = (() => {
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, audioPlan, playWithSound, __score: (...a) => _score(...a), __st: st, __content: _content, __voice: _voice };
+  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, audioPlan, playWithSound, __score: (...a) => _score(...a), __scripts: _scripts, __shots: _shots, __phValues: () => _phValues(_facts()), __st: st, __content: _content, __voice: _voice };
 })();
 
 window.AD_STUDIO = AD_STUDIO;

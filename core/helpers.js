@@ -2314,6 +2314,20 @@ const API = (() => {
     return request(`/guest/admin/google/topup/${Number(i)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
   }
 
+  // Admin › Ads › 🎬 माझा video: the saved AI scripts
+  async function adScripts() {
+    const token = await ensureAdminSession();
+    return (await request('/guest/admin/ad-scripts', { headers: { Authorization: `Bearer ${token}` } }))?.data || [];
+  }
+  async function adScriptSave(body) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/ad-scripts', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+  }
+  async function adScriptDelete(sid) {
+    const token = await ensureAdminSession();
+    return request(`/guest/admin/ad-scripts/${encodeURIComponent(sid)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  }
+
   async function metaAction(body) {
     const token = await ensureAdminSession();
     return request('/guest/admin/meta/action', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
@@ -3069,7 +3083,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
