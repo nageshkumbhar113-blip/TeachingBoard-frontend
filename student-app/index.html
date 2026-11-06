@@ -272,56 +272,63 @@
         <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">TEACHER<br>REQUEST</div></div>
         <div>
           <div class="admit-eyebrow">TEACHER REGISTRATION</div>
-          <h1 class="onboarding-title">Partner / Teacher Registration</h1>
-          <p class="onboarding-sub">Choose what describes you. Our admin will check and approve your account.</p>
+          <h1 class="onboarding-title">शिक्षक / Partner नोंदणी</h1>
+          <p class="onboarding-sub">नोंदणी Free आहे. आमची team तुम्हाला संपर्क करून माहिती तपासेल आणि account चालू करेल.</p>
         </div>
       </div>
       <div class="admit-perforation" aria-hidden="true"></div>
       <div class="admit-body">
         <div class="treg-type" role="radiogroup" aria-label="Registration type">
-          <button type="button" class="treg-type-btn active" data-treg-type="school" role="radio" aria-checked="true">🏫 School / Institute Teacher</button>
-          <button type="button" class="treg-type-btn" data-treg-type="youtube" role="radio" aria-checked="false">🎬 YouTube Partner</button>
+          <button type="button" class="treg-type-btn active" data-treg-type="school" role="radio" aria-checked="true">🏫 School / Class शिक्षक</button>
+          <button type="button" class="treg-type-btn" data-treg-type="youtube" role="radio" aria-checked="false">🎬 YouTube शिक्षक</button>
         </div>
         <p id="treg-type-note" class="onboarding-sub" style="margin:6px 0 10px"></p>
         <div class="onboarding-field">
-          <label for="treg-name" class="onboarding-label">Full name <span class="ob-required">*</span></label>
-          <input id="treg-name" type="text" class="onboarding-input" placeholder="e.g. Nagesh Kumbhar" autocomplete="name" autocapitalize="words" spellcheck="false" />
+          <label for="treg-name" class="onboarding-label">पूर्ण नाव <span class="ob-required">*</span></label>
+          <input id="treg-name" type="text" class="onboarding-input" placeholder="उदा. Nagesh Kumbhar" autocomplete="name" autocapitalize="words" spellcheck="false" />
         </div>
         <div class="onboarding-field">
-          <label for="treg-mobile" class="onboarding-label">Mobile number <span class="ob-required">*</span></label>
-          <input id="treg-mobile" type="tel" class="onboarding-input" placeholder="e.g. 9876543210" inputmode="numeric" maxlength="10" autocomplete="tel" />
+          <label for="treg-mobile" class="onboarding-label">Mobile नंबर <span class="ob-required">*</span></label>
+          <input id="treg-mobile" type="tel" class="onboarding-input" placeholder="उदा. 9876543210" inputmode="numeric" maxlength="10" autocomplete="tel" />
+        </div>
+        <div class="onboarding-field">
+          <span class="onboarding-label">आमच्या team ने कसा संपर्क करावा? <span class="ob-required">*</span></span>
+          <div class="treg-type" role="radiogroup" aria-label="संपर्क">
+            <button type="button" class="treg-type-btn active" data-treg-contact="whatsapp" role="radio" aria-checked="true">💬 WhatsApp</button>
+            <button type="button" class="treg-type-btn" data-treg-contact="call" role="radio" aria-checked="false">📞 Call</button>
+          </div>
         </div>
         <div class="onboarding-field" id="treg-school-fields">
-          <label for="treg-institute" class="onboarding-label">Institute / coaching class name <span class="ob-required">*</span></label>
-          <input id="treg-institute" type="text" class="onboarding-input" placeholder="e.g. Sai Coaching Classes" autocomplete="organization" spellcheck="false" />
+          <label for="treg-institute" class="onboarding-label">शाळा / Class चं नाव <span class="ob-required">*</span></label>
+          <input id="treg-institute" type="text" class="onboarding-input" placeholder="उदा. Sai Coaching Classes" autocomplete="organization" spellcheck="false" />
         </div>
         <div id="treg-yt-fields" class="hidden">
           <div class="onboarding-field">
-            <label for="treg-channel-name" class="onboarding-label">YouTube channel name <span class="ob-required">*</span></label>
-            <input id="treg-channel-name" type="text" class="onboarding-input" placeholder="e.g. Nagesh Sir Maths" spellcheck="false" />
+            <label for="treg-channel-name" class="onboarding-label">YouTube channel चं नाव <span class="ob-required">*</span></label>
+            <input id="treg-channel-name" type="text" class="onboarding-input" placeholder="उदा. Nagesh Sir Maths" spellcheck="false" />
           </div>
           <div class="onboarding-field">
-            <label for="treg-channel-url" class="onboarding-label">YouTube channel link <span class="ob-required">*</span></label>
+            <label for="treg-channel-url" class="onboarding-label">YouTube channel ची link <span class="ob-required">*</span></label>
             <input id="treg-channel-url" type="url" class="onboarding-input" placeholder="https://www.youtube.com/@yourchannel" inputmode="url" autocapitalize="off" spellcheck="false" />
           </div>
         </div>
         <div class="onboarding-field">
-          <label for="treg-pin" class="onboarding-label">Set a 4-digit PIN <span class="ob-required">*</span></label>
+          <label for="treg-pin" class="onboarding-label">4 अंकी PIN ठेवा (login साठी) <span class="ob-required">*</span></label>
           <div class="pin-toggle-wrap">
-            <input id="treg-pin" type="password" class="onboarding-input" placeholder="4-digit PIN" maxlength="4" inputmode="numeric" autocomplete="new-password" />
+            <input id="treg-pin" type="password" class="onboarding-input" placeholder="4 अंकी PIN" maxlength="4" inputmode="numeric" autocomplete="new-password" />
             <button type="button" class="pin-toggle-btn" data-target="treg-pin" aria-label="Show PIN">👁</button>
           </div>
         </div>
         <div class="onboarding-field" style="margin-top:4px">
           <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;line-height:1.5;cursor:pointer;color:var(--text2,#8b949e)">
             <input id="treg-agree" type="checkbox" style="margin-top:3px;flex-shrink:0" />
-            <span id="treg-agree-school">I have read and agree to the <a href="../partner-terms.html?type=school" target="_blank" rel="noopener">School / Institute Teacher Terms</a> and the Privacy Policy. I understand that on the free plan I can build only <strong>4 papers per batch</strong>, and unlimited Paper Builder for a batch needs <strong>at least 10 paid students of that batch</strong>.</span>
-            <span id="treg-agree-yt" class="hidden">I have read and agree to the <a href="../partner-terms.html?type=youtube" target="_blank" rel="noopener">YouTube Teacher Partner Terms</a> and the Privacy Policy. I understand that I will earn commission only as described in these Terms.</span>
+            <span id="treg-agree-school">मी <a href="../partner-terms.html?type=school" target="_blank" rel="noopener">School / Class शिक्षकांचे नियम</a> आणि Privacy Policy वाचले, ते मला मान्य आहेत. Free plan मध्ये एका batch साठी <strong>4 पेपर</strong> बनवता येतात; त्या batch चे <strong>किमान 10 paid विद्यार्थी</strong> झाले की Paper Builder अमर्याद.</span>
+            <span id="treg-agree-yt" class="hidden">मी <a href="../partner-terms.html?type=youtube" target="_blank" rel="noopener">YouTube शिक्षक Partner नियम</a> आणि Privacy Policy वाचले, ते मला मान्य आहेत. Commission फक्त या नियमांप्रमाणे मिळेल.</span>
           </label>
         </div>
         <p id="treg-error-msg" class="pin-error hidden" role="alert"></p>
-        <button id="treg-submit" class="onboarding-btn">Submit registration →</button>
-        <button id="treg-back" class="onboarding-skip">← Back</button>
+        <button id="treg-submit" class="onboarding-btn">नोंदणी पाठवा →</button>
+        <button id="treg-back" class="onboarding-skip">← मागे</button>
       </div>
     </div>
 
@@ -331,17 +338,17 @@
         <div class="admit-seal" aria-hidden="true"><div class="admit-seal-inner">REQUEST<br>SENT</div></div>
         <div>
           <div class="admit-eyebrow">REGISTRATION RECEIVED</div>
-          <h1 class="onboarding-title">Thank you!</h1>
-          <p class="onboarding-sub">An admin will contact you. You can log in after approval.</p>
+          <h1 class="onboarding-title">धन्यवाद! नोंदणी मिळाली</h1>
+          <p class="onboarding-sub" id="treg-done-sub">आमची team लवकरच तुम्हाला संपर्क करून माहिती तपासेल. Account चालू झालं की login करता येईल.</p>
         </div>
       </div>
       <div class="admit-perforation" aria-hidden="true"></div>
       <div class="admit-body">
         <div class="admit-success-box">
           <div class="admit-success-icon">✅</div>
-          <div class="admit-success-label">Your Teacher code</div>
+          <div class="admit-success-label">तुमचा Teacher code</div>
           <strong id="treg-done-code" class="admit-code-chip"></strong>
-          <div class="admit-success-note">Keep this code and your PIN safe. Log in as Teacher once you are approved.</div>
+          <div class="admit-success-note">हा code आणि तुमचा PIN जपून ठेवा. Account चालू झाल्यावर "Teacher" म्हणून login करा.</div>
         </div>
         <button type="button" id="treg-copy" class="onboarding-skip" style="margin-top:2px">Copy code</button>
         <button type="button" id="treg-done-login" class="onboarding-btn" style="margin-top:10px">Back to login</button>

@@ -3398,6 +3398,14 @@ const ADMIN = (() => {
     if (!section || !host) return;
     const pending = _teachersCache.filter(t => t.status === 'pending');
     section.style.display = pending.length ? '' : 'none';
+    // new self-registrations (teacher ads): a red count on the Teachers tab, so they are not missed
+    document.querySelectorAll('.atab[data-tab="teachers"], .abn-drawer-item[data-tab="teachers"]').forEach(tab => {
+      let b = tab.querySelector('.pt-badge');
+      if (!pending.length) { b?.remove(); return; }
+      if (!b) { b = document.createElement('b'); b.className = 'pt-badge'; b.style.cssText = 'margin-left:6px;background:#ef4444;color:#fff;border-radius:10px;padding:0 7px;font-size:.72rem'; tab.appendChild(b); }
+      b.textContent = String(pending.length);
+      b.title = `${pending.length} नवीन शिक्षक नोंदणी — संपर्क करून approve करा`;
+    });
     host.innerHTML = '';
     pending.forEach(t => {
       const row = document.createElement('div');
@@ -3414,11 +3422,14 @@ const ADMIN = (() => {
             <span>${t.commission_enabled ? (t.commission_mode === 'percent' ? `${t.commission_value}% commission` : `Rs ${t.commission_value} commission`) : 'No commission'}</span>
             <span>${t.created_at ? _escHtml(new Date(t.created_at).toLocaleDateString()) : ''}</span>
             <span>${t.terms_accepted_at ? 'Terms accepted' : 'Terms not recorded'}</span>
+            ${t.contact_pref ? `<span><b>${t.contact_pref === 'call' ? '📞 Call करा असं सांगितलं' : '💬 WhatsApp करा असं सांगितलं'}</b></span>` : ''}
+            ${t.signup_ad ? `<span>Ad: ${_escHtml(t.signup_ad)}</span>` : ''}
           </div>
         </div>
         <div class="chapter-admin-actions">
           <label style="font-size:0.75rem">Valid until <input type="date" class="admin-input pt-validity" style="max-width:150px" /></label>
           <a class="admin-btn-secondary" href="${_teacherWhatsAppUrl(t)}" target="_blank" rel="noopener">WhatsApp</a>
+          ${t.mobile ? `<a class="admin-btn-secondary" href="tel:+91${_escHtml(String(t.mobile).replace(/\D/g, '').slice(-10))}">📞 Call</a>` : ''}
           <button class="admin-btn-primary" data-approve type="button">Approve</button>
           <button class="admin-btn-danger" data-reject type="button">Reject</button>
         </div>`;

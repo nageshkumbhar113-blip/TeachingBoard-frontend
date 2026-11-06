@@ -279,9 +279,9 @@ const GUEST = (() => {
         <div class="gx-card">
           <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
           <div class="gx-logo" aria-hidden="true">✍️</div>
-          <h2 class="gx-title">तुमचं <span class="gx-grad-text">नाव</span>?</h2>
-          <p class="gx-sub">Result वर आणि share card वर दिसेल. Test नंतर result पाहण्यासाठी पालकांचा WhatsApp नंबर लागेल.</p>
-          <label class="gx-field"><span>नाव</span>
+          <h2 class="gx-title">विद्यार्थ्याचं <span class="gx-grad-text">नाव</span>?</h2>
+          <p class="gx-sub">Test देणाऱ्या मुलाचं / मुलीचं नाव — result वर आणि share card वर दिसेल. Test नंतर result पाहण्यासाठी पालकांचा WhatsApp नंबर लागेल.</p>
+          <label class="gx-field"><span>विद्यार्थ्याचं नाव</span>
             <input class="gx-input" id="gx-name" maxlength="30" autocomplete="given-name" placeholder="उदा. राहुल" /></label>
           <p class="gx-msg" id="gx-msg" role="alert"></p>
           <button type="button" class="gx-btn gx-big" id="gx-ok">▶ Test सुरू करा</button>
@@ -444,6 +444,7 @@ const GUEST = (() => {
   async function _prices() {
     try {
       const r = await API.request(`/guest/public/${encodeURIComponent(_state.gid || '')}`);
+      _lastInfo = r?.data || _lastInfo;
       return r?.data || null;
     } catch { return null; }
   }
@@ -484,7 +485,14 @@ const GUEST = (() => {
   async function showOffer(reason = 'locked') {
     if (!_active) return;
     if (reason !== 'locked' && Date.now() - (_state.offer_popup_at || 0) < OFFER_POPUP_GAP_MS) return;
-    if (document.querySelector('.gx-layer')) return;
+    if (document.querySelector('.gx-layer:not(.gx-leaving)')) return;
+    // regular-class visitors read notes and may never take a test: the number comes here
+    // (asked at most once a day: "नंतर" is respected)
+    if (reason === 'locked' && !_state.has_parent_mobile && Date.now() - (_state.mob_ask_at || 0) > 864e5) {
+      await _saveState({ mob_ask_at: Date.now() });
+      await contactGate({ forLocked: true });
+      await new Promise(r => setTimeout(r, 260));
+    }
     await _saveState({ offer_popup_at: Date.now() });
     const info = await _prices();
     const offer = info?.offer?.active ? info.offer : null;
@@ -577,6 +585,8 @@ const GUEST = (() => {
       try {
         await API.loginStudent({ student_code: code, pin, device_id: window.APP?.deviceId?.() || '' });
         await API.setGuestState({});
+        // the PIN was just checked: the reload must not ask for it again (app.js reads this once)
+        try { sessionStorage.setItem('tb_pin_ok', code); } catch { /* then the PIN is asked once more */ }
         location.reload();
       } catch (err) {
         msg.textContent = err?.message || 'PIN चुकीचा आहे';
@@ -612,13 +622,24 @@ const GUEST = (() => {
     API.guestEvent('shared_friend');
   }
 
+  // "🎁 आज 50% सूट — रात्री 9:30 पर्यंत" while the visitor's offer runs
+  let _lastInfo = null;
+  function _offerLine(info) {
+    const o = info?.offer;
+    if (!o?.active || !o.expires_at || new Date(o.expires_at) <= new Date()) return '';
+    const t = new Date(o.expires_at), today = t.toDateString() === new Date().toDateString();
+    const hm = t.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `
+🎁 पहिल्या payment वर ${o.percent || 50}% सूट — ${today ? 'आज ' : 'उद्या '}${hm} पर्यंतच!
+`;
+  }
   function shareParent(ctx) {
     const { quiz, pct, score, max, rank, weak } = ctx;
     const text = `नमस्कार आई/बाबा 🙏\nमी NKs EduOrbit वर *${_lesson(quiz)}* चा test दिला.\n` +
       `📊 गुण: *${score}/${max} (${pct}%)*\n` +
       (rank?.rank ? `🏆 ${rank.total} students मध्ये क्रमांक: *#${rank.rank}*\n` : '') +
       (weak?.length ? `📌 अजून सराव हवा: प्रश्न ${weak.join(', ')}\n` : '') +
-      `माझे सगळे chapters चे tests, notes आणि weekly report इथे 👇\n${_payUrl()}`;
+      _offerLine(_lastInfo) + `माझे सगळे chapters चे tests, notes आणि weekly report इथे 👇\n${_payUrl()}`;
     _wa(text);
     API.guestEvent('shared_parent');
   }
@@ -630,7 +651,7 @@ const GUEST = (() => {
     const perDay = yearly ? Math.max(1, Math.round(yearly / 365)) : monthly ? Math.max(1, Math.round(monthly / 30)) : 0;
     const text = `आई/बाबा, मला NKs EduOrbit वर *${_state.batch || ''}* चे सगळे tests सोडवायचे आहेत 📚\n` +
       (scores.length ? `आत्तापर्यंत मी ${scores.length} tests दिले, सरासरी ${avg}%.\n` : '') +
-      (perDay ? `दिवसाला फक्त ₹${perDay}. ` : '') + `इथे बघा 👇\n${_payUrl()}`;
+      (perDay ? `दिवसाला फक्त ₹${perDay}. ` : '') + _offerLine(info) + `इथे बघा 👇\n${_payUrl()}`;
     _wa(text);
     API.guestEvent('shared_parent');
   }
@@ -720,22 +741,23 @@ const GUEST = (() => {
   // ── Parent mobile (unlocks the detailed analysis) ──────────────────
   // forResult: asked right after "Result बघा" (owner's choice, 2026-11-01) —
   // no close / later; the student was told before the test (ensureName).
-  function contactGate({ forResult = false } = {}) {
+  function contactGate({ forResult = false, forLocked = false } = {}) {
     return new Promise(resolve => {
       const canPick = 'contacts' in navigator && 'select' in (navigator.contacts || {});
       const el = _layer(forResult ? 'gx-hero' : 'gx-dim', `
         <div class="gx-card">
           ${forResult ? '' : '<button type="button" class="gx-close" aria-label="बंद करा">✕</button>'}
-          <div class="gx-logo" aria-hidden="true">${forResult ? '🎯' : '📊'}</div>
+          <div class="gx-logo" aria-hidden="true">${forResult ? '🎯' : forLocked ? '🔓' : '📊'}</div>
           ${forResult
             ? '<h2 class="gx-title">तुमचा <span class="gx-grad-text">Result</span> तयार आहे!</h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — result लगेच दिसेल आणि पालकांनाही तुमची प्रगती कळेल</p>'
+            : forLocked ? '<h2 class="gx-title">पुढचे <span class="gx-grad-text">धडे</span> उघडायचे?</h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — मग सगळे धडे उघडण्याचे पर्याय आणि किंमत दिसेल</p>'
             : '<h2 class="gx-title">पूर्ण <span class="gx-grad-text">analysis</span></h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — प्रत्येक प्रश्नाचं analysis लगेच उघडेल</p>'}
           <label class="gx-field"><span>पालकांचा mobile</span>
             <input class="gx-input" id="gx-mob" type="tel" inputmode="tel" autocomplete="tel" placeholder="98XXXXXXXX" maxlength="16" /></label>
           ${canPick ? '<button type="button" class="gx-btn gx-ghost" id="gx-pick">📇 Contacts मधून निवडा</button>' : ''}
           <label class="gx-check"><input type="checkbox" id="gx-ok" /> <span>NKs EduOrbit कडून result व अभ्यासाबद्दल संपर्कास पालकांची संमती आहे</span></label>
           <p class="gx-msg" id="gx-msg" role="alert"></p>
-          <button type="button" class="gx-btn gx-big gx-shine" id="gx-save">${forResult ? '🎯 Result बघा' : '📊 Analysis बघा'}</button>
+          <button type="button" class="gx-btn gx-big gx-shine" id="gx-save">${forResult ? '🎯 Result बघा' : forLocked ? '▶ पुढे चला' : '📊 Analysis बघा'}</button>
           ${forResult ? '' : '<button type="button" class="gx-link" id="gx-later">नंतर</button>'}
         </div>`);
       const mob = el.querySelector('#gx-mob'), msg = el.querySelector('#gx-msg');
@@ -813,7 +835,7 @@ const GUEST = (() => {
     const strip = document.createElement('div');
     strip.className = 'gx-guide';
     strip.innerHTML = `
-      <div class="gx-guide-hi">👋 ${_esc(_state.name || 'मित्रा')}, तुमचा Free अभ्यास</div>
+      <div class="gx-guide-hi">${_state.name ? `👋 ${_esc(_state.name)}, तुमचा Free अभ्यास` : '👋 नमस्कार! तुमचा Free अभ्यास'}</div>
       <div class="gx-guide-next">${next ? `पुढचा test: <b>${_esc(_lesson(next))}</b>` : '🎉 सगळे free tests पूर्ण! आता पुढचे chapters उघडा.'}</div>
       ${tests.length ? `<div class="gx-guide-progress" aria-label="${doneN}/${tests.length}"><i style="width:${Math.round((doneN / tests.length) * 100)}%"></i></div>` : ''}
       <div class="gx-row">

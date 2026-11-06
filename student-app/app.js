@@ -813,7 +813,10 @@ const APP = (() => {
     if (profile?.student_code && !(profile.guest && tregLink)) {
       // ── Returning user: show PIN lock ──
       beforePrompt?.();
-      const unlocked = await _showPinLock(profile, 'student');
+      // just logged in after paying (guest.js _loginAfterPay checked the PIN, then reloaded): no second PIN
+      let pinOk = false;
+      try { pinOk = sessionStorage.getItem('tb_pin_ok') === profile.student_code; sessionStorage.removeItem('tb_pin_ok'); } catch { /* ask */ }
+      const unlocked = pinOk || await _showPinLock(profile, 'student');
       if (!unlocked) return;  // switched account — _showPinLock handles the rest
 
       // ── PIN correct: refresh profile + sync — see _completeStudentLogin's
@@ -1247,9 +1250,15 @@ const APP = (() => {
       document.getElementById('treg-agree-yt')?.classList.toggle('hidden', !yt);
       const note = document.getElementById('treg-type-note');
       if (note) note.textContent = yt
-        ? 'Share the app with your audience and earn a commission on every student who joins through your link and pays.'
-        : 'Get a class link for your students, the Paper Builder, and a commission on students who pay.';
+        ? 'तुमच्या viewers ना app ची link द्या; तुमच्या link ने आलेल्या प्रत्येक paid विद्यार्थ्यामागे commission.'
+        : 'तुमच्या विद्यार्थ्यांसाठी class link, Paper Builder आणि paid विद्यार्थ्यांवर commission.';
     };
+    // how our team should reach them to verify: WhatsApp (default) or a call
+    let _tregContact = 'whatsapp';
+    document.querySelectorAll('[data-treg-contact]').forEach(b => b.addEventListener('click', () => {
+      _tregContact = b.dataset.tregContact === 'call' ? 'call' : 'whatsapp';
+      document.querySelectorAll('[data-treg-contact]').forEach(x => { const on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-checked', String(on)); });
+    }));
     document.querySelectorAll('[data-treg-type]').forEach(b => b.addEventListener('click', () => _setTregType(b.dataset.tregType)));
     _setTregType('school');
 
@@ -1268,14 +1277,14 @@ const APP = (() => {
       const agree = !!document.getElementById('treg-agree')?.checked;
       const isYt = _tregType === 'youtube';
 
-      if (!name) return showErr('Enter your full name');
-      if (!_isValidMobile(mobile)) return showErr('Enter a valid 10-digit mobile number (starting with 6-9)');
-      if (!isYt && !institute) return showErr('Enter your institute / coaching class name');
-      if (isYt && !channelName) return showErr('Enter your YouTube channel name');
-      if (isYt && !/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(channelUrl)) return showErr('Enter your YouTube channel link, e.g. https://www.youtube.com/@yourchannel');
-      if (!/^\d{4}$/.test(pin)) return showErr('PIN must be 4 digits');
-      if (_isWeakPin(pin)) return showErr('That PIN is too easy to guess (e.g. 0000, 1234). Choose a different PIN');
-      if (!agree) return showErr('Please tick the agreement box to continue');
+      if (!name) return showErr('तुमचं पूर्ण नाव लिहा');
+      if (!_isValidMobile(mobile)) return showErr('योग्य 10 अंकी mobile नंबर द्या (6-9 ने सुरू होणारा)');
+      if (!isYt && !institute) return showErr('शाळा / Class चं नाव लिहा');
+      if (isYt && !channelName) return showErr('YouTube channel चं नाव लिहा');
+      if (isYt && !/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(channelUrl)) return showErr('YouTube channel ची link द्या, उदा. https://www.youtube.com/@yourchannel');
+      if (!/^\d{4}$/.test(pin)) return showErr('PIN 4 अंकी हवा');
+      if (_isWeakPin(pin)) return showErr('हा PIN खूप सोपा आहे (उदा. 0000, 1234) — दुसरा ठेवा');
+      if (!agree) return showErr('पुढे जाण्यासाठी नियम मान्य असल्याची खूण करा');
 
       submitBtn.disabled = true;
       try {
@@ -1284,10 +1293,12 @@ const APP = (() => {
         // came from a Facebook / Instagram ad (?treg=…&ad=ID): the ad gets the credit
         const signup_ad = _linkParam('ad').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
         const res = await API.registerTeacher(isYt
-          ? { name, mobile, partner_type: 'youtube', channel_name: channelName, channel_url: channelUrl, pin, agree: true, signup_ad }
-          : { name, mobile, partner_type: 'school', institute_name: institute, pin, agree: true, signup_ad });
+          ? { name, mobile, partner_type: 'youtube', channel_name: channelName, channel_url: channelUrl, pin, agree: true, signup_ad, contact_pref: _tregContact }
+          : { name, mobile, partner_type: 'school', institute_name: institute, pin, agree: true, signup_ad, contact_pref: _tregContact });
         const codeEl = document.getElementById('treg-done-code');
         if (codeEl) codeEl.textContent = res?.teacher_code || '';
+        const doneSub = document.getElementById('treg-done-sub');
+        if (doneSub) doneSub.textContent = `आमची team लवकरच ${mobile} वर ${_tregContact === 'call' ? 'call' : 'WhatsApp'} करून माहिती तपासेल. Account चालू झालं की login करता येईल.`;
         tregCard?.classList.add('hidden');
         tregDoneCard?.classList.remove('hidden');
         ['treg-name', 'treg-mobile', 'treg-institute', 'treg-channel-name', 'treg-channel-url', 'treg-pin'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
