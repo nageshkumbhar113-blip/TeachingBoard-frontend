@@ -2764,3 +2764,4 @@ body.admin-app {
 #ad-studio [hidden] { display: none !important; }   /* buttons with their own display (admin-btn-*) */
 .ads-target { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: .82rem; }
 .ads-target input { width: 80px; }
+.ads-low { color: #b91c1c; }

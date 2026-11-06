@@ -1107,6 +1107,24 @@ const AD_STUDIO = (() => {
     for (const r of rows) { const k = keyOf(r.id) || '·'; if (!g.has(k)) g.set(k, []); g.get(k).push(r); }
     return [...g.values()].flatMap(rows0 => verdicts(rows0));
   }
+  // 💰 the Meta account's money: prepaid balance (and how many days it lasts at the running
+  // ad sets' daily budgets) or the amount due, and the lifetime spend
+  const BILLING = 'https://business.facebook.com/billing_hub/accounts/details?asset_id=536773299299931&business_id=411214578749736';
+  function _moneyLine(acc, S) {
+    if (!acc) return '';
+    const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+    const perDay = [...new Map(Object.values(S || {}).filter(a => a.status === 'ACTIVE' && a.adset_id).map(a => [a.adset_id, Number(a.budget) || 0])).values()].reduce((t, b) => t + b, 0);
+    const parts = [];
+    if (acc.prepay && acc.funds !== null && acc.funds !== undefined) {
+      const days = perDay ? acc.funds / perDay : null;
+      const low = days !== null && days < 2;
+      parts.push(`<b class="${low ? 'ads-low' : ''}">💰 शिल्लक: ${rs(acc.funds)}</b>${perDay ? ` (आत्ताच्या ₹${Math.round(perDay)}/दिवस खर्चाने ≈ ${days < 1 ? 'आजच संपेल' : Math.floor(days) + ' दिवस पुरेल'})` : ''}${low ? ' ⚠️ पैसे संपत आले — आज भरा, नाहीतर ads थांबतील' : ''}`);
+    } else if (acc.funds_text) parts.push(`💰 ${_esc(acc.funds_text)}`);
+    else if (acc.due) parts.push(`💰 देय रक्कम: ${rs(acc.due)}`);
+    if (acc.spent_total !== null && acc.spent_total !== undefined) parts.push(`आत्तापर्यंत एकूण खर्च ${rs(acc.spent_total)}`);
+    if (acc.spend_cap) parts.push(`खर्च मर्यादा ${rs(acc.spend_cap)}`);
+    return parts.length ? `<br>${parts.join(' · ')} · <a href="${BILLING}" target="_blank" rel="noopener">पैसे भरा / Billing ↗</a>` : '';
+  }
   async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
     box.innerHTML = '<p class="import-hint">⏳ उघडत आहे…</p>';
@@ -1160,7 +1178,8 @@ const AD_STUDIO = (() => {
       const metaCell = id => M[id] ? `${num(M[id].impressions)}${M[id].google && M[id].views ? ` (${num(M[id].views)} views)` : ''} · ${M[id].clicks}${M[id].clicks ? ` <small>(₹${Math.round(M[id].spend / M[id].clicks)}/click)</small>` : ''}` : '—';
       const status = !meta ? '' : meta.connected
         ? `<p class="ads-meta-line ok">🔗 Meta जोडलं: <b>${_esc(meta.account?.name || '')}</b> · ${_esc(meta.account?.currency || '')} · ${_esc(meta.since || '')} ते ${_esc(meta.until || '')} · ${Object.keys(M).length} ads
-            <br>${meta.config?.dataset ? `🎯 Free test चा निकाल Meta ला जातो: ${meta.capi?.leads || 0} Free test (नवीन ad sets "Free test" वर चालतात; payment ची माहिती जात नाही)` : '🎯 निकाल अजून Meta ला जात नाहीत — Render मध्ये META_DATASET_ID टाका (ad sets सध्या "click" वर चालतात)'}</p>`
+            <br>${meta.config?.dataset ? `🎯 Free test चा निकाल Meta ला जातो: ${meta.capi?.leads || 0} Free test (नवीन ad sets "Free test" वर चालतात; payment ची माहिती जात नाही)` : '🎯 निकाल अजून Meta ला जात नाहीत — Render मध्ये META_DATASET_ID टाका (ad sets सध्या "click" वर चालतात)'}
+            ${_moneyLine(meta.account, S)}</p>`
         : meta.error ? `<p class="ads-meta-line bad">⚠️ ${_esc(meta.error)}</p>`
         : '<p class="ads-meta-line">🔗 Meta जोडलेलं नाही — खर्च हाताने लिहा.</p>';
       const gStatus = !gads ? '' : gads.connected
