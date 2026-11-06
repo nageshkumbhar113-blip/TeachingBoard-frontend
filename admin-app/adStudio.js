@@ -256,6 +256,15 @@ const AD_STUDIO = (() => {
         copy: [`⚔️ Free test दे, तुझे गुण मित्राला पाठव आणि बघ कोण जिंकतं!\n${L} चे प्रश्न, लगेच Result.`, `⚔️ Take the free test, send your score to a friend and see who wins!\n${L} questions, instant result.`],
         headline: ['मित्राला हरव ⚔️', 'Beat your friend ⚔️'],
       },
+      pen: {
+        aud: 'student', kind: 'comp', name: '✍️ Pen ने सोडव', ok: true,
+        hook: ['47² − 43² = ? 5 सेकंदात!', '47² − 43² = ? In 5 seconds!'],
+        hook2: ['Mobile वरच board — pen ने सोडव', 'Your phone is a board — solve with a pen'],
+        scenes: ['hook', 'penphone', 'features', 'offer'],
+        copy: [`✍️ Mobile वरच board: प्रश्न उघड, pen ने सोडव, युक्ती शिक.\n${L}: Free tests + प्रत्येक उत्तराची युक्ती, दर रविवारी महा-Test.\n✅ आधी Free test · Login नाही`,
+          `✍️ Your phone is a board: open a question, solve it with a pen, learn the trick.\n${L}: free tests + a trick with every answer, a weekly Maha-Test.\n✅ Free test first · No login`],
+        headline: ['Mobile वरच board ✍️', 'Your phone is a board ✍️'],
+      },
       // ── regular classes: notes + exercise answers + offline (parents) ──
       'r-guide': {
         aud: 'parent', kind: 'reg', name: '📚 Guide ची गरज नाही', ok: R.has, why: NO_REG,
@@ -308,6 +317,14 @@ const AD_STUDIO = (() => {
         copy: [`🌙 परीक्षेआधी झटपट revision: ${L} चे धड्यानुसार Notes, Internet शिवाय पण.\n${regLine[0]}.`, `🌙 Quick revision before the exam: ${L} chapter notes, even without internet.\n${regLine[1]}.`],
         headline: ['झटपट revision 🌙', 'Quick revision 🌙'],
       },
+      'r-pen': {
+        aud: 'student', kind: 'reg', name: '✍️ Pen ने सोडव', ok: true,
+        hook: ['47² − 43² = ? 5 सेकंदात!', '47² − 43² = ? In 5 seconds!'],
+        hook2: ['Mobile वरच board — pen ने सोडव', 'Your phone is a board — solve with a pen'],
+        scenes: rs(['hook', 'penphone', 'notes', 'offer']),
+        copy: [`✍️ Mobile वरच board: स्वाध्याय उघड, pen ने सोडव, मग उत्तर तपास.\n${L}: ${regLine[0] || 'Notes + स्वाध्याय उत्तरं'}. Offline पण.`, `✍️ Your phone is a board: open the exercise, solve it with a pen, then check the answer.\n${L}: ${regLine[1] || 'notes + exercise answers'}. Offline too.`],
+        headline: ['Mobile वरच board ✍️', 'Your phone is a board ✍️'],
+      },
       // ── school teachers / tutors (registration; commission from Admin › Partners) ──
       'sc-tools': {
         aud: 'school', name: '📄 पेपर 2 मिनिटात', ok: true,
@@ -326,6 +343,15 @@ const AD_STUDIO = (() => {
         copy: [`💰 तुमच्या class link मधून मुलांनी app घेतलं की प्रत्येक पहिल्या payment वर ${f.pct}% तुम्हाला, दर महिन्याला UPI वर.\nसोबत Free: पेपर, tests, गुण.\n✅ आजच नोंदणी करा`,
           `💰 When students join through your class link, you get ${f.pct}% of each first payment, monthly by UPI.\nFree tools too: papers, tests, marks.\n✅ Register today`],
         headline: [`${f.pct}% कमाई + Free tools`, `${f.pct}% earnings + free tools`],
+      },
+      'sc-board': {
+        aud: 'school', name: '🏫 Smart board वर शिकवा', ok: true,
+        hook: ['वर्गात smart board वर थेट solution', 'Solve it live on the class smart board'],
+        hook2: ['तयार प्रश्न · pen · laser', 'Ready questions · pen · laser'],
+        scenes: ['hook', 'penboard', 'tools', 'earn', 'toffer'],
+        copy: [`🏫 वर्गात smart board वर थेट शिकवा: तयार प्रश्न उघडा, pen ने solution लिहा, laser ने दाखवा, पुसा.\nपेपर, tests आणि गुण पण Free.\n💰 तुमच्या मुलांनी app घेतलं तर ${f.pct}% तुम्हाला.\n✅ नोंदणी Free`,
+          `🏫 Teach live on the class smart board: open a ready question, write the solution with a pen, point with the laser, erase.\nPapers, tests and marks free too.\n💰 Earn ${f.pct}% when your students subscribe.\n✅ Free registration`],
+        headline: ['Smart board वर शिकवा · Free', 'Teach on a smart board · free'],
       },
       // ── YouTube teachers ──
       'yt-earn': {
@@ -348,7 +374,7 @@ const AD_STUDIO = (() => {
       },
     };
   }
-  const DUR = { notes: 3500, exdemo: 4500, subjects: 3500, offline: 3500, tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, trio: 10500, result: 4000, features: 4000, offer: 4000 };
+  const DUR = { penphone: 6500, penboard: 7000, notes: 3500, exdemo: 4500, subjects: 3500, offline: 3500, tools: 4000, earn: 3500, toffer: 3500, hook: 3000, challenge: 4500, topper: 3500, days: 3000, free: 3000, paper: 3000, question: 8000, trio: 10500, result: 4000, features: 4000, offer: 4000 };
 
   // ── drawing ──
   let cv = null, x = null;
@@ -634,6 +660,116 @@ const AD_STUDIO = (() => {
       }
     }, '📱 NKs EduOrbit', !!(img && img.naturalWidth));
   }
+  // ── ✍️ the pen writes a solution, fast: on the student's phone (board mode) or the class smart board ──
+  // built-in example: a² − b²; a 🎬 script gives its own { q, lines }
+  const PEN_DEMO = { q: ['सोडवा: 47² − 43² = ?', 'Solve: 47² − 43² = ?'], lines: ['a² − b² = (a + b)(a − b)', '= (47 + 43)(47 − 43)', '= 90 × 4', '= 360'], done: ['5 सेकंदात सुटलं!', 'Solved in 5 seconds!'] };
+  const PEN = { start: 800, line: 900, gap: 150, hold: 1500 };
+  const penMs = n => PEN.start + n * (PEN.line + PEN.gap) + PEN.hold;
+  const HAND = px => `700 ${px}px Kalam, "Baloo 2", Mukta, "Nirmala UI", cursive`;
+  const _penData = d => (d && d.lines ? { q: d.q || '', lines: d.lines, done: '' } : { q: LL(PEN_DEMO.q), lines: PEN_DEMO.lines, done: LL(PEN_DEMO.done) });
+  // which line the pen is on (i) and how far along it (k); i = n when all are written
+  function penAt(lt, n) {
+    const t = lt - PEN.start; if (t < 0) return { i: -1, k: 0 };
+    const i = Math.floor(t / (PEN.line + PEN.gap)); if (i >= n) return { i: n, k: 1 };
+    return { i, k: Math.min(1, (t - i * (PEN.line + PEN.gap)) / PEN.line) };
+  }
+  // write the lines left → right (a moving clip = handwriting); returns the pen tip + each line's box
+  function handLines(lines, lt, X, Y0, lineH, px, colors, maxW) {
+    const at = penAt(lt, lines.length), boxes = []; let tip = null;
+    x.save(); x.textBaseline = 'middle'; x.textAlign = 'left';
+    lines.forEach((s, i) => {
+      let size = px; x.font = HAND(size); while (x.measureText(s).width > maxW && size > 18) { size -= 2; x.font = HAND(size); }
+      const w = x.measureText(s).width, y = Y0 + i * lineH; boxes.push({ x: X, y, w, h: size });
+      if (i > at.i) return;
+      const k = i < at.i ? 1 : at.k;
+      x.save(); x.beginPath(); x.rect(X - 12, y - lineH / 2, (w + 24) * k, lineH); x.clip();
+      x.fillStyle = colors[Math.min(i, colors.length - 1)] || colors[0]; if (i === lines.length - 1 && colors.last) x.fillStyle = colors.last;
+      x.fillText(s, X, y); x.restore();
+      if (i === at.i && k < 1) tip = { x: X + w * k, y: y + Math.sin(lt / 35) * size * .12 };
+    });
+    x.restore();
+    return { tip, at, boxes };
+  }
+  function penTip(tip, px) {
+    if (!tip) return;
+    x.save(); x.font = font(800, px); x.textAlign = 'left'; x.textBaseline = 'bottom'; x.fillText('✏️', tip.x - px * .08, tip.y + px * .12); x.restore();
+  }
+  // after the writing: the formula underlined, the answer circled (+ a "solved" badge)
+  function penMarks(lt, n, boxes, ul, ring) {
+    const end = PEN.start + n * (PEN.line + PEN.gap);
+    if (boxes[0] && lt > PEN.start + PEN.line) {
+      const b = boxes[0], k = outCubic(p(lt, PEN.start + PEN.line, PEN.start + PEN.line + 300));
+      x.save(); x.strokeStyle = ul; x.globalAlpha = .85; x.lineWidth = Math.max(5, b.h * .14); x.lineCap = 'round';
+      x.beginPath(); x.moveTo(b.x, b.y + b.h * .62); x.lineTo(b.x + b.w * k, b.y + b.h * .62); x.stroke(); x.restore();
+    }
+    const last = boxes[n - 1];
+    if (last && lt > end) {
+      const k = outCubic(p(lt, end, end + 450));
+      x.save(); x.strokeStyle = ring; x.lineWidth = Math.max(5, last.h * .12); x.lineCap = 'round';
+      x.beginPath(); x.ellipse(last.x + last.w / 2, last.y, last.w / 2 + 28, last.h * .75, -.05, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); x.stroke(); x.restore();
+    }
+    return end;
+  }
+  // 📱 the student's phone in board mode (the app's real look: question card, lined page, pen bar)
+  function penPhone(f, lt, d) {
+    const P = _penData(d);
+    phoneShell(f, () => {
+      x.save(); x.fillStyle = '#ffffff'; x.fillRect(18, 168, 564, 1014); x.restore();
+      x.save(); x.strokeStyle = '#e3e7ef'; x.lineWidth = 2; for (let y = 420; y < 1040; y += 72) { x.beginPath(); x.moveTo(18, y); x.lineTo(582, y); x.stroke(); } x.restore();
+      x.save(); x.fillStyle = '#ffffff'; x.strokeStyle = '#dcdcf0'; x.lineWidth = 3; rr(40, 190, 520, 200, 26); x.fill(); x.stroke(); x.restore();
+      text(st.lang === 'en' ? '1 mark' : '1 गुण', 66, 222, 22, '#6b6890', 600, 'left');
+      wrapText(P.q, 66, 270, 470, 40, 32, C.ink, 700, 3);
+      const n = P.lines.length, lh = Math.min(118, 560 / Math.max(1, n));
+      const r = handLines(P.lines, lt, 60, 470, lh, Math.min(46, lh * .5), Object.assign(['#1d4ed8'], { last: '#15803d' }), 480);
+      const end = penMarks(lt, n, r.boxes, '#facc15', '#ef4444');
+      penTip(r.tip, 72);
+      // the pen bar (✏️ picked)
+      x.save(); x.fillStyle = '#1d1b2e'; rr(30, 1060, 540, 100, 34); x.fill(); x.restore();
+      ['✋', '👆', '✏️', '🖍️', '🎨', '🧽', '🔴'].forEach((ic, i) => {
+        const cx = 75 + i * 75;
+        if (i === 2) { x.save(); x.fillStyle = '#3b82f6'; rr(cx - 34, 1072, 68, 76, 18); x.fill(); x.restore(); }
+        text(ic, cx, 1112, 40, C.ink, 800);
+      });
+      const b = outBack(p(lt, end + 300, end + 800));
+      if (b > 0 && P.done) { x.save(); x.translate(300, 1000); x.scale(b, b); x.fillStyle = C.green; rr(-210, -36, 420, 72, 36); x.fill(); text('✅ ' + P.done, 0, 2, 30, C.white, 800, 'center', 400); x.restore(); }
+    }, st.lang === 'en' ? '✍️ Board mode' : '✍️ Board mode — pen ने सोडव', true);
+  }
+  // 🏫 the class smart board: printed question, the teacher's pen writes, laser points
+  function penBoard(W, H, lt, d, caption) {
+    const P = _penData(d), tall = st.fmt === '916', sq = st.fmt === '11';
+    if (caption && !sq) {
+      text(LL(caption), W / 2, tall ? 230 : sq ? 95 : 120, tall ? 60 : 46, C.white, 800, 'center', W - 100);
+      if (st.lang === 'both') text(caption[1], W / 2, tall ? 300 : sq ? 145 : 175, tall ? 36 : 30, '#ffd6e7', 700, 'center', W - 100);
+    }
+    const a = outCubic(p(lt, 0, 600)), bx = 40, bw = W - 80, by = (tall ? 400 : sq ? 140 : 230) + (1 - a) * 80, bh = tall ? 860 : sq ? 740 : 860;
+    x.save(); x.globalAlpha = a;
+    x.fillStyle = '#c9ccd3'; rr(bx - 14, by - 14, bw + 28, bh + 28, 26); x.fill();
+    const g = x.createLinearGradient(0, by, 0, by + bh); g.addColorStop(0, '#16324a'); g.addColorStop(1, '#0d2235');
+    x.fillStyle = g; rr(bx, by, bw, bh, 16); x.fill();
+    // the board's own tool column (pen picked)
+    x.fillStyle = 'rgba(255,255,255,.1)'; rr(bx + 14, by + 20, 86, 380, 20); x.fill();
+    ['✏️', '🖍️', '🧽', '🔴', '↩️'].forEach((ic, i) => { if (i === 0) { x.fillStyle = '#3b82f6'; rr(bx + 20, by + 26 + i * 72, 74, 66, 14); x.fill(); } text(ic, bx + 57, by + 59 + i * 72, 38, C.white, 800); });
+    x.restore();
+    if (a < 1) return;
+    const L0 = bx + 130, maxW = bw - 170;
+    wrapText(P.q, L0, by + 60, maxW, 50, 42, '#ffffff', 700, 2);
+    const n = P.lines.length, lh = Math.min(tall ? 150 : 128, (bh - 190) / Math.max(1, n));
+    const r = handLines(P.lines, lt, L0, by + 170 + lh / 2, lh, Math.min(tall ? 70 : 60, lh * .55), Object.assign(['#fde047', '#ffffff'], { last: '#86efac' }), maxW);
+    const end = penMarks(lt, n, r.boxes, '#f472b6', '#f472b6');
+    penTip(r.tip, tall ? 96 : 84);
+    // the laser dot runs over the formula, then rests on the answer
+    if (lt > end + 400) {
+      const k = outCubic(p(lt, end + 400, end + 1100)), f0 = r.boxes[0], l0 = r.boxes[n - 1];
+      const lx = f0.x + (l0.x + l0.w / 2 - f0.x) * k, ly = f0.y + (l0.y - f0.y) * k;
+      x.save(); x.fillStyle = 'rgba(239,68,68,.35)'; x.beginPath(); x.arc(lx, ly, 26, 0, 7); x.fill(); x.fillStyle = '#ef4444'; x.beginPath(); x.arc(lx, ly, 12, 0, 7); x.fill(); x.restore();
+    }
+    if (tall || st.fmt === '45') {
+      const b = outBack(p(lt, 300, 900)), y = by + bh + (tall ? 170 : 90);
+      if (b > 0) { x.save(); x.translate(W / 2, y); x.scale(b, b); x.fillStyle = 'rgba(255,255,255,.95)'; rr(-440, -62, 880, 124, 62); x.fill();
+        text(st.lang === 'en' ? '👩‍🏫 Ready questions + pen, live in class' : '👩‍🏫 तयार प्रश्न + pen, थेट वर्गात', 0, 2, 42, C.ink, 800, 'center', 820); x.restore(); }
+    }
+  }
+  const PEN_CAP = { phone: ['Mobile वरच board — pen ने सोडव!', 'Your phone is a board — solve with a pen!'], board: ['वर्गात smart board वर थेट solution', 'Solve it live on the class smart board'] };
   // one line of the script's text, in the chosen language (scripts are written in one language)
   const capOf = s0 => (s0 ? [s0, s0] : null);
   const S = {
@@ -722,6 +858,14 @@ const AD_STUDIO = (() => {
         text(d.button || (isTeacher(v.aud) ? '▶ नोंदणी करा' : '▶ आधी Free Test द्या'), 0, 4, tall ? 62 : 52, '#3b1d00', 800, 'center', 780); x.restore(); }
       if (c > .5) text(SITE.replace(/^https:\/\//, ''), W / 2, cy + (tall ? 720 : 560), 40, C.white, 700);
     },
+    x_pen(W, H, lt, v, f, after, d) {
+      const board = d.board ? d.board === 'class' : isTeacher(v.aud);
+      if (board) penBoard(W, H, lt, d, capOf(d.caption) || PEN_CAP.board);
+      else placePhone(W, H, lt, true, () => penPhone(f, lt, d), capOf(d.caption) || PEN_CAP.phone);
+    },
+    // ✍️ built-in: a² − b² written fast by the pen
+    penphone(W, H, lt, v, f) { placePhone(W, H, lt, true, () => penPhone(f, lt, null), PEN_CAP.phone); },
+    penboard(W, H, lt) { penBoard(W, H, lt, null, PEN_CAP.board); },
     hook(W, H, lt, v) {
       const tall = st.fmt === '916', a = outBack(p(lt, 200, 900)), b = outBack(p(lt, 900, 1600));
       x.save(); x.translate(W / 2, H * .36); x.scale(a, a); both(v.hook, 0, 0, tall ? 92 : 76, tall ? 90 : 72); x.restore();
@@ -1101,7 +1245,7 @@ const AD_STUDIO = (() => {
   // timer / day counter runs, pop + sparkle on the rank, ta-da on the offer). Nothing is downloaded:
   // no copyright music. The admin's own voice (🎤) can go on top; the music then stays low.
   // the energetic track runs from the first frame to the last; scenes only move it a little
-  const LEVEL = { x_hook: .95, x_points: .85, x_number: .9, x_question: .72, x_steps: .85, x_compare: .85, x_quote: .75, x_app: .8, x_screenshot: .8, x_cta: 1,
+  const LEVEL = { x_hook: .95, x_points: .85, x_number: .9, x_question: .72, x_steps: .85, x_compare: .85, x_quote: .75, x_app: .8, x_screenshot: .8, x_cta: 1, x_pen: .7, penphone: .7, penboard: .7,
     hook: .95, challenge: .75, question: .72, trio: .8, result: 1, features: .85, offer: 1, topper: .95, days: .8, free: .85, paper: .85,
     notes: .75, exdemo: .72, subjects: .8, offline: .78, tools: .85, earn: .9, toffer: 1 };
   const _voice = {};   // ad id → { buf: ArrayBuffer, name, secs }
@@ -1129,6 +1273,12 @@ const AD_STUDIO = (() => {
       if (s.k === 'x_quote') ev.push({ at: s.at + 300, k: 'chime' });
       if (s.k === 'x_app' || s.k === 'x_screenshot') ev.push({ at: s.at + 200, k: 'pop' });
       if (s.k === 'x_cta') { ev.push({ at: s.at + 100, k: 'tada' }); ev.push({ at: s.at + 900, k: 'sparkle' }); }
+      // ✍️ the pen: a scratch while each line is written, a ding when the answer is circled
+      if (s.k === 'x_pen' || s.k === 'penphone' || s.k === 'penboard') {
+        const n = (d.lines || PEN_DEMO.lines).length;
+        for (let j = 0; j < n; j++) ev.push({ at: s.at + PEN.start + j * (PEN.line + PEN.gap), k: 'scribble', d: PEN.line });
+        ev.push({ at: s.at + PEN.start + n * (PEN.line + PEN.gap), k: 'ding' });
+      }
       if (s.k === 'trio') for (let k = 0; k < 3; k++) {
         if (k) ev.push({ at: s.at + k * 3500, k: 'whoosh' });
         ev.push({ at: s.at + k * 3500 + 60, k: 'stab', n: k + 1 });
@@ -1223,6 +1373,7 @@ const AD_STUDIO = (() => {
       if (e.k === 'chime') [880, 1108.7, 1318.5].forEach((f, i) => osc('sine', f, at + i * .07, .6, .18));
       if (e.k === 'blip') osc('sine', 660 * Math.pow(1.122, e.n), at, .12, .18);
       if (e.k === 'riser') hiss(at, e.d / 1000, .3, 300, 6000);
+      if (e.k === 'scribble') for (let j = 0; j * .11 < e.d / 1000; j++) hiss(at + j * .11, .08 + (j % 3) * .015, .1 + (j % 2) * .04, 2600 + (j % 4) * 400, 3600 + (j % 3) * 500);
       if (e.k === 'sparkle') for (let i = 0; i < 8; i++) osc('sine', 2000 + ((i * 337) % 1500), at + i * .05, .15, .08);
       if (e.k === 'tada') [523.3, 659.3, 784, 1046.5].forEach((f, i) => { osc('triangle', f, at + i * .09, i === 3 ? 1.2 : .25, .3); osc('sine', f * 2, at + i * .09, .3, .08); });
     }
@@ -1757,6 +1908,7 @@ const AD_STUDIO = (() => {
     const host = $('ad-studio'); if (!host) return;
     if (!_ready) {
       _ready = true;
+      try { document.fonts?.load('700 40px Kalam', 'a² − b² = 360 सोडवा').catch(() => {}); } catch (e) { /* the pen then writes in the normal font */ }
       host.innerHTML = `
         <h3 class="admin-section-title">📣 Ads — Facebook / Instagram आणि YouTube</h3>
         <div class="ads-plats" role="group" aria-label="कुठे">

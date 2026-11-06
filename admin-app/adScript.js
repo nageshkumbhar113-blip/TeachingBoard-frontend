@@ -23,6 +23,8 @@
     app:        { need: ['screen'], text: { caption: 45 }, ms: () => 3800 },
     screenshot: { need: [], text: { caption: 45, note: 60 }, ms: () => 3800 },
     cta:        { need: ['text'], text: { text: 32, button: 22 }, ms: () => 4000 },
+    // ✍️ the pen writes a short solution fast (phone board mode / class smart board); timing = Ad Studio's PEN
+    pen:        { need: ['q', 'lines'], text: { q: 90, caption: 45 }, list: { lines: [1, 5, 32] }, ms: s => 800 + 1050 * (s.lines?.length || 0) + 1700 },
   };
   const SCREENS = ['notes', 'exercise', 'test', 'rank', 'subjects', 'smartboard', 'offline'];
   const AUDIENCES = ['parent', 'student', 'school', 'youtube'];
@@ -136,13 +138,17 @@
         if (!SCREENS.includes(s.screen)) errors.push(`${where} (app): "screen" यापैकी हवी: ${SCREENS.join(', ')}`);
         sc.screen = s.screen;
       }
+      if (s.type === 'pen') {
+        if (s.board !== undefined && !['phone', 'class'].includes(s.board)) errors.push(`${where} (pen): "board" हवा: "phone" (विद्यार्थ्याचा mobile) किंवा "class" (वर्गातला smart board)`);
+        else if (s.board) sc.board = s.board;
+      }
       if (s.type === 'quote' && s.by) warnings.push(`${where} (quote): "by" काढला — quote आपलाच संदेश असतो, कोणाच्या नावाने नाही`);
       // a made-up money figure inside ordinary text
       for (const k of ['text', 'sub', 'label', 'title', 'before', 'after', 'caption']) {
         const rawT = str(s[k]);
         if (/₹\s*\d|\d+\s*%/.test(rawT) && !/\{[a-z_]+\}/.test(rawT)) errors.push(`${where} (${s.type}): "${k}" मध्ये ₹ / % चा आकडा थेट लिहिला आहे — { } खूण वापरा`);
       }
-      sc.ms = Math.round(T.ms(sc) * (s.type === 'question' ? 1 : pace));
+      sc.ms = Math.round(T.ms(sc) * (s.type === 'question' || s.type === 'pen' ? 1 : pace));
       out.scenes.push(sc);
     });
     if (out.scenes.length) {
@@ -194,6 +200,8 @@
       '3. फक्त हे scene types: ' + Object.keys(TYPES).join(', ') + '. नवीन type बनवू नकोस.',
       '   hook {text, sub} · points {title, items[1-4]} · number {value, prefix, suffix, label} · question {q, options[4], answer 0-3, why} किंवा {"use": "class"} (class च्या free test मधला खरा प्रश्न)',
       '   steps {items[2-4]} · compare {before, after} · quote {text} (आपलाच संदेश, कोणाचं नाव नाही) · app {screen, caption} · screenshot {caption, note} · cta {text, button}',
+      '   pen {q, lines[1-5], board} — pen वेगाने solution लिहितो: q = प्रश्न, lines = सोडवण्याच्या पायऱ्या (पहिली ओळ सूत्र, शेवटची उत्तर), प्रत्येक ओळ 32 अक्षरं. board: "phone" (विद्यार्थी mobile वर) किंवा "class" (शिक्षक वर्गातल्या smart board वर). गणित बरोबर आहे ना ते दोनदा तपास.',
+      '   उदा. { "type": "pen", "q": "सोडवा: 47² − 43² = ?", "lines": ["a² − b² = (a + b)(a − b)", "= (47 + 43)(47 − 43)", "= 90 × 4", "= 360"], "board": "phone" }',
       '   app.screen यापैकी: ' + SCREENS.join(', '),
       '4. एका scene मध्ये थोडे शब्द: hook 40 अक्षरं, points ची प्रत्येक ओळ 30 अक्षरं (4 ओळी पर्यंत), cta 32.',
       '5. एकूण 15–30 सेकंद: 5 ते 7 scenes.',
