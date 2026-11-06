@@ -164,7 +164,7 @@
   }
 
   // the prompt for ChatGPT / Claude
-  function prompt({ want = '', audience = '', className = '', values = {} } = {}) {
+  function prompt({ want = '', audience = '', className = '', values = {}, count = 1 } = {}) {
     const known = Object.entries(PLACEHOLDERS).map(([k, d]) => `  {${k}} — ${d}${values[k] !== undefined && values[k] !== null && values[k] !== '' ? ` (सध्या: ${values[k]})` : ''}`).join('\n');
     const example = {
       title: 'YouTube teachers – स्वतःचं पॅनल + कमाई', audience: 'youtube', link: 'teacher', recipe: '1',
@@ -204,12 +204,21 @@
       '9. "copy": Facebook / Instagram ad चा मजकूर (text, 2-3 ओळी) आणि headline (6 शब्द) — त्यातही आकड्यांसाठी खुणा.',
       '10. audience: parent / student / school / youtube. link: शिक्षकांसाठी "teacher", पालक / विद्यार्थ्यांसाठी "free".',
       '',
-      'हे उदाहरण आहे — याच format मध्ये, पण माझ्या मागणीनुसार नवीन मजकूर दे:',
+      count > 1 ? `11. एकाच विषयावर ${count} वेगळे videos दे (A/B testing साठी): प्रत्येकाची recipe, सुरुवात (hook), शब्द आणि theme वेगळी. उत्तर असं: { "videos": [ {…video 1…}, {…video 2…}${count > 2 ? ', {…video 3…}' : ''} ] }` : '',
+      '',
+      count > 1 ? 'एका video चं उदाहरण ("videos" यादीतला प्रत्येक video याच format मध्ये, पण माझ्या मागणीनुसार नवीन मजकूर):' : 'हे उदाहरण आहे — याच format मध्ये, पण माझ्या मागणीनुसार नवीन मजकूर दे:',
       JSON.stringify(example, null, 2),
     ].filter(l => l !== '').join('\n');
   }
 
-  const api = { TYPES, SCREENS, AUDIENCES, THEMES, PACES, MUSIC, RECIPES, PLACEHOLDERS, extract, parse, prompt };
+  // one answer may hold several videos: { videos: [ … ] } or [ … ] → the JSON text of each one
+  function split(raw) {
+    let j; try { j = typeof raw === 'string' ? extract(raw.trim().startsWith('[') ? '{"videos":' + raw.trim() + '}' : raw) : raw; } catch (e) { return [String(raw || '')]; }
+    const list = Array.isArray(j) ? j : Array.isArray(j?.videos) ? j.videos : null;
+    return list && list.length ? list.slice(0, 5).map(v => JSON.stringify(v, null, 2)) : [typeof raw === 'string' ? raw : JSON.stringify(raw)];
+  }
+
+  const api = { TYPES, SCREENS, AUDIENCES, THEMES, PACES, MUSIC, RECIPES, PLACEHOLDERS, extract, parse, prompt, split };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.AD_SCRIPT = api;
 })(typeof window !== 'undefined' ? window : null);

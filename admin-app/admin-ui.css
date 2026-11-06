@@ -2786,3 +2786,9 @@ body.admin-app {
 .vid-item { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 8px; border: 1px solid #ece8fb; border-radius: 10px; margin: 4px 0; background: #fff; }
 .vid-item span { flex: 1 1 220px; }
 .vid-item small { display: block; color: #8a83b3; }
+
+.vid-one { margin: 6px 0; } .vid-set { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; padding: 8px; border-radius: 10px; background: #f3eeff; }
+.vid-set p { flex-basis: 100%; margin: 2px 0; }
+.vid-item input[type=checkbox] { width: 20px; height: 20px; }
+.ads-mix { display: grid; gap: 4px; margin: 6px 0; }
+.ads-mix label { display: grid; grid-template-columns: 1fr 140px 44px; gap: 6px; align-items: center; font-size: .8rem; font-weight: 700; }

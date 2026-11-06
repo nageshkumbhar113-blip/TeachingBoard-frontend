@@ -969,7 +969,8 @@ const AD_STUDIO = (() => {
   function adParts(v = st.v) {
     const f = _facts(), a = _variants(f)[v];
     return {
-      message: st.lang === 'mr' ? a.copy[0] : st.lang === 'en' ? a.copy[1] : `${a.copy[0]}\n\n${a.copy[1]}`,
+      // a 🎬 script is written in one language: its text once
+      message: st.lang === 'mr' || a.copy[0] === a.copy[1] ? a.copy[0] : st.lang === 'en' ? a.copy[1] : `${a.copy[0]}\n\n${a.copy[1]}`,
       headline: st.lang === 'en' ? a.headline[1] : a.headline[0],
       cta: isTeacher(a.aud) ? 'SIGN_UP' : 'LEARN_MORE',
       link: adLink(v), aud: a.aud,
@@ -1104,6 +1105,8 @@ const AD_STUDIO = (() => {
     hook: .95, challenge: .75, question: .72, trio: .8, result: 1, features: .85, offer: 1, topper: .95, days: .8, free: .85, paper: .85,
     notes: .75, exdemo: .72, subjects: .8, offline: .78, tools: .85, earn: .9, toffer: 1 };
   const _voice = {};   // ad id → { buf: ArrayBuffer, name, secs }
+  // the admin's mix: 1 = as made; 0 … 1.5 (kept on this device)
+  const MIX_KEY = 'ad_mix', _mix = { bed: 1, anim: 1, voice: 1 };
   st.sound = true;
   // what happens when (ms from the start) — also used by the test
   function audioPlan(v = st.v) {
@@ -1156,19 +1159,23 @@ const AD_STUDIO = (() => {
     //           loudness follows the scenes. Both stay lower under the admin's own voice.
     const duck = voice ? .4 : 1;
     const bed = ctx.createGain();
-    const light = _variants(_facts())[v]?.style?.music === 'light', bedLv = (light ? .17 : .3) * duck;
+    const light = _variants(_facts())[v]?.style?.music === 'light', bedLv = (light ? .17 : .3) * duck * _mix.bed;
     bed.gain.setValueAtTime(0, t0); bed.gain.linearRampToValueAtTime(bedLv, t0 + .08);
     bed.gain.setValueAtTime(bedLv, end - .8); bed.gain.linearRampToValueAtTime(0, end);
     bed.connect(master);
     const music = ctx.createGain();   // = the animation layer
-    music.gain.setValueAtTime(.45 * duck, t0); music.connect(master);
+    const an = .45 * duck * _mix.anim;
+    music.gain.setValueAtTime(an, t0); music.connect(master);
+    // (gain.value is not the scheduled level — keep our own, or each new card jumped to full volume)
+    let lvNow = an;
     for (const e of events.filter(x => x.k === 'level')) {
       const at = t0 + e.at / 1000;
-      music.gain.setValueAtTime(music.gain.value, at);
-      music.gain.linearRampToValueAtTime(e.level * .45 * duck, at + e.ramp / 1000);
+      music.gain.setValueAtTime(lvNow, at);
+      lvNow = e.level * an;
+      music.gain.linearRampToValueAtTime(lvNow, at + e.ramp / 1000);
     }
-    music.gain.setValueAtTime(.45 * duck, end - .8); music.gain.linearRampToValueAtTime(0, end);
-    const fx = ctx.createGain(); fx.gain.value = voice ? .6 : .9; fx.connect(master);
+    music.gain.setValueAtTime(lvNow, end - .8); music.gain.linearRampToValueAtTime(0, end);
+    const fx = ctx.createGain(); fx.gain.value = (voice ? .6 : .9) * _mix.anim; fx.connect(master);
     const osc = (type, f, at, d, gain, dest = fx, glideTo) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = type; o.frequency.setValueAtTime(f, at); if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, at + d);
@@ -1222,7 +1229,7 @@ const AD_STUDIO = (() => {
     // the admin's own voice, a little after the start
     if (voice?.decoded) {
       const s = ctx.createBufferSource(), g = ctx.createGain();
-      s.buffer = voice.decoded; g.gain.value = 1; s.connect(g); g.connect(master);
+      s.buffer = voice.decoded; g.gain.value = _mix.voice; s.connect(g); g.connect(master);
       s.start(t0 + .3, 0, Math.max(0, len / 1000 - .4));
     }
     return end;
@@ -1580,28 +1587,39 @@ const AD_STUDIO = (() => {
     }
     _paintVidList();
   }
-  function _vidMsg(r) {
+  function _vidMsg(results) {
     const box = $('vid-msg'); if (!box) return;
-    if (!r) { box.innerHTML = ''; return; }
-    const sec = Math.round(r.ms / 1000);
-    box.innerHTML = (r.errors.length ? `<div class="vid-bad"><b>❌ ${r.errors.length} चुका — AI ला सांगा किंवा हाताने दुरुस्त करा:</b><ul>${r.errors.map(e => `<li>${_esc(e)}</li>`).join('')}</ul></div>` : `<div class="vid-ok">✅ Script बरोबर — ${r.script.scenes.length} scenes · ≈ ${sec} सेकंद · ${_esc(r.script.audience)} · ${_esc(r.script.style.theme)} / ${_esc(r.script.style.pace)} / ${_esc(r.script.style.music)}</div>`)
-      + (r.warnings.length ? `<div class="vid-warn"><b>⚠️ लक्षात घ्या:</b><ul>${r.warnings.map(e => `<li>${_esc(e)}</li>`).join('')}</ul></div>` : '');
+    if (!results || !results.length) { box.innerHTML = ''; return; }
+    const many = results.length > 1;
+    box.innerHTML = results.map(({ r, sid }, k) => {
+      const head = many ? `<button type="button" class="ads-mini" data-vid-peek="${sid}">▶ Video ${k + 1}</button> ` : '';
+      return `<div class="vid-one">${head}` + (r.errors.length
+        ? `<div class="vid-bad"><b>❌ ${many ? `Video ${k + 1}: ` : ''}${r.errors.length} चुका — AI ला सांगा किंवा हाताने दुरुस्त करा:</b><ul>${r.errors.map(e => `<li>${_esc(e)}</li>`).join('')}</ul></div>`
+        : `<span class="vid-ok">✅ ${many ? `Video ${k + 1} · ` : ''}${_esc(r.script.title)} — ${r.script.scenes.length} scenes · ≈ ${Math.round(r.ms / 1000)} सेकंद · ${_esc(r.script.audience)} · ${_esc(r.script.style.theme)} / ${_esc(r.script.style.pace)} / ${_esc(r.script.style.music)}</span>`)
+        + (r.warnings.length ? `<div class="vid-warn"><b>⚠️ लक्षात घ्या:</b><ul>${r.warnings.map(e => `<li>${_esc(e)}</li>`).join('')}</ul></div>` : '') + '</div>';
+    }).join('');
+    box.querySelectorAll('[data-vid-peek]').forEach(b => b.addEventListener('click', () => _showVid(b.dataset.vidPeek)));
+  }
+  function _showVid(sid) {
+    const a = _scriptVariants(_facts())['s:' + sid]; if (!a) return;
+    st.aud = a.aud; st.v = 's:' + sid; st.t0 = performance.now(); st.paused = false; _paintSide();
   }
   // screenshot scenes: a file picker for each (kept on this device only)
-  function _paintShots(sid, r) {
+  function _paintShots(items) {
     const box = $('vid-shots'); if (!box) return;
-    const list = (r?.script?.scenes || []).map((sc, i) => ({ sc, i })).filter(o => o.sc.type === 'screenshot');
-    box.innerHTML = list.map(({ sc, i }) => `<label class="vid-shot">🖼️ Scene ${i + 1}${sc.note ? ' — ' + _esc(sc.note) : ''}: ${_shots[sid]?.[i] ? '✅ जोडला' : '<b>screenshot जोडा</b>'} <input type="file" accept="image/*" data-shot="${i}" /></label>`).join('');
+    const many = items.length > 1;
+    box.innerHTML = items.flatMap(({ sid, r }, k) => (r?.script?.scenes || []).map((sc, i) => ({ sc, i })).filter(o => o.sc.type === 'screenshot')
+      .map(({ sc, i }) => `<label class="vid-shot">🖼️ ${many ? `Video ${k + 1} · ` : ''}Scene ${i + 1}${sc.note ? ' — ' + _esc(sc.note) : ''}: ${_shots[sid]?.[i] ? '✅ जोडला' : '<b>screenshot जोडा</b>'} <input type="file" accept="image/*" data-shot-sid="${sid}" data-shot="${i}" /></label>`)).join('');
     box.querySelectorAll('[data-shot]').forEach(inp => inp.addEventListener('change', async () => {
       const file = inp.files?.[0]; if (!file) return;
       const url = await _shrink(file).catch(() => '');
       if (!url) { APP.toast('हे चित्र उघडलं नाही', 'error'); return; }
-      const img = new Image(); img.src = url; await img.decode().catch(() => {});
+      const sid = inp.dataset.shotSid, img = new Image(); img.src = url; await img.decode().catch(() => {});
       (_shots[sid] = _shots[sid] || {})[inp.dataset.shot] = img;
       const saved = (await DB.getSetting(SHOTS_KEY, {}).catch(() => ({}))) || {};
       (saved[sid] = saved[sid] || {})[inp.dataset.shot] = url;
       await DB.setSetting(SHOTS_KEY, saved).catch(() => {});
-      _vidCheck(true);
+      _vidCheck(false); _showVid(sid);
     }));
   }
   // a phone screenshot, made small (≤ 720 px wide JPEG) before it is kept
@@ -1618,62 +1636,119 @@ const AD_STUDIO = (() => {
       img.src = url;
     });
   }
-  // check what is in the box; show it on the canvas (as a draft) when it is right
+  // check what is in the box (one video, or { videos: [ … ] }); show the first right one on the canvas
   function _vidCheck(show = true) {
     const raw = $('vid-in').value.trim();
-    if (!raw) { _vidMsg(null); return null; }
-    const sid = _editing || 'draft';
-    const i = _scripts.findIndex(x => x.sid === sid);
-    if (i >= 0) _scripts[i].raw = raw; else _scripts.push({ sid, raw, draft: !_editing });
+    for (let i = _scripts.length - 1; i >= 0; i--) if (_scripts[i].draft) _scripts.splice(i, 1);
+    if (!raw) { _vidMsg(null); $('vid-shots').innerHTML = ''; return []; }
+    const parts = _editing ? [AD_SCRIPT.split(raw)[0]] : AD_SCRIPT.split(raw);
     _parsed.clear();
-    const r = _scriptOf(sid, _facts());
-    _vidMsg(r); _paintShots(sid, r);
-    if (show && r?.script) {
-      const aud = AUD_LETTER[r.script.audience] ? r.script.audience : st.aud;
-      st.aud = aud; st.v = 's:' + sid; st.t0 = performance.now(); st.paused = false;
-      _paintSide();
-    }
-    return r;
+    const items = parts.map((part, k) => {
+      const sid = _editing || 'draft' + k;
+      const i = _scripts.findIndex(x => x.sid === sid);
+      if (i >= 0) _scripts[i].raw = part; else _scripts.push({ sid, raw: part, draft: !_editing });
+      return { sid, part, r: _scriptOf(sid, _facts()) };
+    });
+    _vidMsg(items); _paintShots(items);
+    const first = items.find(o => o.r?.ok) || items[0];
+    if (show && first?.r?.script) _showVid(first.sid);
+    return items;
   }
   async function _vidSave() {
-    const r = _vidCheck(false); const msg = $('vid-msg');
-    if (!r) { msg.textContent = 'आधी AI चं उत्तर paste करा'; return; }
-    if (!r.ok) { APP.toast('आधी चुका दुरुस्त करा', 'error'); return; }
+    const items = _vidCheck(false);
+    if (!items.length) { $('vid-msg').textContent = 'आधी AI चं उत्तर paste करा'; return; }
+    const good = items.filter(o => o.r?.ok);
+    if (!good.length) { APP.toast('आधी चुका दुरुस्त करा', 'error'); return; }
+    const bad = items.length - good.length;
     try {
-      const out = await API.adScriptSave({ sid: _editing || undefined, raw: $('vid-in').value.trim() });
-      // the draft's screenshots move to the saved id
-      if (!_editing && _shots.draft) {
-        _shots[out.sid] = _shots.draft; delete _shots.draft;
-        const saved = (await DB.getSetting(SHOTS_KEY, {}).catch(() => ({}))) || {};
-        if (saved.draft) { saved[out.sid] = saved.draft; delete saved.draft; await DB.setSetting(SHOTS_KEY, saved).catch(() => {}); }
+      const saved = (await DB.getSetting(SHOTS_KEY, {}).catch(() => ({}))) || {};
+      const sids = [];
+      for (const o of good) {
+        const out = await API.adScriptSave({ sid: _editing || undefined, raw: o.part });
+        sids.push(out.sid);
+        // a draft's screenshots move to the saved id
+        if (!_editing && _shots[o.sid]) { _shots[out.sid] = _shots[o.sid]; delete _shots[o.sid]; }
+        if (!_editing && saved[o.sid]) { saved[out.sid] = saved[o.sid]; delete saved[o.sid]; }
       }
-      const di = _scripts.findIndex(x => x.sid === 'draft'); if (di >= 0) _scripts.splice(di, 1);
-      _editing = out.sid;
+      await DB.setSetting(SHOTS_KEY, saved).catch(() => {});
+      for (let i = _scripts.length - 1; i >= 0; i--) if (_scripts[i].draft) _scripts.splice(i, 1);
+      if (_editing) _editing = sids[0];
+      _picked.clear(); sids.forEach(s0 => _picked.add(s0));
       await _loadScripts();
-      st.v = 's:' + out.sid; _paintSide();
-      APP.toast('💾 Save केलं — आता हा video ads च्या यादीत आहे', 'success');
+      _showVid(sids[0]);
+      APP.toast(`💾 ${sids.length} video save केले${bad ? ` (${bad} मध्ये चुका होत्या — ते राहिले)` : ''} — खाली खूण केलेले आहेत: Meta ला पाठवा / Download`, 'success');
     } catch (err) { APP.toast(err?.message || 'Save झालं नाही', 'error'); }
   }
+  // the saved videos: ▶ / ✏️ / 🗑, and a tick to send / download several together
+  const _picked = new Set();
   function _paintVidList() {
     const box = $('vid-list'); if (!box) return;
     const f = _facts(), V = _scriptVariants(f);
     const saved = _scripts.filter(x => !x.draft);
+    for (const s0 of [..._picked]) if (!saved.some(x => x.sid === s0)) _picked.delete(s0);
     box.innerHTML = saved.length ? saved.map(x => {
       const a = V['s:' + x.sid]; if (!a) return '';
-      return `<div class="vid-item"><span><b>${_esc(a.name)}</b> <small>${_esc(AUD[a.aud]?.name || a.aud)} · ≈ ${Math.round((a.ms || 0) / 1000)} से${a.ok ? '' : ' · ⚠️ ' + _esc(a.why)}</small></span>
+      return `<div class="vid-item"><input type="checkbox" data-vid-pick="${x.sid}" ${_picked.has(x.sid) ? 'checked' : ''} ${a.ok ? '' : 'disabled'} aria-label="निवडा" />
+        <span><b>${_esc(a.name)}</b> <small>${_esc(AUD[a.aud]?.name || a.aud)} · ≈ ${Math.round((a.ms || 0) / 1000)} से · ${_esc(adId('s:' + x.sid))}${a.ok ? '' : ' · ⚠️ ' + _esc(a.why)}</small></span>
         <button type="button" class="ads-mini" data-vid-show="${x.sid}">▶ पाहा</button><button type="button" class="ads-mini" data-vid-edit="${x.sid}">✏️ बदला</button><button type="button" class="ads-mini" data-vid-del="${x.sid}">🗑</button></div>`;
     }).join('') : '<p class="import-hint">अजून save केलेले videos नाहीत.</p>';
-    box.querySelectorAll('[data-vid-show]').forEach(b => b.addEventListener('click', () => { const a = V['s:' + b.dataset.vidShow]; if (!a) return; st.aud = a.aud; st.v = 's:' + b.dataset.vidShow; st.t0 = performance.now(); st.paused = false; _paintSide(); $('ads-cv')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
+    $('vid-set').hidden = !saved.length;
+    $('vid-set-n').textContent = _picked.size ? `${_picked.size} निवडले` : 'वरच्या यादीत खूण करा';
+    box.querySelectorAll('[data-vid-pick]').forEach(c => c.addEventListener('change', () => { c.checked ? _picked.add(c.dataset.vidPick) : _picked.delete(c.dataset.vidPick); $('vid-set-n').textContent = _picked.size ? `${_picked.size} निवडले` : 'वरच्या यादीत खूण करा'; }));
+    box.querySelectorAll('[data-vid-show]').forEach(b => b.addEventListener('click', () => { _showVid(b.dataset.vidShow); $('ads-cv')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
     box.querySelectorAll('[data-vid-edit]').forEach(b => b.addEventListener('click', () => { const sc = _scripts.find(x => x.sid === b.dataset.vidEdit); if (!sc) return; _editing = sc.sid; $('vid-in').value = sc.raw; $('ads-vid').open = true; $('vid-editing').textContent = '✏️ बदलत आहात — Save केल्यावर हाच video बदलेल'; _vidCheck(true); }));
     box.querySelectorAll('[data-vid-del]').forEach(b => b.addEventListener('click', async () => {
       if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'पक्कं?'; return; }
-      try { await API.adScriptDelete(b.dataset.vidDel); if (_editing === b.dataset.vidDel) _vidNew(); await _loadScripts(); _paintSide(); } catch (err) { APP.toast(err?.message || '', 'error'); }
+      try { await API.adScriptDelete(b.dataset.vidDel); if (_editing === b.dataset.vidDel) _vidNew(); _picked.delete(b.dataset.vidDel); await _loadScripts(); _paintSide(); } catch (err) { APP.toast(err?.message || '', 'error'); }
     }));
   }
-  function _vidNew() { _editing = ''; $('vid-in').value = ''; $('vid-editing').textContent = ''; _vidMsg(null); $('vid-shots').innerHTML = ''; const di = _scripts.findIndex(x => x.sid === 'draft'); if (di >= 0) _scripts.splice(di, 1); }
+  const _pickedKeys = () => [..._picked].map(s0 => 's:' + s0).filter(k => _scriptVariants(_facts())[k]?.ok);
+  // the ticked videos → Meta, one after another (same audience = the same ad set), then one "turn all on"
+  async function _vidSend() {
+    const keys = _pickedKeys(), box = $('vid-set-msg'), btn = $('vid-send');
+    if (!keys.length) { box.textContent = 'आधी videos वर खूण करा'; return; }
+    if (!_metaOk) { box.textContent = '⚠️ Meta जोडलेलं नाही — खाली leaderboard मध्ये Refresh करून पाहा'; return; }
+    btn.disabled = true;
+    const done = [];
+    for (let i = 0; i < keys.length; i++) {
+      box.innerHTML = `⏳ ${i + 1} / ${keys.length}: <b>${_esc(adId(keys[i]))}</b>… (video बनतो आणि जातो — हे tab उघडं ठेवा)`;
+      done.push({ id: adId(keys[i]), out: await sendToMeta(keys[i]) });
+    }
+    btn.disabled = false;
+    const made = done.filter(d => d.out && (d.out.created || d.out.exists) && d.out.ad_id);
+    box.innerHTML = done.map(d => `${d.out?.created ? '✅' : d.out?.exists ? 'ℹ️' : d.out?.pending ? '⏳' : '⚠️'} ${_esc(d.id)}`).join(' · ')
+      + `<br><small>ad set: ${_esc([...new Set(keys.map(k => adsetName(k)))].join(', '))} — Meta चांगल्या video ला आपोआप जास्त दाखवतं</small>`
+      + (made.length ? ` <button type="button" class="ads-act good" id="vid-on-all">▶ या ${made.length} ads एकदम चालू करा</button>` : '');
+    const on = $('vid-on-all');
+    on?.addEventListener('click', async () => {
+      if (!on.dataset.sure) { on.dataset.sure = '1'; on.textContent = 'पक्कं? पुन्हा दाबा (आजपासून खर्च सुरू)'; return; }
+      on.disabled = true; let ok = 0;
+      for (const d of made) { try { await API.metaAction({ action: 'resume', ad_id: d.out.ad_id }); ok++; } catch (err) { APP.toast(`${d.id}: ${err?.message || 'चालू झाली नाही'}`, 'error'); } }
+      box.innerHTML += `<br>✅ ${ok} ads चालू झाल्या. Meta त्या तपासून (साधारण काही तासांत) दाखवायला सुरू करेल.`; on.remove(); _loadBoard(true);
+    });
+  }
+  // the ticked videos → files, in the sizes ticked under "Video download"
+  async function _vidDownload() {
+    const keys = _pickedKeys(), box = $('vid-set-msg'), btn = $('vid-dl');
+    const fmts = [...document.querySelectorAll('.ads-fmt-rec')].filter(c => c.checked).map(c => c.value);
+    if (!keys.length) { box.textContent = 'आधी videos वर खूण करा'; return; }
+    if (!fmts.length) { box.textContent = 'खाली "Video download" मध्ये किमान एक आकार निवडा'; return; }
+    btn.disabled = true;
+    try {
+      let n = 0;
+      for (const k of keys) for (const fm of fmts) {
+        n++; box.textContent = `⏳ video ${n} / ${keys.length * fmts.length} बनत आहे… (हे tab उघडं ठेवा)`;
+        const r = await record(k, fm);
+        await FILE_EXPORT.saveAndShare(r.blob, r.name);
+      }
+      box.textContent = `✅ ${n} video download झाले`;
+    } catch (err) { box.textContent = err?.message || 'Video बनला नाही'; }
+    btn.disabled = false;
+  }
+  function _vidNew() { _editing = ''; $('vid-in').value = ''; $('vid-editing').textContent = ''; _vidMsg(null); $('vid-shots').innerHTML = ''; for (let i = _scripts.length - 1; i >= 0; i--) if (_scripts[i].draft) _scripts.splice(i, 1); }
   function _vidPrompt() {
     const f = _facts();
-    const p0 = AD_SCRIPT.prompt({ want: $('vid-want').value.trim(), audience: st.aud, className: isTeacher(st.aud) ? '' : f.label, values: _phValues(f) });
+    const p0 = AD_SCRIPT.prompt({ want: $('vid-want').value.trim(), audience: st.aud, className: isTeacher(st.aud) ? '' : f.label, values: _phValues(f), count: Number($('vid-count').value) || 1 });
     const done = ok => { $('vid-copied').textContent = ok ? '✅ Copy झालं — ChatGPT / Claude मध्ये paste करा' : 'Copy झालं नाही — खालच्या box मधून copy करा'; if (!ok) { $('vid-in').value = p0; $('vid-in').select(); } };
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(p0).then(() => done(true), () => done(false)); else done(false);
   }
@@ -1712,7 +1787,8 @@ const AD_STUDIO = (() => {
           </ol>
           <p class="import-hint">आकडे (commission, सूट, free tests, दिवस) AI लिहीत नाही — <code>{ }</code> खुणा app स्वतः खऱ्या आकड्यांनी भरतो.</p>
           <textarea id="vid-want" class="admin-input" rows="2" placeholder="उदा. YouTube शिक्षकांसाठी 20 सेकंदांचा video: स्वतःचं panel, subscribers ना सूट, प्रत्येक paid मागे कमाई"></textarea>
-          <div class="site-btns"><button type="button" class="admin-btn-secondary" id="vid-prompt">📋 Prompt copy करा</button><span id="vid-copied" class="import-hint"></span></div>
+          <div class="site-btns"><label class="ads-target">किती videos <select id="vid-count" class="admin-input"><option value="1">1</option><option value="3" selected>3 (A/B साठी)</option></select></label>
+            <button type="button" class="admin-btn-secondary" id="vid-prompt">📋 Prompt copy करा</button><span id="vid-copied" class="import-hint"></span></div>
           <textarea id="vid-in" class="admin-input" rows="8" placeholder="AI चं उत्तर (JSON) इथे paste करा"></textarea>
           <p class="import-hint" id="vid-editing"></p>
           <div class="site-btns">
@@ -1724,6 +1800,13 @@ const AD_STUDIO = (() => {
           <div id="vid-shots"></div>
           <h5 class="ads-aud-h">💾 Save केलेले videos</h5>
           <div id="vid-list"></div>
+          <div class="vid-set" id="vid-set" hidden>
+            <b id="vid-set-n"></b>
+            <button type="button" class="admin-btn-primary" id="vid-send">📤 निवडलेले Meta ला पाठवा (एकाच ad set मध्ये, बंद स्थितीत)</button>
+            <button type="button" class="admin-btn-secondary" id="vid-dl">⬇ निवडलेले Download</button>
+            <p class="import-hint">Meta: बजेट / वय वरच्या "📤 Meta वर पाठवा" box मधले वापरले जातात. Download: खाली "Video download" मध्ये खूण केलेले आकार.</p>
+            <p class="import-hint" id="vid-set-msg"></p>
+          </div>
         </details>
         <button type="button" class="admin-btn-secondary" id="ads-nextq" hidden>🔄 दुसरा प्रश्न</button>
         <div class="ads-vars" id="ads-variants" role="group" aria-label="Ads"></div>
@@ -1736,6 +1819,11 @@ const AD_STUDIO = (() => {
               <b>🔊 आवाज</b>
               <label><input type="checkbox" id="ads-sound" checked /> सगळ्या video मध्ये music + आवाज (Facebook, Instagram, YouTube)</label>
               <button type="button" class="admin-btn-secondary" id="ads-play">▶ आवाजासह पाहा</button>
+              <div class="ads-mix">
+                <label>🎵 Background music <input type="range" min="0" max="150" step="5" data-mix="bed" /> <output data-mix-out="bed"></output></label>
+                <label>✨ Animation आवाज <input type="range" min="0" max="150" step="5" data-mix="anim" /> <output data-mix-out="anim"></output></label>
+                <label>🎤 माझा आवाज <input type="range" min="0" max="150" step="5" data-mix="voice" /> <output data-mix-out="voice"></output></label>
+              </div>
               <label class="ads-voice">🎤 माझा आवाज (या ad साठी, ऐच्छिक) <input type="file" id="ads-voice" accept="audio/*" /></label>
               <small id="ads-voice-msg" class="import-hint">आवाज phone वर रेकॉर्ड करा (उदा. "NMMS ला फक्त 45 दिवस बाकी…") — असेल तर music आपोआप हळू होतं.</small>
               <button type="button" class="admin-btn-secondary" id="ads-voice-del" hidden>✕ आवाज काढा</button>
@@ -1820,8 +1908,17 @@ const AD_STUDIO = (() => {
       $('vid-check').addEventListener('click', () => _vidCheck(true));
       $('vid-save').addEventListener('click', _vidSave);
       $('vid-new').addEventListener('click', () => { _vidNew(); _paintSide(); });
+      $('vid-send').addEventListener('click', _vidSend);
+      $('vid-dl').addEventListener('click', _vidDownload);
       host.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => { navigator.clipboard?.writeText(b.dataset.copy).then(() => APP.toast('Link copy झाली', 'success'), () => APP.toast(b.dataset.copy, 'info')); }));
       $('ads-sound').addEventListener('change', e => { st.sound = e.target.checked; });
+      Object.assign(_mix, (await DB.getSetting(MIX_KEY, null).catch(() => null)) || {});
+      host.querySelectorAll('[data-mix]').forEach(r => {
+        const k = r.dataset.mix, out = host.querySelector(`[data-mix-out="${k}"]`);
+        r.value = Math.round(_mix[k] * 100); out.textContent = r.value + '%';
+        r.addEventListener('input', () => { _mix[k] = Number(r.value) / 100; out.textContent = r.value + '%'; });
+        r.addEventListener('change', () => DB.setSetting(MIX_KEY, { ..._mix }).catch(() => {}));
+      });
       $('ads-play').addEventListener('click', () => playWithSound().catch(err => APP.toast(err?.message || 'आवाज चालला नाही', 'error')));
       $('ads-voice').addEventListener('change', async e => {
         const file = e.target.files?.[0]; if (!file) return;
@@ -1883,7 +1980,7 @@ const AD_STUDIO = (() => {
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, audioPlan, playWithSound, __score: (...a) => _score(...a), __scripts: _scripts, __shots: _shots, __phValues: () => _phValues(_facts()), __st: st, __content: _content, __voice: _voice };
+  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, audioPlan, playWithSound, __mix: _mix, __score: (...a) => _score(...a), __scripts: _scripts, __shots: _shots, __phValues: () => _phValues(_facts()), __st: st, __content: _content, __voice: _voice };
 })();
 
 window.AD_STUDIO = AD_STUDIO;
