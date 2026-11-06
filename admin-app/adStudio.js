@@ -1411,7 +1411,24 @@ const AD_STUDIO = (() => {
       : ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
     return want.find(m => window.MediaRecorder?.isTypeSupported?.(m)) || '';
   }
+  // The video is drawn frame by frame while it records. If this tab is hidden / minimised or the
+  // computer is busy, the browser stops drawing and the video freezes in the middle (the sound goes
+  // on). So every recording is checked: a pause of more than 0.4 s, or the tab hidden, → made again.
   async function record(v, fmt) {
+    let best = null;
+    for (let attempt = 1; ; attempt++) {
+      const r = await _recordOnce(v, fmt);
+      if (r.ok) return r;
+      if (!r.hidden && (!best || r.gap < best.gap)) best = r;
+      // a busy computer: after 3 tries keep the smoothest one if its pause is short (≤ 1.5 s)
+      if (attempt >= 3 && best && best.gap <= 1500) { APP.toast(`⚠️ Video मध्ये ${(best.gap / 1000).toFixed(1)} सेकंदाचा छोटा अडथळा राहिला — शक्य तर दुसरं काही बंद करून पुन्हा बनवा.`, 'info'); return best; }
+      if (attempt >= 3) throw new Error(`Video नीट बनला नाही (${r.why}). Video बनत असताना हे tab समोर उघडं ठेवा, दुसरं tab / window उघडू नका, आणि पुन्हा करा.`);
+      APP.toast(`⚠️ Video बनत असताना ${r.why} — पुन्हा बनवत आहे. हे tab समोर उघडं ठेवा.`, 'info');
+      if (document.hidden) await new Promise(res => { const on = () => { if (!document.hidden) { document.removeEventListener('visibilitychange', on); res(); } }; document.addEventListener('visibilitychange', on); });
+      await new Promise(res => setTimeout(res, 400));
+    }
+  }
+  async function _recordOnce(v, fmt) {
     const audio = st.sound !== false && !!(window.AudioContext || window.webkitAudioContext);
     const mime = _mime(audio);
     if (!mime || !cv.captureStream) throw new Error('हा browser video बनवू शकत नाही — Chrome वापरा');
@@ -1433,13 +1450,20 @@ const AD_STUDIO = (() => {
     st.rec = rec; rec.start(500);
     const f = _facts(), len = lengthOf(_variants(f)[v]);
     st.t0 = performance.now();
+    st.recGap = 0; st.recLast = 0;
+    let hidden = document.hidden;
+    const onVis = () => { if (document.hidden) hidden = true; };
+    document.addEventListener('visibilitychange', onVis);
     if (actx) _score(actx, dest, v, actx.currentTime);
     await new Promise(r => setTimeout(r, len + 300));
     rec.stop(); await done; st.rec = null;
+    document.removeEventListener('visibilitychange', onVis);
     if (actx) actx.close().catch(() => {});
     Object.assign(st, keep, { t0: performance.now() });
     const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
-    return { blob: new Blob(chunks, { type: mime.split(';')[0] }), name: `${adId(v)}-${FMT_TAG[fmt] || fmt}.${ext}`, ext };
+    const gap = Math.round(st.recGap || 0), ok = !hidden && gap <= 500;
+    return { ok, hidden, why: hidden ? 'tab लपलं / बदललं' : `screen ${(gap / 1000).toFixed(1)} सेकंद अडकली`, gap,
+      blob: new Blob(chunks, { type: mime.split(';')[0] }), name: `${adId(v)}-${FMT_TAG[fmt] || fmt}.${ext}`, ext };
   }
 
   // ── leaderboard: which ad brings test takers / paying students cheapest ──
@@ -1682,6 +1706,8 @@ const AD_STUDIO = (() => {
     // turned on but Meta still checking → the review is what matters
     return ST[e] || [e || '—', 'off'];
   };
+  // which of this class's ads (on Meta) has this name
+  const _varOfAd = name => { if (st.plat !== 'meta') return null; const V = _variants(_facts()); return Object.keys(V).find(k => adId(k) === name) || null; };
   let _liveAcc = '', _liveTimer = 0, _liveAt = 0, _liveTick = 0, _liveSeq = 0;
   const _amLink = (kind, id) => `https://adsmanager.facebook.com/adsmanager/manage/${kind}?act=${_liveAcc}&selected_${kind === 'ads' ? 'ad' : kind === 'adsets' ? 'adset' : 'campaign'}_ids=${id}`;
   async function _loadLive() {
@@ -1714,6 +1740,7 @@ const AD_STUDIO = (() => {
         ${a.effective === 'DISAPPROVED' ? '<span class="lv-why">👉 Meta मध्ये उघडा → "Request review" (चूक वाटत असेल तर) किंवा ad चा मजकूर / video बदलून नवीन पाठवा.</span>' : a.effective === 'PENDING_BILLING_INFO' ? '<span class="lv-why">👉 Meta Billing मध्ये payment पद्धत / balance तपासा.</span>' : ''}
         <span class="lv-btns">
           ${on ? `<button type="button" class="ads-act lv-do" data-act="pause" data-ad="${_esc(a.ad_id)}">⏸ बंद</button>` : `<button type="button" class="ads-act good lv-do" data-act="resume" data-ad="${_esc(a.ad_id)}">▶ चालू</button>`}
+          ${_varOfAd(a.id) ? `<button type="button" class="ads-act lv-revid" data-ad="${_esc(a.ad_id)}" data-name="${_esc(a.id)}" title="Video अडकत असेल तर: नवीन video बनवून याच ad वर लावा">🎬 Video बदला</button>` : ''}
           <a class="ads-act" href="${_amLink('ads', a.ad_id)}" target="_blank" rel="noopener">🔗 Meta मध्ये उघडा</a>
           ${a.fb_post ? `<a class="ads-act good" href="${_esc(a.fb_post)}" target="_blank" rel="noopener" title="लोकांना दिसणारी post — share करा, comments ना उत्तर द्या">👁 Facebook post + comments</a><button type="button" class="ads-act" data-copy="${_esc(a.fb_post)}" title="Post ची link copy">📋 post link</button>` : ''}
           ${a.ig_post ? `<a class="ads-act good" href="${_esc(a.ig_post)}" target="_blank" rel="noopener">📸 Instagram post</a>` : ''}
@@ -1745,6 +1772,19 @@ const AD_STUDIO = (() => {
     if (_lastAdvice) _paintAdvice(_lastAdvice);
     $('lv-refresh').addEventListener('click', () => _loadBoard(true));
     box.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => navigator.clipboard?.writeText(b.dataset.copy).then(() => APP.toast('Link copy झाली', 'success'))));
+    box.querySelectorAll('.lv-revid').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
+      const v = _varOfAd(btn.dataset.name); if (!v) throw new Error('ही ad ज्या class ची आहे तो class वर निवडा');
+      const parts = adParts(v);
+      btn.textContent = '⏳ नवीन video बनत आहे (≈25 सेकंद, tab उघडं ठेवा)…';
+      const r = await record(v, '916');
+      if (r.ext !== 'mp4') throw new Error('हा browser MP4 बनवत नाही — Chrome / Edge वापरा');
+      btn.textContent = '⏳ Meta वर जात आहे…';
+      const vid = await API.metaUpload('video', r.blob, btn.dataset.name), img = await API.metaUpload('image', await _thumb(v), btn.dataset.name);
+      _sent[btn.dataset.name] = { video_id: vid.video_id, image_hash: img.image_hash };
+      btn.textContent = '⏳ Meta video तयार करत आहे (1–2 मिनिटं)…';
+      const out = await API.metaAction({ action: 'replace_video', ad_id: btn.dataset.ad, ..._sent[btn.dataset.name], message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
+      APP.toast(`✅ ${out.name}: नवीन video लावला. Meta तो पुन्हा तपासेल (review), मग ad परत चालू.`, 'success');
+    }, 'पक्कं? नवीन video बनवून याच ad वर लावायचा (पुन्हा दाबा)')));
     box.querySelectorAll('.lv-do').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
       const out = await API.metaAction({ action: btn.dataset.act, ad_id: btn.dataset.ad });
       APP.toast(`${out.name}: ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}${out.note === 'adset' ? ' (ad set मधली शेवटची चालू ad — ad set पण बंद, खर्च थांबला)' : ''}`, 'success');
@@ -1884,7 +1924,10 @@ const AD_STUDIO = (() => {
   let _raf = 0;
   function _loop(now) {
     _raf = requestAnimationFrame(_loop);
-    if (!cv || !cv.isConnected || st.rec) { if (st.rec) drawAt(now - st.t0); return; }
+    if (!cv || !cv.isConnected || st.rec) {
+      if (st.rec) { if (st.recLast) st.recGap = Math.max(st.recGap || 0, now - st.recLast); st.recLast = now; drawAt(now - st.t0); }
+      return;
+    }
     const f = _facts(), V = _variants(f);
     // the shown video was removed (a draft saved / deleted): show this audience's first ad instead
     if (!V[st.v]) { st.v = Object.keys(V).find(k => V[k].aud === st.aud && V[k].ok) || 'loss'; st.t0 = now; }
