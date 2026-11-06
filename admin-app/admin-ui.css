@@ -2792,3 +2792,31 @@ body.admin-app {
 .vid-item input[type=checkbox] { width: 20px; height: 20px; }
 .ads-mix { display: grid; gap: 4px; margin: 6px 0; }
 .ads-mix label { display: grid; grid-template-columns: 1fr 140px 44px; gap: 6px; align-items: center; font-size: .8rem; font-weight: 700; }
+
+/* 📡 Meta control panel */
+.ads-live { margin: 14px 0; padding: 12px; border-radius: 14px; background: #fbfaff; border: 1px solid #e3ddff; }
+.lv-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.lv-head > b { font-size: 1rem; }
+.lv-sum, .lv-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lv-chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .74rem; font-weight: 800; background: #eef; color: #3b2d6b; white-space: nowrap; }
+.lv-chip.on { background: #dcfce7; color: #15803d; }
+.lv-chip.wait { background: #e0f2fe; color: #075985; }
+.lv-chip.off { background: #f1f0f6; color: #6b6890; }
+.lv-chip.bad { background: #fee2e2; color: #b91c1c; }
+.lv-camp { margin-top: 10px; }
+.lv-camp-h { font-weight: 800; font-size: .86rem; color: #3b2d6b; display: flex; gap: 6px; align-items: center; }
+.lv-set { margin: 6px 0 6px 10px; padding: 8px; border-radius: 10px; background: #fff; border: 1px solid #ece8fb; }
+.lv-set-h { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .84rem; }
+.lv-budget { display: inline-flex; gap: 4px; align-items: center; font-weight: 700; }
+.lv-amt { width: 90px !important; padding: 3px 6px !important; }
+.lv-ad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 4px; border-top: 1px dashed #ece8fb; font-size: .82rem; }
+.lv-ad.bad { background: #fff7f7; }
+.lv-name { word-break: break-all; }
+.lv-why { flex-basis: 100%; color: #b91c1c; font-size: .76rem; font-weight: 700; }
+.lv-btns { margin-left: auto; display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.lv-btns a.ads-act, .lv-tools a.ads-act, .lv-set-h a.ads-act, .lv-camp-h a.ads-act, .ads-acts a.ads-act { text-decoration: none; color: inherit; }
+.lv-note { display: block; color: #8a83b3; margin-top: 4px; }
+.lv-adv { margin-top: 10px; padding: 8px; border-radius: 10px; background: #fffbea; border: 1px solid #fde68a; font-size: .84rem; }
+.lv-tip { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 6px 0; border-top: 1px dashed #fde68a; }
+.lv-adv-none { font-size: .78rem; color: #8a83b3; margin: 8px 0 0; }
+.lv-tip button { white-space: nowrap; flex-shrink: 0; } .lv-tools small { white-space: nowrap; }

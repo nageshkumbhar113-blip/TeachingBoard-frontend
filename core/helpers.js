@@ -2271,6 +2271,12 @@ const API = (() => {
     return request(`/guest/admin/meta?days=${days}${fresh ? '&fresh=1' : ''}${check ? '&check=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } });
   }
 
+  // Admin › Ads › 📡: every Meta ad's state right now (never cached)
+  async function fetchMetaStatus() {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/meta?status=1', { headers: { Authorization: `Bearer ${token}` } });
+  }
+
   // Admin › Ads › "Meta वर पाठवा": video / thumbnail bytes go through our server to Meta
   async function metaUpload(kind, blob, name) {
     const token = await ensureAdminSession();
@@ -3083,7 +3089,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

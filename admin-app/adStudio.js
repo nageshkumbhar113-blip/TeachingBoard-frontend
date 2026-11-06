@@ -1534,6 +1534,7 @@ const AD_STUDIO = (() => {
   }
   async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
+    _loadLive();   // 📡 the state of every ad, always fresh
     box.innerHTML = '<p class="import-hint">⏳ उघडत आहे…</p>';
     try {
       const days = Number($('ads-days')?.value || 30);
@@ -1564,6 +1565,10 @@ const AD_STUDIO = (() => {
         : `<input type="number" min="0" step="50" class="admin-input ads-spend" data-id="${_esc(r.id)}" value="${r.spend || ''}" aria-label="${_esc(r.id)} खर्च" />`;
       // the ad's state in Meta + the buttons: ⏸ / ▶ for the ad, 🏆 +20% for a winning ad set
       const S = meta?.connected ? (meta.ads || {}) : {};
+      if (meta?.account?.id) _liveAcc = String(meta.account.id).replace(/^act_/, '');
+      // 💡 advice from the results so far (one press applies it)
+      if (meta?.connected) _paintAdvice(_advice(f, S, id => (M[id] && !M[id].google ? M[id].spend : Number(spend[id]) || 0),
+        id => (isTeacher(audOfId(id)) ? (f.by_teacher_ad?.[id]?.registered || 0) : (f.by_ad?.[id]?.tested || 0))));
       const actCell = r => {
         const g = GS[r.id];
         if (g) {
@@ -1576,7 +1581,7 @@ const AD_STUDIO = (() => {
         }
         const a = S[r.id]; if (!a) return '';
         const on = a.status === 'ACTIVE';
-        const btns = [`<small class="ads-st ${on ? 'on' : 'off'}">${on ? '● चालू' : '○ बंद'}</small>`];
+        const btns = [`<span class="lv-chip ${_stOf(a)[1]}">${_stOf(a)[0]}</span>`, `<a class="ads-act" href="${_amLink('ads', a.ad_id)}" target="_blank" rel="noopener" title="Ads Manager मध्ये उघडा">🔗</a>`];
         if (on) btns.push(`<button type="button" class="ads-act${r.tone === 'bad' ? ' warn' : ''}" data-act="pause" data-ad="${_esc(a.ad_id)}">⏸ बंद करा</button>`);
         else btns.push(`<button type="button" class="ads-act" data-act="resume" data-ad="${_esc(a.ad_id)}">▶ चालू करा</button>`);
         if (r.tone === 'good' && a.budget) btns.push(`<button type="button" class="ads-act good" data-act="budget" data-adset="${_esc(a.adset_id)}">🏆 बजेट ₹${Math.round(a.budget)} → ₹${Math.round(a.budget * 1.2)}</button>`);
@@ -1657,6 +1662,163 @@ const AD_STUDIO = (() => {
       }));
       box.querySelectorAll('.ads-spend').forEach(inp => inp.addEventListener('change', async () => { await _saveSpend(inp.dataset.id, inp.value); _loadBoard(); }));
     } catch (err) { box.innerHTML = `<p class="import-hint">आकडे आणता आले नाहीत: ${_esc(err?.message || '')}</p>`; }
+  }
+
+  // ── 📡 Meta control panel: every ad's real state (upload / review / running / refused + why),
+  // links into Ads Manager, ⏸ / ▶ per ad and per ad set, each ad set's daily budget, and 💡 advice
+  // ("pause the losing ad, give its money to the winner") that the admin applies with one press.
+  const ST = {
+    ACTIVE: ['🟢 चालू — लोकांना दिसत आहे', 'on'], PAUSED: ['⏸ बंद', 'off'], ADSET_PAUSED: ['⏸ ad set बंद', 'off'], CAMPAIGN_PAUSED: ['⏸ campaign बंद', 'off'],
+    IN_PROCESS: ['⏳ Video तयार होत आहे', 'wait'], PENDING_REVIEW: ['🔍 Meta तपासत आहे (review)', 'wait'], PREAPPROVED: ['🔍 तपासणी जवळजवळ पूर्ण', 'wait'],
+    DISAPPROVED: ['❌ Meta ने नाकारली', 'bad'], WITH_ISSUES: ['⚠️ अडचण आहे', 'bad'], PENDING_BILLING_INFO: ['💳 Payment ची माहिती हवी', 'bad'],
+    ARCHIVED: ['🗃 Archive', 'off'], DELETED: ['🗑 काढली', 'off'],
+  };
+  const _stOf = a => {
+    const e = a.effective || a.status || '';
+    // turned on but Meta still checking → the review is what matters
+    return ST[e] || [e || '—', 'off'];
+  };
+  let _liveAcc = '', _liveTimer = 0, _liveAt = 0, _liveTick = 0;
+  const _amLink = (kind, id) => `https://adsmanager.facebook.com/adsmanager/manage/${kind}?act=${_liveAcc}&selected_${kind === 'ads' ? 'ad' : kind === 'adsets' ? 'adset' : 'campaign'}_ids=${id}`;
+  async function _loadLive() {
+    const box = $('ads-live'); if (!box) return;
+    clearTimeout(_liveTimer);
+    let r;
+    try { r = await API.fetchMetaStatus(); } catch (err) { r = { connected: false, error: err?.message || '' }; }
+    if (!r?.connected) { box.hidden = !r?.error; box.innerHTML = r?.error ? `<p class="ads-meta-line bad">📡 Meta: ${_esc(r.error)}</p>` : ''; return; }
+    box.hidden = false;
+    _liveAcc = r.account_id || ''; _liveAt = Date.now();
+    const all = Object.entries(r.ads || {}).map(([id, a]) => ({ id, ...a })).filter(a => !['ARCHIVED', 'DELETED'].includes(a.effective));
+    const n = k => all.filter(a => _stOf(a)[1] === k).length;
+    // campaign → ad set → ads
+    const camps = {};
+    for (const a of all) {
+      const c = camps[a.campaign_id || '-'] ||= { id: a.campaign_id, name: a.campaign || '—', status: a.campaign_status, sets: {} };
+      (c.sets[a.adset_id || '-'] ||= { id: a.adset_id, name: a.adset || '—', budget: a.budget, status: a.adset_status, ads: [] }).ads.push(a);
+    }
+    const adRow = a => {
+      const [label, tone] = _stOf(a), on = a.status === 'ACTIVE';
+      return `<div class="lv-ad ${tone}">
+        <span class="lv-chip ${tone}">${label}</span>
+        <b class="lv-name">${_esc(a.id)}</b>
+        ${a.why?.length ? `<span class="lv-why">कारण: ${a.why.map(_esc).join(' · ')}</span>` : ''}
+        ${a.effective === 'DISAPPROVED' ? '<span class="lv-why">👉 Meta मध्ये उघडा → "Request review" (चूक वाटत असेल तर) किंवा ad चा मजकूर / video बदलून नवीन पाठवा.</span>' : a.effective === 'PENDING_BILLING_INFO' ? '<span class="lv-why">👉 Meta Billing मध्ये payment पद्धत / balance तपासा.</span>' : ''}
+        <span class="lv-btns">
+          ${on ? `<button type="button" class="ads-act lv-do" data-act="pause" data-ad="${_esc(a.ad_id)}">⏸ बंद</button>` : `<button type="button" class="ads-act good lv-do" data-act="resume" data-ad="${_esc(a.ad_id)}">▶ चालू</button>`}
+          <a class="ads-act" href="${_amLink('ads', a.ad_id)}" target="_blank" rel="noopener">🔗 Meta मध्ये उघडा</a>
+          <button type="button" class="ads-act" data-copy="${_amLink('ads', a.ad_id)}">📋</button>
+        </span></div>`;
+    };
+    const setBox = s => `<div class="lv-set">
+        <div class="lv-set-h"><b>📦 ${_esc(s.name)}</b> <small>${_esc(ST[s.status]?.[0] || s.status || '')}</small>
+          <span class="lv-budget">रोज ₹ <input type="number" min="100" step="10" class="admin-input lv-amt" value="${s.budget || ''}" data-old="${s.budget || ''}" ${s.budget ? '' : 'disabled'} />
+          <button type="button" class="ads-act lv-setb" data-adset="${_esc(s.id)}" ${s.budget ? '' : 'disabled'}>💾 बजेट बदला</button></span>
+          <a class="ads-act" href="${_amLink('adsets', s.id)}" target="_blank" rel="noopener">🔗</a></div>
+        ${s.ads.map(adRow).join('')}
+        <small class="lv-note">बजेट या ad set मधल्या ${s.ads.length} ads मिळून आहे — Meta तो चांगल्या ad कडे आपोआप जास्त वळवतो.</small>
+      </div>`;
+    const waitN = n('wait');
+    box.innerHTML = `
+      <div class="lv-head">
+        <b>📡 Meta मधल्या ads</b>
+        <span class="lv-sum"><span class="lv-chip on">🟢 ${n('on')} चालू</span><span class="lv-chip wait">🔍 ${waitN} तपासणीत / तयार होत</span><span class="lv-chip off">⏸ ${n('off')} बंद</span><span class="lv-chip bad">❌ ${n('bad')} अडचण</span></span>
+        <span class="lv-tools"><button type="button" class="ads-act" id="lv-refresh">🔄 आत्ता तपासा</button>
+          <a class="ads-act" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${_liveAcc}" target="_blank" rel="noopener">🔗 Ads Manager</a>
+          <small id="lv-at">आत्ता तपासलं</small></span>
+      </div>
+      <div id="ads-advice"></div>
+      ${all.length ? Object.values(camps).map(c => `<div class="lv-camp"><div class="lv-camp-h">📣 ${_esc(c.name)} <small>${c.status === 'ACTIVE' ? '🟢' : '⏸'} campaign</small> <a class="ads-act" href="${_amLink('campaigns', c.id)}" target="_blank" rel="noopener">🔗</a></div>${Object.values(c.sets).map(setBox).join('')}</div>`).join('')
+        : '<p class="import-hint">Meta मध्ये अजून आपली एकही ad नाही. वरच्या "📤 Meta वर पाठवा" ने पाठवा.</p>'}
+      ${waitN ? '<p class="import-hint">🔍 Review ला साधारण काही तास ते 24 तास लागतात. हे पान उघडं असेल तर दर 2 मिनिटांनी आपोआप तपासतं.</p>' : ''}`;
+    if (_lastAdvice) _paintAdvice(_lastAdvice);
+    $('lv-refresh').addEventListener('click', () => _loadBoard(true));
+    box.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => navigator.clipboard?.writeText(b.dataset.copy).then(() => APP.toast('Link copy झाली', 'success'))));
+    box.querySelectorAll('.lv-do').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
+      const out = await API.metaAction({ action: btn.dataset.act, ad_id: btn.dataset.ad });
+      APP.toast(`${out.name}: ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}${out.note === 'adset' ? ' (ad set मधली शेवटची चालू ad — ad set पण बंद, खर्च थांबला)' : ''}`, 'success');
+    })));
+    box.querySelectorAll('.lv-setb').forEach(btn => btn.addEventListener('click', () => {
+      const inp = btn.parentElement.querySelector('.lv-amt'), old = Number(inp.dataset.old), want = Math.round(Number(inp.value));
+      if (!(want >= 100)) { APP.toast('रोजचं बजेट किमान ₹100', 'error'); return; }
+      if (want === old) { APP.toast('बजेट तेच आहे', 'info'); return; }
+      const big = want > old * 1.2;
+      _sure(btn, async () => {
+        const out = await API.metaAction({ action: 'set_budget', adset_id: btn.dataset.adset, amount: want, big });
+        APP.toast(`${out.name}: रोजचं बजेट ₹${out.from} → ₹${out.to}`, 'success');
+      }, big ? `₹${old} → ₹${want} (+${Math.round((want / old - 1) * 100)}%): मोठी वाढ — Meta पुन्हा शिकेल. पक्कं? पुन्हा दाबा` : `₹${old} → ₹${want} पक्कं? पुन्हा दाबा`);
+    }));
+    const tick = () => { const el = $('lv-at'); if (!el) return; const m = Math.floor((Date.now() - _liveAt) / 60000); el.textContent = m ? `${m} मिनिटांपूर्वी तपासलं` : 'आत्ता तपासलं'; };
+    if (!_liveTick) _liveTick = setInterval(tick, 30000);
+    // while something is uploading / in review: look again every 2 minutes (only while the panel is on screen)
+    if (waitN) _liveTimer = setTimeout(() => { if (box.isConnected && box.offsetParent) _loadLive(); }, 120000);
+  }
+  // first press asks, the second does it (then everything is read again)
+  function _sure(btn, run, ask = 'पक्कं? पुन्हा दाबा') {
+    if (!btn.dataset.sure) {
+      btn.dataset.label = btn.textContent; btn.dataset.sure = '1'; btn.textContent = ask;
+      setTimeout(() => { if (btn.isConnected && btn.dataset.sure) { delete btn.dataset.sure; btn.textContent = btn.dataset.label; } }, 5000);
+      return;
+    }
+    btn.disabled = true; btn.textContent = '⏳';
+    Promise.resolve().then(run).then(() => _loadBoard(true))
+      .catch(err => { APP.toast(err?.message || 'Meta मध्ये बदल झाला नाही', 'error'); btn.disabled = false; delete btn.dataset.sure; btn.textContent = btn.dataset.label; });
+  }
+
+  // 💡 advice from the real results: inside an ad set, pause an ad that costs ≥1.6× the best per
+  // result (after 3 days and ₹300 each) and give the ad set +20%; between ad sets of one campaign, move
+  // money from the costly one to the cheap one. Never pauses an ad set's last running ad.
+  let _lastAdvice = null;
+  function _advice(f, S, spendOf, resultOf) {
+    const sets = {};
+    for (const [id, a] of Object.entries(S || {})) {
+      if (!a.adset_id || a.google) continue;
+      (sets[a.adset_id] ||= { id: a.adset_id, name: a.adset, budget: a.budget, created: a.adset_created, campaign: a.campaign_id, ads: [] })
+        .ads.push({ id, ad_id: a.ad_id, on: a.status === 'ACTIVE', spend: spendOf(id), res: resultOf(id) });
+    }
+    const days = s => (Date.now() - new Date(s.created || Date.now()).getTime()) / 864e5;
+    const per = (sp, n) => (n ? sp / n : Infinity);
+    const tips = [];
+    for (const s of Object.values(sets)) {
+      const live = s.ads.filter(a => a.on);
+      if (live.length < 2 || days(s) < 3) continue;
+      const ok = live.filter(a => a.spend >= 300);
+      const best = ok.filter(a => a.res).sort((a, b) => per(a.spend, a.res) - per(b.spend, b.res))[0];
+      if (!best || ok.length < 2) continue;
+      const bc = per(best.spend, best.res);
+      const losers = ok.filter(a => a !== best && per(a.spend, a.res) >= bc * 1.6).slice(0, live.length - 1);
+      if (!losers.length) continue;
+      const up = s.budget ? Math.round(s.budget * 1.2) : 0;
+      tips.push({ title: `📦 ${s.name}`, text: `<b>${_esc(best.id)}</b> जिंकतेय (₹${Math.round(bc)} / निकाल). ${losers.map(a => `<b>${_esc(a.id)}</b> ${a.res ? `₹${Math.round(per(a.spend, a.res))} / निकाल` : `₹${Math.round(a.spend)} खर्च, 0 निकाल`}`).join(', ')} — बंद करून तो पैसा जिंकणाऱ्या ad ला${up ? `; ad set चं बजेट ₹${s.budget} → ₹${up}` : ''}.`,
+        acts: [...losers.map(a => ({ action: 'pause', ad_id: a.ad_id })), ...(up ? [{ action: 'set_budget', adset_id: s.id, amount: up }] : [])] });
+    }
+    // between ad sets of the same campaign (e.g. 8th NMMS parents vs 10th parents)
+    const byCamp = {};
+    for (const s of Object.values(sets)) {
+      const sp = s.ads.reduce((t, a) => t + a.spend, 0), res = s.ads.reduce((t, a) => t + a.res, 0);
+      if (s.budget && sp >= 500 && days(s) >= 3 && s.ads.some(a => a.on)) (byCamp[s.campaign] ||= []).push({ ...s, cost: per(sp, res) });
+    }
+    for (const list of Object.values(byCamp)) {
+      if (list.length < 2) continue;
+      list.sort((a, b) => a.cost - b.cost);
+      const good = list[0], bad = list[list.length - 1];
+      if (!(bad.cost >= good.cost * 1.6)) continue;
+      const x = Math.min(Math.round(good.budget * 0.2), bad.budget - 100);
+      if (x < 20) continue;
+      tips.push({ title: '🔀 ad sets मध्ये पैसा वळवा', text: `<b>${_esc(good.name)}</b> ₹${Math.round(good.cost)} / निकाल, <b>${_esc(bad.name)}</b> ${Number.isFinite(bad.cost) ? `₹${Math.round(bad.cost)}` : '0 निकाल'} — ${_esc(bad.name)} चं ₹${bad.budget} → ₹${bad.budget - x}, ${_esc(good.name)} चं ₹${good.budget} → ₹${good.budget + x} (एकूण खर्च तेवढाच).`,
+        acts: [{ action: 'set_budget', adset_id: bad.id, amount: bad.budget - x }, { action: 'set_budget', adset_id: good.id, amount: good.budget + x }] });
+    }
+    return tips;
+  }
+  function _paintAdvice(tips) {
+    _lastAdvice = tips;
+    const box = $('ads-advice'); if (!box) return;
+    box.innerHTML = tips.length
+      ? `<div class="lv-adv"><b>💡 आजचा सल्ला</b>${tips.map((t, i) => `<div class="lv-tip"><span>${t.title}: ${t.text}</span><button type="button" class="ads-act good" data-tip="${i}">✅ हे करा</button></div>`).join('')}</div>`
+      : '<p class="lv-adv-none">💡 अजून बदल सुचवण्याइतका data नाही (प्रत्येक ad वर किमान ₹300 आणि ad set 3 दिवस जुना हवा) — Meta स्वतः ad set मधल्या चांगल्या ad ला जास्त पैसा देत आहे.</p>';
+    box.querySelectorAll('[data-tip]').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
+      for (const a of tips[Number(btn.dataset.tip)].acts) await API.metaAction({ ...a, ...(a.action === 'set_budget' ? { big: true } : {}) });
+      APP.toast('✅ सल्ल्याप्रमाणे बदल केले', 'success');
+    }, 'पक्कं? पुन्हा दाबा (Meta मध्ये लगेच बदलेल)')));
   }
 
   // ── panel ──
@@ -2023,6 +2185,7 @@ const AD_STUDIO = (() => {
             </div>
           </div>
         </div>
+        <div id="ads-live" class="ads-live" hidden></div>
         <h4 class="admin-section-title" style="margin-top:14px">🏁 कोणती ad जिंकतेय?</h4>
         <div class="admin-toolbar"><select id="ads-days" class="admin-input" aria-label="दिवस"><option value="7">7 दिवस</option><option value="30" selected>30 दिवस</option></select><button type="button" class="admin-btn-secondary" id="ads-refresh">Refresh</button>
           <label class="ads-target">लक्ष्य: ₹ <input id="ads-tgt-test" type="number" min="1" step="5" class="admin-input" aria-label="एका test चा खर्च" /> / test</label>
