@@ -5,6 +5,8 @@
 
 export const SITE = 'https://nkseduorbit.in';
 const BRAND = 'NKs EduOrbit';
+// the Android app on Google Play (linked from every page + in the structured data, so Google ties the site to the app)
+export const PLAY = 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
 const WHATSAPP = '918390484545';
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -92,7 +94,8 @@ function shell({ title, description, canonical, body, jsonld = [], promo = false
 <meta property="og:url" content="${esc(canonical)}">
 <meta property="og:image" content="${SITE}/icons/icon-512.png">
 <meta name="theme-color" content="#5b21d6">
-<link rel="icon" href="/icons/icon-72.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 <style>${CSS}</style>
 ${jsonld.map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('\n')}
 </head>
@@ -106,7 +109,7 @@ ${body}
 </main>
 <footer><div class="wrap">
   <p>© ${new Date().getFullYear()} ${BRAND} · Kolhapur, Maharashtra · <a href="mailto:nkseducation60@gmail.com">nkseducation60@gmail.com</a></p>
-  <p><a href="/exams">परीक्षा</a><a href="/get-app.html">App</a><a href="/contact-us.html">संपर्क</a><a href="/privacy-policy.html">Privacy</a><a href="/terms-and-conditions.html">Terms</a><a href="/refund-policy.html">Refund</a></p>
+  <p><a href="/exams">परीक्षा</a><a href="${PLAY}" rel="noopener">Google Play वर App</a><a href="/get-app.html">App</a><a href="/contact-us.html">संपर्क</a><a href="/privacy-policy.html">Privacy</a><a href="/terms-and-conditions.html">Terms</a><a href="/refund-policy.html">Refund</a></p>
 </div></footer>
 ${promo ? '<script src="/site/promo.js" defer></script>' : ''}
 <script>document.querySelectorAll('[data-days-to]').forEach(function(el){var t=new Date(el.getAttribute('data-days-to')+'T00:00:00'),n=new Date();n.setHours(0,0,0,0);var d=Math.round((t-n)/864e5);el.textContent=d>0?'⏰ '+d+' दिवस बाकी':d===0?'⏰ आज':'';});</script>
@@ -226,7 +229,7 @@ export function landingPage(exams) {
 <section class="big">
   <h1>4थी ते 12वी: स्पर्धा परीक्षांची तयारी, आधी मोफत Test</h1>
   <p>NMMS, शिष्यवृत्ती, नवोदय, सैनिक स्कूल, JEE, NEET आणि इतर परीक्षा — प्रश्न, प्रत्येक उत्तराची युक्ती, दर रविवारी महा-Test आणि क्रमांक. Notes आणि स्वाध्याय उत्तरं पण.</p>
-  <p style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" style="background:#fff;color:#5b21d6" href="/student-app/">▶ App उघडा</a><a class="btn alt" style="background:transparent;color:#fff;border-color:#fff" href="/get-app.html">📲 App डाउनलोड</a></p>
+  <p style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" style="background:#fff;color:#5b21d6" href="/student-app/">▶ App उघडा</a><a class="btn alt" style="background:transparent;color:#fff;border-color:#fff" href="${PLAY}" rel="noopener">▶️ Google Play वर App</a></p>
 </section>
 <h2>तुमची परीक्षा निवडा</h2>
 <div class="tabs" role="tablist" aria-label="परीक्षा">
@@ -250,7 +253,11 @@ export function landingPage(exams) {
     var g=t.getAttribute('data-g');cards.forEach(function(c){c.hidden=g!=='all'&&c.getAttribute('data-group')!==g;});
   });});
 })();</script>`;
-  const jsonld = [{ '@context': 'https://schema.org', '@type': 'Organization', name: BRAND, url: `${SITE}/`, logo: `${SITE}/icons/icon-512.png`, email: 'nkseducation60@gmail.com', address: { '@type': 'PostalAddress', addressLocality: 'Kolhapur', addressRegion: 'Maharashtra', addressCountry: 'IN' } }];
+  const jsonld = [
+    { '@context': 'https://schema.org', '@type': 'Organization', name: BRAND, url: `${SITE}/`, logo: `${SITE}/icons/icon-512.png`, email: 'nkseducation60@gmail.com', sameAs: [PLAY], address: { '@type': 'PostalAddress', addressLocality: 'Kolhapur', addressRegion: 'Maharashtra', addressCountry: 'IN' } },
+    { '@context': 'https://schema.org', '@type': 'WebSite', name: BRAND, alternateName: ['Nks EduOrbit', 'NKS Edu Orbit', 'nkseduorbit'], url: `${SITE}/` },
+    { '@context': 'https://schema.org', '@type': 'MobileApplication', name: 'Nks EduOrbit', operatingSystem: 'ANDROID', applicationCategory: 'EducationalApplication', image: `${SITE}/icons/icon-512.png`, installUrl: PLAY, url: PLAY, offers: { '@type': 'Offer', price: '0', priceCurrency: 'INR' }, publisher: { '@type': 'Organization', name: BRAND } },
+  ];
   return shell({ title: `${BRAND} — NMMS, शिष्यवृत्ती, नवोदय, JEE, NEET तयारी · Free Test`, description: '4थी ते 12वी: NMMS, शिष्यवृत्ती, नवोदय, सैनिक स्कूल, JEE, NEET, MHT-CET — प्रश्न, युक्ती, महा-Test आणि क्रमांक. आधी मोफत Test द्या.', canonical: `${SITE}/`, body, jsonld });
 }
 
