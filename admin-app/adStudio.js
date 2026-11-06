@@ -909,8 +909,9 @@ const AD_STUDIO = (() => {
   // offer) and its own effects (whoosh on every cut, ✅ ding on the right answer, ticks while the
   // timer / day counter runs, pop + sparkle on the rank, ta-da on the offer). Nothing is downloaded:
   // no copyright music. The admin's own voice (🎤) can go on top; the music then stays low.
-  const LEVEL = { hook: .85, challenge: .4, question: .35, result: 1, features: .7, offer: 1, topper: .85, days: .6, free: .7, paper: .7,
-    notes: .55, exdemo: .5, subjects: .65, offline: .6, tools: .7, earn: .8, toffer: 1 };
+  // the energetic track runs from the first frame to the last; scenes only move it a little
+  const LEVEL = { hook: .95, challenge: .75, question: .72, result: 1, features: .85, offer: 1, topper: .95, days: .8, free: .85, paper: .85,
+    notes: .75, exdemo: .72, subjects: .8, offline: .78, tools: .85, earn: .9, toffer: 1 };
   const _voice = {};   // ad id → { buf: ArrayBuffer, name, secs }
   st.sound = true;
   // what happens when (ms from the start) — also used by the test
@@ -925,7 +926,7 @@ const AD_STUDIO = (() => {
       if (s.k === 'challenge') { for (let t = 0; t < 3600; t += 1000) ev.push({ at: s.at + t, k: 'tick' }); ev.push({ at: s.at + 3600, k: 'ding' }); }
       if (s.k === 'question') {
         if (prev === 'challenge') ev.push({ at: s.at + 200, k: 'chime' });
-        else { ev.push({ at: s.at + 4000, k: 'ding' }); ev.push({ at: s.at + 5200, k: 'chime' }); ev.push({ at: s.at + 4000, k: 'level', level: .8, ramp: 300 }); }
+        else { ev.push({ at: s.at + 4000, k: 'ding' }); ev.push({ at: s.at + 5200, k: 'chime' }); ev.push({ at: s.at + 4000, k: 'level', level: .9, ramp: 300 }); }
       }
       if (s.k === 'days') for (let t = 300; t < 1600; t += 100) ev.push({ at: s.at + t, k: 'tick', soft: true });
       if (s.k === 'result') { ev.push({ at: s.at + 300, k: 'riser', d: 1300 }); ev.push({ at: s.at + 1600, k: 'pop' }); ev.push({ at: s.at + 1650, k: 'sparkle' }); }
@@ -942,7 +943,7 @@ const AD_STUDIO = (() => {
     const master = ctx.createGain(); master.gain.value = .9; master.connect(out);
     // music bus: the loudness follows the scenes (and stays low under the admin's voice)
     const music = ctx.createGain(), duck = voice ? .35 : 1;
-    music.gain.setValueAtTime(0, t0); music.connect(master);
+    music.gain.setValueAtTime(.55 * duck, t0); music.connect(master);
     for (const e of events.filter(x => x.k === 'level')) {
       const at = t0 + e.at / 1000;
       music.gain.setValueAtTime(music.gain.value, at);
@@ -968,6 +969,7 @@ const AD_STUDIO = (() => {
     const beat = 60 / 112, bars = Math.ceil(len / 1000 / (beat * 4)) + 1;
     const CH = [[261.6, 329.6, 392], [196, 246.9, 293.7], [220, 261.6, 329.6], [174.6, 220, 261.6]], BASS = [65.4, 49, 55, 43.7];
     const pad = ctx.createBiquadFilter(); pad.type = 'lowpass'; pad.frequency.value = 1400; pad.connect(music);
+    const arp = ctx.createBiquadFilter(); arp.type = 'lowpass'; arp.frequency.value = 3200; arp.connect(music);
     for (let b = 0; b < bars; b++) {
       const bt = t0 + b * beat * 4, ch = CH[b % 4];
       if (bt >= end) break;
@@ -977,6 +979,11 @@ const AD_STUDIO = (() => {
         osc('sine', 120, at, .22, .5, music, 45);                         // kick
         osc('triangle', BASS[b % 4] * (q % 2 ? 2 : 1), at, beat * .9, .16, music);   // bass
         hiss(at + beat / 2, .06, .08, 7000, 9000, 'highpass', music);    // hat
+        if (q % 2) hiss(at, .12, .22, 1500, 1200, 'bandpass', music);     // clap on 2 and 4
+        for (let x16 = 0; x16 < 4; x16++) {                              // the bright 16th-note arpeggio
+          const t16 = at + x16 * beat / 4; if (t16 >= end) break;
+          osc('square', ch[(q * 4 + x16) % 3] * 2, t16, beat / 5, .028, arp);
+        }
       }
     }
     // the effects
@@ -1061,20 +1068,35 @@ const AD_STUDIO = (() => {
   async function _spend() { return (await DB.getSetting(SPEND_KEY, {}).catch(() => ({}))) || {}; }
   async function _saveSpend(id, rupees) { const s = await _spend(); s[id] = Math.max(0, Number(rupees) || 0); await DB.setSetting(SPEND_KEY, s).catch(() => {}); }
   // the decision rules (documented for the admin in the panel)
-  function verdicts(rows) {
+  // the admin's targets: what one test taker / one paying student may cost (kept on this device).
+  // An ad alone in its ad set (e.g. just one NMMS ad) has nothing to be compared with — it is judged
+  // against these; with several ads the cheapest only "wins" if it is also near the target.
+  const TARGET_KEY = 'ad_targets';
+  let _targets = { test: 50, paid: 400 };
+  function verdicts(rows, tgt = _targets) {
     const enough = r => r.spend >= 500 || r.opened >= 30;
     const cpt = r => r.tested ? r.spend / r.tested : Infinity;
     const cpp = r => r.paid ? r.spend / r.paid : Infinity;
-    const usePaid = rows.filter(r => r.paid >= 3).length >= 2;
-    const cost = usePaid ? cpp : cpt;
     const judged = rows.filter(r => enough(r) && r.spend > 0);
+    const alone = judged.length <= 1;
+    const usePaid = alone ? rows.some(r => r.paid >= 3) : rows.filter(r => r.paid >= 3).length >= 2;
+    const cost = usePaid ? cpp : cpt, target = usePaid ? tgt.paid : tgt.test;
     const best = Math.min(...judged.map(cost).filter(Number.isFinite));
     return rows.map(r => {
       let v = '▶ चालू ठेवा', tone = '';
       if (!r.spend) { v = r.meta ? '⏳ Meta मध्ये अजून खर्च सुरू नाही' : '₹ खर्च लिहा'; tone = 'muted'; }
       else if (!enough(r)) { v = '⏳ अजून data कमी'; tone = 'muted'; }
       else if (!(usePaid ? r.paid : r.tested)) { v = '⏸ बंद करा (काहीच येत नाही)'; tone = 'bad'; }
-      else if (Number.isFinite(best) && cost(r) === best) { v = '🏆 जिंकतेय — बजेट 20–25% वाढवा'; tone = 'good'; }
+      else if (alone) {
+        // nothing to compare with: against the target
+        if (target && cost(r) <= target) { v = `🏆 लक्ष्यापेक्षा स्वस्त (₹${target}) — बजेट 20% वाढवा`; tone = 'good'; }
+        else if (target && cost(r) > target * 1.5) { v = `⏸ बंद करा (लक्ष्य ₹${target} च्या दीडपटपेक्षा महाग) — नवीन ad करून पाहा`; tone = 'bad'; }
+        else v = `▶ चालू ठेवा (लक्ष्य ₹${target} च्या जवळ)`;
+      }
+      else if (Number.isFinite(best) && cost(r) === best) {
+        if (!target || cost(r) <= target * 1.5) { v = '🏆 जिंकतेय — बजेट 20–25% वाढवा'; tone = 'good'; }
+        else v = `▶ सगळ्यात स्वस्त, पण लक्ष्य ₹${target} पेक्षा महाग — बजेट वाढवू नका`;
+      }
       else if (Number.isFinite(best) && cost(r) > best * 1.5) { v = '⏸ बंद करा (दीडपट महाग)'; tone = 'bad'; }
       return { ...r, cpt: cpt(r), cpp: cpp(r), verdict: v, tone, by: usePaid ? 'paid' : 'test' };
     });
@@ -1083,7 +1105,7 @@ const AD_STUDIO = (() => {
   function verdictsBy(rows, keyOf) {
     const g = new Map();
     for (const r of rows) { const k = keyOf(r.id) || '·'; if (!g.has(k)) g.set(k, []); g.get(k).push(r); }
-    return [...g.values()].flatMap(verdicts);
+    return [...g.values()].flatMap(rows0 => verdicts(rows0));
   }
   async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
@@ -1189,7 +1211,7 @@ const AD_STUDIO = (() => {
           }
           const out = btn.dataset.act === 'budget' ? await API.metaAction({ action: 'budget', adset_id: btn.dataset.adset })
             : await API.metaAction({ action: btn.dataset.act, ad_id: btn.dataset.ad });
-          APP.toast(btn.dataset.act === 'budget' ? `${out.name}: बजेट ₹${out.from} → ₹${out.to}` : `${out.name}: ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}`, 'success');
+          APP.toast(btn.dataset.act === 'budget' ? `${out.name}: बजेट ₹${out.from} → ₹${out.to}` : `${out.name}: ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}${out.note === 'adset' ? ' — ही ad set मधली एकटी चालू ad होती, म्हणून ad set पण बंद केला (खर्च थांबला)' : ''}`, 'success');
           _loadBoard(true);
         } catch (err) {
           APP.toast(err?.message || (btn.dataset.gact ? 'Google Ads मध्ये बदल झाला नाही' : 'Meta मध्ये बदल झाला नाही'), 'error');
@@ -1335,7 +1357,10 @@ const AD_STUDIO = (() => {
           </div>
         </div>
         <h4 class="admin-section-title" style="margin-top:14px">🏁 कोणती ad जिंकतेय?</h4>
-        <div class="admin-toolbar"><select id="ads-days" class="admin-input" aria-label="दिवस"><option value="7">7 दिवस</option><option value="30" selected>30 दिवस</option></select><button type="button" class="admin-btn-secondary" id="ads-refresh">Refresh</button></div>
+        <div class="admin-toolbar"><select id="ads-days" class="admin-input" aria-label="दिवस"><option value="7">7 दिवस</option><option value="30" selected>30 दिवस</option></select><button type="button" class="admin-btn-secondary" id="ads-refresh">Refresh</button>
+          <label class="ads-target">लक्ष्य: ₹ <input id="ads-tgt-test" type="number" min="1" step="5" class="admin-input" aria-label="एका test चा खर्च" /> / test</label>
+          <label class="ads-target">₹ <input id="ads-tgt-paid" type="number" min="1" step="50" class="admin-input" aria-label="एका paid चा खर्च" /> / paid</label></div>
+        <p class="import-hint">लक्ष्य = एका test देणाऱ्यासाठी / एका pay करणाऱ्यासाठी किती खर्च चालेल. एकटी ad (उदा. फक्त NMMS) याच लक्ष्याशी तपासली जाते.</p>
         <div id="ads-board"></div>`;
       cv = $('ads-cv'); x = cv.getContext('2d');
       $('ads-batch').addEventListener('change', e => { st.batch = e.target.value; st.label = ''; $('ads-label').value = _defaultLabel(); _setBatchKind(); });
@@ -1394,6 +1419,11 @@ const AD_STUDIO = (() => {
       $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
       $('ads-refresh').addEventListener('click', () => _loadBoard(true));
       $('ads-days').addEventListener('change', () => _loadBoard());
+      for (const k of ['test', 'paid']) $('ads-tgt-' + k).addEventListener('change', async e => {
+        _targets[k] = Math.max(1, Number(e.target.value) || _targets[k]);
+        await DB.setSetting(TARGET_KEY, _targets).catch(() => {});
+        _loadBoard();
+      });
       st.t0 = performance.now();
       _raf = requestAnimationFrame(_loop);
     }
@@ -1411,6 +1441,8 @@ const AD_STUDIO = (() => {
     if (!st.label) $('ads-label').value = _defaultLabel();
     st.label = $('ads-label').value.trim();
     _kinds = (await DB.getSetting(KIND_KEY, {}).catch(() => ({}))) || {};
+    Object.assign(_targets, (await DB.getSetting(TARGET_KEY, null).catch(() => null)) || {});
+    $('ads-tgt-test').value = _targets.test; $('ads-tgt-paid').value = _targets.paid;
     _setBatchKind();
     _loadBoard();
   }

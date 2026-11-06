@@ -2762,3 +2762,5 @@ body.admin-app {
 .ads-soundbox label { display: flex; gap: 6px; align-items: center; font-size: .82rem; font-weight: 600; flex-wrap: wrap; }
 .ads-voice input { font-size: .78rem; max-width: 100%; }
 #ad-studio [hidden] { display: none !important; }   /* buttons with their own display (admin-btn-*) */
+.ads-target { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: .82rem; }
+.ads-target input { width: 80px; }
