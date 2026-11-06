@@ -2765,3 +2765,7 @@ body.admin-app {
 .ads-target { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: .82rem; }
 .ads-target input { width: 80px; }
 .ads-low { color: #b91c1c; }
+.ads-links { display: grid; gap: 6px; }
+.ads-link { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #ece8fb; border-radius: 10px; }
+.ads-link span { flex: 1 1 220px; font-weight: 700; font-size: .88rem; }
+.ads-link a { font-weight: 700; }

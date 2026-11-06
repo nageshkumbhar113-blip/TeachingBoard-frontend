@@ -921,6 +921,7 @@ const AD_STUDIO = (() => {
       const prev = tl[i - 1]?.k;
       ev.push({ at: s.at, k: 'level', level: LEVEL[s.k] ?? .6, ramp: i ? 350 : 10 });
       if (i) ev.push({ at: s.at, k: 'whoosh' });
+      ev.push({ at: s.at + 60, k: 'stab', n: i });   // animation layer: a chord hit on every new card
       if (s.k === 'hook' && v === 'loss') ev.push({ at: s.at + 150, k: 'boom' });
       if (s.k === 'hook' || s.k === 'topper') ev.push({ at: s.at + 200, k: 'pop' });
       if (s.k === 'challenge') { for (let t = 0; t < 3600; t += 1000) ev.push({ at: s.at + t, k: 'tick' }); ev.push({ at: s.at + 3600, k: 'ding' }); }
@@ -941,15 +942,24 @@ const AD_STUDIO = (() => {
     const { len, events } = audioPlan(v), end = t0 + len / 1000;
     const voice = _voice[adId(v)];
     const master = ctx.createGain(); master.gain.value = .9; master.connect(out);
-    // music bus: the loudness follows the scenes (and stays low under the admin's voice)
-    const music = ctx.createGain(), duck = voice ? .35 : 1;
-    music.gain.setValueAtTime(.55 * duck, t0); music.connect(master);
+    // two layers of music:
+    //  • bed  — the energetic background track (drums, bass, chords): the same low level from the
+    //           first frame to the last, never follows the cards;
+    //  • anim — the animation layer (bright arpeggio, claps, a chord stab on every card): its
+    //           loudness follows the scenes. Both stay lower under the admin's own voice.
+    const duck = voice ? .4 : 1;
+    const bed = ctx.createGain();
+    bed.gain.setValueAtTime(0, t0); bed.gain.linearRampToValueAtTime(.3 * duck, t0 + .08);
+    bed.gain.setValueAtTime(.3 * duck, end - .8); bed.gain.linearRampToValueAtTime(0, end);
+    bed.connect(master);
+    const music = ctx.createGain();   // = the animation layer
+    music.gain.setValueAtTime(.45 * duck, t0); music.connect(master);
     for (const e of events.filter(x => x.k === 'level')) {
       const at = t0 + e.at / 1000;
       music.gain.setValueAtTime(music.gain.value, at);
-      music.gain.linearRampToValueAtTime(e.level * .55 * duck, at + e.ramp / 1000);
+      music.gain.linearRampToValueAtTime(e.level * .45 * duck, at + e.ramp / 1000);
     }
-    music.gain.setValueAtTime(.55 * duck, end - .8); music.gain.linearRampToValueAtTime(0, end);
+    music.gain.setValueAtTime(.45 * duck, end - .8); music.gain.linearRampToValueAtTime(0, end);
     const fx = ctx.createGain(); fx.gain.value = voice ? .6 : .9; fx.connect(master);
     const osc = (type, f, at, d, gain, dest = fx, glideTo) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
@@ -968,18 +978,18 @@ const AD_STUDIO = (() => {
     // the music: 112 bpm, C – G – Am – F; kick + off-beat hats, bass, soft chords
     const beat = 60 / 112, bars = Math.ceil(len / 1000 / (beat * 4)) + 1;
     const CH = [[261.6, 329.6, 392], [196, 246.9, 293.7], [220, 261.6, 329.6], [174.6, 220, 261.6]], BASS = [65.4, 49, 55, 43.7];
-    const pad = ctx.createBiquadFilter(); pad.type = 'lowpass'; pad.frequency.value = 1400; pad.connect(music);
+    const pad = ctx.createBiquadFilter(); pad.type = 'lowpass'; pad.frequency.value = 1400; pad.connect(bed);
     const arp = ctx.createBiquadFilter(); arp.type = 'lowpass'; arp.frequency.value = 3200; arp.connect(music);
     for (let b = 0; b < bars; b++) {
       const bt = t0 + b * beat * 4, ch = CH[b % 4];
       if (bt >= end) break;
-      ch.forEach(f => osc('triangle', f, bt, beat * 4, .045, pad));
+      ch.forEach(f => osc('triangle', f, bt, beat * 4, .05, pad));       // bed: chords
       for (let q = 0; q < 4; q++) {
         const at = bt + q * beat; if (at >= end) break;
-        osc('sine', 120, at, .22, .5, music, 45);                         // kick
-        osc('triangle', BASS[b % 4] * (q % 2 ? 2 : 1), at, beat * .9, .16, music);   // bass
-        hiss(at + beat / 2, .06, .08, 7000, 9000, 'highpass', music);    // hat
-        if (q % 2) hiss(at, .12, .22, 1500, 1200, 'bandpass', music);     // clap on 2 and 4
+        osc('sine', 120, at, .22, .55, bed, 45);                          // bed: kick
+        osc('triangle', BASS[b % 4] * (q % 2 ? 2 : 1), at, beat * .9, .18, bed);   // bed: bass
+        hiss(at + beat / 2, .06, .09, 7000, 9000, 'highpass', bed);      // bed: hat
+        if (q % 2) hiss(at, .12, .22, 1500, 1200, 'bandpass', music);     // anim: clap on 2 and 4
         for (let x16 = 0; x16 < 4; x16++) {                              // the bright 16th-note arpeggio
           const t16 = at + x16 * beat / 4; if (t16 >= end) break;
           osc('square', ch[(q * 4 + x16) % 3] * 2, t16, beat / 5, .028, arp);
@@ -990,6 +1000,7 @@ const AD_STUDIO = (() => {
     for (const e of events) {
       const at = t0 + e.at / 1000;
       if (e.k === 'whoosh') hiss(at - .12, .45, .35, 400, 5000);
+      if (e.k === 'stab') CH[e.n % 4].forEach(f => { osc('sawtooth', f, at, .35, .05, arp); osc('triangle', f * 2, at, .25, .05, music); });
       if (e.k === 'boom') { osc('sine', 90, at, .9, .9, fx, 35); hiss(at, .5, .25, 200, 80, 'lowpass'); }
       if (e.k === 'pop') osc('sine', 600, at, .12, .5, fx, 1200);
       if (e.k === 'tick') osc('square', e.soft ? 1800 : 1100, at, .03, e.soft ? .06 : .14);
@@ -1110,6 +1121,13 @@ const AD_STUDIO = (() => {
   // 💰 the Meta account's money: prepaid balance (and how many days it lasts at the running
   // ad sets' daily budgets) or the amount due, and the lifetime spend
   const BILLING = 'https://business.facebook.com/billing_hub/accounts/details?asset_id=536773299299931&business_id=411214578749736';
+  // the places the admin starts / watches ads (our own accounts only)
+  const ADS_LINKS = [
+    ['📘 Meta Ads Manager (Facebook / Instagram ads)', 'https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=536773299299931&business_id=411214578749736'],
+    ['💰 Meta Billing (पैसे भरा)', BILLING],
+    ['▶️ Google Ads (YouTube ads)', 'https://ads.google.com/aw/campaigns?ocid=8650274639'],
+    ['🎬 YouTube Studio (video upload)', 'https://studio.youtube.com/'],
+  ];
   function _moneyLine(acc, S) {
     if (!acc) return '';
     const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
@@ -1380,7 +1398,9 @@ const AD_STUDIO = (() => {
           <label class="ads-target">लक्ष्य: ₹ <input id="ads-tgt-test" type="number" min="1" step="5" class="admin-input" aria-label="एका test चा खर्च" /> / test</label>
           <label class="ads-target">₹ <input id="ads-tgt-paid" type="number" min="1" step="50" class="admin-input" aria-label="एका paid चा खर्च" /> / paid</label></div>
         <p class="import-hint">लक्ष्य = एका test देणाऱ्यासाठी / एका pay करणाऱ्यासाठी किती खर्च चालेल. एकटी ad (उदा. फक्त NMMS) याच लक्ष्याशी तपासली जाते.</p>
-        <div id="ads-board"></div>`;
+        <div id="ads-board"></div>
+        <h4 class="admin-section-title" style="margin-top:14px">🔗 Ads चालवण्याच्या links</h4>
+        <div class="ads-links">${ADS_LINKS.map(([n, u]) => `<div class="ads-link"><span>${n}</span><a href="${u}" target="_blank" rel="noopener">उघडा ↗</a><button type="button" class="admin-btn-secondary" data-copy="${u}">📋 Copy</button></div>`).join('')}</div>`;
       cv = $('ads-cv'); x = cv.getContext('2d');
       $('ads-batch').addEventListener('change', e => { st.batch = e.target.value; st.label = ''; $('ads-label').value = _defaultLabel(); _setBatchKind(); });
       $('ads-kind').addEventListener('change', async e => {
@@ -1418,6 +1438,7 @@ const AD_STUDIO = (() => {
       $('ads-variants').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; st.v = b.dataset.v; st.t0 = performance.now(); _paintSide(); });
       $('ads-copy-btn').addEventListener('click', () => { navigator.clipboard?.writeText(adText()).catch(() => {}); APP.toast('Copied!', 'success'); });
       $('ads-rec').addEventListener('click', _downloadSelected);
+      host.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => { navigator.clipboard?.writeText(b.dataset.copy).then(() => APP.toast('Link copy झाली', 'success'), () => APP.toast(b.dataset.copy, 'info')); }));
       $('ads-sound').addEventListener('change', e => { st.sound = e.target.checked; });
       $('ads-play').addEventListener('click', () => playWithSound().catch(err => APP.toast(err?.message || 'आवाज चालला नाही', 'error')));
       $('ads-voice').addEventListener('change', async e => {
