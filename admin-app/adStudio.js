@@ -1147,7 +1147,13 @@ const AD_STUDIO = (() => {
     ].join('\n');
   }
   // the Meta ad set an ad goes into: one per class + kind + audience (teachers: one per audience)
-  const adsetName = (v = st.v) => { const a = _audOf(v); return isTeacher(a) ? `t-${a}` : `${_slug(st.batch)}-${st.kind === 'reg' ? 'r' : 'c'}-${a}`; };
+  // 📍 where (NMMS only — the admin's district table): its own ad set per area, e.g. 8th-nmms-…-c-parent-gata
+  const GEO_OPTS = [['gata', '🥇 गट A — कोल्हापूर, पुणे ग्रामीण, अहिल्यानगर, सातारा, सांगली, सोलापूर (राज्याचे 44% NMMS विद्यार्थी)'], ['kolhapur', 'फक्त कोल्हापूर जिल्हा (11%)'], ['marathwada', 'मराठवाडा — छ. संभाजीनगर, बीड, लातूर, नांदेड, धाराशिव (15%)'], ['nashik', 'नाशिक (3%)'], ['all', 'संपूर्ण महाराष्ट्र']];
+  const GEO_KEY = 'ad_geo';
+  let _geoPick = {};
+  const _isNmms = () => /nmms/i.test(st.batch || '') && !isTeacher(st.aud);
+  const _geo = () => (_isNmms() ? (_geoPick[st.batch] || 'gata') : 'all');
+  const adsetName = (v = st.v) => { const a = _audOf(v); return isTeacher(a) ? `t-${a}` : `${_slug(st.batch)}-${st.kind === 'reg' ? 'r' : 'c'}-${a}${_geo() !== 'all' ? '-' + _geo() : ''}`; };
 
   // ── "📤 Meta वर पाठवा": record the 9:16 video here, send it + a thumbnail through our server to
   // Meta, which makes the ad PAUSED (the admin checks it in Ads Manager and turns it on) ──
@@ -1180,7 +1186,7 @@ const AD_STUDIO = (() => {
         up = _sent[id] = { video_id: vid.video_id, image_hash: img.image_hash };
       }
       msg.textContent = '⏳ Meta मध्ये ad बनत आहे (video तयार व्हायला 1–2 मिनिटं लागू शकतात)…';
-      const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
+      const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, geo: _geo(), ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
       if (out.exists) msg.innerHTML = `ℹ️ <b>${_esc(id)}</b> ही ad Meta मध्ये आधीच आहे — दुसरी बनवली नाही.`;
       else if (out.pending) msg.textContent = (out.note ? out.note + ' · ' : '') + '⏳ Meta अजून video तयार करत आहे. 2 मिनिटांनी पुन्हा "Meta वर पाठवा" दाबा (video पुन्हा जाणार नाही).';
       else {
@@ -1235,6 +1241,7 @@ const AD_STUDIO = (() => {
     const inp = $('ads-meta-budget');
     if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * _share(st.aud) / 100 : 150));
     const n = $('ads-meta-name'); if (n) n.textContent = `Ad: ${adId()} · Ad set: ${adsetName()}`;
+    if ($('ads-geo-row')) { $('ads-geo-row').hidden = !_isNmms(); $('ads-meta-geo').value = _geo(); }
     // ages: the audience's, until the admin changes them (per audience)
     const [lo, hi] = _ages(st.aud), a1 = $('ads-meta-age-min'), a2 = $('ads-meta-age-max');
     if (a1 && a1.dataset.aud !== st.aud) { a1.value = lo; a2.value = hi; a1.dataset.aud = st.aud; }
@@ -1735,12 +1742,12 @@ const AD_STUDIO = (() => {
       const [label, tone] = _stOf(a), on = a.status === 'ACTIVE';
       return `<div class="lv-ad ${tone}">
         <span class="lv-chip ${tone}">${label}</span>
-        <b class="lv-name">${_esc(a.id)}</b>
+        <b class="lv-name">${_esc(a.name || a.id)}</b>
         ${a.why?.length ? `<span class="lv-why">कारण: ${a.why.map(_esc).join(' · ')}</span>` : ''}
         ${a.effective === 'DISAPPROVED' ? '<span class="lv-why">👉 Meta मध्ये उघडा → "Request review" (चूक वाटत असेल तर) किंवा ad चा मजकूर / video बदलून नवीन पाठवा.</span>' : a.effective === 'PENDING_BILLING_INFO' ? '<span class="lv-why">👉 Meta Billing मध्ये payment पद्धत / balance तपासा.</span>' : ''}
         <span class="lv-btns">
           ${on ? `<button type="button" class="ads-act lv-do" data-act="pause" data-ad="${_esc(a.ad_id)}">⏸ बंद</button>` : `<button type="button" class="ads-act good lv-do" data-act="resume" data-ad="${_esc(a.ad_id)}">▶ चालू</button>`}
-          ${_varOfAd(a.id) ? `<button type="button" class="ads-act lv-revid" data-ad="${_esc(a.ad_id)}" data-name="${_esc(a.id)}" title="Video अडकत असेल तर: नवीन video बनवून याच ad वर लावा">🎬 Video बदला</button>` : ''}
+          ${_varOfAd(a.name || a.id) ? `<button type="button" class="ads-act lv-revid" data-ad="${_esc(a.ad_id)}" data-name="${_esc(a.name || a.id)}" title="Video अडकत असेल तर: नवीन video बनवून याच ad वर लावा">🎬 Video बदला</button>` : ''}
           <a class="ads-act" href="${_amLink('ads', a.ad_id)}" target="_blank" rel="noopener">🔗 Meta मध्ये उघडा</a>
           ${a.fb_post ? `<a class="ads-act good" href="${_esc(a.fb_post)}" target="_blank" rel="noopener" title="लोकांना दिसणारी post — share करा, comments ना उत्तर द्या">👁 Facebook post + comments</a><button type="button" class="ads-act" data-copy="${_esc(a.fb_post)}" title="Post ची link copy">📋 post link</button>` : ''}
           ${a.ig_post ? `<a class="ads-act good" href="${_esc(a.ig_post)}" target="_blank" rel="noopener">📸 Instagram post</a>` : ''}
@@ -2212,6 +2219,7 @@ const AD_STUDIO = (() => {
             <div class="ads-recbox ads-metabox" id="ads-metabox" hidden>
               <b>📤 Meta वर पाठवा</b>
               <small id="ads-meta-name"></small>
+              <label id="ads-geo-row" hidden>📍 कुठे <select id="ads-meta-geo" class="admin-input">${GEO_OPTS.map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
               <label>या ad set चं रोजचं बजेट ₹ <input id="ads-meta-budget" type="number" min="100" step="50" class="admin-input" /></label>
               <label>वय <input id="ads-meta-age-min" type="number" min="13" max="65" class="admin-input ads-age" aria-label="किमान वय" /> ते <input id="ads-meta-age-max" type="number" min="13" max="65" class="admin-input ads-age" aria-label="कमाल वय" /></label>
               <small class="ads-age-note">वय आणि बजेट नवीन ad set बनताना लागतात — तो ad set आधीच बनला असेल तर Ads Manager मध्ये बदला.</small>
@@ -2319,6 +2327,8 @@ const AD_STUDIO = (() => {
       $('ads-voice-del').addEventListener('click', () => { delete _voice[adId()]; _paintVoice(); });
       $('ads-meta-send').addEventListener('click', () => sendToMeta());
       $('ads-meta-send-all').addEventListener('click', sendAllToMeta);
+      _geoPick = (await DB.getSetting(GEO_KEY, null).catch(() => null)) || {};
+      $('ads-meta-geo').addEventListener('change', e => { _geoPick[st.batch] = e.target.value; DB.setSetting(GEO_KEY, { ..._geoPick }).catch(() => {}); _paintMetaBox(); });
       $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
       $('ads-refresh').addEventListener('click', () => _loadBoard(true));
       $('ads-days').addEventListener('change', () => _loadBoard());
