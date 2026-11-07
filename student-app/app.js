@@ -2861,6 +2861,8 @@ const APP = (() => {
         onStart: quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'),
       });
     }
+    // a free visitor's guide counts the class's free tests: draw it again once new tests arrive
+    if (window.GUEST?.isActive?.()) window.GUEST.renderHomeGuide().catch(() => {});
   }
 
   function _cacheScreens() {

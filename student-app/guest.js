@@ -164,7 +164,8 @@ const GUEST = (() => {
     if (p.g && await resume(p.g)) {
       const prof = await API.getStudentProfile?.().catch(() => null);
       if (prof?.name) await _saveState({ name: prof.name });
-      _toast(`👋 ${prof?.name || 'नमस्कार'}, तुझी Free test तयार आहे — "▶ सुरू करा" दाब`, 'success');
+      _toast(`👋 ${prof?.name || 'नमस्कार'}, तुझी Free test उघडत आहे…`, 'success');
+      _auto = true;
       return true;
     }
     const challenge = p.quiz && p.batch ? { quiz: p.quiz, batch: p.batch, from: p.from, fp: p.fp, ref: p.ref } : null;
@@ -172,6 +173,11 @@ const GUEST = (() => {
     // ?shop=CODE = a guide / book shop's link or QR poster
     const src = challenge ? 'friend' : p.ad ? 'ad' : p.shop ? 'shop' : p.teacher ? 'teacher' : p.ref ? 'student' : p.free ? 'admin' : '';
     const ref = challenge ? p.ref : p.ad || p.shop || p.teacher || p.ref;
+    // a test starts by itself once they are in (a friend's challenge opens its own test through ?quiz=; notes ads read notes)
+    _auto = !challenge && !p.regular;
+    // the class is in the link: its tests come down now, while the page is being read
+    if (challenge) _prefetch({ batch: challenge.batch, src, ref });
+    else if (p.batch && !p.regular) _prefetch({ batch: p.batch, src, ref, link_batch: p.batch });
 
     if (!challenge && p.batch && (p.pe || _isParentAd(p.ad))) return _parentEntry(p, src, ref);
     return new Promise(resolve => {
@@ -260,17 +266,31 @@ const GUEST = (() => {
         if (!bot) { if (p.pe) showForm(); return; }
         // with the bot: one tap — WhatsApp opens with "LINK <id>"; the bot asks the name and sends the child's link
         $e('#gx-send').textContent = '📲 पाल्यासाठी link WhatsApp वर मिळवा';
-        $e('#gx-send').onclick = async () => {
-          if (!(await open())) return;
-          _waBot('LINK');
+        $e('#gx-send').onclick = () => {
           $e('#gx-pe-pick').hidden = true;
+          const box = $e('#gx-pe-done'); box.hidden = false;
+          box.innerHTML = `
+            <label class="gx-field"><span>मुलाचं / मुलीचं नाव</span><input class="gx-input" id="gx-pe-bname" maxlength="30" placeholder="उदा. राहुल" /></label>
+            <button type="button" class="gx-btn gx-wa gx-big" id="gx-pe-bgo">📲 WhatsApp वर link मिळवा</button>
+            <button type="button" class="gx-link" id="gx-pe-back">‹ मागे</button>`;
+          box.querySelector('#gx-pe-bname').focus();
+          box.querySelector('#gx-pe-back').onclick = () => { box.hidden = true; $e('#gx-pe-pick').hidden = false; msg.textContent = ''; };
+          box.querySelector('#gx-pe-bgo').onclick = () => sendLink(box.querySelector('#gx-pe-bname').value.trim());
+        };
+        // the name goes with LINK, so the bot answers at once with the child's link (to forward)
+        const sendLink = async name => {
+          if (name.length < 2) { msg.textContent = 'पाल्याचं नाव लिहा'; return; }
+          msg.textContent = '';
+          if (!(await _openSession(el, { batch: p.batch, src, ref, link_batch: p.batch, name }))) return;
+          await _saveState({ name });
+          _waBot('LINK', name);
           const done = $e('#gx-pe-done'); done.hidden = false;
           done.innerHTML = `
-            <p class="gx-sub">✅ WhatsApp उघडलं — <b>Send</b> दाबा. आमचा bot पाल्याचं नाव विचारेल आणि पाल्यासाठी test ची link देईल.</p>
+            <p class="gx-sub">✅ WhatsApp उघडलं — <b>Send</b> दाबा. आमचा bot लगेच ${_esc(name)} साठी test ची link देईल — ती ${_esc(name)} ला <b>forward</b> करा.</p>
             <button type="button" class="gx-btn gx-ghost" id="gx-pe-wa-again">📲 WhatsApp पुन्हा उघडा</button>
             <button type="button" class="gx-link" id="gx-pe-form-instead">WhatsApp नाही? नंबर टाइप करा</button>
             <button type="button" class="gx-link" id="gx-pe-here2">👦 पाल्य आला / आली — याच phone वर test सुरू करा</button>`;
-          done.querySelector('#gx-pe-wa-again').onclick = () => _waBot('LINK');
+          done.querySelector('#gx-pe-wa-again').onclick = () => _waBot('LINK', name);
           done.querySelector('#gx-pe-form-instead').onclick = showForm;
           done.querySelector('#gx-pe-here2').onclick = () => { _close(el); resolve(true); };
           el.querySelectorAll('button').forEach(b => { b.disabled = false; });
@@ -331,12 +351,22 @@ const GUEST = (() => {
     } catch { return false; }
   }
 
+  // the session (and the class's tests) started as soon as the page opened, before any tap
+  let _pre = null;
+  function _prefetch(body) {
+    if (_pre || !navigator.onLine) return;
+    _pre = (async () => {
+      await API.startGuestSession(body);
+      window.SYNC?.fetchQuizzes?.({ silent: true, status: 'published' })?.catch?.(() => {});
+    })().catch(() => {});   // a tap tries again and shows the error
+  }
   async function _openSession(el, body, extra = {}) {
     const msg = el.querySelector('#gx-msg');
     const btns = el.querySelectorAll('button');
     btns.forEach(b => { b.disabled = true; });
     if (msg) { msg.style.color = ''; msg.textContent = '⏳ उघडत आहे…'; }
     try {
+      if (_pre) await _pre;
       await API.startGuestSession(body);
       await _saveState({ challenge: extra.challenge || null, started_at: _state.started_at || Date.now() });
       await refresh();
@@ -508,11 +538,12 @@ const GUEST = (() => {
     const primary = el.querySelector('#gx-primary'), secondary = el.querySelector('#gx-secondary');
     const retry = () => { close(); window.TEST_PLAYER?.startTest(quiz.quiz_id, attempt.mode || 'practice'); };
     const next = () => { close(); goNext(); };
+    const nextLabel = !_isNative() && _state.web_day === _istDay() ? '📩 पुढची free test' : '➡ पुढचा Free भाग';
     if (pct < 50) {
       primary.textContent = '🔁 पुन्हा प्रयत्न करा'; primary.onclick = retry;
-      secondary.textContent = '➡ पुढचा Free भाग'; secondary.onclick = next;
+      secondary.textContent = nextLabel; secondary.onclick = next;
     } else {
-      primary.textContent = '➡ पुढचा Free भाग'; primary.onclick = next;
+      primary.textContent = nextLabel; primary.onclick = next;
       secondary.textContent = '🔁 पुन्हा प्रयत्न करा'; secondary.onclick = retry;
     }
     const ctx = { quiz, pct, score: attempt.score, max: attempt.max_score, improved, weak };
@@ -721,8 +752,8 @@ const GUEST = (() => {
     return _botNum;
   }
   // open the bot's chat with "<KEYWORD> <gid>" ready — the parent only taps Send
-  function _waBot(keyword) {
-    const url = `https://wa.me/${_botNum}?text=${encodeURIComponent(`${keyword} ${_state.gid || ''}`.trim())}`;
+  function _waBot(keyword, extra = '') {
+    const url = `https://wa.me/${_botNum}?text=${encodeURIComponent(`${keyword} ${_state.gid || ''} ${extra}`.replace(/\s+/g, ' ').trim())}`;
     API.guestEvent('wa_bot');
     if (_isNative()) window.open(url, '_system');
     else window.open(url, '_blank', 'noopener');
@@ -938,10 +969,69 @@ const GUEST = (() => {
     return list;
   }
 
+  // ── one new free test a day on the website (the app has them all) ──
+  const PLAY = 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
+  let _auto = false;
+  const _istDay = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+  // true = today's new test on the website is already taken, and this would be another new one
+  function _todayUsed(quizId) {
+    if (!_active || _isNative()) return false;
+    return _state.web_day === _istDay() && !!_state.web_quiz && _state.web_quiz !== quizId;
+  }
+  // testPlayer asks before a test starts: a test taken before (a retry) is always fine
+  async function mayStartTest(quiz) {
+    if (!_active || _isNative() || !quiz) return true;
+    if ((_state.scores || {})[quiz.quiz_id]) return true;
+    if (_todayUsed(quiz.quiz_id)) { nextTestSheet(); return false; }
+    if (_state.web_day !== _istDay() || _state.web_quiz !== quiz.quiz_id) await _saveState({ web_day: _istDay(), web_quiz: quiz.quiz_id });
+    return true;
+  }
+  // "today's free test is done": the next one by WhatsApp (one a day) or all of them in the app
+  async function nextTestSheet() {
+    if (document.querySelector('.gx-layer.gx-nextday')) return;
+    const bot = await _bot();
+    const el = _layer('gx-dim gx-nextday', `
+      <div class="gx-card">
+        <button type="button" class="gx-close" id="gx-x" aria-label="बंद करा">✕</button>
+        <h2 class="gx-title">✅ आजची free test <span class="gx-grad-text">झाली!</span></h2>
+        <p class="gx-sub">पुढची free test उद्या.${bot ? ' WhatsApp वर <b>TEST</b> पाठवा — रोज 1 test तिथे येईल.' : ''}</p>
+        ${bot ? '<button type="button" class="gx-btn gx-big gx-wa" id="gx-n-wa">📩 WhatsApp वर रोज 1 free test — TEST पाठवा</button>' : ''}
+        ${_isNative() ? '' : `<a class="gx-btn gx-ghost" id="gx-n-app" href="${PLAY}" target="_blank" rel="noopener">📲 App मध्ये उपलब्ध असलेल्या सगळ्या free tests</a>`}
+        <button type="button" class="gx-link" id="gx-n-all">🔓 सगळे tests आत्ताच उघडा</button>
+      </div>`);
+    API.guestEvent('offer_seen');
+    el.querySelector('#gx-x').onclick = () => _close(el);
+    el.querySelector('#gx-n-wa')?.addEventListener('click', () => { _waBot('TEST'); _close(el); });
+    el.querySelector('#gx-n-all').onclick = () => { _close(el); showOffer('locked'); };
+  }
+
+  // ⏳ "your test is getting ready" while the class's tests come down (a waking server can take half a minute)
+  function _prepScreen() {
+    const lines = ['प्रश्न निवडत आहे…', 'उत्तरं तपासायची तयारी…', 'जवळजवळ झालं…'];
+    const el = _layer('gx-hero gx-prep', `
+      <div class="gx-card gx-glass">
+        <div class="gx-prep-icon" aria-hidden="true">📝</div>
+        <h2 class="gx-title">तुमची test <span class="gx-grad-text">तयार होत आहे</span></h2>
+        <p class="gx-sub">लगेच मिळेल 🙂</p>
+        <div class="gx-prep-bar" aria-hidden="true"><i></i></div>
+        <p class="gx-sub gx-prep-line" id="gx-prep-line">${lines[0]}</p>
+        <p class="gx-msg" id="gx-msg" role="alert"></p>
+      </div>`);
+    let i = 0;
+    const timer = setInterval(() => { const l = el.querySelector('#gx-prep-line'); if (l) l.textContent = lines[++i % lines.length]; }, 2200);
+    return { el, done: () => { clearInterval(timer); _close(el); } };
+  }
   async function goNext() {
-    const tests = await _freeTests();
+    let tests = await _freeTests();
+    if (!tests.length) {
+      const prep = _prepScreen();
+      for (let i = 0; !tests.length && i < 20; i++) { await new Promise(r => setTimeout(r, 2000)); tests = await _freeTests(); }
+      prep.done();
+      if (!tests.length) { _toast('Internet हळू आहे — थोड्या वेळाने "▶ सुरू करा" दाबा', 'error'); window.APP?.showScreen?.('home'); window.APP?.loadHome?.(); return; }
+    }
     const done = _state.scores || {};
     const next = tests.find(q => !done[q.quiz_id]);
+    if (next && _todayUsed(next.quiz_id)) { nextTestSheet(); return; }
     if (next) { window.TEST_PLAYER?.startTest(next.quiz_id, 'practice'); return; }
     window.APP?.showScreen?.('home');
     window.APP?.loadHome?.();
@@ -958,27 +1048,58 @@ const GUEST = (() => {
     } catch { return ''; }
   }
 
+  // the class's tests come down in the background after the start: until they are on the phone the
+  // guide says "loading" (not "all done") and looks again every few seconds
+  let _guideWait = null;
   async function renderHomeGuide() {
     const home = $('screen-home');
     if (!home) return;
-    home.querySelector('.gx-guide')?.remove();
-    if (!_active) return;
+    if (!_active) { home.querySelector('.gx-guide')?.remove(); return; }
     const tests = await _freeTests();
+    home.querySelector('.gx-guide')?.remove();
+    clearTimeout(_guideWait);
+    // a visitor who is already in (same phone) and opens a free link again — e.g. the bot's daily link: start too
+    if (!renderHomeGuide._seenLink) {
+      renderHomeGuide._seenLink = true;
+      const p = entryParams();
+      if (p.free && !p.quiz && !p.regular) _auto = true;
+    }
+    if (!tests.length && _auto) { _auto = false; goNext().catch(() => {}); }
+    if (!tests.length) {
+      const strip = document.createElement('div');
+      strip.className = 'gx-guide';
+      strip.innerHTML = `
+        <div class="gx-guide-hi">${_state.name ? `👋 ${_esc(_state.name)}, तुमचा Free अभ्यास` : '👋 नमस्कार! तुमचा Free अभ्यास'}</div>
+        <div class="gx-guide-next">⏳ Free tests येत आहेत…</div>`;
+      home.insertBefore(strip, home.firstElementChild);
+      const tries = (renderHomeGuide._tries = (renderHomeGuide._tries || 0) + 1);
+      if (tries <= 40) _guideWait = setTimeout(() => { if (strip.isConnected) renderHomeGuide().catch(() => {}); }, 3000);
+      return;
+    }
+    renderHomeGuide._tries = 0;
     const done = _state.scores || {};
     const doneN = tests.filter(q => done[q.quiz_id]).length;
     const next = tests.find(q => !done[q.quiz_id]);
+    const used = !!next && _todayUsed(next.quiz_id);
+    const bot = used ? await _bot() : '';
+    home.querySelector('.gx-guide')?.remove();
     const strip = document.createElement('div');
     strip.className = 'gx-guide';
     strip.innerHTML = `
       <div class="gx-guide-hi">${_state.name ? `👋 ${_esc(_state.name)}, तुमचा Free अभ्यास` : '👋 नमस्कार! तुमचा Free अभ्यास'}</div>
-      <div class="gx-guide-next">${next ? `पुढचा test: <b>${_esc(_lesson(next))}</b>` : '🎉 सगळे free tests पूर्ण! आता पुढचे chapters उघडा.'}</div>
+      <div class="gx-guide-next">${used ? '✅ आजची free test झाली! पुढची उद्या — WhatsApp वर रोज 1, किंवा App मध्ये सगळ्या.' : next ? `पुढचा test: <b>${_esc(_lesson(next))}</b>` : '🎉 सगळे free tests पूर्ण! आता पुढचे chapters उघडा.'}</div>
       ${tests.length ? `<div class="gx-guide-progress" aria-label="${doneN}/${tests.length}"><i style="width:${Math.round((doneN / tests.length) * 100)}%"></i></div>` : ''}
       <div class="gx-row">
-        ${next ? '<button type="button" class="gx-btn gx-go" id="gx-next">▶ सुरू करा</button>' : ''}
+        ${used && bot ? '<button type="button" class="gx-btn gx-wa" id="gx-g-wa">📩 WhatsApp वर रोज 1 test</button>' : ''}
+        ${used ? `<a class="gx-btn gx-go" id="gx-g-app" href="${PLAY}" target="_blank" rel="noopener">📲 App मध्ये सगळ्या</a>` : ''}
+        ${next && !used ? '<button type="button" class="gx-btn gx-go" id="gx-next">▶ सुरू करा</button>' : ''}
         <button type="button" class="gx-btn gx-unlock" id="gx-all">🔓 सगळे उघडा</button>
       </div>
-      ${!_isNative() && Object.keys(done).length >= 2 ? '<button type="button" class="gx-link" id="gx-app" style="color:#fff">📱 App मध्ये पुढे चला — tests offline पण चालतात</button>' : ''}`;
+      ${!used && !_isNative() && Object.keys(done).length >= 2 ? '<button type="button" class="gx-link" id="gx-app" style="color:#fff">📱 App मध्ये पुढे चला — tests offline पण चालतात</button>' : ''}`;
     home.insertBefore(strip, home.firstElementChild);
+    strip.querySelector('#gx-g-wa')?.addEventListener('click', () => _waBot('TEST'));
+    // they just came in (welcome / parent page / the bot's link): the test starts by itself
+    if (_auto) { _auto = false; if (next) goNext().catch(() => {}); }
     _examLine().then(line => {
       if (!line || !strip.isConnected) return;
       const el = document.createElement('div');
@@ -1031,7 +1152,7 @@ const GUEST = (() => {
 
   return {
     refresh, isActive, wantsEntry, entryParams, start, resume, ensureName, onResult,
-    showOffer, openPay, goNext, renderHomeGuide, onSignupRequired, contactGate, fireworks,
+    showOffer, openPay, goNext, renderHomeGuide, mayStartTest, nextTestSheet, botNumber: _bot, waBot: _waBot, onSignupRequired, contactGate, fireworks,
     __resultCanvas: _resultCanvas,
     decorateHub, phoneHint,
   };

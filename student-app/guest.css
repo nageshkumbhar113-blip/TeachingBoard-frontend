@@ -336,3 +336,13 @@
 /* WhatsApp bot buttons (the bot number comes from /guest/bot-config) */
 .gx-or { margin: 10px 0 4px; font-size: .85rem; }
 a.gx-btn { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
+
+/* ⏳ "your test is getting ready" */
+.gx-prep .gx-card { text-align: center; }
+.gx-prep-icon { font-size: 3.2rem; animation: gx-prep-bob 1.2s ease-in-out infinite; }
+@keyframes gx-prep-bob { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-10px) rotate(6deg); } }
+.gx-prep-bar { height: 8px; border-radius: 99px; background: rgba(127, 127, 127, .2); overflow: hidden; margin: 18px 0 8px; }
+.gx-prep-bar i { display: block; height: 100%; width: 40%; border-radius: 99px; background: linear-gradient(90deg, #ff7a18, #af00ff); animation: gx-prep-run 1.4s ease-in-out infinite; }
+@keyframes gx-prep-run { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.gx-prep-line { min-height: 1.4em; }
+@media (prefers-reduced-motion: reduce) { .gx-prep-icon, .gx-prep-bar i { animation: none; } }

@@ -311,10 +311,20 @@ const WEEKLY = (() => {
         <h2 class="gx-title">Test जमा झालं!</h2>
         ${res ? `<p class="gx-sub">तुमचे गुण: <b class="gx-grad-text" style="font-size:1.6rem">${res.score} / ${res.total}</b></p>${_bySubject(res.by_subject)}` : '<p class="gx-sub">Internet आल्यावर आपोआप जमा होईल.</p>'}
         <p class="gx-sub">🏆 Rank list आणि बरोबर उत्तरं <b>${_esc(_when(ev.reveal_at || ev.ends_at))}</b> ला</p>
+        <button type="button" class="gx-btn gx-big gx-wa" id="wk-wa" style="display:none">📩 क्रमांक आणि पूर्ण result WhatsApp वर</button>
         <button type="button" class="gx-btn gx-big" id="wk-done">🏠 Home</button>
       </div>`;
     window.GUEST?.fireworks?.(.8);
     el.querySelector('#wk-done').onclick = () => { el.remove(); window.APP?.loadHome?.(); };
+    // a free visitor on the website: one tap opens our WhatsApp bot with "MAHA <id>" — the rank comes there (free)
+    if (window.GUEST?.isActive?.() && !window.Capacitor?.isNativePlatform?.()) {
+      window.GUEST.botNumber?.().then(n => {
+        const b = el.querySelector('#wk-wa');
+        if (!n || !b) return;
+        b.style.display = "";
+        b.onclick = () => { window.GUEST.waBot('MAHA'); b.textContent = '✅ WhatsApp उघडलं — Send दाबा'; };
+      }).catch(() => {});
+    }
   }
 
   // a mixed paper's marks, subject by subject

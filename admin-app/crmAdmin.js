@@ -19,13 +19,15 @@ const CRM_ADMIN = (() => {
     const m = Math.round((Date.now() - ms) / 60000);
     return m < 1 ? 'आत्ता' : m < 60 ? `${m} मि. पूर्वी` : m < 1440 ? `${Math.round(m / 60)} तासांपूर्वी` : `${Math.round(m / 1440)} दिवसांपूर्वी`;
   };
+  // time left on the offer: "3 तास 20 मि. बाकी"
+  const left = iso => { const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)} तास ${m % 60} मि. बाकी` : `${m} मि. बाकी`; };
   const LISTS = [
-    ['hot', '🔥 गरम'], ['cold', '❄️ थंड'], ['call', '📞 Call मागितला'], ['form', '📝 Form नंबर'], ['later', '⏰ नंतर'],
+    ['first', '☀️ आधी call'], ['hot', '🔥 गरम'], ['cold', '❄️ थंड'], ['call', '📞 Call मागितला'], ['form', '📝 Form नंबर'], ['later', '⏰ नंतर'],
     ['active', '💬 चालू'], ['paid', '✅ Paid'], ['closed', '❌ Closed'], ['nextyear', '📅 पुढचं वर्ष'],
   ];
   const REASONS = ['फी जास्त', 'पाल्याला वेळ नाही', 'दुसरा क्लास', 'Phone नाही', 'इतर'];
   let _conn = null;              // { url, token, at }
-  let _list = 'hot', _q = '', _open = '', _ready = false;
+  let _list = 'first', _q = '', _open = '', _ready = false;
   let _waReady = null;           // { gid, waMe, text }: a team message ready to open (a real tap opens WhatsApp)
 
   async function _connect(force) {
@@ -91,6 +93,7 @@ const CRM_ADMIN = (() => {
         <span class="crm-name">${esc(r.name || '—')} <small>${esc(r.cls || '')}</small></span>
         <span class="crm-meta">${r.mobile ? '📱 ' + esc(r.mobile) : '—'} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.open ? ' · 🟢 खिडकी उघडी' : ''}${r.app ? ' · 📲 app' : ''}</span>
         <span class="crm-meta">${r.closed ? '❌ ' + esc(r.closed) + ' · ' : ''}शेवटचा reply ${ago(r.last_in)}</span>
+        ${r.offer_end || r.mt ? `<span class="crm-meta crm-hot">${r.offer_end ? `🎁 सूट ${left(r.offer_end)}` : ''}${r.offer_end && r.mt ? ' · ' : ''}${r.mt ? `🏆 महा-Test ${r.mt.score}/${r.mt.total}${r.mt.rank ? ` · #${r.mt.rank}/${r.mt.of}` : ''}` : ''}</span>` : ''}
       </button>`).join('') : '<p class="crm-empty">या यादीत कोणी नाही.</p>';
     $('crm-rows').querySelectorAll('.crm-row').forEach(b => b.onclick = () => _lead(b.dataset.gid));
   }

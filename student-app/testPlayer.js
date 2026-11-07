@@ -233,6 +233,8 @@ const TEST_PLAYER = (() => {
 
     // Free-part visitor: their first name before the first test (guest.js).
     if (window.GUEST?.isActive?.() && !(await GUEST.ensureName())) return;
+    // website: one new free test a day (the next one by WhatsApp or in the app)
+    if (window.GUEST?.isActive?.() && GUEST.mayStartTest && !(await GUEST.mayStartTest(quiz))) return;
 
     const hasEmbeddedQuestions = Array.isArray(quiz.questions) && quiz.questions.length > 0;
     const hasSectionRefs = (quiz.sections || []).some(section => section.question_ids?.length);
