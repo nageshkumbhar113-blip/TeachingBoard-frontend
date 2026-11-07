@@ -2032,6 +2032,17 @@ const ADMIN = (() => {
     offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Pay केलं',
   };
 
+  // 🏆 the महा-Test message for one parent: invite (not registered) / reminder (registered) / result (took it)
+  function _leadMahaTest(l) {
+    const child = `${FREE_SITE}/student-app/?free=1&g=${encodeURIComponent(l.gid)}`, info = `${FREE_SITE}/maha-test.html?class=${encodeURIComponent(l.batch || '')}`;
+    const nm = l.name || 'तुमचं मूल', n = l.mt?.next, last = l.mt?.last;
+    const when = n ? new Date(n.starts_at).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+    const about = n ? `${n.question_count ? n.question_count + ' प्रश्न, ' : ''}${n.duration_minutes || ''} मिनिटं — लगेच गुण आणि क्रमांक` : '';
+    if (last && (!n || n.registered)) return `नमस्कार 🙏 ${nm} ला महा-Test मध्ये ${last.score}/${last.total} गुण${last.rank ? ` आणि क्रमांक #${last.rank}` : ''} 👏\n${n ? `पुढचा महा-Test: ${when}.\n` : ''}पूर्ण तयारीसाठी सगळे tests आणि notes: ${FREE_SITE}/parent-pay.html?g=${encodeURIComponent(l.gid)}`;
+    if (n && n.registered) return `नमस्कार 🙏 आठवण: ${when} ला ${l.batch} चा महा-Test आहे (${about}).\n${nm} ने याच link वरून test द्यायची 👇\n${child}`;
+    if (n) return `नमस्कार 🙏 ${when} ला ${l.batch} चा 🏆 महा-Test आहे — ${about}.${n.registered_count ? ` आत्तापर्यंत ${n.registered_count} मुलं नोंदली.` : ''}\n${nm} ची नोंदणी करा / test द्या 👇\n${child}\nमाहिती: ${info}`;
+    return '';
+  }
   function _leadFollowUp(l) {
     const pay = `${FREE_SITE}/parent-pay.html?g=${encodeURIComponent(l.gid)}`;
     // the parent sent the child the link, no test yet: a reminder with the child's link
@@ -2376,7 +2387,7 @@ const ADMIN = (() => {
   const GL_STEP_NAME = { browsed: '📚 Class', link_sent: '📲 मुलाला link पाठवली', engaged: '▶ Free भाग', tested: '📝 Test', shared_friend: '👫 मित्रांना share', shared_parent: '👨‍👩‍👧 पालकांना share', lead: '📱 नंबर', offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Paid' };
   const GL_PER = 25;
   let _leads = [], _glPage = 0, _glOpen = '';
-  let _glF = { q: '', batch: '', step: '', source: '', mobile: '', which: 'created', from: '', to: '', sort: 'last_seen_at', dir: -1 };
+  let _glF = { q: '', batch: '', step: '', source: '', mobile: '', mt: '', which: 'created', from: '', to: '', sort: 'last_seen_at', dir: -1 };
   try { Object.assign(_glF, JSON.parse(localStorage.getItem(GL_KEY) || '{}')); } catch { /* private window */ }
   const _glSave = () => { try { localStorage.setItem(GL_KEY, JSON.stringify(_glF)); } catch { /* ignore */ } };
   const _reach = l => { const s = new Set(l.steps || []); if (l.paid) s.add('paid'); let r = -1; GL_STEPS.forEach((k, i) => { if (s.has(k)) r = i; }); return r; };
@@ -2391,6 +2402,9 @@ const ADMIN = (() => {
       if (_glF.source && _srcOf(l) !== _glF.source) return false;
       if (_glF.mobile === 'yes' && !l.parent_mobile) return false;
       if (_glF.mobile === 'no' && l.parent_mobile) return false;
+      if (_glF.mt === 'not' && !(l.mt?.next && !l.mt.next.registered)) return false;
+      if (_glF.mt === 'reg' && !l.mt?.next?.registered) return false;
+      if (_glF.mt === 'done' && !l.mt?.last) return false;
       const d = _dayStr(_glF.which === 'seen' ? l.last_seen_at : l.created_at);
       if (_glF.from && d < _glF.from) return false;
       if (_glF.to && d > _glF.to) return false;
@@ -2422,6 +2436,7 @@ const ADMIN = (() => {
         <select id="gl-step" class="admin-input" aria-label="कुठे पोचले">${opt('', 'कुठे पोचले: सर्व', _glF.step)}${GL_STEPS.map((k, i) => opt(i, 'किमान ' + GL_STEP_NAME[k], _glF.step)).join('')}</select>
         <select id="gl-source" class="admin-input" aria-label="कुठून">${opt('', 'कुठून: सर्व', _glF.source)}${sources.map(s => opt(s, s === 'web' ? 'web (exam pages)' : s, _glF.source)).join('')}</select>
         <select id="gl-mobile" class="admin-input" aria-label="नंबर">${opt('', 'नंबर: सर्व', _glF.mobile)}${opt('yes', '📱 नंबर आहे', _glF.mobile)}${opt('no', 'नंबर नाही', _glF.mobile)}</select>
+        <select id="gl-mt" class="admin-input" aria-label="महा-Test">${opt('', '🏆 महा-Test: सर्व', _glF.mt)}${opt('not', 'पुढच्यासाठी नोंदणी नाही (आमंत्रण)', _glF.mt)}${opt('reg', 'नोंदणी झाली (आठवण)', _glF.mt)}${opt('done', 'मागचा दिला (result)', _glF.mt)}</select>
       </div>
       <div class="gl-row">
         <select id="gl-which" class="admin-input" aria-label="कोणती तारीख">${opt('created', 'तारीख: पहिल्यांदा आले', _glF.which)}${opt('seen', 'तारीख: शेवटचं आले', _glF.which)}</select>
@@ -2433,10 +2448,10 @@ const ADMIN = (() => {
       <div class="gl-quick">${quick.map(([k, t, on]) => `<button type="button" class="gl-chip" data-quick="${k}" aria-pressed="${!!on}">${t}</button>`).join('')}</div>`;
     const set = (k, v, refetch) => { _glF[k] = v; _glPage = 0; _glSave(); if (refetch) _loadGuestFunnel(); else { _renderLeadFilters(); _renderLeads(); } };
     $('gl-q').addEventListener('input', e => { _glF.q = e.target.value; _glPage = 0; _glSave(); _renderLeads(); });
-    for (const k of ['batch', 'step', 'source', 'mobile', 'which']) $('gl-' + k).addEventListener('change', e => set(k, e.target.value));
+    for (const k of ['batch', 'step', 'source', 'mobile', 'which', 'mt']) $('gl-' + k).addEventListener('change', e => set(k, e.target.value));
     $('gl-from').addEventListener('change', e => set('from', e.target.value, true));
     $('gl-to').addEventListener('change', e => set('to', e.target.value));
-    $('gl-clear').addEventListener('click', () => { Object.assign(_glF, { q: '', batch: '', step: '', source: '', mobile: '', from: '', to: '' }); _glPage = 0; _glSave(); _renderLeadFilters(); _renderLeads(); });
+    $('gl-clear').addEventListener('click', () => { Object.assign(_glF, { q: '', batch: '', step: '', source: '', mobile: '', mt: '', from: '', to: '' }); _glPage = 0; _glSave(); _renderLeadFilters(); _renderLeads(); });
     $('gl-csv').addEventListener('click', _leadsCsv);
     box.querySelectorAll('[data-quick]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.quick, on = b.getAttribute('aria-pressed') === 'true';
@@ -2472,7 +2487,7 @@ const ADMIN = (() => {
           <td data-l="कुठून">${_esc(_srcOf(l))}${l.ref ? `<small>${_esc(l.ref)}</small>` : ''}</td>
           <td data-l="आले">${_esc(when(l.created_at))}</td>
           <td data-l="शेवटचं">${_esc(when(l.last_seen_at))}</td>
-          <td>${l.parent_mobile && !l.paid ? `<button class="admin-btn-primary btn-gl-wa" type="button">${!l.tests && (l.steps || []).includes('link_sent') ? '🔔 आठवण WhatsApp' : '📱 WhatsApp'}</button> <a class="admin-btn-secondary btn-gl-call" href="tel:+91${_esc(String(l.parent_mobile).replace(/\D/g, '').slice(-10))}">📞 Call</a>` : ''}</td>
+          <td>${l.parent_mobile && !l.paid ? `<button class="admin-btn-primary btn-gl-wa" type="button">${!l.tests && (l.steps || []).includes('link_sent') ? '🔔 आठवण WhatsApp' : '📱 WhatsApp'}</button> ${l.mt?.next || l.mt?.last ? `<button class="admin-btn-secondary btn-gl-mt" type="button">🏆 महा-Test</button> ` : ''}<a class="admin-btn-secondary btn-gl-call" href="tel:+91${_esc(String(l.parent_mobile).replace(/\D/g, '').slice(-10))}">📞 Call</a>` : ''}</td>
         </tr>${l.gid === _glOpen ? `<tr class="gl-more"><td colspan="10"><div class="gxa-steps">${_leadSteps(l)}</div>${l.last_test ? `<p class="import-hint">शेवटची test: ${_esc(l.last_test)}</p>` : ''}</td></tr>` : ''}`).join('')}</tbody></table></div>
       ${pages > 1 ? `<div class="gl-pages"><button type="button" class="admin-btn-secondary" data-page="-1"${_glPage ? '' : ' disabled'}>◀ मागे</button> पान ${_glPage + 1} / ${pages} <button type="button" class="admin-btn-secondary" data-page="1"${_glPage < pages - 1 ? '' : ' disabled'}>पुढे ▶</button></div>` : ''}`
       : '<p class="import-hint">या filters मध्ये कोणी नाही.</p>'}`;
@@ -2483,6 +2498,7 @@ const ADMIN = (() => {
     el.querySelectorAll('tbody tr[data-gid]').forEach(tr => tr.addEventListener('click', e => {
       const l = _leads.find(x => x.gid === tr.dataset.gid); if (!l) return;
       if (e.target.closest('.btn-gl-call')) return;
+      if (e.target.closest('.btn-gl-mt')) { const t = _leadMahaTest(l); if (t) window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(t)}`, '_blank'); return; }
       if (e.target.closest('.btn-gl-wa')) { window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(_leadFollowUp(l))}`, '_blank'); return; }
       _glOpen = _glOpen === l.gid ? '' : l.gid; _renderLeads();
     }));

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#2a0f5c" />
+<title>महा-Test — दर रविवारी, क्रमांकासह | NKs EduOrbit</title>
+<meta name="description" content="दर रविवारी महा-Test: NMMS, शिष्यवृत्ती आणि इतर परीक्षांचा पूर्ण पेपर, लगेच गुण आणि सगळ्या मुलांमध्ये क्रमांक. पालकांनो, मुलाची नोंदणी करा — NKs EduOrbit" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700&display=swap" />
+<style>
+  :root {
+    --grad: linear-gradient(135deg, #ff7a18 0%, #ff3d77 50%, #7b2ff7 100%);
+    --ink: #1b1340; --muted: #6b6690; --gold: #ffc83d; --green: #16a34a;
+    --font: 'Baloo 2', 'Noto Sans Devanagari', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 16px 16px 40px; font-family: var(--font); color: var(--ink);
+    background: radial-gradient(120% 70% at 0% 0%, #ff9a3d 0%, transparent 55%),
+                radial-gradient(110% 70% at 100% 0%, #ff3d77 0%, transparent 55%),
+                radial-gradient(120% 90% at 50% 100%, #7b2ff7 0%, transparent 60%), #2a0f5c;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; }
+  .brand { text-align: center; color: #fff; margin: 6px 0 14px; }
+  .brand img { width: 54px; height: 54px; border-radius: 14px; }
+  .brand b { display: block; font-size: 1.5rem; font-weight: 800; }
+  .card { background: #fff; border-radius: 24px; padding: 18px; margin-bottom: 14px; box-shadow: 0 18px 50px rgba(43, 14, 110, .3); }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; line-height: 1.2; }
+  h2 { margin: 0 0 8px; font-size: 1.2rem; }
+  .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .muted { color: var(--muted); font-weight: 600; }
+  .when { margin: 10px 0; padding: 12px; border-radius: 16px; background: #fff7d6; border: 1px solid #fde68a; font-weight: 800; font-size: 1.15rem; text-align: center; }
+  .live { background: #dcfce7; border-color: #86efac; color: #14532d; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .chip { padding: 4px 10px; border-radius: 999px; background: #f3eeff; font-weight: 700; font-size: .85rem; }
+  ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.6; }
+  .btn { display: block; width: 100%; text-align: center; text-decoration: none; border: 0; border-radius: 16px; padding: 14px; font: 800 1.08rem var(--font); color: #fff; background: var(--grad); margin-top: 10px; box-shadow: 0 10px 24px rgba(255, 61, 119, .3); }
+  .btn.alt { background: #fff; color: #5b21d6; border: 2px solid #d9ccff; box-shadow: none; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  td { padding: 6px 4px; border-top: 1px solid #eee; }
+  td.r { width: 44px; font-weight: 800; color: #5b21d6; } td.s { text-align: right; font-weight: 800; }
+  .classes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .classes a { padding: 8px 12px; border-radius: 12px; background: #f3eeff; color: #3b2d6b; font-weight: 800; text-decoration: none; }
+  .note { font-size: .85rem; color: var(--muted); text-align: center; color: #fff; opacity: .9; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><img src="/icons/icon-192.png" alt="" /><b>NKs EduOrbit</b><span>🏆 दर रविवारी महा-Test</span></div>
+  <div id="main"><div class="card"><p class="muted">⏳ माहिती आणत आहे…</p></div></div>
+  <p class="note">प्रश्न? WhatsApp: +91 8390484545 · <a href="/" style="color:#fff">nkseduorbit.in</a></p>
+</div>
+<script>
+(function () {
+  var API = (function () { try { return localStorage.getItem('teachingboard_api_url') || 'https://teachingboard-backend.onrender.com/api'; } catch (e) { return 'https://teachingboard-backend.onrender.com/api'; } })();
+  var cls = new URLSearchParams(location.search).get('class') || '';
+  var main = document.getElementById('main');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function get(path) { return fetch(API + path).then(function (r) { return r.json(); }).then(function (j) { if (!j || j.success === false) throw new Error((j && j.message) || 'error'); return j.data; }); }
+  function app(extra) { return '/student-app/?free=1&batch=' + encodeURIComponent(cls) + '&src=web&ad=web-mahatest' + (extra || ''); }
+  function when(d) { return new Date(d).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }); }
+
+  // no class in the link: choose one
+  if (!cls) {
+    get('/guest/batches').then(function (list) {
+      main.innerHTML = '<div class="card"><h1 class="grad">🏆 महा-Test</h1><p class="muted">तुमच्या मुलाचा class निवडा:</p><div class="classes">' +
+        (list || []).map(function (b) { return '<a href="?class=' + encodeURIComponent(b.name) + '">' + esc((b.icon || '📚') + ' ' + b.name) + '</a>'; }).join('') + '</div></div>';
+    }).catch(function () { main.innerHTML = '<div class="card"><p class="muted">माहिती आणता आली नाही — थोड्या वेळाने पुन्हा उघडा.</p></div>'; });
+    return;
+  }
+  get('/weekly/public?batch=' + encodeURIComponent(cls)).then(function (d) {
+    var n = d.next, l = d.last, html = '';
+    html += '<div class="card"><h1><span class="grad">🏆 महा-Test</span></h1><p class="muted">' + esc(cls) + '</p>';
+    if (n) {
+      html += '<div class="when' + (n.state === 'live' ? ' live' : '') + '">' + (n.state === 'live' ? '🔴 आत्ता चालू आहे!' : '📅 ' + esc(when(n.starts_at))) + '</div>';
+      html += '<div class="facts">' + (n.question_count ? '<span class="chip">📝 ' + n.question_count + ' प्रश्न</span>' : '') +
+        (n.duration_minutes ? '<span class="chip">⏱ ' + n.duration_minutes + ' मिनिटं</span>' : '') +
+        (n.negative ? '<span class="chip">➖ चुकीच्या उत्तराला -' + n.negative + '</span>' : '<span class="chip">✅ negative marking नाही</span>') +
+        (n.registered_count ? '<span class="chip">👥 ' + n.registered_count + ' मुलं नोंदली</span>' : '') + '</div>';
+      if ((n.sections || []).length) html += '<div class="facts">' + n.sections.map(function (s) { return '<span class="chip">' + esc(s.subject) + ' · ' + s.count + '</span>'; }).join('') + '</div>';
+      if (n.open_to === 'paid') html += '<p class="muted">हा महा-Test app घेतलेल्या (paid) विद्यार्थ्यांसाठी आहे.</p>';
+    } else html += '<div class="when">📅 पुढचा महा-Test लवकरच जाहीर होईल</div>';
+    html += '<a class="btn" href="' + app('&pe=1') + '">📝 मुलाची नोंदणी करा — मुलाला WhatsApp वर link पाठवा</a>';
+    html += '<a class="btn alt" href="' + app('') + '">👦 मूल इथेच आहे — आत्ता Free test द्या</a></div>';
+    html += '<div class="card"><h2>कसं चालतं?</h2><ul>' +
+      '<li>दर रविवारी ठरलेल्या वेळी पूर्ण पेपर — खऱ्या परीक्षेसारखा.</li>' +
+      '<li>Test संपताच गुण; result च्या वेळी सगळ्या मुलांमध्ये <b>क्रमांक</b>.</li>' +
+      '<li>प्रत्येक उत्तराची सोपी युक्ती — चुका कुठे झाल्या ते कळतं.</li>' +
+      '<li>नोंदणी: मुलाचं नाव आणि पालकांचा WhatsApp नंबर. Login लागत नाही.</li></ul></div>';
+    if (l && (l.toppers || []).length) {
+      html += '<div class="card"><h2>🥇 मागच्या महा-Test चे top ' + l.toppers.length + '</h2><p class="muted">' + esc(when(l.starts_at)) + (l.participants ? ' · ' + l.participants + ' मुलांनी दिला' : '') + '</p><table>' +
+        l.toppers.map(function (t) { return '<tr><td class="r">#' + t.rank + '</td><td>' + esc(t.name) + '</td><td class="s">' + t.score + '/' + t.total + '</td></tr>'; }).join('') + '</table></div>';
+    }
+    main.innerHTML = html;
+  }).catch(function () { main.innerHTML = '<div class="card"><p class="muted">माहिती आणता आली नाही — थोड्या वेळाने पुन्हा उघडा.</p><a class="btn" href="' + app('&pe=1') + '">📝 तरीही नोंदणी करा</a></div>'; });
+})();
+</script>
+</body>
+</html>

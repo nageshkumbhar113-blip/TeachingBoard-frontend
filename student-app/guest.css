@@ -329,3 +329,6 @@
 .wk-appbox ol { margin: 6px 0 0; padding-left: 20px; font-size: .92rem; line-height: 1.5; }
 .wk-appbox .gx-btn { margin-top: 10px; min-height: 48px; font-size: 1rem; }
 .gx-refer-note { font-size: .88rem; margin: 10px 0 0; padding: 8px 10px; border-radius: 12px; background: #fff7d6; color: #7a4b00; }
+
+/* parent start: the weekly महा-Test line */
+.gx-pe-mt { margin: 10px 0; padding: 9px 12px; border-radius: 14px; background: rgba(255, 200, 61, .18); border: 1px solid rgba(255, 200, 61, .55); font-size: .92rem; line-height: 1.45; text-align: left; }
