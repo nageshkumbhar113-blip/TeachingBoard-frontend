@@ -2861,3 +2861,8 @@ body.admin-app {
 .bd-card-preview { max-width: 260px; margin: 10px 0 2px; }
 .batch-admin-cover .cc { border-radius: 8px; }
 .batch-admin-cover:has(.cc) { width: 128px; height: auto; padding: 0; border: 0; background: none; display: block; }
+
+.bd-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 2px; }
+.bd-color { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; font-weight: 800; font-size: .75rem; color: var(--text, #222); }
+.bd-color.on { border-color: var(--text, #222); box-shadow: 0 0 0 2px var(--surface, #fff) inset; }
+.bd-color:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }

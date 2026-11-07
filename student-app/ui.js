@@ -367,7 +367,7 @@ const UI = (() => {
     ? `<div class="batch-cover"><img src="${(window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(c.cover_image) : c.cover_image)}" alt="" loading="lazy"></div>`
     : window.COURSE_CARD ? COURSE_CARD.html(c) : `<div class="batch-icon">${c.icon || '📚'}</div>`);
   const _cardFacts = rb => ({ icon: rb.icon || '📚', cover_image: rb.cover_image || '', kind: rb.kind || '', board: rb.board || '',
-    medium: rb.medium || '', standard: rb.standard || '', subjects: Array.isArray(rb.subjects) ? rb.subjects : [] });
+    medium: rb.medium || '', standard: rb.standard || '', subjects: Array.isArray(rb.subjects) ? rb.subjects : [], facts: rb.facts || null, card_color: Number.isInteger(rb.card_color) ? rb.card_color : -1 });
 
   // Background, once per session: fetch the admin's class icons/covers, save
   // them on the phone, and update the cards already on screen if they differ.

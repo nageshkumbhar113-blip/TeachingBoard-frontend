@@ -1497,10 +1497,14 @@ const ADMIN = (() => {
     list.innerHTML = '';
 
     // Fetch question counts (and the subjects, for the card) for all batches in parallel
-    const [qCounts, subjectLists] = await Promise.all([
+    const [qCounts, subjectLists, plans] = await Promise.all([
       Promise.all(batches.map(b => DB.getQuestionsByBatch(b.name))),
       Promise.all(batches.map(b => DB.getSubjectsByBatch(b.name).catch(() => []))),
+      navigator.onLine ? API.getBatchPlans().catch(() => []) : [],
     ]);
+    // the course card's moving line: what each course holds (server counts)
+    const factsOf = new Map((plans || []).map(p => [p.name, p.facts || null]));
+    const colorOf = new Map((plans || []).map(p => [p.name, p.card_color]));
 
     for (let i = 0; i < batches.length; i++) {
       const b  = batches[i];
@@ -1511,7 +1515,7 @@ const ADMIN = (() => {
         <div class="batch-admin-cover-wrap">
           ${b.cover_image
             ? `<img src="${_esc(b.cover_image)}" class="batch-admin-cover" alt="">`
-            : window.COURSE_CARD ? `<div class="batch-admin-cover">${COURSE_CARD.html(b, { subjects: subjectLists[i].map(s => s.name) })}</div>`
+            : window.COURSE_CARD ? `<div class="batch-admin-cover">${COURSE_CARD.html({ ...b, facts: factsOf.get(b.name) || null, card_color: colorOf.has(b.name) ? colorOf.get(b.name) : b.card_color }, { subjects: subjectLists[i].map(s => s.name) })}</div>`
             : `<div class="batch-admin-cover batch-admin-cover-empty">${b.icon || '📚'}</div>`}
         </div>
         <div>
@@ -1673,7 +1677,18 @@ const ADMIN = (() => {
       medium: _bdSelectedValue('bd-medium', 'bd-medium-custom'),
       standard: _bdSelectedValue('bd-standard', 'bd-standard-custom'),
       kind: $('bd-kind')?.value || '',
+      card_color: _bdColor,
     };
+  }
+  // the card's colours: "A" = from the name, or one of the 8
+  let _bdColor = -1;
+  function _bdDrawColors() {
+    const box = $('bd-colors');
+    if (!box || !window.COURSE_CARD) return;
+    const sw = (i, bg, label) => `<button type="button" role="radio" aria-checked="${_bdColor === i}" class="bd-color${_bdColor === i ? ' on' : ''}" data-i="${i}" title="${label}" style="background:${bg}">${i < 0 ? 'A' : ''}</button>`;
+    box.innerHTML = '<span class="import-hint">Card चा रंग:</span>' + sw(-1, 'var(--surface-2, #ddd)', 'आपोआप (नावावरून)')
+      + COURSE_CARD.PALETTES.map((p, i) => sw(i, `linear-gradient(135deg, ${p[0]}, ${p[1]}, ${p[2]})`, `रंग ${i + 1}`)).join('');
+    box.querySelectorAll('.bd-color').forEach(b => { b.onclick = () => { _bdColor = Number(b.dataset.i); _bdDrawColors(); _bdRefreshCard(); }; });
   }
   function _bdRefreshCard() {
     if (!window.COURSE_CARD) return;
@@ -1733,6 +1748,9 @@ const ADMIN = (() => {
     ['bd-board-custom', 'bd-medium-custom', 'bd-standard-custom'].forEach(id => $(id)?.classList.add('hidden'));
 
     if ($('bd-kind')) $('bd-kind').value = batch?.kind || '';
+    _bdColor = Number.isInteger(batch?.card_color) ? batch.card_color : -1;
+    if (mode === 'edit' && batch && navigator.onLine) API.getBatchPlans().then(list => { const p = (list || []).find(x => x.name === batch.name); if (p && Number.isInteger(p.card_color)) { _bdColor = p.card_color; _bdDrawColors(); _bdRefreshCard(); } }).catch(() => {});
+    _bdDrawColors();
     if ($('bd-subject-list')) $('bd-subject-list').innerHTML = '';
     _bdExistingSubjects = [];
     if (mode === 'edit' && batch) {
@@ -1791,6 +1809,7 @@ const ADMIN = (() => {
     const name        = String($('bd-name-preview')?.value || '').trim();
     const editingName = String($('bd-edit-name')?.value || '').trim();
     const kind        = $('bd-kind')?.value || '';
+    const card_color  = _bdColor;
     const addSubjects = [...document.querySelectorAll('#bd-subject-list input:checked')].map(i => i.value);
 
     if (!name) { APP.toast('Batch नाव रिकामं ठेवू नका', 'error'); return; }
@@ -1800,17 +1819,17 @@ const ADMIN = (() => {
         // EDIT mode — name field was locked, so this can never rename;
         // renameBatchCatalog(oldName === newName) skips the whole cascade
         // server-side, purely a metadata update.
-        await DB.saveBatch({ name: editingName, board, medium, standard, kind });
+        await DB.saveBatch({ name: editingName, board, medium, standard, kind, card_color });
         if (navigator.onLine) {
-          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard, kind });
+          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard, kind, card_color });
         }
         await _bdAddSubjects(editingName, addSubjects);
         APP.toast(`✅ "${editingName}" चे Board/Medium/Class अपडेट झाले`, 'success');
       } else {
         const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
         const icon  = icons[Math.floor(Math.random() * icons.length)];
-        await DB.saveBatch({ name, icon, board, medium, standard, kind });
-        if (navigator.onLine) await API.createBatchCatalog(name, icon, { board, medium, standard, kind });
+        await DB.saveBatch({ name, icon, board, medium, standard, kind, card_color });
+        if (navigator.onLine) await API.createBatchCatalog(name, icon, { board, medium, standard, kind, card_color });
         await _bdAddSubjects(name, addSubjects);
         APP.toast(`✅ Class "${name}" added`, 'success');
       }

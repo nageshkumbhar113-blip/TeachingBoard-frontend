@@ -38,20 +38,68 @@
     return w.length > 8 ? w.slice(0, 8) : w;
   }
 
-  // the card: a 16:9 box drawn with HTML + CSS (sharp on every screen, offline, no download)
+  // every course its own colours: one of 8 gradients, chosen by the course name (the same name → the same colours)
+  const PALETTES = [['#ff7a18', '#f43f5e', '#be185d'], ['#38bdf8', '#2563eb', '#1e3a8a'], ['#34d399', '#059669', '#065f46'], ['#a78bfa', '#7c3aed', '#4c1d95'],
+    ['#22d3ee', '#0891b2', '#155e75'], ['#f472b6', '#db2777', '#831843'], ['#94a3b8', '#475569', '#1e293b'], ['#818cf8', '#4f46e5', '#312e81']];
+  const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
+  function palette(c) {
+    const set = Number(c?.card_color);
+    const p = PALETTES[set >= 0 && set < PALETTES.length ? set : hash(String(c?.name || '').replace(/\s+/g, ' ').trim().toLowerCase()) % PALETTES.length];
+    return `--c1:${p[0]};--c2:${p[1]};--c3:${p[2]}`;
+  }
+
+  // the moving line: what the course holds, from the real content counts (server: utils/courseFacts.js)
+  function factLines(c, subjects) {
+    const f = c?.facts || {}, kind = kindOf(c), L = [];
+    const nSub = f.subjects || subjects.length;
+    if (kind === 'exam' && f.free_tests) L.push(`📝 ${f.free_tests} free tests`);
+    if (nSub) L.push(`📚 ${nSub} विषय${f.chapters ? ` · ${f.chapters} धडे` : ''}`);
+    (f.top_notes || []).forEach(t => L.push(`📒 ${t.subject}: ${t.n} धड्यांच्या Notes`));
+    (f.top_answers || []).forEach(t => L.push(`✍️ ${t.subject}: ${t.n} स्वाध्याय उत्तरं`));
+    if (kind === 'regular' && f.free_chapters) L.push(`🎁 ${f.free_chapters} धडे free`);
+    if (kind === 'exam') L.push('🏆 दर रविवारी महा-Test');
+    if (f.notes || f.answers) L.push('✈️ Internet शिवाय पण चालतं');
+    if (!L.length) L.push(nSub ? `📚 ${nSub} विषय` : '📚 विषय लवकरच येत आहेत');
+    return L;
+  }
+
+  // the card: a 16:9 box drawn with HTML + CSS (sharp on every screen, offline, no download).
+  // The course's full name stays still; the line under it changes every 2.5 s.
   function html(c, opts = {}) {
     const kind = kindOf(c);
     const subjects = (opts.subjects || c?.subjects || []).map(s => (typeof s === 'string' ? s : s?.name)).filter(Boolean);
-    const shown = subjects.slice(0, 4), more = subjects.length - shown.length;
-    const tags = [c?.medium, c?.board && c.board.replace(/Maharashtra State Board/i, 'State Board')].filter(Boolean);
-    const foot = opts.foot || (kind === 'exam' ? '🏆 Competitive Exam' : '📚 Notes · उत्तरं · सराव');
-    return `<div class="batch-cover cc cc-${kind}" aria-hidden="true">
-      <div class="cc-top"><span class="cc-big">${esc(bigWord(c))}</span>${tags.length ? `<span class="cc-tags">${tags.map(t => `<span>${esc(t)}</span>`).join('')}</span>` : ''}</div>
-      <div class="cc-subs">${shown.length
-        ? shown.map(s => `<span title="${esc(s)}">${subjectIcon(s)}</span>`).join('') + (more > 0 ? `<b>+${more}</b>` : '')
-        : '<em>📚 विषय लवकरच येत आहेत</em>'}</div>
-      <div class="cc-foot">${esc(foot)}</div>
+    const meta = [c?.medium, c?.board && c.board.replace(/Maharashtra State Board/i, 'State Board')].filter(Boolean).join(' · ');
+    const lines = factLines(c, subjects);
+    // coloured letters: the class word in the name and every number in the moving line in a warm yellow
+    const name = esc(String(c?.name || '').replace(/\s+/g, ' ').trim()).replace(/^(\d{1,2}\s*(st|nd|rd|th|वी)|nmms)/i, '<b class="cc-hl">$1</b>');
+    const nums = t => esc(t).replace(/(\d+)/g, '<b class="cc-hl">$1</b>');
+    return `<div class="batch-cover cc" style="${palette(c)}" aria-hidden="true">
+      <div class="cc-head"><div class="cc-name">${name}</div>${meta ? `<div class="cc-meta">${esc(meta)}</div>` : ''}</div>
+      <div class="cc-rail">${lines.map((t, i) => `<span class="${i ? '' : 'on'}">${nums(t)}</span>`).join('')}</div>
+      <div class="cc-low"><div class="cc-bar"><i${lines.length > 1 ? ' class="run"' : ''}></i></div><span class="cc-type">${kind === 'exam' ? '🏆 Competitive' : '📚 Regular'}</span></div>
     </div>`;
+  }
+
+  // one timer for every card on the page: only cards on screen move; none when the phone asks for less motion
+  let _timer = null;
+  function _tick() {
+    if (document.hidden) return;
+    const vh = window.innerHeight || 800;
+    document.querySelectorAll('.cc-rail').forEach(rail => {
+      const items = rail.children;
+      if (items.length < 2) return;
+      const r = rail.getBoundingClientRect();
+      if (!r.width || r.bottom < 0 || r.top > vh) return;
+      let cur = 0; for (let i = 0; i < items.length; i++) { items[i].classList.remove('out'); if (items[i].classList.contains('on')) cur = i; }
+      items[cur].classList.replace('on', 'out');
+      items[(cur + 1) % items.length].classList.add('on');
+      const bar = rail.parentElement?.querySelector('.cc-bar i');
+      if (bar) { bar.classList.remove('run'); void bar.offsetWidth; bar.classList.add('run'); }
+    });
+  }
+  function _start() {
+    if (_timer || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    _timer = setInterval(_tick, 2500);
   }
 
   // the usual subjects of a new course (Admin › new course: one tap adds them; untick what is not needed)
@@ -75,28 +123,33 @@
 
   // the card's look (once per page)
   const CSS = `
-.cc { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: space-between; aspect-ratio: 16/9; width: 100%;
-  border-radius: 10px; padding: 7% 7% 5%; box-sizing: border-box; color: #fff; overflow: hidden; container-type: inline-size; text-align: left; }
-.cc-exam { background: radial-gradient(120% 90% at 100% 0%, rgba(255,255,255,.18), transparent 55%), linear-gradient(135deg, #ff7a18 0%, #e8365d 55%, #7b2ff7 100%); }
-.cc-regular { background: radial-gradient(120% 90% at 100% 0%, rgba(255,255,255,.2), transparent 55%), linear-gradient(135deg, #0ea5e9 0%, #2563eb 55%, #10b981 130%); }
-.cc::after { content: ''; position: absolute; right: -12%; bottom: -30%; width: 55%; aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.1); }
-.cc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; position: relative; z-index: 1; }
-.cc-big { font-weight: 900; line-height: 1; font-size: 20px; font-size: clamp(16px, 17cqi, 64px); letter-spacing: -.02em; text-shadow: 0 2px 8px rgba(0,0,0,.18); }
-.cc-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.cc-tags span { background: rgba(255,255,255,.22); border-radius: 99px; padding: 1px 7px; font-weight: 700; white-space: nowrap; font-size: 10px; font-size: clamp(8px, 5.2cqi, 16px); }
-.cc-subs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; position: relative; z-index: 1; font-size: 16px; font-size: clamp(12px, 9cqi, 34px); }
-.cc-subs span { background: rgba(255,255,255,.2); border-radius: 8px; padding: 0 3px; line-height: 1.25; }
-.cc-subs b { font-size: .6em; font-weight: 800; }
-.cc-subs em { font-style: normal; font-weight: 700; font-size: .55em; opacity: .95; }
-.cc-foot { position: relative; z-index: 1; font-weight: 800; font-size: 10px; font-size: clamp(8px, 5.6cqi, 18px); opacity: .95; }
-@media (prefers-reduced-motion: no-preference) { .batch-card:hover .cc { filter: saturate(1.1); } }
+.cc { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; aspect-ratio: 16/9; width: 100%; max-width: 100%;
+  border-radius: 10px; padding: 7% 8% 6%; box-sizing: border-box; color: #fff; overflow: hidden; isolation: isolate; container-type: inline-size; text-align: left;
+  background: linear-gradient(135deg, var(--c1, #2563eb), var(--c2, #4f46e5) 60%, var(--c3, #7c3aed)); }
+.cc::after { content: ''; position: absolute; width: 60%; aspect-ratio: 1; right: -18%; top: -32%; border-radius: 50%; background: rgba(255,255,255,.14); z-index: -1; }
+.cc::before { content: ''; position: absolute; width: 45%; aspect-ratio: 1; left: -14%; bottom: -40%; border-radius: 50%; background: rgba(0,0,0,.10); z-index: -1; }
+.cc-name { font-weight: 800; line-height: 1.12; font-size: 13px; font-size: clamp(11px, 9cqi, 26px); text-shadow: 0 1px 6px rgba(0,0,0,.18);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.cc-meta { font-size: 9px; font-size: clamp(8px, 5cqi, 14px); font-weight: 600; opacity: .92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.cc-rail { position: relative; height: 1.5em; overflow: hidden; font-size: 11px; font-size: clamp(9px, 6.6cqi, 19px); font-weight: 700; }
+.cc-rail span { position: absolute; inset: 0; display: block; line-height: 1.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateY(110%); opacity: 0; transition: transform .45s ease, opacity .45s ease; }
+.cc-rail span.on { transform: none; opacity: 1; }
+.cc-rail span.out { transform: translateY(-110%); opacity: 0; }
+.cc-hl { color: #ffe45c; font-weight: 900; }
+.cc-low { display: flex; align-items: center; gap: 6px; }
+.cc-type { flex: 0 0 auto; font-size: 8px; font-size: clamp(7px, 4.6cqi, 13px); font-weight: 800; background: rgba(255,255,255,.2); border-radius: 99px; padding: 0 6px; line-height: 1.6; }
+.cc-bar { flex: 1 1 auto; height: 3px; border-radius: 3px; background: rgba(255,255,255,.25); overflow: hidden; }
+.cc-bar i { display: block; height: 100%; width: 0; background: #fff; }
+.cc-bar i.run { animation: cc-fill 2.5s linear forwards; }
+@keyframes cc-fill { to { width: 100% } }
+@media (prefers-reduced-motion: reduce) { .cc-rail span { transition: none; } .cc-bar i.run { animation: none; width: 100%; } }
 `;
   function injectCss() {
     if (document.getElementById('cc-style')) return;
     const st = document.createElement('style'); st.id = 'cc-style'; st.textContent = CSS;
     document.head.appendChild(st);
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectCss); else injectCss();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { injectCss(); _start(); }); else { injectCss(); _start(); }
 
-  window.COURSE_CARD = { html, kindOf, subjectIcon, suggestSubjects, bigWord };
+  window.COURSE_CARD = { html, kindOf, subjectIcon, suggestSubjects, bigWord, palette, factLines, PALETTES };
 })();
