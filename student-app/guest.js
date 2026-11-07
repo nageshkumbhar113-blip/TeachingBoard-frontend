@@ -615,6 +615,7 @@ const GUEST = (() => {
       <div class="gx-offer">
         <span class="gx-offer-tag">🎁 Test पूर्ण केल्याबद्दल</span>
         <div class="gx-offer-head">पहिल्या payment वर ${offer.percent}% सवलत!</div>
+        ${(offer.steps || []).length === 2 ? `<div class="gx-sub" style="font-size:.8rem">${offer.steps[0].percent}% → ${new Date(offer.steps[0].ends).toLocaleString('mr-IN-u-nu-latn', { weekday: 'short', hour: 'numeric', minute: '2-digit' })} पर्यंत · नंतर ${offer.steps[1].percent}% → ${new Date(offer.steps[1].ends).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' })} पर्यंत</div>` : ''}
         ${monthly ? `<div class="gx-offer-price">Monthly: <s>₹${monthly}</s><b>₹${cut(monthly)}</b></div>` : ''}
         ${yearly ? `<div class="gx-offer-price">Yearly: <s>₹${yearly}</s><b>₹${cut(yearly)}</b></div>` : ''}
         <div>⏳ फक्त <span class="gx-timer" id="gx-timer"></span> बाकी</div>

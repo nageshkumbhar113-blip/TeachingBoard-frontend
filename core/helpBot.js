@@ -65,8 +65,8 @@ const HELP_DEFAULTS = [
       q: 'Refund मिळेल का?', a: 'Refund चे नियम Refund Policy पानावर आहेत.',
       q_en: 'Can I get a refund?', a_en: 'The refund rules are on the Refund Policy page.' },
     { id: 'offer',
-      q: '50% offer कोणाला मिळतो?', a: 'Free test पूर्ण केल्यावर पहिल्या payment वर 24 तासांसाठी. नंतरचे payments पूर्ण किमतीत.',
-      q_en: 'Who gets the 50% offer?', a_en: 'After finishing a free test — on the first payment, for 24 hours. Later payments are at the full price.' },
+      q: '50% offer कोणाला मिळतो?', a: 'Free test पूर्ण केल्यावर पहिल्या payment वर 24 तासांसाठी 50%, त्यानंतर पहिल्या रविवारी रात्री 11 पर्यंत 30%. नंतरचे payments पूर्ण किमतीत.',
+      q_en: 'Who gets the 50% offer?', a_en: 'After finishing a free test — on the first payment: 50% for 24 hours, then 30% until the first Sunday 11 pm. Later payments are at the full price.' },
   ] },
   { id: 'app', icon: '📱', title: 'App वापर', title_en: 'Using the app', items: [
     { id: 'offline',

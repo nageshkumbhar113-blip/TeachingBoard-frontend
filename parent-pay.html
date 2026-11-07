@@ -75,6 +75,7 @@
   .hidden { display: none !important; }
   @keyframes pop { 0% { opacity: 0; transform: translateY(24px) scale(.94) } 70% { opacity: 1; transform: translateY(-3px) scale(1.01) } 100% { transform: none } }
   @keyframes rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+  .offer-rule { font-size: .8rem; opacity: .9; margin-top: 6px; position: relative; z-index: 1; }
   @keyframes shine { from { background-position: -150% 0 } to { background-position: 150% 0 } }
   @keyframes bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
   .fx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
@@ -256,6 +257,14 @@
       var t = setInterval(function () { k = Math.min(pct, k + Math.max(1, Math.round(pct / 25))); ring.style.setProperty('--p', k); $('c-pct').textContent = k + '%'; if (k >= pct) clearInterval(t); }, 30);
       if (info.offer && info.offer.active) {
         $('offer-head').textContent = 'पहिल्या payment वर ' + info.offer.percent + '% सवलत!';
+        // the whole rule, so nobody is surprised: 50 % for 24 hours, then 30 % until Sunday 11 pm, then the full price
+        var st = info.offer.steps || [];
+        if (st.length === 2 && !$('offer-rule')) {
+          var f = function (d) { return new Date(d).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); };
+          var p = document.createElement('p'); p.id = 'offer-rule'; p.className = 'offer-rule';
+          p.textContent = 'सूट: ' + st[0].percent + '% — ' + f(st[0].ends) + ' पर्यंत · नंतर ' + st[1].percent + '% — ' + f(st[1].ends) + ' पर्यंत · नंतर पूर्ण किंमत.';
+          $('offer-head').parentNode.appendChild(p);
+        }
         $('offer').classList.remove('hidden');
         timer($('timer'), info.offer.expires_at, function () { info.offer.active = false; $('offer').classList.add('hidden'); renderPrices(); });
       }
