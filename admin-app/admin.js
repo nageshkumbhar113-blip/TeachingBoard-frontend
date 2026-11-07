@@ -2034,6 +2034,11 @@ const ADMIN = (() => {
 
   function _leadFollowUp(l) {
     const pay = `${FREE_SITE}/parent-pay.html?g=${encodeURIComponent(l.gid)}`;
+    // the parent sent the child the link, no test yet: a reminder with the child's link
+    if (!l.tests && (l.steps || []).includes('link_sent')) {
+      const child = `${FREE_SITE}/student-app/?free=1&g=${encodeURIComponent(l.gid)}`;
+      return `नमस्कार 🙏 ${l.name ? l.name + ' साठी' : 'तुमच्या मुलासाठी'} पाठवलेली ${l.batch || ''} ची Free test अजून दिली नाही.\nफक्त 10 मिनिटं लागतात 👇\n${child}\nTest नंतर result आणि क्रमांक इथे दिसेल: ${pay}`;
+    }
     const ageDays = (Date.now() - new Date(l.created_at).getTime()) / 864e5;
     const name = l.name || 'तुमच्या मुलाने';
     if (ageDays < 2) {
@@ -2357,7 +2362,7 @@ const ADMIN = (() => {
     const done = new Set(l.steps || []);
     if (l.paid) done.add('paid');
     const chips = [
-      ['browsed', '📚 Class'], ['engaged', '▶ Free भाग'], ['tested', `📝 Test${l.tests ? ' ×' + l.tests : ''}`],
+      ['browsed', '📚 Class'], ['link_sent', '📲 मुलाला link पाठवली'], ['engaged', '▶ Free भाग'], ['tested', `📝 Test${l.tests ? ' ×' + l.tests : ''}`],
       ['shared_friend', '👫 मित्रांना share'], ['shared_parent', '👨‍👩‍👧 पालकांना share'], ['lead', '📱 नंबर'],
       ['offer_seen', '🎁 सवलत बघितली'], ['checkout', '💳 Pay page'], ['paid', '✅ Paid'],
     ];
@@ -2367,8 +2372,8 @@ const ADMIN = (() => {
 
   // ── Leads table: search, filters (class, step, source, number, dates), sort, pages, CSV ──
   const GL_KEY = 'gl_filters_v1';
-  const GL_STEPS = ['browsed', 'engaged', 'tested', 'shared_friend', 'shared_parent', 'lead', 'offer_seen', 'checkout', 'paid'];
-  const GL_STEP_NAME = { browsed: '📚 Class', engaged: '▶ Free भाग', tested: '📝 Test', shared_friend: '👫 मित्रांना share', shared_parent: '👨‍👩‍👧 पालकांना share', lead: '📱 नंबर', offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Paid' };
+  const GL_STEPS = ['browsed', 'link_sent', 'engaged', 'tested', 'shared_friend', 'shared_parent', 'lead', 'offer_seen', 'checkout', 'paid'];
+  const GL_STEP_NAME = { browsed: '📚 Class', link_sent: '📲 मुलाला link पाठवली', engaged: '▶ Free भाग', tested: '📝 Test', shared_friend: '👫 मित्रांना share', shared_parent: '👨‍👩‍👧 पालकांना share', lead: '📱 नंबर', offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Paid' };
   const GL_PER = 25;
   let _leads = [], _glPage = 0, _glOpen = '';
   let _glF = { q: '', batch: '', step: '', source: '', mobile: '', which: 'created', from: '', to: '', sort: 'last_seen_at', dir: -1 };
@@ -2467,7 +2472,7 @@ const ADMIN = (() => {
           <td data-l="कुठून">${_esc(_srcOf(l))}${l.ref ? `<small>${_esc(l.ref)}</small>` : ''}</td>
           <td data-l="आले">${_esc(when(l.created_at))}</td>
           <td data-l="शेवटचं">${_esc(when(l.last_seen_at))}</td>
-          <td>${l.parent_mobile && !l.paid ? '<button class="admin-btn-primary btn-gl-wa" type="button">📱 WhatsApp</button>' : ''}</td>
+          <td>${l.parent_mobile && !l.paid ? `<button class="admin-btn-primary btn-gl-wa" type="button">${!l.tests && (l.steps || []).includes('link_sent') ? '🔔 आठवण WhatsApp' : '📱 WhatsApp'}</button> <a class="admin-btn-secondary btn-gl-call" href="tel:+91${_esc(String(l.parent_mobile).replace(/\D/g, '').slice(-10))}">📞 Call</a>` : ''}</td>
         </tr>${l.gid === _glOpen ? `<tr class="gl-more"><td colspan="10"><div class="gxa-steps">${_leadSteps(l)}</div>${l.last_test ? `<p class="import-hint">शेवटची test: ${_esc(l.last_test)}</p>` : ''}</td></tr>` : ''}`).join('')}</tbody></table></div>
       ${pages > 1 ? `<div class="gl-pages"><button type="button" class="admin-btn-secondary" data-page="-1"${_glPage ? '' : ' disabled'}>◀ मागे</button> पान ${_glPage + 1} / ${pages} <button type="button" class="admin-btn-secondary" data-page="1"${_glPage < pages - 1 ? '' : ' disabled'}>पुढे ▶</button></div>` : ''}`
       : '<p class="import-hint">या filters मध्ये कोणी नाही.</p>'}`;
@@ -2477,6 +2482,7 @@ const ADMIN = (() => {
     el.querySelectorAll('[data-page]').forEach(b => b.addEventListener('click', () => { _glPage += Number(b.dataset.page); _renderLeads(); el.scrollIntoView({ block: 'start' }); }));
     el.querySelectorAll('tbody tr[data-gid]').forEach(tr => tr.addEventListener('click', e => {
       const l = _leads.find(x => x.gid === tr.dataset.gid); if (!l) return;
+      if (e.target.closest('.btn-gl-call')) return;
       if (e.target.closest('.btn-gl-wa')) { window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(_leadFollowUp(l))}`, '_blank'); return; }
       _glOpen = _glOpen === l.gid ? '' : l.gid; _renderLeads();
     }));
