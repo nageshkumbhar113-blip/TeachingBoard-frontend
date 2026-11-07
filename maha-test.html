@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#2a0f5c" />
 <title>महा-Test — दर रविवारी, क्रमांकासह | NKs EduOrbit</title>
-<meta name="description" content="दर रविवारी महा-Test: NMMS, शिष्यवृत्ती आणि इतर परीक्षांचा पूर्ण पेपर, लगेच गुण आणि सगळ्या मुलांमध्ये क्रमांक. पालकांनो, मुलाची नोंदणी करा — NKs EduOrbit" />
+<meta name="description" content="दर रविवारी महा-Test: NMMS, शिष्यवृत्ती आणि इतर परीक्षांचा पूर्ण पेपर, लगेच गुण आणि सगळ्या विद्यार्थ्यांमध्ये क्रमांक. पालकांनो, पाल्याची नोंदणी करा — NKs EduOrbit" />
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -66,7 +66,7 @@
   // no class in the link: choose one
   if (!cls) {
     get('/guest/batches').then(function (list) {
-      main.innerHTML = '<div class="card"><h1 class="grad">🏆 महा-Test</h1><p class="muted">तुमच्या मुलाचा class निवडा:</p><div class="classes">' +
+      main.innerHTML = '<div class="card"><h1 class="grad">🏆 महा-Test</h1><p class="muted">तुमच्या पाल्याचा class निवडा:</p><div class="classes">' +
         (list || []).map(function (b) { return '<a href="?class=' + encodeURIComponent(b.name) + '">' + esc((b.icon || '📚') + ' ' + b.name) + '</a>'; }).join('') + '</div></div>';
     }).catch(function () { main.innerHTML = '<div class="card"><p class="muted">माहिती आणता आली नाही — थोड्या वेळाने पुन्हा उघडा.</p></div>'; });
     return;
@@ -79,19 +79,19 @@
       html += '<div class="facts">' + (n.question_count ? '<span class="chip">📝 ' + n.question_count + ' प्रश्न</span>' : '') +
         (n.duration_minutes ? '<span class="chip">⏱ ' + n.duration_minutes + ' मिनिटं</span>' : '') +
         (n.negative ? '<span class="chip">➖ चुकीच्या उत्तराला -' + n.negative + '</span>' : '<span class="chip">✅ negative marking नाही</span>') +
-        (n.registered_count ? '<span class="chip">👥 ' + n.registered_count + ' मुलं नोंदली</span>' : '') + '</div>';
+        (n.registered_count ? '<span class="chip">👥 ' + n.registered_count + ' विद्यार्थी नोंदले</span>' : '') + '</div>';
       if ((n.sections || []).length) html += '<div class="facts">' + n.sections.map(function (s) { return '<span class="chip">' + esc(s.subject) + ' · ' + s.count + '</span>'; }).join('') + '</div>';
       if (n.open_to === 'paid') html += '<p class="muted">हा महा-Test app घेतलेल्या (paid) विद्यार्थ्यांसाठी आहे.</p>';
     } else html += '<div class="when">📅 पुढचा महा-Test लवकरच जाहीर होईल</div>';
-    html += '<a class="btn" href="' + app('&pe=1') + '">📝 मुलाची नोंदणी करा — मुलाला WhatsApp वर link पाठवा</a>';
-    html += '<a class="btn alt" href="' + app('') + '">👦 मूल इथेच आहे — आत्ता Free test द्या</a></div>';
+    html += '<a class="btn" href="' + app('&pe=1') + '">📝 पाल्याची नोंदणी करा — पाल्याला WhatsApp वर link पाठवा</a>';
+    html += '<a class="btn alt" href="' + app('') + '">👦 पाल्य (मुलगा / मुलगी) इथेच आहे — आत्ता Free test द्या</a></div>';
     html += '<div class="card"><h2>कसं चालतं?</h2><ul>' +
       '<li>दर रविवारी ठरलेल्या वेळी पूर्ण पेपर — खऱ्या परीक्षेसारखा.</li>' +
-      '<li>Test संपताच गुण; result च्या वेळी सगळ्या मुलांमध्ये <b>क्रमांक</b>.</li>' +
+      '<li>Test संपताच गुण; result च्या वेळी सगळ्या विद्यार्थ्यांमध्ये <b>क्रमांक</b>.</li>' +
       '<li>प्रत्येक उत्तराची सोपी युक्ती — चुका कुठे झाल्या ते कळतं.</li>' +
-      '<li>नोंदणी: मुलाचं नाव आणि पालकांचा WhatsApp नंबर. Login लागत नाही.</li></ul></div>';
+      '<li>नोंदणी: पाल्याचं नाव आणि पालकांचा WhatsApp नंबर. Login लागत नाही.</li></ul></div>';
     if (l && (l.toppers || []).length) {
-      html += '<div class="card"><h2>🥇 मागच्या महा-Test चे top ' + l.toppers.length + '</h2><p class="muted">' + esc(when(l.starts_at)) + (l.participants ? ' · ' + l.participants + ' मुलांनी दिला' : '') + '</p><table>' +
+      html += '<div class="card"><h2>🥇 मागच्या महा-Test चे top ' + l.toppers.length + '</h2><p class="muted">' + esc(when(l.starts_at)) + (l.participants ? ' · ' + l.participants + ' विद्यार्थ्यांनी दिला' : '') + '</p><table>' +
         l.toppers.map(function (t) { return '<tr><td class="r">#' + t.rank + '</td><td>' + esc(t.name) + '</td><td class="s">' + t.score + '/' + t.total + '</td></tr>'; }).join('') + '</table></div>';
     }
     main.innerHTML = html;

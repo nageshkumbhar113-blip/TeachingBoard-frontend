@@ -63,7 +63,7 @@ const AD_STUDIO = (() => {
     sub: ['Login नाही · लगेच Result · Offline पण', 'No login · Instant result · Works offline'],
     off: ['पहिल्या महिन्यावर 50% सूट*', '50% off the first month*'],
     btn: ['▶ आत्ताच Test द्या', '▶ Take the test now'],
-    note: ['*Free test दिल्यावर 12 तास', '*for 12 hours after a free test'],
+    note: ['*Free test दिल्यावर 24 तास', '*for 24 hours after a free test'],
   };
   function _facts() {
     const b = _batches.find(x => x.name === st.batch) || {};
@@ -199,7 +199,7 @@ const AD_STUDIO = (() => {
         hook: f.nmms ? ['फक्त 2 गुण कमी पडले…', 'Missed by just 2 marks…'] : [`${L}: फक्त 2 गुण कमी पडले…`, `${L}: missed by just 2 marks…`],
         hook2: f.loss || ['…आणि मेरिट लिस्ट हुकली', '…and missed the merit list'],
         scenes: ['hook', 'question', 'result', 'features', 'offer'],
-        copy: [`${f.loss ? 'फक्त 2 गुण कमी पडले ' + f.loss[0].replace(/^…\s*/, '') : 'फक्त 2 गुणांनी मेरिट लिस्ट हुकली'} — असं तुमच्या मुलाचं होऊ नये.\n${L}: प्रश्न + सोपी युक्ती, दर रविवारी महा-Test आणि क्रमांक.\n✅ आधी Free test · Login नाही`,
+        copy: [`${f.loss ? 'फक्त 2 गुण कमी पडले ' + f.loss[0].replace(/^…\s*/, '') : 'फक्त 2 गुणांनी मेरिट लिस्ट हुकली'} — असं तुमच्या पाल्याचं होऊ नये.\n${L}: प्रश्न + सोपी युक्ती, दर रविवारी महा-Test आणि क्रमांक.\n✅ आधी Free test · Login नाही`,
           `${f.loss ? 'Missed by just 2 marks ' + f.loss[1].replace(/^…\s*/, '') : 'Missed the merit list by 2 marks'}? Don't let that be your child.\n${L}: questions with easy tricks, a weekly Maha-Test with ranks.\n✅ Free test first · No login`],
         headline: [f.nmms ? 'NMMS: 2 गुणांनी शिष्यवृत्ती जाऊ देऊ नका' : `${L}: 2 गुणांनी मागे पडू नका`, f.nmms ? 'Don\'t lose NMMS by 2 marks' : `${L}: don't miss by 2 marks`],
       },
@@ -214,16 +214,16 @@ const AD_STUDIO = (() => {
       proof: {
         aud: 'parent', kind: 'comp', name: '🏆 या आठवड्याचा Topper', ok: !!(f.players && f.topScore), why: 'आधी या class चा एक महा-Test होऊन result लागायला हवा',
         scenes: ['topper', 'question', 'features', 'offer'],
-        copy: [`🏆 या रविवारी ${f.players} मुलांनी महा-Test दिला. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nतुमचं मूल कितव्या क्रमांकावर? आधी Free test द्या.\n✅ Login नाही · लगेच Result`,
+        copy: [`🏆 या रविवारी ${f.players} विद्यार्थ्यांनी महा-Test दिला. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nतुमचा पाल्य कितव्या क्रमांकावर? आधी Free test द्या.\n✅ Login नाही · लगेच Result`,
           `🏆 ${f.players} students took the Maha-Test this Sunday. Topper${f.topName ? ': ' + f.topName : ''} — ${f.topScore}!\nWhere does your child stand? Start with a free test.\n✅ No login · Instant result`],
         headline: [`या आठवड्याचा Topper ${f.topScore}`, `This week's topper: ${f.topScore}`],
       },
       'demo-rank': {
         aud: 'parent', kind: 'comp', name: '🏅 Rank कसा दिसतो (नमुना)', ok: true, demo: true,
         scenes: ['topper', 'question', 'result', 'offer'],
-        copy: [`🏅 दर रविवारी महा-Test: तुमच्या मुलाचे गुण आणि ${f.label} मधला क्रमांक लगेच app मध्ये.\n(Video मधली rank screen नमुना आहे.)\n✅ आधी Free test · Login नाही`,
+        copy: [`🏅 दर रविवारी महा-Test: तुमच्या पाल्याचे गुण आणि ${f.label} मधला क्रमांक लगेच app मध्ये.\n(Video मधली rank screen नमुना आहे.)\n✅ आधी Free test · Login नाही`,
           `🏅 A Maha-Test every Sunday: your child's score and rank in ${f.label}, right away in the app.\n(The rank screen in the video is a sample.)\n✅ Free test first · No login`],
-        headline: ['तुमच्या मुलाचा क्रमांक पाहा 🏅', "See your child's rank 🏅"],
+        headline: ['तुमच्या पाल्याचा क्रमांक पाहा 🏅', "See your child's rank 🏅"],
       },
       days: {
         aud: 'parent', kind: 'comp', name: '⏰ परीक्षेला दिवस बाकी', ok: f.days !== null && f.days > 0, why: 'Sync › परीक्षेच्या तारखा किंवा Site / Exams मध्ये या class च्या परीक्षेची तारीख टाका',
@@ -287,7 +287,7 @@ const AD_STUDIO = (() => {
         hook: ['स्वाध्यायात अडलं? उत्तर इथे आहे', 'Stuck on an exercise? The answer is here'],
         hook2: ['धड्यानुसार · step-by-step', 'Chapter by chapter · step by step'],
         scenes: rs(['hook', 'exdemo', 'notes', 'subjects', 'offer']),
-        copy: [`📝 मुलाचा स्वाध्याय अडला? पुस्तकातल्या प्रत्येक धड्याच्या स्वाध्यायाची उत्तरं app मध्ये.\n${L}: ${regLine[0]}.\n✈️ Offline पण चालतं.\n✅ आधी Free धडा पाहा`,
+        copy: [`📝 पाल्याचा स्वाध्याय अडला? पुस्तकातल्या प्रत्येक धड्याच्या स्वाध्यायाची उत्तरं app मध्ये.\n${L}: ${regLine[0]}.\n✈️ Offline पण चालतं.\n✅ आधी Free धडा पाहा`,
           `📝 Child stuck on homework? Answers to every chapter's textbook exercise, in the app.\n${L}: ${regLine[1]}.\n✈️ Works offline too.\n✅ See a free chapter first`],
         headline: ['स्वाध्यायाची उत्तरं एका app मध्ये', 'Exercise answers in one app'],
       },
@@ -761,7 +761,7 @@ const AD_STUDIO = (() => {
         text(st.lang === 'en' ? '👩‍🏫 Ready questions + pen, live in class' : '👩‍🏫 तयार प्रश्न + pen, थेट वर्गात', 0, 2, 42, C.ink, 800, 'center', 820); x.restore(); }
     }
   }
-  const PEN_CAP = { parent: ['मूल mobile वरच pen ने सोडवतं', 'Your child solves it with a pen, on the phone'], phone: ['Mobile वरच board — pen ने सोडव!', 'Your phone is a board — solve with a pen!'], board: ['वर्गात smart board वर थेट solution', 'Solve it live on the class smart board'] };
+  const PEN_CAP = { parent: ['तुमचा पाल्य mobile वरच pen ने सोडवेल', 'Your child solves it with a pen, on the phone'], phone: ['Mobile वरच board — pen ने सोडव!', 'Your phone is a board — solve with a pen!'], board: ['वर्गात smart board वर थेट solution', 'Solve it live on the class smart board'] };
   // one line of the script's text, in the chosen language (scripts are written in one language)
   const capOf = s0 => (s0 ? [s0, s0] : null);
   const S = {
@@ -912,7 +912,7 @@ const AD_STUDIO = (() => {
       const b = outBack(p(lt, 1500, 2100));
       x.save(); x.translate(W / 2, cy + (tall ? 470 : 380)); x.scale(b, b);
       x.fillStyle = C.gold; rr(-430, -60, 860, 120, 60); x.fill();
-      text(st.lang === 'en' ? 'Where does your child stand?' : 'तुमचं मूल कितव्या क्रमांकावर?', 0, 2, 46, '#3b1d00', 800, 'center', 820);
+      text(st.lang === 'en' ? 'Where does your child stand?' : 'तुमचा पाल्य कितव्या क्रमांकावर?', 0, 2, 46, '#3b1d00', 800, 'center', 820);
       x.restore();
     },
     days(W, H, lt, v, f) {

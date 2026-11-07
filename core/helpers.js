@@ -2271,6 +2271,15 @@ const API = (() => {
     return request(`/guest/admin/meta?days=${days}${fresh ? '&fresh=1' : ''}${check ? '&check=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } });
   }
 
+  // the WhatsApp bot's number for the website buttons ('' = no bot yet)
+  async function fetchBotConfig() { return request('/guest/bot-config'); }
+
+  // Admin › CRM: the WhatsApp bot's address + a 12-hour token (the CRM then talks to the bot directly)
+  async function botToken() {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/bot-token', { headers: { Authorization: `Bearer ${token}` } });
+  }
+
   // Admin › Ads › 📡: every Meta ad's state right now (never cached)
   async function fetchMetaStatus() {
     const token = await ensureAdminSession();
@@ -3089,7 +3098,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

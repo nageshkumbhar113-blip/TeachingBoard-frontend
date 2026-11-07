@@ -239,6 +239,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); _loadFreeLinkClasses(); }
         if (tab.dataset.tab === 'ads')         window.AD_STUDIO?.init();
         if (tab.dataset.tab === 'site')        window.SITE_ADMIN?.init();
+        if (tab.dataset.tab === 'crm')         window.CRM_ADMIN?.init();
         if (tab.dataset.tab === 'word-tests')  window.WORD_TEST_BUILDER?.onTabActivated();
         if (tab.dataset.tab === 'notes')       window.NOTES_MANAGER?.init();
         if (tab.dataset.tab === 'concepts')    window.CONCEPT_MANAGER?.init();
@@ -1960,6 +1961,9 @@ const ADMIN = (() => {
 
   // ── Free part (student-app/guest.js): the link to share, funnel, leads ──
   const FREE_SITE = 'https://nkseduorbit.in';
+  const PLAY_APP = 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
+  // the app line every parent / student WhatsApp message carries
+  const APP_LINE = `📲 App मध्ये उपलब्ध असलेले free tests सोडवा (login नाही): ${PLAY_APP}`;
 
   // What the class is for, from its name (NMMS / शिष्यवृत्ती / a plain class).
   function _freeClassLine(name) {
@@ -1975,14 +1979,16 @@ const ADMIN = (() => {
         `4थी पासून पुढे आणि स्पर्धा परीक्षा (NMMS, Scholarship…): सगळ्या विषयांचे\n` +
         `✅ Free Tests  ✅ Notes  ✅ सराव प्रश्न\n` +
         `🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल\n` +
-        `👉 आत्ताच test द्या: ${url}`;
+        `👉 आत्ताच test द्या: ${url}\n` +
+        APP_LINE;
     }
     const n = Number(batch.free_tests) || 0;
     return `📚 *NKs EduOrbit — ${batch.name} Free Tests*\n` +
       `${_freeClassLine(batch.name)}\n` +
       `✅ ${n ? n + ' ' : ''}Free Tests  ✅ Notes  ✅ सराव प्रश्न\n` +
       `🔓 Login नाही · लगेच Result · तुमचा क्रमांक कळेल\n` +
-      `👉 ${batch.name} ची test आत्ताच द्या: ${url}`;
+      `👉 ${batch.name} ची test आत्ताच द्या: ${url}\n` +
+      APP_LINE;
   }
 
   // One free link per class: the message names the class and its free tests, and the
@@ -2035,32 +2041,32 @@ const ADMIN = (() => {
   // 🏆 the महा-Test message for one parent: invite (not registered) / reminder (registered) / result (took it)
   function _leadMahaTest(l) {
     const child = `${FREE_SITE}/student-app/?free=1&g=${encodeURIComponent(l.gid)}`, info = `${FREE_SITE}/maha-test.html?class=${encodeURIComponent(l.batch || '')}`;
-    const nm = l.name || 'तुमचं मूल', n = l.mt?.next, last = l.mt?.last;
+    const nm = l.name || 'तुमचा पाल्य', n = l.mt?.next, last = l.mt?.last;
     const when = n ? new Date(n.starts_at).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
     const about = n ? `${n.question_count ? n.question_count + ' प्रश्न, ' : ''}${n.duration_minutes || ''} मिनिटं — लगेच गुण आणि क्रमांक` : '';
     if (last && (!n || n.registered)) return `नमस्कार 🙏 ${nm} ला महा-Test मध्ये ${last.score}/${last.total} गुण${last.rank ? ` आणि क्रमांक #${last.rank}` : ''} 👏\n${n ? `पुढचा महा-Test: ${when}.\n` : ''}पूर्ण तयारीसाठी सगळे tests आणि notes: ${FREE_SITE}/parent-pay.html?g=${encodeURIComponent(l.gid)}`;
     if (n && n.registered) return `नमस्कार 🙏 आठवण: ${when} ला ${l.batch} चा महा-Test आहे (${about}).\n${nm} ने याच link वरून test द्यायची 👇\n${child}`;
-    if (n) return `नमस्कार 🙏 ${when} ला ${l.batch} चा 🏆 महा-Test आहे — ${about}.${n.registered_count ? ` आत्तापर्यंत ${n.registered_count} मुलं नोंदली.` : ''}\n${nm} ची नोंदणी करा / test द्या 👇\n${child}\nमाहिती: ${info}`;
+    if (n) return `नमस्कार 🙏 ${when} ला ${l.batch} चा 🏆 महा-Test आहे — ${about}.${n.registered_count ? ` आत्तापर्यंत ${n.registered_count} विद्यार्थी नोंदले.` : ''}\n${nm} ची नोंदणी करा / test द्या 👇\n${child}\nमाहिती: ${info}\n${APP_LINE}`;
     return '';
   }
   // 🔑 a paid parent: the child's login (the PIN is never known to us — the parent chose it)
   function _leadLogin(l) {
-    return `🎉 ${l.name ? l.name + ' चं' : 'तुमच्या मुलाचं'} NKs EduOrbit account तयार आहे.\n👤 Student Code: *${l.student_code}*\n🔑 PIN: payment करताना तुम्ही ठेवलेला 4 अंकी PIN\n📱 App (Play Store): https://play.google.com/store/apps/details?id=com.nkseduorbit.student\n\nApp उघडा → Student Code + PIN → सगळे tests, notes आणि दर रविवारचा महा-Test.\nPIN विसरलात तर app च्या login screen वर "❓ मदत" → "Student Code / PIN विसरलो" दाबा — मुलाचं नाव आणि तुमचा नंबर तपासून तिथेच नवीन PIN ठेवता येतो.`;
+    return `🎉 ${l.name ? l.name + ' चं' : 'तुमच्या पाल्याचं'} NKs EduOrbit account तयार आहे.\n👤 Student Code: *${l.student_code}*\n🔑 PIN: payment करताना तुम्ही ठेवलेला 4 अंकी PIN\n📱 App (Play Store): ${PLAY_APP}\n\nApp उघडा → Student Code + PIN → सगळे tests, notes आणि दर रविवारचा महा-Test.\nPIN विसरलात तर app च्या login screen वर "❓ मदत" → "Student Code / PIN विसरलो" दाबा — पाल्याचं नाव आणि तुमचा नंबर तपासून तिथेच नवीन PIN ठेवता येतो.`;
   }
   function _leadFollowUp(l) {
     const pay = `${FREE_SITE}/parent-pay.html?g=${encodeURIComponent(l.gid)}`;
     // the parent sent the child the link, no test yet: a reminder with the child's link
     if (!l.tests && (l.steps || []).includes('link_sent')) {
       const child = `${FREE_SITE}/student-app/?free=1&g=${encodeURIComponent(l.gid)}`;
-      return `नमस्कार 🙏 ${l.name ? l.name + ' साठी' : 'तुमच्या मुलासाठी'} पाठवलेली ${l.batch || ''} ची Free test अजून दिली नाही.\nफक्त 10 मिनिटं लागतात 👇\n${child}\nTest नंतर result आणि क्रमांक इथे दिसेल: ${pay}`;
+      return `नमस्कार 🙏 ${l.name ? l.name + ' साठी' : 'तुमच्या पाल्यासाठी'} पाठवलेली ${l.batch || ''} ची Free test अजून दिली नाही.\nफक्त 10 मिनिटं लागतात 👇\n${child}\nTest नंतर result आणि क्रमांक इथे दिसेल: ${pay}\n${APP_LINE}`;
     }
     const ageDays = (Date.now() - new Date(l.created_at).getTime()) / 864e5;
-    const name = l.name || 'तुमच्या मुलाने';
+    const name = l.name || 'तुमच्या पाल्याने';
     if (ageDays < 2) {
       return `नमस्कार 🙏 ${name}ने NKs EduOrbit वर *${l.last_test || 'test'}* मध्ये ${l.best_pct}% मिळवले.\n` +
-        `आणखी सराव केला तर गुण नक्की वाढतील.\nपूर्ण अभ्यासक्रम (सगळे tests + notes): ${pay}`;
+        `आणखी सराव केला तर गुण नक्की वाढतील.\n${APP_LINE}\nपूर्ण अभ्यासक्रम (सगळे tests + notes): ${pay}`;
     }
-    return `${name}ने आत्तापर्यंत ${l.tests} free tests दिले 👏\nसगळ्या chapters साठी इथे पाहा: ${pay}\nकाही प्रश्न असल्यास याच नंबरवर विचारा.`;
+    return `${name}ने आत्तापर्यंत ${l.tests} free tests दिले 👏\n${APP_LINE}\nसगळ्या chapters साठी इथे पाहा: ${pay}\nकाही प्रश्न असल्यास app मधला ❓ मदत bot लगेच उत्तर देतो.`;
   }
 
   // ── Weekly महा-Test (automatic) ──
@@ -2377,7 +2383,7 @@ const ADMIN = (() => {
     const done = new Set(l.steps || []);
     if (l.paid) done.add('paid');
     const chips = [
-      ['browsed', '📚 Class'], ['link_sent', '📲 मुलाला link पाठवली'], ['engaged', '▶ Free भाग'], ['tested', `📝 Test${l.tests ? ' ×' + l.tests : ''}`],
+      ['browsed', '📚 Class'], ['link_sent', '📲 पाल्याला link पाठवली'], ['engaged', '▶ Free भाग'], ['tested', `📝 Test${l.tests ? ' ×' + l.tests : ''}`],
       ['shared_friend', '👫 मित्रांना share'], ['shared_parent', '👨‍👩‍👧 पालकांना share'], ['lead', '📱 नंबर'],
       ['offer_seen', '🎁 सवलत बघितली'], ['checkout', '💳 Pay page'], ['paid', '✅ Paid'],
     ];
@@ -2388,7 +2394,7 @@ const ADMIN = (() => {
   // ── Leads table: search, filters (class, step, source, number, dates), sort, pages, CSV ──
   const GL_KEY = 'gl_filters_v1';
   const GL_STEPS = ['browsed', 'link_sent', 'engaged', 'tested', 'shared_friend', 'shared_parent', 'lead', 'offer_seen', 'checkout', 'paid'];
-  const GL_STEP_NAME = { browsed: '📚 Class', link_sent: '📲 मुलाला link पाठवली', engaged: '▶ Free भाग', tested: '📝 Test', shared_friend: '👫 मित्रांना share', shared_parent: '👨‍👩‍👧 पालकांना share', lead: '📱 नंबर', offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Paid' };
+  const GL_STEP_NAME = { browsed: '📚 Class', link_sent: '📲 पाल्याला link पाठवली', engaged: '▶ Free भाग', tested: '📝 Test', shared_friend: '👫 मित्रांना share', shared_parent: '👨‍👩‍👧 पालकांना share', lead: '📱 नंबर', offer_seen: '🎁 सवलत बघितली', checkout: '💳 Pay page', paid: '✅ Paid' };
   const GL_PER = 25;
   let _leads = [], _glPage = 0, _glOpen = '';
   let _glF = { q: '', batch: '', step: '', source: '', mobile: '', mt: '', which: 'created', from: '', to: '', sort: 'last_seen_at', dir: -1 };

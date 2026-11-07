@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#2a0f5c" />
 <title>पालकांसाठी — NKs EduOrbit</title>
-<meta name="description" content="मुलाचा result पाहा आणि सगळे tests, notes उघडा — NKs EduOrbit" />
+<meta name="description" content="पाल्याचा result पाहा आणि सगळे tests, notes उघडा — NKs EduOrbit" />
 <link rel="icon" href="/icons/icon-72.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -95,7 +95,7 @@
   <div id="v-error" class="card center hidden">
     <div class="big-emoji">😕</div>
     <h2 id="err-title">Link उघडता आली नाही</h2>
-    <p class="muted" id="err-sub">मुलाने पाठवलेली पूर्ण link उघडा, किंवा थोड्या वेळाने पुन्हा प्रयत्न करा.</p>
+    <p class="muted" id="err-sub">पाल्याने पाठवलेली पूर्ण link उघडा, किंवा थोड्या वेळाने पुन्हा प्रयत्न करा.</p>
     <button class="btn ghost" id="err-retry">🔄 पुन्हा प्रयत्न करा</button>
   </div>
 
@@ -104,7 +104,7 @@
       <div class="child">
         <div class="ring" id="c-ring" style="--p:0"><span id="c-pct">0%</span></div>
         <div>
-          <h2><span id="c-name">तुमचं मूल</span> चा <span class="grad">result</span></h2>
+          <h2><span id="c-name">तुमचा पाल्य</span> चा <span class="grad">result</span></h2>
           <div class="muted" id="c-line"></div>
           <div class="muted" id="c-batch"></div>
         </div>
@@ -161,7 +161,7 @@
       <b>पुढे काय?</b>
       <div><span>1</span><p>📱 खालचं बटण दाबून app install करा (किंवा याच website वर पुढे चला)</p></div>
       <div><span>2</span><p>👤 हा <b>Student Code</b> + 🔑 तुम्ही ठेवलेला <b>PIN</b> टाकून login</p></div>
-      <div><span>3</span><p>📚 सगळे tests, notes आणि दर रविवारचा 🏆 महा-Test — मुलाला सुरू करायला सांगा</p></div>
+      <div><span>3</span><p>📚 सगळे tests, notes आणि दर रविवारचा 🏆 महा-Test — पाल्याला सुरू करायला सांगा</p></div>
     </div>
     <a class="btn" href="/get-app.html" id="d-app">📱 App उघडा / Download</a>
     <button class="btn wa" id="d-share">💬 हा code WhatsApp वर पाठवा</button>
@@ -240,13 +240,13 @@
 
   function load() {
     show('v-loading');
-    if (!/^[0-9A-F]{10}$/.test(gid)) { err('Link अपूर्ण आहे', 'मुलाने पाठवलेली पूर्ण link उघडा.'); return; }
+    if (!/^[0-9A-F]{10}$/.test(gid)) { err('Link अपूर्ण आहे', 'पाल्याने पाठवलेली पूर्ण link उघडा.'); return; }
     fetch(API + '/guest/public/' + gid).then(function (r) { return r.json(); }).then(function (b) {
       if (!b || !b.success) throw new Error(b && b.message);
       info = b.data;
       if (info.paid && info.student_code) { done(info.student_code, info.name); return; }
       var pct = info.best_pct || 0;
-      $('c-name').textContent = info.name || 'तुमचं मूल';
+      $('c-name').textContent = info.name || 'तुमचा पाल्य';
       $('c-line').textContent = info.tests ? info.tests + ' free tests दिले · सगळ्यात चांगले ' + pct + '%' : 'Free अभ्यास सुरू केला';
       $('c-batch').textContent = info.batch ? '📚 ' + info.batch : '';
       if (info.students_count >= 20) $('proof').textContent = '🎓 ' + Number(info.students_count).toLocaleString('en-IN') + '+ students NKs EduOrbit वर अभ्यास करतात';
@@ -260,7 +260,7 @@
         timer($('timer'), info.offer.expires_at, function () { info.offer.active = false; $('offer').classList.add('hidden'); renderPrices(); });
       }
       renderPrices();
-    }).catch(function () { err('Link उघडता आली नाही', navigator.onLine ? 'ही link जुनी किंवा अपूर्ण आहे. मुलाकडून नवीन link मागवा.' : 'Internet चालू करून पुन्हा प्रयत्न करा.'); });
+    }).catch(function () { err('Link उघडता आली नाही', navigator.onLine ? 'ही link जुनी किंवा अपूर्ण आहे. पाल्याकडून नवीन link मागवा.' : 'Internet चालू करून पुन्हा प्रयत्न करा.'); });
   }
 
   function done(code, name) {

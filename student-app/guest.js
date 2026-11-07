@@ -231,19 +231,19 @@ const GUEST = (() => {
       const el = _layer('gx-hero', `
         <div class="gx-card gx-glass">
           <div class="gx-logo" aria-hidden="true">👨‍👩‍👧</div>
-          <h1 class="gx-title gx-welcome-title">पालकांनो,<b>मुलाची तयारी तपासा</b></h1>
+          <h1 class="gx-title gx-welcome-title">पालकांनो,<b>पाल्याची तयारी तपासा</b></h1>
           <div class="gx-challenge">🎯 ${_esc(p.batch)} — Free test, 10 मिनिटं</div>
-          <p class="gx-sub">Test <b>मुलाने</b> सोडवायची आहे. Result, क्रमांक आणि कुठे सराव हवा ते तुम्हाला दिसेल.</p>
-          <div class="gx-pe-mt">🏆 <b>दर रविवारी महा-Test</b> — सगळ्या मुलांमध्ये तुमच्या मुलाचा क्रमांक. नोंदणी करून ठेवा.</div>
+          <p class="gx-sub">Test <b>तुमच्या पाल्याने</b> सोडवायची आहे. Result, क्रमांक आणि कुठे सराव हवा ते तुम्हाला दिसेल.</p>
+          <div class="gx-pe-mt">🏆 <b>दर रविवारी महा-Test</b> — सगळ्या विद्यार्थ्यांमध्ये तुमच्या पाल्याचा क्रमांक. नोंदणी करून ठेवा.</div>
           <div id="gx-pe-pick">
-            <button type="button" class="gx-btn gx-big gx-shine" id="gx-go">👦 मूल जवळ आहे — आत्ताच test सुरू करा</button>
-            <button type="button" class="gx-btn gx-wa" id="gx-send">📝 नोंदणी करा — मुलाला WhatsApp वर link पाठवा</button>
+            <button type="button" class="gx-btn gx-big gx-shine" id="gx-go">👦 पाल्य (मुलगा / मुलगी) जवळ आहे — आत्ताच test सुरू करा</button>
+            <button type="button" class="gx-btn gx-wa" id="gx-send">📝 नोंदणी करा — पाल्याला WhatsApp वर link पाठवा</button>
           </div>
           <div id="gx-pe-form" hidden>
             <label class="gx-field"><span>मुलाचं / मुलीचं नाव</span><input class="gx-input" id="gx-pe-name" maxlength="30" placeholder="उदा. राहुल" /></label>
             <label class="gx-field"><span>तुमचा WhatsApp नंबर</span><input class="gx-input" id="gx-pe-mob" type="tel" inputmode="tel" maxlength="16" placeholder="98XXXXXXXX" /></label>
             <label class="gx-check"><input type="checkbox" id="gx-pe-mt" checked /> <span>🏆 येणाऱ्या रविवारच्या <b>महा-Test</b> साठी पण नोंदणी करा</span></label>
-            <label class="gx-check"><input type="checkbox" id="gx-pe-ok" /> <span>मुलाचा result, महा-Test ची आठवण आणि अभ्यासाबद्दल NKs EduOrbit ने संपर्क करायला माझी संमती आहे</span></label>
+            <label class="gx-check"><input type="checkbox" id="gx-pe-ok" /> <span>पाल्याचा result, महा-Test ची आठवण आणि अभ्यासाबद्दल NKs EduOrbit ने संपर्क करायला माझी संमती आहे</span></label>
             <button type="button" class="gx-btn gx-wa gx-big" id="gx-pe-send">📲 WhatsApp वर link पाठवा</button>
           </div>
           <div id="gx-pe-done" hidden></div>
@@ -254,12 +254,33 @@ const GUEST = (() => {
       $e('#gx-login').onclick = () => { _close(el); resolve(false); };
       const open = () => _openSession(el, { batch: p.batch, src, ref, link_batch: p.batch });
       $e('#gx-go').onclick = async () => { if (await open()) { _close(el); resolve(true); } };
-      $e('#gx-send').onclick = () => { $e('#gx-pe-pick').hidden = true; $e('#gx-pe-form').hidden = false; $e('#gx-pe-name').focus(); };
-      if (p.pe) $e('#gx-send').click();
+      const showForm = () => { $e('#gx-pe-pick').hidden = true; $e('#gx-pe-done').hidden = true; $e('#gx-pe-form').hidden = false; $e('#gx-pe-name').focus(); };
+      $e('#gx-send').onclick = showForm;
+      _bot().then(bot => {
+        if (!bot) { if (p.pe) showForm(); return; }
+        // with the bot: one tap — WhatsApp opens with "LINK <id>"; the bot asks the name and sends the child's link
+        $e('#gx-send').textContent = '📲 पाल्यासाठी link WhatsApp वर मिळवा';
+        $e('#gx-send').onclick = async () => {
+          if (!(await open())) return;
+          _waBot('LINK');
+          $e('#gx-pe-pick').hidden = true;
+          const done = $e('#gx-pe-done'); done.hidden = false;
+          done.innerHTML = `
+            <p class="gx-sub">✅ WhatsApp उघडलं — <b>Send</b> दाबा. आमचा bot पाल्याचं नाव विचारेल आणि पाल्यासाठी test ची link देईल.</p>
+            <button type="button" class="gx-btn gx-ghost" id="gx-pe-wa-again">📲 WhatsApp पुन्हा उघडा</button>
+            <button type="button" class="gx-link" id="gx-pe-form-instead">WhatsApp नाही? नंबर टाइप करा</button>
+            <button type="button" class="gx-link" id="gx-pe-here2">👦 पाल्य आला / आली — याच phone वर test सुरू करा</button>`;
+          done.querySelector('#gx-pe-wa-again').onclick = () => _waBot('LINK');
+          done.querySelector('#gx-pe-form-instead').onclick = showForm;
+          done.querySelector('#gx-pe-here2').onclick = () => { _close(el); resolve(true); };
+          el.querySelectorAll('button').forEach(b => { b.disabled = false; });
+        };
+        // (no automatic tap here: WhatsApp may open only from the parent's own tap)
+      });
       _hintOnFocus($e('#gx-pe-mob'));
       $e('#gx-pe-send').onclick = async () => {
         const name = $e('#gx-pe-name').value.trim(), mob = $e('#gx-pe-mob').value.trim();
-        if (name.length < 2) { msg.textContent = 'मुलाचं नाव लिहा'; return; }
+        if (name.length < 2) { msg.textContent = 'पाल्याचं नाव लिहा'; return; }
         if (mob.replace(/\D/g, '').length < 10) { msg.textContent = 'योग्य 10 अंकी नंबर द्या'; return; }
         if (!$e('#gx-pe-ok').checked) { msg.textContent = 'संमतीवर ✓ करा'; return; }
         if (!(await open())) return;
@@ -285,11 +306,11 @@ const GUEST = (() => {
         const done = $e('#gx-pe-done'); done.hidden = false;
         done.innerHTML = `
           <p class="gx-sub">✅ Link पाठवली! ${_esc(name)} ने test दिली की result आणि क्रमांक इथे दिसेल:</p>
-          ${mt ? `<div class="gx-pe-mt">🏆 ${_esc(name)} ची <b>${_esc(new Date(mt.starts_at).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</b> च्या महा-Test साठी नोंदणी झाली${mt.registered_count ? ` (${mt.registered_count + 1} मुलं नोंदली)` : ''}. त्या वेळी याच link वरून test देता येईल.</div>` : ''}
+          ${mt ? `<div class="gx-pe-mt">🏆 ${_esc(name)} ची <b>${_esc(new Date(mt.starts_at).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</b> च्या महा-Test साठी नोंदणी झाली${mt.registered_count ? ` (${mt.registered_count + 1} विद्यार्थी नोंदले)` : ''}. त्या वेळी याच link वरून test देता येईल.</div>` : ''}
           <button type="button" class="gx-btn gx-big" id="gx-pe-result">📊 Result पाहा (ही link जपून ठेवा)</button>
           <button type="button" class="gx-btn gx-ghost" id="gx-pe-again">📲 पुन्हा पाठवा</button>
           <button type="button" class="gx-btn gx-ghost" id="gx-pe-mtinfo">🏆 महा-Test ची माहिती</button>
-          <button type="button" class="gx-link" id="gx-pe-here">👦 मूल आलं — याच phone वर test सुरू करा</button>`;
+          <button type="button" class="gx-link" id="gx-pe-here">👦 पाल्य आला / आली — याच phone वर test सुरू करा</button>`;
         done.querySelector('#gx-pe-result').onclick = () => window.open(_payUrl(), '_blank', 'noopener');
         done.querySelector('#gx-pe-again').onclick = () => _wa(`${name}, ${p.batch} ची ही Free test दे — फक्त 10 मिनिटं 📝\n👇\n${link}`);
         done.querySelector('#gx-pe-here').onclick = () => { _close(el); resolve(true); };
@@ -693,6 +714,19 @@ const GUEST = (() => {
     if (_isNative()) window.open(url, '_system');
     else window.open(url, '_blank', 'noopener');
   }
+  // the WhatsApp bot: its number from the server ('' = no bot yet → the forms stay as they are)
+  let _botNum = null;
+  async function _bot() {
+    if (_botNum === null) { try { _botNum = (await API.fetchBotConfig())?.data?.number || ''; } catch { _botNum = ''; } }
+    return _botNum;
+  }
+  // open the bot's chat with "<KEYWORD> <gid>" ready — the parent only taps Send
+  function _waBot(keyword) {
+    const url = `https://wa.me/${_botNum}?text=${encodeURIComponent(`${keyword} ${_state.gid || ''}`.trim())}`;
+    API.guestEvent('wa_bot');
+    if (_isNative()) window.open(url, '_system');
+    else window.open(url, '_blank', 'noopener');
+  }
 
   function _friendLink(quiz, pct) {
     const q = new URLSearchParams({ free: '1', quiz: quiz.quiz_id, batch: quiz.batch || _state.batch || '', from: _state.name || '', fp: String(pct), ref: _state.gid || '' });
@@ -726,13 +760,15 @@ const GUEST = (() => {
 🎁 पहिल्या payment वर ${o.percent || 50}% सूट — ${today ? 'आज ' : 'उद्या '}${hm} पर्यंतच!
 `;
   }
+  // the app line in the WhatsApp messages to parents (the same line as Admin's messages)
+  const _APP_LINE = '📲 App मध्ये उपलब्ध असलेले free tests सोडवा (login नाही): https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
   function shareParent(ctx) {
     const { quiz, pct, score, max, rank, weak } = ctx;
     const text = `नमस्कार आई/बाबा 🙏\nमी NKs EduOrbit वर *${_lesson(quiz)}* चा test दिला.\n` +
       `📊 गुण: *${score}/${max} (${pct}%)*\n` +
       (rank?.rank ? `🏆 ${rank.total} students मध्ये क्रमांक: *#${rank.rank}*\n` : '') +
       (weak?.length ? `📌 अजून सराव हवा: प्रश्न ${weak.join(', ')}\n` : '') +
-      _offerLine(_lastInfo) + `माझे सगळे chapters चे tests, notes आणि weekly report इथे 👇\n${_payUrl()}`;
+      _offerLine(_lastInfo) + `माझे सगळे chapters चे tests, notes आणि weekly report इथे 👇\n${_payUrl()}\n${_APP_LINE}`;
     _wa(text);
     API.guestEvent('shared_parent');
   }
@@ -744,7 +780,7 @@ const GUEST = (() => {
     const perDay = yearly ? Math.max(1, Math.round(yearly / 365)) : monthly ? Math.max(1, Math.round(monthly / 30)) : 0;
     const text = `आई/बाबा, मला NKs EduOrbit वर *${_state.batch || ''}* चे सगळे tests सोडवायचे आहेत 📚\n` +
       (scores.length ? `आत्तापर्यंत मी ${scores.length} tests दिले, सरासरी ${avg}%.\n` : '') +
-      (perDay ? `दिवसाला फक्त ₹${perDay}. ` : '') + _offerLine(info) + `इथे बघा 👇\n${_payUrl()}`;
+      (perDay ? `दिवसाला फक्त ₹${perDay}. ` : '') + _offerLine(info) + `इथे बघा 👇\n${_payUrl()}\n${_APP_LINE}`;
     _wa(text);
     API.guestEvent('shared_parent');
   }
@@ -834,7 +870,8 @@ const GUEST = (() => {
   // ── Parent mobile (unlocks the detailed analysis) ──────────────────
   // forResult: asked right after "Result बघा" (owner's choice, 2026-11-01) —
   // no close / later; the student was told before the test (ensureName).
-  function contactGate({ forResult = false, forLocked = false } = {}) {
+  async function contactGate({ forResult = false, forLocked = false } = {}) {
+    const bot = await _bot();
     return new Promise(resolve => {
       const canPick = 'contacts' in navigator && 'select' in (navigator.contacts || {});
       const el = _layer(forResult ? 'gx-hero' : 'gx-dim', `
@@ -845,15 +882,20 @@ const GUEST = (() => {
             ? '<h2 class="gx-title">तुमचा <span class="gx-grad-text">Result</span> तयार आहे!</h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — result लगेच दिसेल आणि पालकांनाही तुमची प्रगती कळेल</p>'
             : forLocked ? '<h2 class="gx-title">पुढचे <span class="gx-grad-text">धडे</span> उघडायचे?</h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — मग सगळे धडे उघडण्याचे पर्याय आणि किंमत दिसेल</p>'
             : '<h2 class="gx-title">पूर्ण <span class="gx-grad-text">analysis</span></h2><p class="gx-sub">पालकांचा WhatsApp नंबर द्या — प्रत्येक प्रश्नाचं analysis लगेच उघडेल</p>'}
+          ${bot ? `<button type="button" class="gx-btn gx-big gx-wa" id="gx-wa-bot">📩 ${forLocked ? 'सूट आणि पर्याय' : forResult ? 'पूर्ण result, युक्त्या आणि क्रमांक' : 'पूर्ण analysis'} WhatsApp वर</button>
+          <p class="gx-sub gx-or">WhatsApp नाही? पालकांचा नंबर टाइप करा:</p>` : ''}
           <label class="gx-field"><span>पालकांचा mobile</span>
             <input class="gx-input" id="gx-mob" type="tel" inputmode="tel" autocomplete="tel" placeholder="98XXXXXXXX" maxlength="16" /></label>
           ${canPick ? '<button type="button" class="gx-btn gx-ghost" id="gx-pick">📇 Contacts मधून निवडा</button>' : ''}
           <label class="gx-check"><input type="checkbox" id="gx-ok" /> <span>NKs EduOrbit कडून result व अभ्यासाबद्दल संपर्कास पालकांची संमती आहे</span></label>
           <p class="gx-msg" id="gx-msg" role="alert"></p>
           <button type="button" class="gx-btn gx-big gx-shine" id="gx-save">${forResult ? '🎯 Result बघा' : forLocked ? '▶ पुढे चला' : '📊 Analysis बघा'}</button>
+          ${bot && !_isNative() ? `<a class="gx-btn gx-ghost" id="gx-play" href="https://play.google.com/store/apps/details?id=com.nkseduorbit.student" target="_blank" rel="noopener">📲 App मध्ये उपलब्ध असलेले free tests सोडवा</a>` : ''}
           ${forResult ? '' : '<button type="button" class="gx-link" id="gx-later">नंतर</button>'}
         </div>`);
       const mob = el.querySelector('#gx-mob'), msg = el.querySelector('#gx-msg');
+      // WhatsApp: the parent's own message gives the number (and the consent); the result opens at once
+      el.querySelector('#gx-wa-bot')?.addEventListener('click', () => { _waBot(forLocked ? 'OFFER' : 'RESULT'); _close(el); resolve(true); });
       _hintOnFocus(mob);
       const done = v => { _close(el); resolve(v); };
       el.querySelector('.gx-close')?.addEventListener('click', () => done(false));

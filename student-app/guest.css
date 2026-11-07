@@ -332,3 +332,7 @@
 
 /* parent start: the weekly महा-Test line */
 .gx-pe-mt { margin: 10px 0; padding: 9px 12px; border-radius: 14px; background: rgba(255, 200, 61, .18); border: 1px solid rgba(255, 200, 61, .55); font-size: .92rem; line-height: 1.45; text-align: left; }
+
+/* WhatsApp bot buttons (the bot number comes from /guest/bot-config) */
+.gx-or { margin: 10px 0 4px; font-size: .85rem; }
+a.gx-btn { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
