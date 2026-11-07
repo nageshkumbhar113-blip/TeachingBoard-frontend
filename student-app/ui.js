@@ -362,9 +362,12 @@ const UI = (() => {
   const BATCH_COVERS_KEY = 'batch_covers_cache';
   let _batchCoversChecked = false;
 
+  // an uploaded cover where there is one; else the card drawn by the app (core/courseCard.js), no download
   const _batchVisual = c => (c.cover_image
     ? `<div class="batch-cover"><img src="${(window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(c.cover_image) : c.cover_image)}" alt="" loading="lazy"></div>`
-    : `<div class="batch-icon">${c.icon || '📚'}</div>`);
+    : window.COURSE_CARD ? COURSE_CARD.html(c) : `<div class="batch-icon">${c.icon || '📚'}</div>`);
+  const _cardFacts = rb => ({ icon: rb.icon || '📚', cover_image: rb.cover_image || '', kind: rb.kind || '', board: rb.board || '',
+    medium: rb.medium || '', standard: rb.standard || '', subjects: Array.isArray(rb.subjects) ? rb.subjects : [] });
 
   // Background, once per session: fetch the admin's class icons/covers, save
   // them on the phone, and update the cards already on screen if they differ.
@@ -375,7 +378,7 @@ const UI = (() => {
       const fresh = {};
       (remote || []).forEach(rb => {
         const name = String(rb?.name || '').trim();
-        if (name) fresh[name] = { icon: rb.icon || '📚', cover_image: rb.cover_image || '' };
+        if (name) fresh[name] = _cardFacts(rb);
       });
       const saved = await DB.getSetting(BATCH_COVERS_KEY, {}).catch(() => ({})) || {};
       if (JSON.stringify(saved) === JSON.stringify(fresh)) return;
@@ -384,7 +387,7 @@ const UI = (() => {
         const name = card.querySelector('.batch-name')?.textContent.trim();
         const c = fresh[name];
         const visual = card.querySelector('.batch-cover, .batch-icon');
-        if (c && visual) visual.outerHTML = _batchVisual(c);
+        if (c && visual) visual.outerHTML = _batchVisual({ name, ...c });
       });
     }).catch(e => { _batchCoversChecked = false; console.warn('batch cover fetch failed', e); });
   }
@@ -420,10 +423,9 @@ const UI = (() => {
     const applyCover = (name, c) => {
       const existing = batchMeta.get(name);
       if (existing) {
-        existing.icon = c.icon || existing.icon;
-        existing.cover_image = c.cover_image || '';
+        Object.assign(existing, { ...c, icon: c.icon || existing.icon, cover_image: c.cover_image || '' });
       } else {
-        batchMeta.set(name, { name, icon: c.icon || '📚', cover_image: c.cover_image || '' });
+        batchMeta.set(name, { name, ...c, icon: c.icon || '📚', cover_image: c.cover_image || '' });
       }
     };
     Object.entries(covers).forEach(([name, c]) => applyCover(name, c));

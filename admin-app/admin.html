@@ -599,6 +599,18 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                 </select>
                 <input id="bd-standard-custom" class="admin-input hidden" placeholder="उदा. NMMS Exam Batch" aria-label="Custom standard" />
               </div>
+              <div class="import-target">
+                <select id="bd-kind" class="admin-select" aria-label="Course type">
+                  <option value="">प्रकार: आपोआप (नावावरून)</option>
+                  <option value="exam">🏆 Competitive Exam — free tests</option>
+                  <option value="regular">📚 Regular class — free धडा (notes, उत्तरं, सराव)</option>
+                </select>
+              </div>
+              <div id="bd-subjects" class="hidden">
+                <p class="import-hint">नेहमीचे विषय — Save केल्यावर टाकले जातील (नको ते ✓ काढा):</p>
+                <div id="bd-subject-list" class="bd-subject-list"></div>
+              </div>
+              <div id="bd-card-preview" class="bd-card-preview" aria-label="Course card"></div>
               <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
               <label class="import-hint" for="bd-name-preview">अंतिम Batch नाव (हवं तर edit करा):</label>
               <input id="bd-name-preview" class="admin-input" placeholder="Batch नाव" aria-label="Final batch name" />
@@ -2573,6 +2585,7 @@ Marks: 1"></textarea>
   <script src="adStudio.js" defer></script>
   <script src="siteAdmin.js" defer></script>
   <script src="crmAdmin.js" defer></script>
+  <script src="../core/courseCard.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>

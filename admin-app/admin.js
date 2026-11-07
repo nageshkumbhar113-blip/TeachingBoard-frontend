@@ -1496,8 +1496,11 @@ const ADMIN = (() => {
     if (!list) return;
     list.innerHTML = '';
 
-    // Fetch question counts for all batches in parallel
-    const qCounts = await Promise.all(batches.map(b => DB.getQuestionsByBatch(b.name)));
+    // Fetch question counts (and the subjects, for the card) for all batches in parallel
+    const [qCounts, subjectLists] = await Promise.all([
+      Promise.all(batches.map(b => DB.getQuestionsByBatch(b.name))),
+      Promise.all(batches.map(b => DB.getSubjectsByBatch(b.name).catch(() => []))),
+    ]);
 
     for (let i = 0; i < batches.length; i++) {
       const b  = batches[i];
@@ -1508,11 +1511,12 @@ const ADMIN = (() => {
         <div class="batch-admin-cover-wrap">
           ${b.cover_image
             ? `<img src="${_esc(b.cover_image)}" class="batch-admin-cover" alt="">`
+            : window.COURSE_CARD ? `<div class="batch-admin-cover">${COURSE_CARD.html(b, { subjects: subjectLists[i].map(s => s.name) })}</div>`
             : `<div class="batch-admin-cover batch-admin-cover-empty">${b.icon || '📚'}</div>`}
         </div>
         <div>
           <div class="batch-admin-name">${b.icon || '📚'} ${_esc(b.name)}</div>
-          <div class="batch-admin-meta">${qs.length} questions${(b.board || b.medium || b.standard) ? ' · ' + _esc([b.standard, b.medium, b.board].filter(Boolean).join(' · ')) : ''}</div>
+          <div class="batch-admin-meta">${window.COURSE_CARD ? (COURSE_CARD.kindOf(b) === 'exam' ? '🏆 Competitive · ' : '📚 Regular · ') : ''}${qs.length} questions · ${subjectLists[i].length} विषय${(b.board || b.medium || b.standard) ? ' · ' + _esc([b.standard, b.medium, b.board].filter(Boolean).join(' · ')) : ''}</div>
         </div>
         <div class="batch-admin-actions">
           <button class="admin-btn-secondary btn-details-batch" data-name="${_esc(b.name)}">🏷️ Details</button>
@@ -1653,9 +1657,38 @@ const ADMIN = (() => {
   }
 
   function _bdRefreshPreview() {
-    if (_bdPreviewUserEdited) return;
-    const preview = $('bd-name-preview');
-    if (preview) preview.value = _bdBuildNamePreview();
+    if (!_bdPreviewUserEdited) {
+      const preview = $('bd-name-preview');
+      if (preview) preview.value = _bdBuildNamePreview();
+    }
+    _bdRefreshCard();
+  }
+
+  // the usual subjects (new course, or a course with none yet) and the card as it will look
+  let _bdExistingSubjects = [];
+  function _bdFacts() {
+    return {
+      name: String($('bd-name-preview')?.value || '').trim(),
+      board: _bdSelectedValue('bd-board', 'bd-board-custom'),
+      medium: _bdSelectedValue('bd-medium', 'bd-medium-custom'),
+      standard: _bdSelectedValue('bd-standard', 'bd-standard-custom'),
+      kind: $('bd-kind')?.value || '',
+    };
+  }
+  function _bdRefreshCard() {
+    if (!window.COURSE_CARD) return;
+    const f = _bdFacts();
+    const box = $('bd-subjects'), list = $('bd-subject-list');
+    if (box && list) {
+      const wanted = _bdExistingSubjects.length ? [] : COURSE_CARD.suggestSubjects(f);
+      const before = new Set([...list.querySelectorAll('input:not(:checked)')].map(i => i.value));
+      box.classList.toggle('hidden', !wanted.length);
+      list.innerHTML = wanted.map(s => `<label class="gx-check bd-sub"><input type="checkbox" value="${_esc(s)}" ${before.has(s) ? '' : 'checked'}> ${COURSE_CARD.subjectIcon(s)} ${_esc(s)}</label>`).join('');
+      list.querySelectorAll('input').forEach(i => i.addEventListener('change', _bdRefreshCard));
+    }
+    const picked = [...(list?.querySelectorAll('input:checked') || [])].map(i => i.value);
+    const prev = $('bd-card-preview');
+    if (prev) prev.innerHTML = COURSE_CARD.html(f, { subjects: _bdExistingSubjects.length ? _bdExistingSubjects : picked });
   }
 
   function _bdSetSelectOrCustom(selectId, customId, value) {
@@ -1699,7 +1732,11 @@ const ADMIN = (() => {
     });
     ['bd-board-custom', 'bd-medium-custom', 'bd-standard-custom'].forEach(id => $(id)?.classList.add('hidden'));
 
+    if ($('bd-kind')) $('bd-kind').value = batch?.kind || '';
+    if ($('bd-subject-list')) $('bd-subject-list').innerHTML = '';
+    _bdExistingSubjects = [];
     if (mode === 'edit' && batch) {
+      DB.getSubjectsByBatch(batch.name).then(subs => { _bdExistingSubjects = (subs || []).map(s => s.name); _bdRefreshCard(); }).catch(() => {});
       title.textContent = `✏️ "${batch.name}" — Details`;
       editNameEl.value = batch.name;
       nameInput.value = batch.name;
@@ -1719,11 +1756,23 @@ const ADMIN = (() => {
     }
 
     modal.classList.remove('hidden');
+    _bdRefreshCard();
+  }
+
+  // the ticked usual subjects → the course (one after another: the server adds them to the same document)
+  async function _bdAddSubjects(batch, names) {
+    for (const s of names) {
+      await DB.saveBatchSubject({ batch, name: s }).catch(() => {});
+      if (navigator.onLine) await API.addCatalogSubject(batch, s).catch(() => {});
+    }
+    if (names.length) APP.toast(`✅ ${names.length} विषय टाकले`, 'success');
   }
 
   function _closeBatchDetailsModal() {
     $('batch-details-modal')?.classList.add('hidden');
   }
+
+  document.addEventListener('change', e => { if (e.target?.id === 'bd-kind') _bdRefreshCard(); });
 
   function _wireBatchDetailsCustomToggle(selectId, customInputId) {
     const sel = $(selectId), custom = $(customInputId);
@@ -1741,6 +1790,8 @@ const ADMIN = (() => {
     const standard    = _bdSelectedValue('bd-standard', 'bd-standard-custom');
     const name        = String($('bd-name-preview')?.value || '').trim();
     const editingName = String($('bd-edit-name')?.value || '').trim();
+    const kind        = $('bd-kind')?.value || '';
+    const addSubjects = [...document.querySelectorAll('#bd-subject-list input:checked')].map(i => i.value);
 
     if (!name) { APP.toast('Batch नाव रिकामं ठेवू नका', 'error'); return; }
 
@@ -1749,16 +1800,18 @@ const ADMIN = (() => {
         // EDIT mode — name field was locked, so this can never rename;
         // renameBatchCatalog(oldName === newName) skips the whole cascade
         // server-side, purely a metadata update.
-        await DB.saveBatch({ name: editingName, board, medium, standard });
+        await DB.saveBatch({ name: editingName, board, medium, standard, kind });
         if (navigator.onLine) {
-          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard });
+          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard, kind });
         }
+        await _bdAddSubjects(editingName, addSubjects);
         APP.toast(`✅ "${editingName}" चे Board/Medium/Class अपडेट झाले`, 'success');
       } else {
         const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
         const icon  = icons[Math.floor(Math.random() * icons.length)];
-        await DB.saveBatch({ name, icon, board, medium, standard });
-        if (navigator.onLine) await API.createBatchCatalog(name, icon, { board, medium, standard });
+        await DB.saveBatch({ name, icon, board, medium, standard, kind });
+        if (navigator.onLine) await API.createBatchCatalog(name, icon, { board, medium, standard, kind });
+        await _bdAddSubjects(name, addSubjects);
         APP.toast(`✅ Class "${name}" added`, 'success');
       }
       _closeBatchDetailsModal();

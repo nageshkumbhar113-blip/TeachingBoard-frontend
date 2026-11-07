@@ -2854,3 +2854,10 @@ body.admin-app {
 .crm-wa pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: .82rem; margin: 0; }
 
 .crm-meta.crm-hot { color: #b45309; font-weight: 600; }
+
+/* course details: the usual subjects + the card as it will look */
+.bd-subject-list { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 6px 0 4px; }
+.bd-subject-list .bd-sub { font-size: .85rem; display: inline-flex; align-items: center; gap: 4px; }
+.bd-card-preview { max-width: 260px; margin: 10px 0 2px; }
+.batch-admin-cover .cc { border-radius: 8px; }
+.batch-admin-cover:has(.cc) { width: 128px; height: auto; padding: 0; border: 0; background: none; display: block; }

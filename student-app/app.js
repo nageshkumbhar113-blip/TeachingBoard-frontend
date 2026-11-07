@@ -2631,11 +2631,13 @@ const APP = (() => {
   }
 
   function _bindChapterFlow(batchName, subject) {
-    return async chapter => {
+    return async (chapter, opts = {}) => {
       if (await isChapterLocked(batchName, subject, chapter)) {
         _offerSubscribe().catch(err => console.warn('subscribe offer failed', err));
         return;
       }
+      // website free part, Regular class: one new free chapter a day (guest.js)
+      if (window.GUEST?.isActive?.() && GUEST.mayOpenLesson && !(await GUEST.mayOpenLesson(batchName, subject, chapter))) return;
       _homeChapter = chapter;
       _rememberChapter(batchName, subject, chapter).catch(() => {});
 
@@ -2675,8 +2677,12 @@ const APP = (() => {
         },
       });
       UI.fillChapterHubFacts?.(batchName, subject, chapter).catch(err => console.warn('chapter facts failed', err));
+      // opened by the free-part guide: straight into the Notes (the hub stays one Back away)
+      if (opts.notes) { showScreen('notes'); window.NOTES_VIEWER?.openChapter?.(batchName, subject, chapter); }
     };
   }
+  // open a chapter's hub from code (guest guide: "the next free lesson")
+  function openChapter(batch, subject, chapter, opts = {}) { return _bindChapterFlow(batch, subject)(chapter, opts); }
 
   // ── "पुढे सुरू ठेवा" — the chapter this student opened last ──────────
   // Saved per student (a switched account never sees someone else's), shown
@@ -3163,6 +3169,7 @@ const APP = (() => {
     openAdminApp,
     // Home
     loadHome,
+    openChapter,
     refreshHome,
     // Appearance
     setTheme,

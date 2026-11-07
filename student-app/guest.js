@@ -970,6 +970,58 @@ const GUEST = (() => {
     return list;
   }
 
+  // ── Regular class: free chapters ("धडे") instead of free tests ──
+  let _kindP = null, _kindFor = '';
+  function _kind() {
+    if (!_kindP || _kindFor !== _state.batch) {
+      _kindFor = _state.batch || '';
+      _kindP = API.fetchGuestBatches().then(list => {
+        const b = (list || []).find(x => x.name === _kindFor) || { name: _kindFor };
+        return b.kind || window.COURSE_CARD?.kindOf?.(b) || 'exam';
+      }).catch(() => window.COURSE_CARD?.kindOf?.({ name: _kindFor }) || 'exam');
+    }
+    return _kindP;
+  }
+  const _lessonKey = (s, c) => `${String(s || '').trim()}|${String(c || '').trim()}`;
+  // the class's free chapters, in the class's order
+  async function _freeLessons() {
+    const list = await API.fetchStudentFreeChapters().catch(() => []);
+    const mine = (list || []).filter(f => String(f.batch).trim().toLowerCase() === String(_state.batch || '').trim().toLowerCase());
+    if (mine.length) await DB.setSetting('guest_free_lessons', mine).catch(() => {});
+    return mine.length ? mine : (await DB.getSetting('guest_free_lessons', []).catch(() => []) || []);
+  }
+  // the hub screen asks before a chapter opens: a chapter seen before is always fine; one new chapter a day on the website
+  async function mayOpenLesson(batch, subject, chapter) {
+    if (!_active || _isNative() || (await _kind()) !== 'regular') return true;
+    const k = 'L:' + _lessonKey(subject, chapter);
+    if ((_state.lessons || {})[_lessonKey(subject, chapter)]) return true;
+    if (_todayUsed(k)) { nextTestSheet(); return false; }
+    const lessons = { ...(_state.lessons || {}), [_lessonKey(subject, chapter)]: Date.now() };
+    const first = !Object.keys(_state.lessons || {}).length;
+    await _saveState({ web_day: _istDay(), web_quiz: k, lessons });
+    API.guestEvent('lesson');
+    if (first) API.claimGuestOffer().catch(() => {});   // the same first-payment offer as after a free test
+    return true;
+  }
+  // the next free lesson: opens the chapter and its Notes
+  async function _goNextLesson() {
+    let lessons = await _freeLessons();
+    if (!lessons.length) {
+      const prep = _prepScreen('धडा');
+      for (let i = 0; i < 15 && !lessons.length; i++) { await new Promise(r => setTimeout(r, 2000)); lessons = await _freeLessons(); }
+      prep.done();
+      if (!lessons.length) { _toast('या class चे free धडे अजून ठेवलेले नाहीत', 'info'); return; }
+    }
+    const seen = _state.lessons || {};
+    const next = lessons.find(l => !seen[_lessonKey(l.subject, l.chapter)]) || lessons[0];
+    if (!seen[_lessonKey(next.subject, next.chapter)] && _todayUsed('L:' + _lessonKey(next.subject, next.chapter))) { nextTestSheet(); return; }
+    await (window.APP || (typeof APP !== 'undefined' ? APP : null))?.openChapter?.(next.batch, next.subject, next.chapter, { notes: true });
+    // the Notes are open: the chapter screen's next glowing step is the Exercise
+    const hub = { ...(_state.hub || {}) };
+    hub[next.chapter] = { ...(hub[next.chapter] || {}), Notes: true };
+    _state = { ..._state, hub }; _saveState({ hub });
+  }
+
   // ── one new free test a day on the website (the app has them all) ──
   const PLAY = 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
   let _auto = false;
@@ -991,13 +1043,14 @@ const GUEST = (() => {
   async function nextTestSheet() {
     if (document.querySelector('.gx-layer.gx-nextday')) return;
     const bot = await _bot();
+    const L = (await _kind()) === 'regular';
     const el = _layer('gx-dim gx-nextday', `
       <div class="gx-card">
         <button type="button" class="gx-close" id="gx-x" aria-label="बंद करा">✕</button>
-        <h2 class="gx-title">✅ आजची free test <span class="gx-grad-text">झाली!</span></h2>
-        <p class="gx-sub">पुढची free test उद्या.${bot ? ' WhatsApp वर <b>TEST</b> पाठवा — रोज 1 test तिथे येईल.' : ''}</p>
-        ${bot ? '<button type="button" class="gx-btn gx-big gx-wa" id="gx-n-wa">📩 WhatsApp वर रोज 1 free test — TEST पाठवा</button>' : ''}
-        ${_isNative() ? '' : `<a class="gx-btn gx-ghost" id="gx-n-app" href="${PLAY}" target="_blank" rel="noopener">📲 App मध्ये उपलब्ध असलेल्या सगळ्या free tests</a>`}
+        <h2 class="gx-title">✅ आजचा free ${L ? 'धडा' : 'test'} <span class="gx-grad-text">झाला!</span></h2>
+        <p class="gx-sub">पुढचा ${L ? 'धडा' : 'test'} उद्या.${bot ? ` WhatsApp वर <b>TEST</b> पाठवा — रोज 1 ${L ? 'धडा' : 'test'} तिथे येईल.` : ''}</p>
+        ${bot ? `<button type="button" class="gx-btn gx-big gx-wa" id="gx-n-wa">📩 WhatsApp वर रोज 1 free ${L ? 'धडा' : 'test'} — TEST पाठवा</button>` : ''}
+        ${_isNative() ? '' : `<a class="gx-btn gx-ghost" id="gx-n-app" href="${PLAY}" target="_blank" rel="noopener">📲 App मध्ये उपलब्ध असलेले सगळे free ${L ? 'धडे' : 'tests'}</a>`}
         <button type="button" class="gx-link" id="gx-n-all">🔓 सगळे tests आत्ताच उघडा</button>
       </div>`);
     API.guestEvent('offer_seen');
@@ -1007,12 +1060,12 @@ const GUEST = (() => {
   }
 
   // ⏳ "your test is getting ready" while the class's tests come down (a waking server can take half a minute)
-  function _prepScreen() {
-    const lines = ['प्रश्न निवडत आहे…', 'उत्तरं तपासायची तयारी…', 'जवळजवळ झालं…'];
+  function _prepScreen(what = 'test') {
+    const lines = what === 'धडा' ? ['Notes उघडत आहे…', 'स्वाध्याय उत्तरं तयार…', 'जवळजवळ झालं…'] : ['प्रश्न निवडत आहे…', 'उत्तरं तपासायची तयारी…', 'जवळजवळ झालं…'];
     const el = _layer('gx-hero gx-prep', `
       <div class="gx-card gx-glass">
         <div class="gx-prep-icon" aria-hidden="true">📝</div>
-        <h2 class="gx-title">तुमची test <span class="gx-grad-text">तयार होत आहे</span></h2>
+        <h2 class="gx-title">तुमचा ${what === 'धडा' ? 'free धडा' : 'test'} <span class="gx-grad-text">तयार होत आहे</span></h2>
         <p class="gx-sub">लगेच मिळेल 🙂</p>
         <div class="gx-prep-bar" aria-hidden="true"><i></i></div>
         <p class="gx-sub gx-prep-line" id="gx-prep-line">${lines[0]}</p>
@@ -1023,6 +1076,7 @@ const GUEST = (() => {
     return { el, done: () => { clearInterval(timer); _close(el); } };
   }
   async function goNext() {
+    if ((await _kind()) === 'regular') return _goNextLesson();
     let tests = await _freeTests();
     if (!tests.length) {
       const prep = _prepScreen();
@@ -1056,6 +1110,7 @@ const GUEST = (() => {
     const home = $('screen-home');
     if (!home) return;
     if (!_active) { home.querySelector('.gx-guide')?.remove(); return; }
+    if ((await _kind()) === 'regular') return _renderLessonGuide(home);
     const tests = await _freeTests();
     home.querySelector('.gx-guide')?.remove();
     clearTimeout(_guideWait);
@@ -1122,6 +1177,46 @@ const GUEST = (() => {
     else if (n >= 3 && n >= (_state.offer_snooze_tests || 0)) setTimeout(() => showOffer('third'), 900);
   }
 
+  // Home guide for a Regular class: the next free lesson, or (today's taken) WhatsApp / App
+  async function _renderLessonGuide(home) {
+    if (!renderHomeGuide._seenLink) { renderHomeGuide._seenLink = true; const p = entryParams(); if (p.free && !p.quiz) _auto = true; }
+    const lessons = await _freeLessons();
+    home.querySelector('.gx-guide')?.remove();
+    const seen = _state.lessons || {};
+    const doneN = lessons.filter(l => seen[_lessonKey(l.subject, l.chapter)]).length;
+    const next = lessons.find(l => !seen[_lessonKey(l.subject, l.chapter)]);
+    const used = !!next && _todayUsed('L:' + _lessonKey(next.subject, next.chapter));
+    const bot = used ? await _bot() : '';
+    const strip = document.createElement('div');
+    strip.className = 'gx-guide';
+    strip.innerHTML = `
+      <div class="gx-guide-hi">${_state.name ? `👋 ${_esc(_state.name)}, तुमचा Free अभ्यास` : '👋 नमस्कार! तुमचा Free अभ्यास'}</div>
+      <div class="gx-guide-next">${!lessons.length ? '⏳ Free धडे येत आहेत…' : used ? '✅ आजचा free धडा झाला! पुढचा उद्या — WhatsApp वर रोज 1, किंवा App मध्ये सगळे.'
+        : next ? `पुढचा धडा: <b>${_esc(next.subject)} — ${_esc(next.chapter)}</b><br><small>📒 Notes · ✍️ स्वाध्याय उत्तरं · 📝 सराव</small>` : '🎉 सगळे free धडे पाहिले! आता पुढचे धडे उघडा.'}</div>
+      ${lessons.length ? `<div class="gx-guide-progress" aria-label="${doneN}/${lessons.length}"><i style="width:${Math.round((doneN / lessons.length) * 100)}%"></i></div>` : ''}
+      <div class="gx-row">
+        ${used && bot ? '<button type="button" class="gx-btn gx-wa" id="gx-g-wa">📩 WhatsApp वर रोज 1 धडा</button>' : ''}
+        ${used ? `<a class="gx-btn gx-go" id="gx-g-app" href="${PLAY}" target="_blank" rel="noopener">📲 App मध्ये सगळे</a>` : ''}
+        ${next && !used ? '<button type="button" class="gx-btn gx-go" id="gx-next">▶ धडा उघडा</button>' : ''}
+        <button type="button" class="gx-btn gx-unlock" id="gx-all">🔓 सगळे उघडा</button>
+      </div>`;
+    home.insertBefore(strip, home.firstElementChild);
+    strip.querySelector('#gx-g-wa')?.addEventListener('click', () => _waBot('TEST'));
+    strip.querySelector('#gx-next')?.addEventListener('click', () => { API.guestEvent('engaged'); goNext(); });
+    strip.querySelector('#gx-all').addEventListener('click', () => showOffer('locked'));
+    API.guestEvent('browsed');
+    clearTimeout(_guideWait);
+    if (!lessons.length) { _guideWait = setTimeout(() => { if (strip.isConnected) renderHomeGuide().catch(() => {}); }, 3000); return; }
+    if (_auto) { _auto = false; if (next && !used) setTimeout(() => goNext().catch(() => {}), 1500); return; }
+    // today's lesson seen (notes + exercise opened): once a day, the "next lesson on WhatsApp / App" sheet
+    const today = Object.entries(seen).find(([k]) => _state.web_quiz === 'L:' + k);
+    const hub = today ? ((_state.hub || {})[today[0].split('|')[1]] || {}) : {};
+    if (today && hub.Notes && hub.Exercise && _state.lesson_sheet_day !== _istDay()) {
+      await _saveState({ lesson_sheet_day: _istDay() });
+      setTimeout(() => nextTestSheet(), 700);
+    }
+  }
+
   // Chapter screen: the next step pulses — Notes, then Exercise, then Test.
   function decorateHub(grid, chapter) {
     if (!_active || !grid) return;
@@ -1129,6 +1224,7 @@ const GUEST = (() => {
     const seen = (_state.hub || {})[key] || {};
     const order = ['Notes', 'Exercise', 'Test'];
     const next = order.find(l => !seen[l]) || 'Test';
+    if (next === 'Test' && _kindFor === _state.batch && _kindP) _kindP.then(k => { if (k === 'regular') grid.querySelectorAll('.chapter-hub-btn.gx-glow').forEach(b => b.classList.remove('gx-glow')); });
     grid.querySelectorAll('.chapter-hub-btn').forEach(btn => {
       const label = btn.getAttribute('aria-label');
       btn.classList.toggle('gx-glow', label === next);
@@ -1153,7 +1249,7 @@ const GUEST = (() => {
 
   return {
     refresh, isActive, wantsEntry, entryParams, start, resume, ensureName, onResult,
-    showOffer, openPay, goNext, renderHomeGuide, mayStartTest, nextTestSheet, botNumber: _bot, waBot: _waBot, onSignupRequired, contactGate, fireworks,
+    showOffer, openPay, goNext, renderHomeGuide, mayStartTest, nextTestSheet, mayOpenLesson, botNumber: _bot, waBot: _waBot, onSignupRequired, contactGate, fireworks,
     __resultCanvas: _resultCanvas,
     decorateHub, phoneHint,
   };
