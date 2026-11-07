@@ -1148,7 +1148,7 @@ const AD_STUDIO = (() => {
   }
   // the Meta ad set an ad goes into: one per class + kind + audience (teachers: one per audience)
   // 📍 where (NMMS only — the admin's district table): its own ad set per area, e.g. 8th-nmms-…-c-parent-gata
-  const GEO_OPTS = [['gata', '🥇 गट A — कोल्हापूर, पुणे ग्रामीण, अहिल्यानगर, सातारा, सांगली, सोलापूर (राज्याचे 44% NMMS विद्यार्थी)'], ['kolhapur', 'फक्त कोल्हापूर जिल्हा (11%)'], ['marathwada', 'मराठवाडा — छ. संभाजीनगर, बीड, लातूर, नांदेड, धाराशिव (15%)'], ['nashik', 'नाशिक (3%)'], ['all', 'संपूर्ण महाराष्ट्र']];
+  const GEO_OPTS = [['gata', '🥇 गट A — कोल्हापूर, पुणे (शहर + ग्रामीण), अहिल्यानगर, सातारा, सांगली, सोलापूर (राज्याचे 44% NMMS विद्यार्थी)'], ['kolhapur', 'फक्त कोल्हापूर जिल्हा (11%)'], ['marathwada', 'मराठवाडा — छ. संभाजीनगर, बीड, लातूर, नांदेड, धाराशिव (15%)'], ['nashik', 'नाशिक (3%)'], ['all', 'संपूर्ण महाराष्ट्र']];
   const GEO_KEY = 'ad_geo';
   let _geoPick = {};
   const _isNmms = () => /nmms/i.test(st.batch || '') && !isTeacher(st.aud);
@@ -1758,7 +1758,8 @@ const AD_STUDIO = (() => {
         <div class="lv-set-h"><b>📦 ${_esc(s.name)}</b> <small>${_esc(ST[s.status]?.[0] || s.status || '')}</small>
           <span class="lv-budget">रोज ₹ <input type="number" min="100" step="10" class="admin-input lv-amt" value="${s.budget || ''}" data-old="${s.budget || ''}" ${s.budget ? '' : 'disabled'} />
           <button type="button" class="ads-act lv-setb" data-adset="${_esc(s.id)}" ${s.budget ? '' : 'disabled'}>💾 बजेट बदला</button></span>
-          <a class="ads-act" href="${_amLink('adsets', s.id)}" target="_blank" rel="noopener">🔗</a></div>
+          <a class="ads-act" href="${_amLink('adsets', s.id)}" target="_blank" rel="noopener">🔗</a>
+          ${/-(gata|marathwada|nashik|kolhapur)(-lead)?$/.test(s.name) ? `<button type="button" class="ads-act lv-geo" data-adset="${_esc(s.id)}" data-geo="${/-(gata|marathwada|nashik|kolhapur)(-lead)?$/.exec(s.name)[1]}" title="या गटाची आत्ताची शहरं या ad set ला लावा (उदा. नवीन शहर जोडलं असेल तर)">📍 शहरं अपडेट करा</button>` : ''}</div>
         ${s.ads.map(adRow).join('')}
         <small class="lv-note">बजेट या ad set मधल्या ${s.ads.length} ads मिळून आहे — Meta तो चांगल्या ad कडे आपोआप जास्त वळवतो.</small>
       </div>`;
@@ -1779,6 +1780,10 @@ const AD_STUDIO = (() => {
     if (_lastAdvice) _paintAdvice(_lastAdvice);
     $('lv-refresh').addEventListener('click', () => _loadBoard(true));
     box.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => navigator.clipboard?.writeText(b.dataset.copy).then(() => APP.toast('Link copy झाली', 'success'))));
+    box.querySelectorAll('.lv-geo').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
+      const out = await API.metaAction({ action: 'retarget', adset_id: btn.dataset.adset, geo: btn.dataset.geo });
+      APP.toast(`📍 ${out.name}: ${out.towns} शहरं लावली${out.missed?.length ? ' (सापडली नाहीत: ' + out.missed.join(', ') + ')' : ''}`, 'success');
+    }, 'पक्कं? या ad set ला गटाची नवीन शहरं लावायची (पुन्हा दाबा)')));
     box.querySelectorAll('.lv-revid').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
       const v = _varOfAd(btn.dataset.name); if (!v) throw new Error('ही ad ज्या class ची आहे तो class वर निवडा');
       const parts = adParts(v);

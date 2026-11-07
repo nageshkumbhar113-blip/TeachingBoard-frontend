@@ -79,6 +79,11 @@
   @keyframes bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
   .fx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  .next-steps { text-align: left; background: #f6f3ff; border-radius: 16px; padding: 12px 14px; margin: 12px 0; font-weight: 600; line-height: 1.5; }
+  .next-steps > b { display: block; margin-bottom: 6px; }
+  .next-steps > div { display: flex; gap: 8px; align-items: flex-start; margin: 5px 0; }
+  .next-steps p { margin: 0; flex: 1; }
+  .next-steps span { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--grad); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: .85rem; }
 </style>
 </head>
 <body>
@@ -152,6 +157,12 @@
     <h2>अभिनंदन! <span class="grad" id="d-name"></span> चं account तयार</h2>
     <p class="muted">App मध्ये हा Student Code आणि तुम्ही ठेवलेला PIN टाकून login करा.</p>
     <div class="code" id="d-code">—</div>
+    <div class="next-steps">
+      <b>पुढे काय?</b>
+      <div><span>1</span><p>📱 खालचं बटण दाबून app install करा (किंवा याच website वर पुढे चला)</p></div>
+      <div><span>2</span><p>👤 हा <b>Student Code</b> + 🔑 तुम्ही ठेवलेला <b>PIN</b> टाकून login</p></div>
+      <div><span>3</span><p>📚 सगळे tests, notes आणि दर रविवारचा 🏆 महा-Test — मुलाला सुरू करायला सांगा</p></div>
+    </div>
     <a class="btn" href="/get-app.html" id="d-app">📱 App उघडा / Download</a>
     <button class="btn wa" id="d-share">💬 हा code WhatsApp वर पाठवा</button>
     <p class="muted" style="margin-top:10px">आत्तापर्यंत दिलेले सगळे tests account मध्ये आहेत.</p>

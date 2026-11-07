@@ -2043,6 +2043,10 @@ const ADMIN = (() => {
     if (n) return `नमस्कार 🙏 ${when} ला ${l.batch} चा 🏆 महा-Test आहे — ${about}.${n.registered_count ? ` आत्तापर्यंत ${n.registered_count} मुलं नोंदली.` : ''}\n${nm} ची नोंदणी करा / test द्या 👇\n${child}\nमाहिती: ${info}`;
     return '';
   }
+  // 🔑 a paid parent: the child's login (the PIN is never known to us — the parent chose it)
+  function _leadLogin(l) {
+    return `🎉 ${l.name ? l.name + ' चं' : 'तुमच्या मुलाचं'} NKs EduOrbit account तयार आहे.\n👤 Student Code: *${l.student_code}*\n🔑 PIN: payment करताना तुम्ही ठेवलेला 4 अंकी PIN\n📱 App (Play Store): https://play.google.com/store/apps/details?id=com.nkseduorbit.student\n\nApp उघडा → Student Code + PIN → सगळे tests, notes आणि दर रविवारचा महा-Test.\nPIN विसरलात तर app च्या login screen वर "❓ मदत" → "Student Code / PIN विसरलो" दाबा — मुलाचं नाव आणि तुमचा नंबर तपासून तिथेच नवीन PIN ठेवता येतो.`;
+  }
   function _leadFollowUp(l) {
     const pay = `${FREE_SITE}/parent-pay.html?g=${encodeURIComponent(l.gid)}`;
     // the parent sent the child the link, no test yet: a reminder with the child's link
@@ -2487,7 +2491,7 @@ const ADMIN = (() => {
           <td data-l="कुठून">${_esc(_srcOf(l))}${l.ref ? `<small>${_esc(l.ref)}</small>` : ''}</td>
           <td data-l="आले">${_esc(when(l.created_at))}</td>
           <td data-l="शेवटचं">${_esc(when(l.last_seen_at))}</td>
-          <td>${l.parent_mobile && !l.paid ? `<button class="admin-btn-primary btn-gl-wa" type="button">${!l.tests && (l.steps || []).includes('link_sent') ? '🔔 आठवण WhatsApp' : '📱 WhatsApp'}</button> ${l.mt?.next || l.mt?.last ? `<button class="admin-btn-secondary btn-gl-mt" type="button">🏆 महा-Test</button> ` : ''}<a class="admin-btn-secondary btn-gl-call" href="tel:+91${_esc(String(l.parent_mobile).replace(/\D/g, '').slice(-10))}">📞 Call</a>` : ''}</td>
+          <td>${l.parent_mobile && l.paid && l.student_code ? '<button class="admin-btn-primary btn-gl-login" type="button">🔑 Login details</button> ' : ''}${l.parent_mobile && !l.paid ? `<button class="admin-btn-primary btn-gl-wa" type="button">${!l.tests && (l.steps || []).includes('link_sent') ? '🔔 आठवण WhatsApp' : '📱 WhatsApp'}</button> ${l.mt?.next || l.mt?.last ? `<button class="admin-btn-secondary btn-gl-mt" type="button">🏆 महा-Test</button> ` : ''}<a class="admin-btn-secondary btn-gl-call" href="tel:+91${_esc(String(l.parent_mobile).replace(/\D/g, '').slice(-10))}">📞 Call</a>` : ''}</td>
         </tr>${l.gid === _glOpen ? `<tr class="gl-more"><td colspan="10"><div class="gxa-steps">${_leadSteps(l)}</div>${l.last_test ? `<p class="import-hint">शेवटची test: ${_esc(l.last_test)}</p>` : ''}</td></tr>` : ''}`).join('')}</tbody></table></div>
       ${pages > 1 ? `<div class="gl-pages"><button type="button" class="admin-btn-secondary" data-page="-1"${_glPage ? '' : ' disabled'}>◀ मागे</button> पान ${_glPage + 1} / ${pages} <button type="button" class="admin-btn-secondary" data-page="1"${_glPage < pages - 1 ? '' : ' disabled'}>पुढे ▶</button></div>` : ''}`
       : '<p class="import-hint">या filters मध्ये कोणी नाही.</p>'}`;
@@ -2498,6 +2502,7 @@ const ADMIN = (() => {
     el.querySelectorAll('tbody tr[data-gid]').forEach(tr => tr.addEventListener('click', e => {
       const l = _leads.find(x => x.gid === tr.dataset.gid); if (!l) return;
       if (e.target.closest('.btn-gl-call')) return;
+      if (e.target.closest('.btn-gl-login')) { window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(_leadLogin(l))}`, '_blank'); return; }
       if (e.target.closest('.btn-gl-mt')) { const t = _leadMahaTest(l); if (t) window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(t)}`, '_blank'); return; }
       if (e.target.closest('.btn-gl-wa')) { window.open(`https://wa.me/91${l.parent_mobile}?text=${encodeURIComponent(_leadFollowUp(l))}`, '_blank'); return; }
       _glOpen = _glOpen === l.gid ? '' : l.gid; _renderLeads();
