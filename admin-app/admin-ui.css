@@ -2866,3 +2866,6 @@ body.admin-app {
 .bd-color { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; font-weight: 800; font-size: .75rem; color: var(--text, #222); }
 .bd-color.on { border-color: var(--text, #222); box-shadow: 0 0 0 2px var(--surface, #fff) inset; }
 .bd-color:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+
+.bd-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 8px 0 2px; }
+.bd-mode .gx-check { display: inline-flex; align-items: center; gap: 4px; font-size: .9rem; }

@@ -1505,6 +1505,7 @@ const ADMIN = (() => {
     // the course card's moving line: what each course holds (server counts)
     const factsOf = new Map((plans || []).map(p => [p.name, p.facts || null]));
     const colorOf = new Map((plans || []).map(p => [p.name, p.card_color]));
+    const modeOf = new Map((plans || []).map(p => [p.name, p.card_mode]));
 
     for (let i = 0; i < batches.length; i++) {
       const b  = batches[i];
@@ -1513,7 +1514,7 @@ const ADMIN = (() => {
       item.className = 'batch-admin-item';
       item.innerHTML = `
         <div class="batch-admin-cover-wrap">
-          ${b.cover_image
+          ${(window.COURSE_CARD ? COURSE_CARD.useImage({ ...b, card_mode: modeOf.get(b.name) || b.card_mode }) : b.cover_image)
             ? `<img src="${_esc(b.cover_image)}" class="batch-admin-cover" alt="">`
             : window.COURSE_CARD ? `<div class="batch-admin-cover">${COURSE_CARD.html({ ...b, facts: factsOf.get(b.name) || null, card_color: colorOf.has(b.name) ? colorOf.get(b.name) : b.card_color }, { subjects: subjectLists[i].map(s => s.name) })}</div>`
             : `<div class="batch-admin-cover batch-admin-cover-empty">${b.icon || '📚'}</div>`}
@@ -1547,7 +1548,9 @@ const ADMIN = (() => {
           const url = uploaded?.url || uploaded?.data?.url || '';
           if (!url) throw new Error('Upload response had no URL');
           await API.setBatchCoverImage(b.name, url);
-          await DB.saveBatch({ ...b, cover_image: url }); // keep local cache in sync immediately
+          // a picture just uploaded is meant to be seen: this course's card shows it (Details can switch back)
+          await API.renameBatchCatalog(b.name, b.name, undefined, { card_mode: 'image' }).catch(() => {});
+          await DB.saveBatch({ ...b, cover_image: url, card_mode: 'image' }); // keep local cache in sync immediately
           APP.toast('✅ Cover image सेट झाली', 'success');
           _loadBatchAdmin();
           APP.refreshHome?.();
@@ -1678,8 +1681,11 @@ const ADMIN = (() => {
       standard: _bdSelectedValue('bd-standard', 'bd-standard-custom'),
       kind: $('bd-kind')?.value || '',
       card_color: _bdColor,
+      card_mode: $('bd-mode-image')?.checked ? 'image' : 'card',
+      cover_image: _bdCover,
     };
   }
+  let _bdCover = '';
   // the card's colours: "A" = from the name, or one of the 8
   let _bdColor = -1;
   function _bdDrawColors() {
@@ -1703,7 +1709,9 @@ const ADMIN = (() => {
     }
     const picked = [...(list?.querySelectorAll('input:checked') || [])].map(i => i.value);
     const prev = $('bd-card-preview');
-    if (prev) prev.innerHTML = COURSE_CARD.html(f, { subjects: _bdExistingSubjects.length ? _bdExistingSubjects : picked });
+    if (prev) prev.innerHTML = COURSE_CARD.useImage(f)
+      ? `<img src="${_esc(f.cover_image)}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px">`
+      : COURSE_CARD.html(f, { subjects: _bdExistingSubjects.length ? _bdExistingSubjects : picked });
   }
 
   function _bdSetSelectOrCustom(selectId, customId, value) {
@@ -1749,7 +1757,9 @@ const ADMIN = (() => {
 
     if ($('bd-kind')) $('bd-kind').value = batch?.kind || '';
     _bdColor = Number.isInteger(batch?.card_color) ? batch.card_color : -1;
-    if (mode === 'edit' && batch && navigator.onLine) API.getBatchPlans().then(list => { const p = (list || []).find(x => x.name === batch.name); if (p && Number.isInteger(p.card_color)) { _bdColor = p.card_color; _bdDrawColors(); _bdRefreshCard(); } }).catch(() => {});
+    _bdCover = batch?.cover_image || '';
+    if ($('bd-mode-image')) { $('bd-mode-image').checked = batch?.card_mode === 'image'; $('bd-mode-card').checked = batch?.card_mode !== 'image'; $('bd-mode-image').disabled = !_bdCover; }
+    if (mode === 'edit' && batch && navigator.onLine) API.getBatchPlans().then(list => { const p = (list || []).find(x => x.name === batch.name); if (p) { if (Number.isInteger(p.card_color)) _bdColor = p.card_color; if ($('bd-mode-image')) { $('bd-mode-image').checked = p.card_mode === 'image'; $('bd-mode-card').checked = p.card_mode !== 'image'; } _bdDrawColors(); _bdRefreshCard(); } }).catch(() => {});
     _bdDrawColors();
     if ($('bd-subject-list')) $('bd-subject-list').innerHTML = '';
     _bdExistingSubjects = [];
@@ -1792,6 +1802,8 @@ const ADMIN = (() => {
 
   document.addEventListener('change', e => { if (e.target?.id === 'bd-kind') _bdRefreshCard(); });
 
+  document.addEventListener('change', e => { if (e.target?.name === 'bd-card-mode') _bdRefreshCard(); });
+
   function _wireBatchDetailsCustomToggle(selectId, customInputId) {
     const sel = $(selectId), custom = $(customInputId);
     sel?.addEventListener('change', () => {
@@ -1810,6 +1822,7 @@ const ADMIN = (() => {
     const editingName = String($('bd-edit-name')?.value || '').trim();
     const kind        = $('bd-kind')?.value || '';
     const card_color  = _bdColor;
+    const card_mode   = $('bd-mode-image')?.checked ? 'image' : 'card';
     const addSubjects = [...document.querySelectorAll('#bd-subject-list input:checked')].map(i => i.value);
 
     if (!name) { APP.toast('Batch नाव रिकामं ठेवू नका', 'error'); return; }
@@ -1819,9 +1832,9 @@ const ADMIN = (() => {
         // EDIT mode — name field was locked, so this can never rename;
         // renameBatchCatalog(oldName === newName) skips the whole cascade
         // server-side, purely a metadata update.
-        await DB.saveBatch({ name: editingName, board, medium, standard, kind, card_color });
+        await DB.saveBatch({ name: editingName, board, medium, standard, kind, card_color, card_mode });
         if (navigator.onLine) {
-          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard, kind, card_color });
+          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard, kind, card_color, card_mode });
         }
         await _bdAddSubjects(editingName, addSubjects);
         APP.toast(`✅ "${editingName}" चे Board/Medium/Class अपडेट झाले`, 'success');

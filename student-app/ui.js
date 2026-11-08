@@ -363,11 +363,11 @@ const UI = (() => {
   let _batchCoversChecked = false;
 
   // an uploaded cover where there is one; else the card drawn by the app (core/courseCard.js), no download
-  const _batchVisual = c => (c.cover_image
+  const _batchVisual = c => ((window.COURSE_CARD ? COURSE_CARD.useImage(c) : c.cover_image)
     ? `<div class="batch-cover"><img src="${(window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(c.cover_image) : c.cover_image)}" alt="" loading="lazy"></div>`
     : window.COURSE_CARD ? COURSE_CARD.html(c) : `<div class="batch-icon">${c.icon || '📚'}</div>`);
   const _cardFacts = rb => ({ icon: rb.icon || '📚', cover_image: rb.cover_image || '', kind: rb.kind || '', board: rb.board || '',
-    medium: rb.medium || '', standard: rb.standard || '', subjects: Array.isArray(rb.subjects) ? rb.subjects : [], facts: rb.facts || null, card_color: Number.isInteger(rb.card_color) ? rb.card_color : -1 });
+    medium: rb.medium || '', standard: rb.standard || '', subjects: Array.isArray(rb.subjects) ? rb.subjects : [], facts: rb.facts || null, card_color: Number.isInteger(rb.card_color) ? rb.card_color : -1, card_mode: rb.card_mode || 'card' });
 
   // Background, once per session: fetch the admin's class icons/covers, save
   // them on the phone, and update the cards already on screen if they differ.

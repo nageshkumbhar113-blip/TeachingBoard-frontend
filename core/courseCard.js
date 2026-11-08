@@ -151,5 +151,8 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { injectCss(); _start(); }); else { injectCss(); _start(); }
 
-  window.COURSE_CARD = { html, kindOf, subjectIcon, suggestSubjects, bigWord, palette, factLines, PALETTES };
+  // the uploaded cover only when Admin set this course to "picture" (the drawn card is the default)
+  const useImage = c => !!(c?.cover_image && c?.card_mode === 'image');
+
+  window.COURSE_CARD = { useImage, html, kindOf, subjectIcon, suggestSubjects, bigWord, palette, factLines, PALETTES };
 })();
