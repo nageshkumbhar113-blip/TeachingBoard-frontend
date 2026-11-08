@@ -252,6 +252,11 @@
       $('c-batch').textContent = info.batch ? '📚 ' + info.batch : '';
       if (info.students_count >= 20) $('proof').textContent = '🎓 ' + Number(info.students_count).toLocaleString('en-IN') + '+ students NKs EduOrbit वर अभ्यास करतात';
       $('f-name').value = info.name || '';
+      // the free account already exists (made with the parent's number): nothing to fill in — plan → pay
+      if (info.converted && info.student_code) {
+        ['f-name', 'f-mobile', 'f-pin'].forEach(function (id) { $(id).style.display = 'none'; var l = document.querySelector('label[for="' + id + '"]'); if (l) l.style.display = 'none'; });
+        document.querySelector('#f-pin + .hint').textContent = '👤 Student Code ' + info.student_code + ' — pay केलं की याच account वर पूर्ण course उघडेल.';
+      }
       show('v-main');
       var k = 0, ring = $('c-ring');
       var t = setInterval(function () { k = Math.min(pct, k + Math.max(1, Math.round(pct / 25))); ring.style.setProperty('--p', k); $('c-pct').textContent = k + '%'; if (k >= pct) clearInterval(t); }, 30);
@@ -275,10 +280,16 @@
   function done(code, name) {
     $('d-code').textContent = code;
     $('d-name').textContent = name || '';
+    // an account made with the parent's number: its PIN came on the result / WhatsApp; forgotten → WhatsApp login
+    if (info && info.auto_account) {
+      var pinLine = 'PIN: test च्या result वर / WhatsApp वर दिलेला. विसरलात? App › Login › "📲 WhatsApp ने login" → नवीन PIN.';
+      document.querySelector('#v-done > p.muted').textContent = 'App मध्ये हा Student Code आणि PIN टाकून login करा. ' + pinLine;
+      var s2 = document.querySelector('#v-done .next-steps div:nth-of-type(2) p'); if (s2) s2.textContent = '👤 हा Student Code + 🔑 PIN टाकून login (' + pinLine + ')';
+    }
     show('v-done');
     fireworks();
     $('d-share').onclick = function () {
-      var text = '✅ अभिनंदन! *' + (name || '') + '* चं NKs EduOrbit account तयार झालं.\n👤 Student Code: *' + code + '*\n🔑 PIN: तुम्ही निवडलेला\n📱 App: ' + location.origin + '/get-app.html\nआत्तापर्यंत दिलेले सगळे tests account मध्ये आहेत. शुभेच्छा! 🎯';
+      var text = '✅ अभिनंदन! *' + (name || '') + '* चं NKs EduOrbit account तयार झालं.\n👤 Student Code: *' + code + '*\n🔑 PIN: ' + (info && info.auto_account ? 'test च्या result वर / WhatsApp वर दिलेला' : 'तुम्ही निवडलेला') + '\n📱 App: ' + location.origin + '/get-app.html\nआत्तापर्यंत दिलेले सगळे tests account मध्ये आहेत. शुभेच्छा! 🎯';
       window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
     };
   }
@@ -292,9 +303,12 @@
   function pay() {
     var msg = $('msg'), btn = $('pay');
     var name = $('f-name').value.trim(), mobile = $('f-mobile').value.trim(), pin = $('f-pin').value.trim();
-    if (name.length < 2) { msg.textContent = 'विद्यार्थ्याचं नाव लिहा'; return; }
-    if (mobile.replace(/\D/g, '').length < 10) { msg.textContent = 'पालकांचा 10 अंकी mobile नंबर द्या'; return; }
-    if (weak(pin)) { msg.textContent = '4 अंकी PIN ठेवा (1234, 1111 असा सोपा नको)'; return; }
+    var existing = !!(info && info.converted && info.student_code);
+    if (!existing) {
+      if (name.length < 2) { msg.textContent = 'विद्यार्थ्याचं नाव लिहा'; return; }
+      if (mobile.replace(/\D/g, '').length < 10) { msg.textContent = 'पालकांचा 10 अंकी mobile नंबर द्या'; return; }
+      if (weak(pin)) { msg.textContent = '4 अंकी PIN ठेवा (1234, 1111 असा सोपा नको)'; return; }
+    }
     msg.textContent = ''; btn.disabled = true; btn.textContent = '⏳ तयार होत आहे…';
     post('/guest/checkout', { gid: gid, name: name, parent_mobile: mobile, pin: pin, period: period }).then(function (o) {
       if (!window.Razorpay) throw new Error('Payment उघडता आलं नाही — थोड्या वेळाने पुन्हा प्रयत्न करा');

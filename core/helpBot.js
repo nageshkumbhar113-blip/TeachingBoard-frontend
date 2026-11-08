@@ -122,6 +122,13 @@ const HELP_BOT = (() => {
       waText: (topic, code) => `नमस्कार 🙏 मला NKs EduOrbit मध्ये मदत हवी आहे.\nप्रश्न: ${topic}${code ? `\nStudent Code: ${code}` : ''}\nनाव:\nनंबर:\n(थोडक्यात problem लिहा)`,
       waDone: 'WhatsApp उघडलं — नाव, नंबर आणि problem लिहून पाठवा. Admin लवकरच उत्तर देतील.',
       forgotIntro: 'ठीक आहे. विद्यार्थ्याचं नाव आणि पालकांचा mobile नंबर (register करताना दिलेला) लिहा. हा phone पण तपासला जाईल.',
+      waLogin: '📲 WhatsApp ने (नंबर टाइप न करता)',
+      waSteps: 'WhatsApp उघडेल — पालकांच्या (register करताना दिलेल्या) WhatsApp वरून <b>Send</b> दाबा. मग इथे परत या.',
+      waOpen: '📲 WhatsApp पुन्हा उघडा',
+      waWaiting: '⏳ WhatsApp वरून message ची वाट पाहत आहे…',
+      waPick: 'या नंबरवर एकापेक्षा जास्त विद्यार्थी आहेत. कोणाचा PIN?',
+      waExpired: 'वेळ संपली. पुन्हा प्रयत्न करा.',
+      waNoBot: 'WhatsApp ने login आत्ता उपलब्ध नाही. नाव आणि नंबर टाइप करून करा.',
       studentName: 'विद्यार्थ्याचं नाव', parentMobile: 'पालकांचा mobile', check: '🔍 तपासा', needName: 'नाव लिहा', needMobile: '10 अंकी नंबर लिहा',
       notMatched: '😕 हे नाव आणि नंबर जुळले नाहीत. Register करताना दिलेलं नाव आणि पालकांचा नंबरच लिहा.',
       otherDevice: '📱 नाव आणि नंबर बरोबर आहेत, पण हे account या phone वर नाही — ज्या phone वर student login करतो त्या phone च्या app मधून हेच करा. Phone बदलला / हरवला असेल तर खालून Admin ला request पाठवा.',
@@ -151,6 +158,13 @@ const HELP_BOT = (() => {
       waText: (topic, code) => `Hello 🙏 I need help with NKs EduOrbit.\nQuestion: ${topic}${code ? `\nStudent Code: ${code}` : ''}\nName:\nNumber:\n(describe the problem briefly)`,
       waDone: 'WhatsApp is open — write your name, number and the problem and send it. The admin will reply soon.',
       forgotIntro: 'OK. Write the student\'s name and the parent\'s mobile number (the one given at registration). This phone will be checked too.',
+      waLogin: '📲 With WhatsApp (no typing)',
+      waSteps: 'WhatsApp opens — press <b>Send</b> from the parent\'s WhatsApp (the number given at registration). Then come back here.',
+      waOpen: '📲 Open WhatsApp again',
+      waWaiting: '⏳ Waiting for the WhatsApp message…',
+      waPick: 'More than one student is on this number. Whose PIN?',
+      waExpired: 'Time is up. Please try again.',
+      waNoBot: 'WhatsApp login is not available right now. Type the name and number instead.',
       studentName: 'Student\'s name', parentMobile: 'Parent\'s mobile', check: '🔍 Check', needName: 'Write the name', needMobile: 'Write a 10-digit number',
       notMatched: '😕 This name and number do not match. Use the name and the parent\'s number given at registration.',
       otherDevice: '📱 The name and number are right, but this account is not on this phone — do this from the app on the phone where the student logs in. If the phone was changed or lost, send a request to the admin below.',
@@ -250,6 +264,9 @@ const HELP_BOT = (() => {
     return fetch(`${_opts.api()}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(r => r.json().catch(() => ({})).then(b => { if (!r.ok) throw new Error(b.message || (_lang === 'en' ? 'Something went wrong' : 'काहीतरी चूक झाली')); return b; }));
   }
+  function _get(path) {
+    return fetch(_opts.api() + path).then(r => r.json().catch(() => ({})));
+  }
   const _hit = (id, unresolved) => _post('/help/hit', { id, unresolved: !!unresolved }).catch(() => {});
 
   function _wa(text) {
@@ -302,7 +319,7 @@ const HELP_BOT = (() => {
       [t('menu'), _menu],
     ]);
     switch (it.action) {
-      case 'forgot': return _options([[t('doNow'), () => _forgot()], [t('menu'), _menu]]);
+      case 'forgot': return _options([[t('waLogin'), () => _waLogin(), 'hb-main'], [t('doNow'), () => _forgot()], [t('menu'), _menu]]);
       case 'move': return _options([[t('doNow'), () => _move()], [t('menu'), _menu]]);
       case 'request': return _options([[t('sendReq'), () => _requestForm('student', 'new_phone')], [t('menu'), _menu]]);
       case 'request_teacher': return _options([[t('reqTeacher'), () => _requestForm('teacher', 'teacher')], [t('reqShop'), () => _requestForm('shop', 'shop')], [t('menu'), _menu]]);
@@ -365,6 +382,37 @@ const HELP_BOT = (() => {
         e.target.disabled = false; msg.textContent = err.message;
       }
     };
+  }
+
+  // "📲 WhatsApp ने": a one-time code goes to our WhatsApp bot from the parent's own WhatsApp; the number is
+  // checked there (not typed), the account must be on this phone; then a new PIN, as below
+  async function _waLogin() {
+    let s;
+    try { s = await _post('/help/wa-start', { device_id: _deviceId() }); } catch (err) { _say(err.message); return _options([[t('doNow'), () => _forgot()], [t('menu'), _menu]]); }
+    if (!s?.ok) { _say(t('waNoBot')); return _options([[t('doNow'), () => _forgot()], [t('menu'), _menu]]); }
+    const url = `https://wa.me/${s.bot}?text=${encodeURIComponent('LOGIN ' + s.nonce)}`;
+    const open = () => (window.Capacitor?.isNativePlatform?.() ? window.open(url, '_system') : window.open(url, '_blank', 'noopener'));
+    _say(t('waSteps'));
+    const f = _form(`<button type="button" class="hb-opt hb-main" id="hb-wa-open">${t('waOpen')}</button><p class="hb-msg" id="hb-wa-msg">${t('waWaiting')}</p>`);
+    f.querySelector('#hb-wa-open').onclick = open;
+    open();
+    const t0 = Date.now();
+    const poll = async () => {
+      if (!f.isConnected) return;
+      let r = null;
+      try { r = await _get(`/help/wa-status/${s.nonce}?device_id=${encodeURIComponent(_deviceId())}`); } catch { /* try again */ }
+      if (r?.status === 'ok' && r.accounts?.length) {
+        f.querySelectorAll('button').forEach(b => { b.disabled = true; });
+        if (r.accounts.length === 1) return _newPin(r.accounts[0]);
+        _say(t('waPick'));
+        return _options(r.accounts.map(a => [`${esc(a.name)} (${esc(a.student_code)})`, () => _newPin(a)]));
+      }
+      if (r?.status === 'other_device') { _say(t('otherDevice')); return _options([[t('reqNewPin'), () => _requestForm('student', 'not_matched', {})], [t('menu'), _menu]]); }
+      if (r?.status === 'no_match') { _say(t('notMatched')); return _options([[t('doNow'), () => _forgot()], [t('menu'), _menu]]); }
+      if (r?.status === 'expired' || Date.now() - t0 > 10 * 60 * 1000) { _say(t('waExpired')); return _options([[t('waLogin'), () => _waLogin()], [t('menu'), _menu]]); }
+      setTimeout(poll, 2500);
+    };
+    setTimeout(poll, 3000);
   }
 
   // onSaved: the "new phone" steps continue after the PIN instead of going to the login form

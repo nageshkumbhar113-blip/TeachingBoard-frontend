@@ -396,9 +396,9 @@ const UI = (() => {
     const grid = $('batch-grid');
     if (!grid) return;
 
-    const [batches, questions, allowedBatches] = await Promise.all([
+    // (the card no longer shows a question count, so every question is not read from the phone just for it)
+    const [batches, allowedBatches] = await Promise.all([
       DB.getAllBatches(),
-      DB.getAllQuestions(),
       _getAllowedBatches(),
     ]);
 
@@ -431,16 +431,9 @@ const UI = (() => {
     Object.entries(covers).forEach(([name, c]) => applyCover(name, c));
     _refreshBatchCoversOnce(grid);
 
-    const visibleQuestions = _filterByAllowedBatches(questions, allowedBatches);
-    const questionCounts = visibleQuestions.reduce((counts, q) => {
-      counts[q.batch] = (counts[q.batch] || 0) + 1;
-      return counts;
-    }, {});
-
     const fragment = document.createDocumentFragment();
     allowedBatches.forEach(batchName => {
       const meta  = batchMeta.get(batchName) || { name: batchName, icon: '📚' };
-      const count = questionCounts[batchName] || 0;
       const card  = document.createElement('div');
       card.className = 'batch-card';
       card.setAttribute('role', 'listitem');
@@ -448,7 +441,6 @@ const UI = (() => {
       card.innerHTML = `
         ${_batchVisual(meta)}
         <div class="batch-name">${batchName}</div>
-        <div class="batch-count">${count} questions</div>
       `;
       card.addEventListener('click', () => {
         grid.querySelectorAll('.batch-card').forEach(c => c.classList.remove('active'));

@@ -260,6 +260,8 @@ const TEST_PLAYER = (() => {
     state.quiz          = quiz;
     state.questions     = questions;
     state.current       = 0;
+    state.gateDone      = false;   // free part: the name + parent's number sheet, once per test
+    state.gatePaused    = false;   // timers wait while that sheet is open
     state.answers       = {};
     state.mode          = mode;
     state.answered      = false;
@@ -765,6 +767,19 @@ const TEST_PLAYER = (() => {
 
   function _advanceToNext() {
     if (state.current < state.questions.length - 1) {
+      // free part: after the 3rd question (a short test: before its last one) the child's name and the
+      // parent's number, so a child who leaves half-way is not lost; once, and never when the number is known
+      const gateAt = Math.min(3, state.questions.length - 1);
+      if (state.current + 1 === gateAt && !state.gateDone && window.GUEST?.isActive?.() && GUEST.needsContact?.()) {
+        state.gateDone = true;
+        state.gatePaused = true;
+        Promise.resolve(GUEST.midTestGate()).catch(() => {}).finally(() => {
+          state.gatePaused = false;
+          state.current++;
+          _renderQuestion();
+        });
+        return;
+      }
       state.current++;
       _renderQuestion();
     } else {
@@ -841,6 +856,7 @@ const TEST_PLAYER = (() => {
     }
 
     state.perQInterval = setInterval(() => {
+      if (state.gatePaused) return;
       state.perQRemaining--;
       if (count) count.textContent = _formatTimerValue(state.perQRemaining);
       if (ring) {
@@ -934,6 +950,7 @@ const TEST_PLAYER = (() => {
 
     refresh();
     state.fullInterval = setInterval(() => {
+      if (state.gatePaused) return;
       state.fullRemaining--;
       refresh();
       if (state.fullRemaining <= 0) {

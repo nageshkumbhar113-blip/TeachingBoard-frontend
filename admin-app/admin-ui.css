@@ -2854,6 +2854,19 @@ body.admin-app {
 .crm-wa pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: .82rem; margin: 0; }
 
 .crm-meta.crm-hot { color: #b45309; font-weight: 600; }
+.crm-guide { margin: 0 0 10px; border: 1px solid #d9d4f5; border-radius: 12px; padding: 8px 10px; background: #fbfaff; }
+.crm-guide summary { cursor: pointer; font-weight: 800; color: #3b3366; }
+.crm-steps { margin: 8px 0; padding-left: 0; list-style: none; display: grid; gap: 6px; font-size: .85rem; }
+.crm-steps li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.crm-tpl-list { margin: 6px 0 0; padding-left: 18px; font-size: .82rem; color: #4b4470; }
+.crm-next { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: #fff7d6; color: #5c3d00; font-size: .9rem; }
+.crm-tpls { margin: 6px 0 10px; }
+.crm-tpls > summary { cursor: pointer; font-weight: 800; margin-bottom: 6px; }
+.crm-tpl { display: grid; gap: 4px; padding: 8px; border: 1px solid #ece8fb; border-radius: 10px; background: #fff; margin-bottom: 6px; }
+.crm-tpl-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.crm-tpl-head small { color: #8a83b3; }
+.crm-tpl-go { justify-self: start; text-decoration: none; }
+.crm-tpl-text pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: .8rem; margin: 4px 0 0; color: #3b3366; }
 
 /* course details: the usual subjects + the card as it will look */
 .bd-subject-list { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 6px 0 4px; }

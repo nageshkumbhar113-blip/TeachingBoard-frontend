@@ -1,4 +1,4 @@
-const SW_VERSION = 'v252';
+const SW_VERSION = 'v254';
 const CACHE_PREFIX = 'nkseduorbit';
 const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
@@ -30,6 +30,7 @@ const CORE_ASSETS = [
   './core/fileExport.js',
   './core/penOverlay.js',
   './core/courseCard.js',
+  './core/tour.js',
   './core/math.js',
   './core/i18n.js',
   './core/pdf.js',

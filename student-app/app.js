@@ -1852,7 +1852,12 @@ const APP = (() => {
 
     try {
       const perm = await Push.requestPermissions();
-      if (perm.receive !== 'granted') return;
+      if (perm.receive !== 'granted') {
+        // notifications off: a banner on Home (the daily test and results then come on WhatsApp)
+        if (role === 'student') _showNotifOffBanner(role, Push);
+        return;
+      }
+      document.getElementById('notif-off-banner')?.remove();
       await Push.register();
 
       Push.addListener('registration', async ({ value: deviceToken }) => {
@@ -1882,11 +1887,44 @@ const APP = (() => {
           // New Notes/Exercise/Test, inactivity reminder, daily motivation —
           // all safely land on Home; none of them need a specific deep link.
           _goHomeRoleAware();
+          // the WhatsApp bot's push: its buttons ("💬 WhatsApp वर सूट / रिपोर्ट …") in a sheet over Home
+          if (data.kind === 'wa_bot') setTimeout(() => window.GUEST?.botPushSheet?.({ ...data, body: action.notification?.body || '' }), 900);
         }
+      });
+      // a bot push that arrives while the app is open (Android shows no notification then)
+      Push.addListener('pushNotificationReceived', n => {
+        if (role === 'student' && n?.data?.kind === 'wa_bot') window.GUEST?.botPushSheet?.({ ...n.data, body: n.body || '' });
       });
     } catch (e) {
       console.warn('Push notification setup failed', e);
     }
+  }
+
+  // Home banner while notifications are off: one tap asks again; if Android no longer asks, the steps to turn them on
+  function _showNotifOffBanner(role, Push) {
+    try { if (Number(localStorage.getItem('notif_banner_later') || 0) > Date.now()) return; } catch { /* show it */ }
+    const home = $('screen-home');
+    if (!home || document.getElementById('notif-off-banner')) return;
+    const b = document.createElement('div');
+    b.id = 'notif-off-banner';
+    b.setAttribute('role', 'status');
+    b.style.cssText = 'margin:8px 12px;padding:12px 14px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:.92rem;line-height:1.45';
+    b.innerHTML = `<b>🔔 Notifications बंद आहेत</b><br>रोजची free test, result आणि महा-Test ची वेळ कळणार नाही.
+      <div id="notif-steps" hidden style="margin-top:6px">Phone च्या <b>Settings → Apps → NKs EduOrbit → Notifications</b> → चालू करा.</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button type="button" id="notif-on" style="border:0;border-radius:10px;padding:8px 14px;font-weight:800;background:#ea580c;color:#fff">🔔 चालू करा</button>
+        <button type="button" id="notif-later" style="border:0;border-radius:10px;padding:8px 10px;font-weight:700;background:transparent;color:#9a3412">नंतर</button>
+      </div>`;
+    home.insertBefore(b, home.firstElementChild);
+    b.querySelector('#notif-on').onclick = async () => {
+      const p = await Push.requestPermissions().catch(() => null);
+      if (p?.receive === 'granted') { b.remove(); _pushSetupDone = false; _setupPushNotifications(role); return; }
+      b.querySelector('#notif-steps').hidden = false;   // Android will not ask again: turn on by hand
+    };
+    b.querySelector('#notif-later').onclick = () => {
+      try { localStorage.setItem('notif_banner_later', String(Date.now() + 3 * 864e5)); } catch { /* */ }
+      b.remove();
+    };
   }
 
   function _updateProfileButton(name) {
@@ -1945,6 +1983,7 @@ const APP = (() => {
         ${role ? '' : `<button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>`}
         <button id="ps-board-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🖥️ Board Mode ${_activeUiMode() === 'board' ? 'बंद करा' : 'चालू करा'}</button>
         ${role || window.GUEST?.isActive?.() || !window.HELP_BOT?.openMove ? '' : `<button id="ps-move-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📱 नवीन phone वर shift करा</button>`}
+        ${role || !window.TOUR ? '' : `<button id="ps-tour-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🎓 Tour पुन्हा पाहा</button>`}
         <button id="ps-switch-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">↔ Switch Account</button>
         <button id="ps-close-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent,#e74c3c);color:#fff;font-weight:600;cursor:pointer">Close</button>
       </div>
@@ -1962,6 +2001,12 @@ const APP = (() => {
     overlay.querySelector('#ps-unlock-btn')?.addEventListener('click', () => {
       _close();
       window.GUEST?.showOffer('locked');
+    });
+    overlay.querySelector('#ps-tour-btn')?.addEventListener('click', () => {
+      _close();
+      window.TOUR.reset();
+      loadHome();
+      setTimeout(() => window.TOUR.start('home', { force: true }), 900);
     });
     overlay.querySelector('#ps-analytics-btn')?.addEventListener('click', () => {
       _close();
@@ -2390,6 +2435,9 @@ const APP = (() => {
     } else {
       console.warn(`showScreen: no element #screen-${name}`);
     }
+
+    // the app tour: Home's first-time walk-through and each page's own, once (core/tour.js)
+    if (!_isTeacherOrParentMode) window.TOUR?.onScreen?.(name);
 
     // Show/hide back button — always hide on home; show when there's history
     const backBtn = $('btn-back');

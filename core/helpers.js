@@ -487,10 +487,11 @@ const API = (() => {
     try { const q = new URLSearchParams(location.search), o = {}; for (const k of ['gclid', 'gbraid', 'wbraid']) { const v = (q.get(k) || '').slice(0, 300); if (v) o[k] = v; } return o; } catch { return {}; }
   })();
 
-  async function startGuestSession({ batch, name, src, ref, resume_gid, link_batch } = {}) {
+  async function startGuestSession({ batch, name, src, ref, resume_gid, link_batch, app } = {}) {
     const state = await getGuestState();
     const body = {
       resume_gid: resume_gid || undefined,
+      app: resume_gid && app ? true : undefined,   // continued inside the app (not the child's link in a browser)
       batch: batch || state.batch || '',
       name: name !== undefined ? name : (state.name || ''),
       src: src || state.src || '',
@@ -2280,6 +2281,17 @@ const API = (() => {
     return request('/guest/admin/bot-token', { headers: { Authorization: `Bearer ${token}` } });
   }
 
+  // Admin › CRM: a family's free account — code + PIN (made now if missing; fresh = a new PIN)
+  async function crmLeadPin(gid, fresh = false) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/lead-pin', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ gid, fresh }) });
+  }
+  // Admin › CRM "🔄 जुने leads आणा": every visitor with a parent's number into the bot's CRM (no message to anyone)
+  async function crmBackfill() {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/bot-backfill', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: '{}' });
+  }
+
   // Admin › Ads › 📡: every Meta ad's state right now (never cached)
   async function fetchMetaStatus() {
     const token = await ensureAdminSession();
@@ -3098,7 +3110,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

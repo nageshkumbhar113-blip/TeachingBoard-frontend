@@ -307,7 +307,7 @@ const GUEST = (() => {
         try {
           await API.startGuestSession({ name });
           await _saveState({ name });
-          await API.saveGuestContact(mob);
+          await _saveContact(mob);
           _state.has_parent_mobile = true;
         } catch (err) { if (!navigator.onLine) { msg.textContent = 'Internet चालू करून पुन्हा प्रयत्न करा'; el.querySelectorAll('button').forEach(b => { b.disabled = false; }); return; } msg.textContent = err?.message || 'नंबर तपासा'; el.querySelectorAll('button').forEach(b => { b.disabled = false; }); return; }
         API.guestEvent('link_sent');
@@ -343,7 +343,7 @@ const GUEST = (() => {
   // App installed from the website with the visitor's id: same lead, same tests.
   async function resume(gid) {
     try {
-      await API.startGuestSession({ resume_gid: gid });
+      await API.startGuestSession({ resume_gid: gid, app: _isNative() });
       await _saveState({ started_at: Date.now() });
       await refresh();
       _toast('👋 परत स्वागत! तुमचे free tests इथे आहेत', 'success');
@@ -417,7 +417,8 @@ const GUEST = (() => {
 
   // ── Name before the first test ─────────────────────────────────────
   function ensureName() {
-    if (!_active || _state.name) return Promise.resolve(true);
+    // no number yet: the name comes with it on the sheet inside the test (midTestGate), so the test opens at once
+    if (!_active || _state.name || !_state.has_parent_mobile) return Promise.resolve(true);
     return new Promise(resolve => {
       const el = _layer('gx-dim', `
         <div class="gx-card">
@@ -444,6 +445,71 @@ const GUEST = (() => {
       };
       el.querySelector('#gx-ok').onclick = go;
       input.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    });
+  }
+
+  // the parent's number → the server also makes the free account (code + PIN, free tests only); kept on this
+  // phone so the result can show it
+  async function _saveContact(mobile) {
+    const r = await API.saveGuestContact(mobile);
+    if (r?.account?.code) await _saveState({ acct: { code: r.account.code, pin: r.account.pin || '' } }).catch(() => {});
+    return r;
+  }
+
+  // ── Inside the test (after the 3rd question): the child's name + the parent's number ──
+  // Owner's rule (2026-11-08): children who leave half-way must not be lost, so this is not skippable.
+  // The test's timers wait while it is open. No internet / server asleep: the test goes on, and the
+  // result asks again (the number typed here is filled in there).
+  const needsContact = () => _active && !_state.has_parent_mobile;
+  function midTestGate() {
+    if (!needsContact()) return Promise.resolve(true);
+    window.TOUR?.done?.('test-player');   // the test's tour must not sit over this sheet or come after it
+    return new Promise(resolve => {
+      const el = _layer('gx-hero', `
+        <div class="gx-card">
+          <div class="gx-logo" aria-hidden="true">📲</div>
+          <h2 class="gx-title">छान! <span class="gx-grad-text">3 प्रश्न</span> झाले 👍</h2>
+          <p class="gx-sub">Test संपली की <b>result आणि क्रमांक पालकांच्या WhatsApp वर</b> पाठवतो. Test मध्येच बंद झाली तरी पुढची test तिथे मिळेल.</p>
+          <label class="gx-field"><span>विद्यार्थ्याचं नाव</span>
+            <input class="gx-input" id="gx-mt-name" maxlength="30" autocomplete="given-name" placeholder="उदा. राहुल" /></label>
+          <label class="gx-field"><span>पालकांचा WhatsApp नंबर</span>
+            <input class="gx-input" id="gx-mt-mob" type="tel" inputmode="tel" autocomplete="tel" placeholder="98XXXXXXXX" maxlength="16" /></label>
+          <label class="gx-check"><input type="checkbox" id="gx-mt-ok" /> <span>NKs EduOrbit कडून result व अभ्यासाबद्दल संपर्कास पालकांची संमती आहे</span></label>
+          <p class="gx-msg" id="gx-msg" role="alert"></p>
+          <button type="button" class="gx-btn gx-big gx-shine" id="gx-mt-go">▶ Test पुढे सुरू करा</button>
+        </div>`);
+      const $e = s => el.querySelector(s), name = $e('#gx-mt-name'), mob = $e('#gx-mt-mob'), msg = $e('#gx-msg'), go = $e('#gx-mt-go');
+      name.value = _state.name || '';
+      _hintOnFocus(mob);
+      setTimeout(() => (name.value ? mob : name).focus(), 250);
+      const bad = inp => { inp.classList.remove('gx-bad'); void inp.offsetWidth; inp.classList.add('gx-bad'); };
+      const done = () => { _close(el); resolve(true); };
+      go.onclick = async () => {
+        const n = name.value.trim(), m = mob.value.replace(/\D/g, '').slice(-10);
+        if (n.length < 2) { msg.textContent = 'विद्यार्थ्याचं नाव लिहा'; bad(name); return; }
+        if (!/^[6-9]\d{9}$/.test(m)) { msg.textContent = 'पालकांचा 10 अंकी mobile नंबर लिहा'; bad(mob); return; }
+        if (!$e('#gx-mt-ok').checked) { msg.textContent = 'पालकांच्या संमतीवर ✓ करा'; return; }
+        go.disabled = true; msg.style.color = ''; msg.textContent = '⏳ …';
+        if (n !== _state.name) {
+          try { await API.startGuestSession({ name: n }); } catch { /* the name still lives on the phone */ }
+          await _saveState({ name: n }).catch(() => {});
+        }
+        try {
+          await _saveContact(m);
+          _state.has_parent_mobile = true;
+          done();
+        } catch (err) {
+          if (!navigator.onLine || /fetch|network|timeout|failed/i.test(String(err?.message || ''))) {
+            await _saveState({ mob_try: m }).catch(() => {});   // asked again with the result, already filled in
+            done();
+            return;
+          }
+          go.disabled = false;
+          msg.textContent = err?.message || 'योग्य 10 अंकी नंबर द्या';
+          bad(mob);
+        }
+      };
+      [name, mob].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') go.click(); }));
     });
   }
 
@@ -478,6 +544,9 @@ const GUEST = (() => {
     const weak = ans.map((a, i) => (!a.correct && a.given !== null && a.given !== undefined ? i + 1 : 0)).filter(Boolean).slice(0, 6);
     const ch = _state.challenge && _state.challenge.quiz === quiz.quiz_id ? _state.challenge : null;
     const improved = prev && pct > prev.last ? { from: prev.last, to: pct } : null;
+    // the bot can only write after the parent writes first (free messages): one tap opens WhatsApp with
+    // "RESULT <code>" already typed, they press Send, and the result, the offer and the next tests come there
+    const bot = await _bot();
     const verdict = pct >= 90 ? '🏆 जबरदस्त!' : pct >= 75 ? '🔥 खूप छान!' : pct >= 50 ? '⭐ छान प्रयत्न!' : '💪 पुन्हा प्रयत्न करा!';
 
     const el = _layer('gx-dim', `
@@ -504,6 +573,15 @@ const GUEST = (() => {
           </div>
           <div class="gx-rank" id="gx-rank" hidden></div>
           ${weak.length ? `<p class="gx-weak">📌 अजून सराव हवा: प्रश्न ${weak.join(', ')}</p>` : ''}
+          ${_state.acct?.code ? `<div class="gx-acct">
+            <b>📲 ${_esc(_state.name || 'तुमचं')} चं app account तयार!</b>
+            <div class="gx-acct-code">Code: <b>${_esc(_state.acct.code)}</b> · PIN: <b>${_esc(_state.acct.pin || 'तुमचाच')}</b>
+              <button type="button" class="gx-acct-copy" id="gx-acct-copy" aria-label="Code आणि PIN copy करा">📋 Copy</button></div>
+            <p>${_isNative() ? 'Profile › Logout → Login मध्ये हा Code आणि PIN टाका' : 'App उघडा → Login → Code आणि PIN टाका'} → बाकीच्या free tests सोडवा</p>
+            ${_isNative() ? '' : `<a class="gx-btn gx-big gx-shine" id="gx-acct-app" href="${PLAY}" target="_blank" rel="noopener">📲 App उघडा</a>`}
+            <small>✍️ Code आणि PIN लिहून ठेवा किंवा screenshot घ्या</small>
+          </div>` : ''}
+          ${bot ? '<button type="button" class="gx-btn gx-big gx-wa gx-shine" id="gx-res-wa">📩 Result आणि सवलत WhatsApp वर मिळवा</button><p class="gx-sub" style="margin-top:4px">WhatsApp उघडेल, फक्त <b>Send</b> दाबा. पुढच्या tests पण तिथेच मिळतील.</p>' : ''}
           <div id="gx-offer-box"></div>
           <button type="button" class="gx-btn gx-big" id="gx-primary"></button>
           <div class="gx-row">
@@ -520,6 +598,12 @@ const GUEST = (() => {
 
     const close = () => _close(el);
     el.querySelector('.gx-close').onclick = close;
+    el.querySelector('#gx-res-wa')?.addEventListener('click', () => _waBot('RESULT'));
+    el.querySelector('#gx-acct-copy')?.addEventListener('click', async e => {
+      const t = `NKs EduOrbit · Code: ${_state.acct.code} · PIN: ${_state.acct.pin || ''}`;
+      try { await navigator.clipboard.writeText(t); e.target.textContent = '✅ Copied'; } catch { _toast(t, 'info'); }
+    });
+    el.querySelector('#gx-acct-app')?.addEventListener('click', () => API.guestEvent('app_click'));
 
     const dotEls = [...el.querySelectorAll('.gx-dot')];
     const stepMs = _reduced() ? 0 : Math.max(35, Math.min(110, 1400 / Math.max(1, dotEls.length)));
@@ -926,6 +1010,7 @@ const GUEST = (() => {
           ${forResult ? '' : '<button type="button" class="gx-link" id="gx-later">नंतर</button>'}
         </div>`);
       const mob = el.querySelector('#gx-mob'), msg = el.querySelector('#gx-msg');
+      if (_state.mob_try) mob.value = _state.mob_try;   // typed inside the test but not saved then (no internet)
       // WhatsApp: the parent's own message gives the number (and the consent); the result opens at once
       el.querySelector('#gx-wa-bot')?.addEventListener('click', () => { _waBot(forLocked ? 'OFFER' : 'RESULT'); _close(el); resolve(true); });
       _hintOnFocus(mob);
@@ -943,7 +1028,7 @@ const GUEST = (() => {
         if (!el.querySelector('#gx-ok').checked) { msg.textContent = 'पालकांच्या संमतीवर ✓ करा'; return; }
         msg.style.color = ''; msg.textContent = '⏳ …';
         try {
-          await API.saveGuestContact(mob.value);
+          await _saveContact(mob.value);
           _state.has_parent_mobile = true;
           done(true);
         } catch (err) {
@@ -1020,6 +1105,25 @@ const GUEST = (() => {
     const hub = { ...(_state.hub || {}) };
     hub[next.chapter] = { ...(hub[next.chapter] || {}), Notes: true };
     _state = { ..._state, hub }; _saveState({ hub });
+  }
+
+  // ── a push from the WhatsApp bot (app): its text and its buttons — "💬 WhatsApp वर …" opens the bot's chat ──
+  async function botPushSheet(data = {}) {
+    let buttons = [];
+    try { buttons = JSON.parse(data.buttons || '[]'); } catch { buttons = []; }
+    const wa = buttons.filter(b => /^push:[A-Z]+$/.test(String(b.id || '')));
+    if (!wa.length || document.querySelector('.gx-layer.gx-botpush')) return;
+    const bot = await _bot();
+    if (!bot) return;
+    const el = _layer('gx-dim gx-botpush', `
+      <div class="gx-card">
+        <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
+        <div class="gx-logo" aria-hidden="true">🔔</div>
+        <p class="gx-sub" style="font-weight:700">${_esc(data.body || data.text || '')}</p>
+        ${wa.map((b, i) => `<button type="button" class="gx-btn ${i ? 'gx-ghost' : 'gx-big gx-wa'}" data-k="${_esc(b.id.slice(5))}">${_esc(b.label || '💬 WhatsApp')}</button>`).join('')}
+      </div>`);
+    el.querySelector('.gx-close').onclick = () => _close(el);
+    el.querySelectorAll('[data-k]').forEach(b => { b.onclick = () => { _waBot(b.dataset.k); _close(el); }; });
   }
 
   // ── one new free test a day on the website (the app has them all) ──
@@ -1248,8 +1352,8 @@ const GUEST = (() => {
   }
 
   return {
-    refresh, isActive, wantsEntry, entryParams, start, resume, ensureName, onResult,
-    showOffer, openPay, goNext, renderHomeGuide, mayStartTest, nextTestSheet, mayOpenLesson, botNumber: _bot, waBot: _waBot, onSignupRequired, contactGate, fireworks,
+    refresh, isActive, wantsEntry, entryParams, start, resume, ensureName, needsContact, midTestGate, onResult,
+    showOffer, openPay, goNext, renderHomeGuide, mayStartTest, nextTestSheet, mayOpenLesson, botPushSheet, botNumber: _bot, waBot: _waBot, onSignupRequired, contactGate, fireworks,
     __resultCanvas: _resultCanvas,
     decorateHub, phoneHint,
   };
