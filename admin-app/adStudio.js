@@ -1584,8 +1584,10 @@ const AD_STUDIO = (() => {
       const spend = await _spend();
       const V = _variants(_facts());
       // which audience an ad id belongs to: t-<variant> = teacher ads, <class>-<variant> otherwise
-      const ours = id => /^(yt-)?t-/.test(id) || /(^|-)v[psty]-[a-z0-9]+$/.test(id) || Object.keys(V).some(v => id.endsWith('-' + v));
-      const audOfId = id => { const vm = /(?:^|-)v([psty])-[a-z0-9]+$/.exec(id); if (vm) return LETTER_AUD[vm[1]];
+      // a click-to-WhatsApp ad is the same ad's name + "-wa": judged like its website twin, in its own ad set
+      const _b = id => String(id).replace(/-wa$/, '');
+      const ours = id => /^(yt-)?t-/.test(_b(id)) || /(^|-)v[psty]-[a-z0-9]+$/.test(_b(id)) || Object.keys(V).some(v => _b(id).endsWith('-' + v));
+      const audOfId = id0 => { const id = _b(id0); const vm = /(?:^|-)v([psty])-[a-z0-9]+$/.exec(id); if (vm) return LETTER_AUD[vm[1]];
         const m = /^(?:yt-)?t-(.+)$/.exec(id); if (m) return V[m[1]]?.aud || 'school'; const k = Object.keys(V).filter(v => id.endsWith('-' + v)).sort((a, b) => b.length - a.length)[0]; return V[k]?.aud || 'parent'; };
       // every ad that is in Meta under our name shows up (also a new one with no spend yet)
       const inMeta = [...(meta?.connected ? Object.keys(meta.ads || {}) : []), ...Object.keys(GS)].filter(ours);
@@ -1648,14 +1650,14 @@ const AD_STUDIO = (() => {
           const rows = verdictsBy(mine.map(id => { const t = f.by_teacher_ad?.[id] || {}; return { id, opened: 0, tested: t.registered || 0, paid: t.paid || 0, spend: sp(id), approved: t.approved || 0, students: t.students || 0, meta: !!(S[id] || M[id] || GS[id]) }; }), keyOf)
             .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt));
           return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>नोंदणी</th><th>Approve</th><th>त्यांनी आणलेली मुलं</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / नोंदणी</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
-            ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
+            ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${/-wa$/.test(r.id) ? ' <small class="ads-meta">💬 WhatsApp: "Link उघडली" = WhatsApp वर message केलेले पालक</small>' : ''}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.tested}</td><td>${r.approved}</td><td>${r.students}</td><td>${r.paid}</td>
               <td>${spendCell(r)}</td>
               <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b>${actCell(r)}</td></tr>`).join('')}</tbody></table>`;
         }
         const rows = verdictsBy(mine.map(id => ({ id, opened: f.by_ad?.[id]?.opened || 0, tested: f.by_ad?.[id]?.tested || 0, paid: f.by_ad?.[id]?.paid || 0, spend: sp(id), meta: !!(S[id] || M[id] || GS[id]) })), keyOf)
           .sort((a, b) => (a.by === 'paid' ? a.cpp - b.cpp : a.cpt - b.cpt) || b.opened - a.opened);
         return `<h5 class="ads-aud-h">${AUD[aud].name}</h5><table class="ads-table"><thead><tr><th>Ad</th><th>Meta: पाहिली · click</th><th>Link उघडली</th><th>Test दिली</th><th>Pay केलं</th><th>खर्च ₹</th><th>₹ / test</th><th>₹ / paid</th><th>काय करायचं</th></tr></thead><tbody>
-          ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
+          ${rows.map(r => `<tr class="${r.tone}"><td>${_esc(r.id)}${/-wa$/.test(r.id) ? ' <small class="ads-meta">💬 WhatsApp: "Link उघडली" = WhatsApp वर message केलेले पालक</small>' : ''}${setName(r.id)}</td><td>${metaCell(r.id)}</td><td>${r.opened}</td><td>${r.tested}</td><td>${r.paid}</td>
             <td>${spendCell(r)}</td>
             <td>${rs(r.cpt)}</td><td>${rs(r.cpp)}</td><td><b>${r.verdict}</b>${actCell(r)}</td></tr>`).join('')}</tbody></table>`;
       }).join('');
