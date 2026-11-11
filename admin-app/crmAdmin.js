@@ -62,10 +62,10 @@ const CRM_ADMIN = (() => {
       text: 'नमस्कार 🙏 {नाव} साठी पुढची free test तयार आहे 👇\n{test}{bot:TEST}' },
     { id: 'missed', title: '📞 Call लागला नाही', when: 'Call उचलला नाही',
       text: 'नमस्कार 🙏 NKs EduOrbit मधून {नाव} बद्दल call केला होता. सोयीची वेळ सांगा, आम्ही परत call करू.{bot:HELP}' },
-    { id: 'maha', title: '🏆 महा-Test', when: 'शनिवार / रविवार सकाळ',
-      text: 'नमस्कार 🙏 या रविवारी {class} चा महा-Test — सगळ्या विद्यार्थ्यांमध्ये {नाव} चा क्रमांक कळेल 🏆\nमाहिती 👇 {महा-test}\nTest याच link वरून: {test}{bot:MAHATEST}' },
+    { id: 'maha', title: '🏆 महा-Test आठवण', when: 'नोंदणी केलेले (🏆 महा-Test) — शनिवारी संध्याकाळी, रविवारी सकाळी',
+      text: 'नमस्कार 🙏 {नाव} ची {महा-test वेळ} च्या {class} महा-Test साठी नोंदणी झाली आहे 🏆\nवेळेवर याच link वरून test द्या 👇\n{test}\nसगळ्या विद्यार्थ्यांमध्ये क्रमांक लगेच कळेल. माहिती: {महा-test}{bot:MTWANT}' },
   ];
-  const PLACEHOLDERS = '{नाव} {class} {tests} {test} = मुलाची free test link · {pay} = pay link · {app} = Play Store · {code} {pin} = app account · {सवलत} = "… पर्यंत" · {महा-test} · {bot:TEST} = bot ची link (TEST / HELP / OFFER / MAHATEST)';
+  const PLACEHOLDERS = '{नाव} {class} {tests} {test} = मुलाची free test link · {pay} = pay link · {app} = Play Store · {code} {pin} = app account · {सवलत} = "… पर्यंत" · {महा-test} · {महा-test वेळ} · {bot:TEST} = bot ची link (TEST / HELP / OFFER / MAHATEST / MTWANT)';
   let _tpls = DEFAULT_TPLS;
   const _tplById = id => _tpls.find(t => t.id === id) || DEFAULT_TPLS.find(t => t.id === id) || null;
   let _fu = { steps: [], counts: [] }, _fuStep = 0;   // the follow-up steps; the step whose families are shown (0 = none)
@@ -104,6 +104,7 @@ const CRM_ADMIN = (() => {
     $('crm-admin').innerHTML = `
       <div class="crm-head"><h3>📇 CRM — पालक</h3><button type="button" class="admin-btn-secondary" id="crm-refresh" aria-label="पुन्हा उघडा">🔄</button></div>
       <div class="crm-tools">
+        <button type="button" class="admin-btn-primary crm-mt-btn" data-panel="mt">🏆 महा-Test आठवण</button>
         <button type="button" class="admin-btn-primary" data-panel="add">➕ नवीन पालक</button>
         <button type="button" class="admin-btn-secondary" data-panel="import">📤 Import</button>
         <button type="button" class="admin-btn-secondary" data-panel="labels">🏷️ Labels</button>
@@ -293,13 +294,13 @@ const CRM_ADMIN = (() => {
     if (/\{(code|pin)\}/.test(text) && !(acct?.code && acct.pin)) return null;
     const offer = L.offerEnd && new Date(L.offerEnd) > Date.now()
       ? ' ' + new Date(L.offerEnd).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + ' पर्यंत' : '';
-    const bot = kw => _botNum ? `\n\nप्रश्न / पुढची test: आमच्या WhatsApp bot ला इथे message करा (फक्त Send दाबा) 👇\nhttps://wa.me/${_botNum}?text=${encodeURIComponent(String(kw || 'TEST').toUpperCase() + ' ' + g)}` : '';
+    const bot = kw => _botNum ? `\n\n${String(kw).toUpperCase() === 'MTWANT' ? 'गुण आणि क्रमांक test संपताच WhatsApp वर हवे? इथे फक्त Send दाबा' : 'प्रश्न / पुढची test: आमच्या WhatsApp bot ला इथे message करा (फक्त Send दाबा)'} 👇\nhttps://wa.me/${_botNum}?text=${encodeURIComponent(String(kw || 'TEST').toUpperCase() + ' ' + g)}` : '';
     return text
       .replace(/\{bot(?::([A-Za-z]+))?\}/g, (_, kw) => bot(kw))
       .replace(/\{नाव\}/g, L.name || 'तुमचा पाल्य').replace(/\{class\}/g, L.cls || '').replace(/\{tests\}/g, String(L.testsDone || 0))
       .replace(/\{test\}/g, `${SITE}/student-app/?free=1&g=${g}`).replace(/\{pay\}/g, `${SITE}/parent-pay.html?g=${g}`).replace(/\{app\}/g, PLAY)
       .replace(/\{code\}/g, acct?.code || '').replace(/\{pin\}/g, acct?.pin || '').replace(/\{सवलत\}/g, offer)
-      .replace(/\{महा-test\}/g, `${SITE}/maha-test.html?class=${encodeURIComponent(L.cls || '')}`);
+      .replace(/\{महा-test वेळ\}/g, L.mtWhen || 'येत्या रविवारी').replace(/\{महा-test\}/g, `${SITE}/maha-test.html?class=${encodeURIComponent(L.cls || '')}`);
   }
 
   // 💬 the message box: pick → (edit) → WhatsApp / SMS from the team's phone
@@ -377,6 +378,7 @@ const CRM_ADMIN = (() => {
     if (which === 'tpls') return _panelTpls(box);
     if (which === 'fusteps') return _panelFuSteps(box);
     if (which === 'run') return _panelRun(box);
+    if (which === 'mt') return _panelMt(box);
   }
   const _close = () => { _panelOpen = ''; $('crm-panel').classList.add('hidden'); $('crm-panel').innerHTML = ''; };
   const _labelList = () => `<datalist id="crm-label-names">${_labels.map(l => `<option value="${esc(l.name)}"></option>`).join('')}</datalist>`;
@@ -438,6 +440,72 @@ const CRM_ADMIN = (() => {
       $('crm-r-skip').onclick = async () => { await _call(`/crm/lead/${L.gid}/fu`, { action: 'snooze' }).catch(() => {}); i++; draw(); };
       $('crm-r-stop').onclick = async () => { await _call(`/crm/lead/${L.gid}/fu`, { action: 'done' }).catch(() => {}); await _call(`/crm/lead/${L.gid}/note`, { text: '🏁 Follow-up बंद (नको / नंबर चुकीचा)' }).catch(() => {}); i++; draw(); };
       $('crm-r-close').onclick = () => { _close(); _load(); };
+    };
+    draw();
+  }
+
+  // 🏆 the families registered for the coming महा-Tests: the bot may not write to them first, so the team sends the
+  // reminder from its own WhatsApp / SMS (Saturday evening, Sunday morning) — one family after another, ₹0
+  async function _panelMt(box) {
+    let evs;
+    try { evs = (await API.crmMtList())?.data || []; } catch (e) { box.innerHTML = `<p class="crm-meta">⚠️ ${esc(e.message)}</p>`; return; }
+    if (_panelOpen !== 'mt') return;
+    // "रविवारी सकाळी 10" (the parents' own words, not "10:00 AM")
+    const whenOf = ev => {
+      const d = new Date(ev.starts_at), h = d.getHours(), m = d.getMinutes();
+      const day = d.toLocaleDateString('mr-IN-u-nu-latn', { weekday: 'long' }) + 'ी';
+      return `${day} ${h < 12 ? 'सकाळी' : h < 17 ? 'दुपारी' : h < 21 ? 'संध्याकाळी' : 'रात्री'} ${h % 12 || 12}${m ? ':' + String(m).padStart(2, '0') : ''}`;
+    };
+    const today = new Date().toDateString();
+    const sentToday = r => (r.reminders || []).some(t => new Date(t).toDateString() === today);
+    const todoOf = ev => ev.rows.filter(r => !r.submitted && !sentToday(r));
+    const draw = () => {
+      box.innerHTML = `<h4>🏆 महा-Test — नोंदणी केलेले पालक</h4>
+        <p class="crm-meta">Bot त्यांना स्वतःहून लिहू शकत नाही (पालकांनी 24 तासांत message केला नसेल तर) — म्हणून आठवण <b>टीमच्या WhatsApp वरून</b>: <b>शनिवारी संध्याकाळी</b> आणि <b>रविवारी सकाळी</b>. ₹0. एका दिवशी एकाला एकदाच.</p>
+        ${evs.length ? evs.map((ev, i) => `<div class="crm-mt-ev">
+          <div><b>${esc(ev.batch)}</b> · ${esc(whenOf(ev))} · नोंदणी <b>${ev.registered}</b> (पालकांचा नंबर असलेले ${ev.rows.length})</div>
+          <div class="crm-acts"><button type="button" class="admin-btn-primary" data-mt-run="${i}" ${todoOf(ev).length ? '' : 'disabled'}>📤 आजची आठवण पाठवा (${todoOf(ev).length})</button></div>
+          <ul class="crm-mt-rows">${ev.rows.map(r => `<li><b>${esc(r.name || '—')}</b> · 📱 ${esc(r.mobile)} · ${r.submitted ? '✅ test दिला' : r.reminders.length ? `🔔 ${r.reminders.length} वेळा आठवण${sentToday(r) ? ' (आज झाली)' : ''}` : '⏳ अजून आठवण नाही'}</li>`).join('') || '<li>पालकांचा नंबर असलेले कोणी नाही</li>'}</ul>
+        </div>`).join('') : '<p class="crm-empty">पुढच्या 8 दिवसांत महा-Test नाही.</p>'}
+        <div class="crm-acts"><button type="button" class="admin-btn-secondary" id="crm-mt-close">बंद</button></div>`;
+      $('crm-mt-close').onclick = _close;
+      box.querySelectorAll('[data-mt-run]').forEach(b => b.onclick = () => run(evs[Number(b.dataset.mtRun)]));
+    };
+    const run = ev => {
+      const queue = todoOf(ev), tpl = _tplById('maha');
+      let i = 0, done = 0;
+      const step = () => {
+        if (i >= queue.length) {
+          box.innerHTML = `<h4>✅ ${esc(ev.batch)}: ${done} पालकांना आठवण पाठवली</h4><div class="crm-acts"><button type="button" class="admin-btn-primary" id="crm-mt-back">‹ यादी</button></div>`;
+          $('crm-mt-back').onclick = draw;
+          return;
+        }
+        const r = queue[i], L = { gid: r.gid, name: r.name, cls: r.cls, mobile: r.mobile, mtWhen: whenOf(ev) };
+        box.innerHTML = `<h4>🏆 ${esc(ev.batch)} — ${i + 1} / ${queue.length} <small>(${done} पाठवले)</small></h4>
+          <p><b>${esc(r.name || '—')}</b> · 📞 ${esc(r.mobile)}</p>
+          <textarea class="admin-input crm-ttext" id="crm-m-text" rows="8" aria-label="मजकूर">${esc(_fill(tpl.text, L) || '')}</textarea>
+          <div class="crm-acts">
+            <a class="admin-btn-primary" id="crm-m-wa" target="_blank" rel="noopener">💬 WhatsApp पाठवा</a>
+            <a class="admin-btn-secondary" id="crm-m-sms">✉️ SMS</a>
+            <button type="button" class="admin-btn-secondary" id="crm-m-skip">⏭ सोडा</button>
+            <button type="button" class="admin-btn-secondary" id="crm-m-close">‹ यादी</button>
+          </div>
+          <small class="crm-meta">📱 आज टीमचे WhatsApp: <b>${_teamToday}</b></small>`;
+        const ta = $('crm-m-text'), wa = $('crm-m-wa'), sms = $('crm-m-sms');
+        const links = () => { wa.href = `https://wa.me/91${r.mobile}?text=${encodeURIComponent(ta.value)}`; sms.href = `sms:+91${r.mobile}?body=${encodeURIComponent(ta.value)}`; };
+        ta.oninput = links; links();
+        const sent = via => () => {
+          r.reminders.push(Date.now());
+          API.crmMtReminded(ev.event_id, r.student_code).catch(() => {});
+          _call(`/crm/lead/${r.gid}/sent`, { via, tpl: tpl.title, tpl_id: 'maha', text: ta.value }).catch(() => {});   // the bot's chat log (if the family is there)
+          if (via === 'wa') _teamToday++;
+          done++; i++; setTimeout(step, 700);   // WhatsApp opens; the next family is ready when they come back
+        };
+        wa.addEventListener('click', sent('wa')); sms.addEventListener('click', sent('sms'));
+        $('crm-m-skip').onclick = () => { i++; step(); };
+        $('crm-m-close').onclick = draw;
+      };
+      step();
     };
     draw();
   }

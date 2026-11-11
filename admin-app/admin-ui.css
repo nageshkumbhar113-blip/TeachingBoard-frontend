@@ -2930,3 +2930,8 @@ body.admin-app {
 .crm-fu-now { --c: #64748b; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; padding: 8px 10px; border-radius: 10px; border-left: 5px solid var(--c); background: #f8f7ff; font-size: .88rem; }
 .crm-fu-now select { width: auto; }
 .crm-days { width: 64px; }
+
+/* CRM › 🏆 महा-Test आठवण */
+.crm-mt-btn { background: #b45309; border-color: #b45309; }
+.crm-mt-ev { border: 2px solid #f59e0b; border-radius: 12px; padding: 8px 10px; margin: 8px 0; background: #fffbeb; color: #1f1a3d; }
+.crm-mt-rows { margin: 6px 0 0; padding-left: 18px; font-size: .88rem; line-height: 1.6; }

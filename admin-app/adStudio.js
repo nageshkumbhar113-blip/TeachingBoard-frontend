@@ -1153,6 +1153,8 @@ const AD_STUDIO = (() => {
   let _geoPick = {};
   const _isNmms = () => /nmms/i.test(st.batch || '') && !isTeacher(st.aud);
   const _geo = () => (_isNmms() ? (_geoPick[st.batch] || 'gata') : 'all');
+  // 💬 a parent ad may open WhatsApp (the bot) instead of the website
+  const _dest = (v = st.v) => (_audOf(v) === 'parent' && $('ads-meta-dest')?.value === 'wa' ? 'wa' : 'web');
   const adsetName = (v = st.v) => { const a = _audOf(v); return isTeacher(a) ? `t-${a}` : `${_slug(st.batch)}-${st.kind === 'reg' ? 'r' : 'c'}-${a}${_geo() !== 'all' ? '-' + _geo() : ''}`; };
 
   // ── "📤 Meta वर पाठवा": record the 9:16 video here, send it + a thumbnail through our server to
@@ -1186,11 +1188,11 @@ const AD_STUDIO = (() => {
         up = _sent[id] = { video_id: vid.video_id, image_hash: img.image_hash };
       }
       msg.textContent = '⏳ Meta मध्ये ad बनत आहे (video तयार व्हायला 1–2 मिनिटं लागू शकतात)…';
-      const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, geo: _geo(), ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
+      const out = await API.metaCreateAd({ name: id, adset: adsetName(v), audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, geo: _geo(), dest: _dest(v), ...up, message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
       if (out.exists) msg.innerHTML = `ℹ️ <b>${_esc(id)}</b> ही ad Meta मध्ये आधीच आहे — दुसरी बनवली नाही.`;
       else if (out.pending) msg.textContent = (out.note ? out.note + ' · ' : '') + '⏳ Meta अजून video तयार करत आहे. 2 मिनिटांनी पुन्हा "Meta वर पाठवा" दाबा (video पुन्हा जाणार नाही).';
       else {
-        msg.innerHTML = (out.note ? `⚠️ ${_esc(out.note)}<br>` : '') + `✅ <b>${_esc(id)}</b> Meta मध्ये बनली${out.mode === 'lead' ? ' ("Free test" वर चालणाऱ्या ad set मध्ये)' : ''} — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये पाहा</a> किंवा इथूनच
+        msg.innerHTML = (out.note ? `⚠️ ${_esc(out.note)}<br>` : '') + `✅ <b>${_esc(id)}</b> Meta मध्ये बनली${out.mode === 'lead' ? ' ("Free test" वर चालणाऱ्या ad set मध्ये)' : out.mode === 'whatsapp' ? ' (💬 WhatsApp ad — बटण bot चं chat उघडतं)' : ''} — <b>बंद (Paused)</b> आहे. <a href="${_esc(out.manager)}" target="_blank" rel="noopener">Ads Manager मध्ये पाहा</a> किंवा इथूनच
           <button type="button" class="ads-act good" id="ads-meta-on">▶ आत्ता चालू करा</button>`;
         const on = $('ads-meta-on');
         on.addEventListener('click', async () => {
@@ -1242,6 +1244,7 @@ const AD_STUDIO = (() => {
     if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * _share(st.aud) / 100 : 150));
     const n = $('ads-meta-name'); if (n) n.textContent = `Ad: ${adId()} · Ad set: ${adsetName()}`;
     if ($('ads-geo-row')) { $('ads-geo-row').hidden = !_isNmms(); $('ads-meta-geo').value = _geo(); }
+    if ($('ads-dest-row')) { const par = _audOf(st.v) === 'parent'; $('ads-dest-row').hidden = !par; $('ads-dest-note').hidden = !par || _dest() !== 'wa'; }
     // ages: the audience's, until the admin changes them (per audience)
     const [lo, hi] = _ages(st.aud), a1 = $('ads-meta-age-min'), a2 = $('ads-meta-age-max');
     if (a1 && a1.dataset.aud !== st.aud) { a1.value = lo; a2.value = hi; a1.dataset.aud = st.aud; }
@@ -2224,6 +2227,8 @@ const AD_STUDIO = (() => {
             <div class="ads-recbox ads-metabox" id="ads-metabox" hidden>
               <b>📤 Meta वर पाठवा</b>
               <small id="ads-meta-name"></small>
+              <label id="ads-dest-row" hidden>📲 Ad चं बटण कुठे नेतं <select id="ads-meta-dest" class="admin-input"><option value="web">🌐 Website — free test</option><option value="wa">💬 WhatsApp — आपला bot (नंबर आपोआप, 72 तास मोफत messages)</option></select></label>
+              <small id="ads-dest-note" class="ads-age-note" hidden>💬 WhatsApp ad: Meta मध्ये bot चा WhatsApp नंबर Facebook Page शी जोडलेला हवा. Ad चं नाव "…-wa" — website ची ad तशीच राहते, दोन्ही शेजारी चालवा.</small>
               <label id="ads-geo-row" hidden>📍 कुठे <select id="ads-meta-geo" class="admin-input">${GEO_OPTS.map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
               <label>या ad set चं रोजचं बजेट ₹ <input id="ads-meta-budget" type="number" min="100" step="50" class="admin-input" /></label>
               <label>वय <input id="ads-meta-age-min" type="number" min="13" max="65" class="admin-input ads-age" aria-label="किमान वय" /> ते <input id="ads-meta-age-max" type="number" min="13" max="65" class="admin-input ads-age" aria-label="कमाल वय" /></label>
@@ -2333,6 +2338,7 @@ const AD_STUDIO = (() => {
       $('ads-meta-send').addEventListener('click', () => sendToMeta());
       $('ads-meta-send-all').addEventListener('click', sendAllToMeta);
       _geoPick = (await DB.getSetting(GEO_KEY, null).catch(() => null)) || {};
+      $('ads-meta-dest').addEventListener('change', () => _paintMetaBox());
       $('ads-meta-geo').addEventListener('change', e => { _geoPick[st.batch] = e.target.value; DB.setSetting(GEO_KEY, { ..._geoPick }).catch(() => {}); _paintMetaBox(); });
       $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
       $('ads-refresh').addEventListener('click', () => _loadBoard(true));

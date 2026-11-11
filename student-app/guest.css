@@ -332,6 +332,10 @@
 
 /* parent start: the weekly महा-Test line */
 .gx-pe-mt { margin: 10px 0; padding: 9px 12px; border-radius: 14px; background: rgba(255, 200, 61, .18); border: 1px solid rgba(255, 200, 61, .55); font-size: .92rem; line-height: 1.45; text-align: left; }
+/* parent start: "give the phone to the child" before ▶ */
+.gx-pe-hand { margin: 14px 0 6px; padding: 12px 14px; border-radius: 16px; background: rgba(22, 163, 74, .14); border: 1px solid rgba(22, 163, 74, .45); font-size: 1.05rem; line-height: 1.45; }
+#gx-pe-form .gx-btn { margin-top: 12px; }
+#gx-pe-form .gx-check { color: rgba(255, 255, 255, .9); }
 
 /* WhatsApp bot buttons (the bot number comes from /guest/bot-config) */
 .gx-or { margin: 10px 0 4px; font-size: .85rem; }

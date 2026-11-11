@@ -112,6 +112,9 @@ const APP = (() => {
         await loadHome();
         await _handleInitialRoute();
       }
+      // start-up is over: a free visitor's test may now start by itself (guest.js waits for this)
+      window.__tbBooted = true;
+      if (!_isTeacherOrParentMode && window.GUEST?.isActive?.() && !window.TEST_PLAYER?.isActive?.()) window.GUEST.renderHomeGuide().catch(() => {});
 
       // 10. Background tasks — non-blocking
       _startBackground();

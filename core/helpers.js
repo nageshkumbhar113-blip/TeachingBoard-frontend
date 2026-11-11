@@ -2296,6 +2296,15 @@ const API = (() => {
     const token = await ensureAdminSession();
     return request('/guest/admin/leads-add', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
   }
+  // Admin › CRM 🏆 महा-Test: the registered families of the coming महा-Tests, and "the team sent a reminder"
+  async function crmMtList() {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/mt-list', { headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function crmMtReminded(event_id, student_code) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/mt-reminded', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ event_id, student_code }) });
+  }
 
   // Admin › Ads › 📡: every Meta ad's state right now (never cached)
   async function fetchMetaStatus() {
@@ -3115,7 +3124,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmMtList, crmMtReminded, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
