@@ -2882,3 +2882,51 @@ body.admin-app {
 
 .bd-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 8px 0 2px; }
 .bd-mode .gx-check { display: inline-flex; align-items: center; gap: 4px; font-size: .9rem; }
+
+/* CRM: tools on top, coloured lists and rows, labels, message box, panels (➕ / 📤 / 🏷️ / ✏️) */
+.crm-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.crm-panel { border: 1px solid #d9d4f5; border-radius: 12px; padding: 10px; background: #fff; margin-bottom: 10px; }
+.crm-panel h4 { margin: 0 0 6px; }
+.crm-chip { --c: #4b2f9e; }
+.crm-chip .crm-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-right: 5px; vertical-align: middle; }
+.crm-chip.on { background: var(--c); border-color: var(--c); color: #fff; }
+.crm-chip.on .crm-dot { background: #fff; }
+.crm-row { border-left: 5px solid var(--c, #ece8fb); }
+.crm-labelbar, .crm-lbls { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 4px 0 8px; font-size: .85rem; }
+.crm-lbl { --c: #64748b; border: 1.5px solid var(--c); color: var(--c); background: #fff; border-radius: 999px; padding: 3px 10px; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.crm-lbl.on { background: var(--c); color: #fff; }
+.crm-lbl.small { padding: 1px 7px; font-size: .7rem; cursor: default; }
+.crm-msgbox { display: grid; gap: 6px; padding: 10px; border: 1px solid #ece8fb; border-radius: 12px; background: #fff; margin: 6px 0 10px; }
+.crm-msgpick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-weight: 800; }
+.crm-msgpick select { flex: 1; min-width: 180px; }
+.crm-ttext { width: 100%; box-sizing: border-box; font: inherit; font-size: .88rem; resize: vertical; }
+.crm-msgbox a { text-decoration: none; }
+.crm-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 6px 0; }
+.crm-form label { display: grid; gap: 3px; font-size: .85rem; font-weight: 700; color: #3b3366; }
+.crm-check { display: flex; gap: 6px; align-items: center; font-size: .85rem; margin: 6px 0; }
+.crm-file { cursor: pointer; }
+.crm-prev-scroll { overflow-x: auto; max-height: 280px; overflow-y: auto; }
+.crm-prev table { border-collapse: collapse; font-size: .8rem; min-width: 100%; }
+.crm-prev th, .crm-prev td { border: 1px solid #ece8fb; padding: 4px 6px; text-align: left; white-space: nowrap; }
+.crm-lbl-edit { display: grid; gap: 6px; margin: 6px 0; }
+.crm-lbl-row { display: flex; gap: 6px; align-items: center; }
+.crm-lbl-row input[type=color] { width: 38px; height: 34px; padding: 0; border: 0; background: none; }
+.crm-lbl-row .admin-input { flex: 1; min-width: 0; }
+.crm-tpl-edit { display: grid; gap: 5px; padding: 8px; border: 1px solid #ece8fb; border-radius: 10px; margin-bottom: 8px; }
+.crm-tpl-edit button { justify-self: start; }
+
+/* CRM 📋 follow-up steps */
+.crm-fu { margin: 6px 0 10px; }
+.crm-fu-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; margin-bottom: 6px; }
+.crm-fu-head small { color: #8a83b3; }
+.crm-fu-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.crm-fu-chip { --c: #64748b; display: grid; gap: 1px; text-align: left; border: 2px solid var(--c); border-radius: 12px; background: #fff; padding: 6px 8px; cursor: pointer; color: #1f1a3d; min-width: 0; }
+.crm-fu-chip span { font-size: .7rem; color: var(--c); font-weight: 800; }
+.crm-fu-chip b { font-size: .82rem; overflow-wrap: anywhere; }
+.crm-fu-chip .crm-fu-n { font-size: .8rem; color: #3b3366; }
+.crm-fu-chip em { font-style: normal; color: #b91c1c; font-weight: 800; }
+.crm-fu-chip.on { background: var(--c); color: #fff; }
+.crm-fu-chip.on span, .crm-fu-chip.on .crm-fu-n, .crm-fu-chip.on em { color: #fff; }
+.crm-fu-now { --c: #64748b; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; padding: 8px 10px; border-radius: 10px; border-left: 5px solid var(--c); background: #f8f7ff; font-size: .88rem; }
+.crm-fu-now select { width: auto; }
+.crm-days { width: 64px; }

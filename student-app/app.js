@@ -1889,6 +1889,16 @@ const APP = (() => {
           _goHomeRoleAware();
           // the WhatsApp bot's push: its buttons ("💬 WhatsApp वर सूट / रिपोर्ट …") in a sheet over Home
           if (data.kind === 'wa_bot') setTimeout(() => window.GUEST?.botPushSheet?.({ ...data, body: action.notification?.body || '' }), 900);
+          // the 7 pm study notification names one test: a tap opens it (the quiz may still be syncing: a few tries)
+          if (data.type === 'study_nudge' && data.quiz_id) {
+            let tries = 0;
+            const open = async () => {
+              const q = await DB.getQuiz(data.quiz_id).catch(() => null);
+              if (q) { window.TEST_PLAYER?.startTest(q.quiz_id, q.default_mode || 'practice'); return; }
+              if (++tries < 8) setTimeout(open, 1500);
+            };
+            setTimeout(open, 1200);
+          }
         }
       });
       // a bot push that arrives while the app is open (Android shows no notification then)
@@ -1909,7 +1919,9 @@ const APP = (() => {
     b.id = 'notif-off-banner';
     b.setAttribute('role', 'status');
     b.style.cssText = 'margin:8px 12px;padding:12px 14px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:.92rem;line-height:1.45';
-    b.innerHTML = `<b>🔔 Notifications बंद आहेत</b><br>रोजची free test, result आणि महा-Test ची वेळ कळणार नाही.
+    // a free visitor misses the daily free test; a student with an account misses the day's study and tests
+    const misses = window.GUEST?.isActive?.() ? 'रोजची free test, result आणि महा-Test ची वेळ' : 'रोजचा अभ्यास, आजची test आणि महा-Test ची वेळ';
+    b.innerHTML = `<b>🔔 Notifications बंद आहेत</b><br>${misses} कळणार नाही.
       <div id="notif-steps" hidden style="margin-top:6px">Phone च्या <b>Settings → Apps → NKs EduOrbit → Notifications</b> → चालू करा.</div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button type="button" id="notif-on" style="border:0;border-radius:10px;padding:8px 14px;font-weight:800;background:#ea580c;color:#fff">🔔 चालू करा</button>
