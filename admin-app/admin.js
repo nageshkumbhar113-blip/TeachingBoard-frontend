@@ -2486,7 +2486,8 @@ const ADMIN = (() => {
   try { Object.assign(_glF, JSON.parse(localStorage.getItem(GL_KEY) || '{}')); } catch { /* private window */ }
   const _glSave = () => { try { localStorage.setItem(GL_KEY, JSON.stringify(_glF)); } catch { /* ignore */ } };
   const _reach = l => { const s = new Set(l.steps || []); if (l.paid) s.add('paid'); let r = -1; GL_STEPS.forEach((k, i) => { if (s.has(k)) r = i; }); return r; };
-  const _srcOf = l => l.source === 'ad' && l.ref ? (String(l.ref).startsWith('web-') ? 'web' : 'ad') : (l.source || 'direct');
+  // 💬 a click-to-WhatsApp ad's lead: ref "<our ad>-wa" (or "wa-<Meta ad id>"); a plain message to the bot: source 'whatsapp'
+  const _srcOf = l => l.source === 'ad' && l.ref ? (String(l.ref).startsWith('web-') ? 'web' : /(^wa-|-wa$)/.test(String(l.ref)) ? 'WhatsApp ad' : 'ad') : (l.source || 'direct');
   const _dayStr = d => { const t = new Date(d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
   function _glFiltered() {
     const q = _glF.q.trim().toLowerCase();
