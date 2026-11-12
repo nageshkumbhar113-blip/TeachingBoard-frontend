@@ -2297,6 +2297,11 @@ const API = (() => {
     return request('/guest/admin/leads-add', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
   }
   // Admin › CRM 🏆 महा-Test: the registered families of the coming महा-Tests, and "the team sent a reminder"
+  // Admin › CRM "✅ Paid (हाताने)": paid outside our pay page → the course opens, CRM Paid
+  async function crmLeadPaid(gid, period, amount) {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/lead-paid', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ gid, period, amount }) });
+  }
   async function crmMtList() {
     const token = await ensureAdminSession();
     return request('/guest/admin/mt-list', { headers: { Authorization: `Bearer ${token}` } });
@@ -3124,7 +3129,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmMtList, crmMtReminded, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmMtList, crmMtReminded, crmLeadPaid, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

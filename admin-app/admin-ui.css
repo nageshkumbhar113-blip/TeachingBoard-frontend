@@ -2935,3 +2935,7 @@ body.admin-app {
 .crm-mt-btn { background: #b45309; border-color: #b45309; }
 .crm-mt-ev { border: 2px solid #f59e0b; border-radius: 12px; padding: 8px 10px; margin: 8px 0; background: #fffbeb; color: #1f1a3d; }
 .crm-mt-rows { margin: 6px 0 0; padding-left: 18px; font-size: .88rem; line-height: 1.6; }
+
+/* CRM ✅ Paid (हाताने) */
+.crm-paidbox { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.crm-paidbox select, .crm-paidbox input { width: auto; max-width: 110px; }

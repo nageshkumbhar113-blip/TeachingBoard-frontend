@@ -222,6 +222,7 @@ const CRM_ADMIN = (() => {
       ${_msgBox(L, nextRow, d.fu ? (d.fu_steps[d.fu.step - 1] || {}).tpl : '')}
       <div class="crm-acts">
         <button type="button" class="admin-btn-secondary" id="crm-team">📱 टीमच्या WhatsApp वरून: bot ची link (₹0)</button>
+        ${L.paid ? '' : `<span class="crm-paidbox"><select class="admin-input" id="crm-paid-period" aria-label="Plan"><option value="monthly">महिना</option><option value="yearly">वर्ष</option></select><input class="admin-input crm-days" id="crm-paid-amt" type="number" min="0" placeholder="₹" aria-label="किती भरले"><button type="button" class="admin-btn-primary" id="crm-paid">✅ Paid (हाताने)</button></span>`}
         ${L.closed ? '' : `<button type="button" class="admin-btn-secondary" id="crm-pay">✅ Call: pay करणार</button>
         <span class="crm-later"><input type="date" class="admin-input" id="crm-later-at" aria-label="पुढचा call"><button type="button" class="admin-btn-secondary" id="crm-later">⏰ नंतर</button></span>
         <span class="crm-ni"><select class="admin-input" id="crm-reason" aria-label="कारण">${REASONS.map(r => `<option>${r}</option>`).join('')}</select><button type="button" class="admin-btn-secondary" id="crm-ni">❌ Not interested → close</button></span>`}
@@ -262,6 +263,13 @@ const CRM_ADMIN = (() => {
       $('crm-ni').onclick = () => _sure($('crm-ni'), async () => { await _call(`/crm/lead/${gid}/call`, { result: 'not_interested', reason: $('crm-reason').value }); APP.toast('❌ Close — 1 जूनला पुन्हा यादीत', 'success'); });
     }
     $('crm-tpl').onclick = () => _sure($('crm-tpl'), async () => { await _call(`/crm/lead/${gid}/bot-template`, {}); APP.toast('Template पाठवायचा प्रयत्न केला — chat मध्ये निकाल पाहा', 'info'); }, '₹0.86 लागतील — पुन्हा दाबा');
+    // ✅ paid outside our pay page (Razorpay payment link / UPI / cash): the course opens now, CRM Paid, the bot's 🎉
+    $('crm-paid')?.addEventListener('click', () => _sure($('crm-paid'), async () => {
+      const r = await API.crmLeadPaid(gid, $('crm-paid-period').value, $('crm-paid-amt').value);
+      const d = r?.data || {};
+      APP.toast(`✅ ${d.name || ''} Paid — course ${new Date(d.expiry).toLocaleDateString('mr-IN-u-nu-latn')} पर्यंत उघडा · Code ${d.code}${d.pin ? ' · PIN ' + d.pin : ''}`, 'success');
+      setTimeout(() => _load(), 2500);
+    }, 'पक्कं? पैसे आले आहेत का? — पुन्हा दाबा'));
     $('crm-note').onclick = act($('crm-note'), async () => { const t = $('crm-reply-text').value.trim(); if (!t) throw new Error('Note लिहा'); await _call(`/crm/lead/${gid}/note`, { text: t }); });
     $('crm-reply').onsubmit = e => { e.preventDefault(); const t = $('crm-reply-text').value.trim(); if (!t) return; act(e.submitter || $('crm-reply'), async () => { await _call(`/crm/lead/${gid}/reply`, { text: t }); })(); };
   }
