@@ -159,6 +159,9 @@ const PAYMENT = (() => {
   async function _renderYtDiscountBlock(student) {
     const host = _overlay?.querySelector('#pay-yt-discount');
     if (!host) return;
+    // owner (2026-11-12): the YouTube-subscriber discount is off — nothing to claim here any more
+    host.innerHTML = ''; host.hidden = true;
+    if (host.hidden) return;
     try {
       const status = await API.getMySubscriberClaimStatus({ student_code: student.student_code, pin: student.pin });
       if (!host.isConnected) return;
@@ -284,12 +287,14 @@ const PAYMENT = (() => {
         const priceEl = btn.querySelector('[data-price-el]');
         if (!priceEl || !host.isConnected) return;
         priceEl.innerHTML = `<s class="admit-plan-price-orig">₹${_esc(preview.original_price)}</s> ₹${_esc(preview.discounted_price)}
-          <span class="admit-plan-discount-badge">🎓 ${preview.discount_percent}% OFF</span>`;
+          <span class="admit-plan-discount-badge">${preview.discount_reason === 'first_test_offer' ? '🎁' : '🎓'} ${preview.discount_percent}% OFF</span>`;
         // Who gets it, how it was checked, and the price afterwards (Play policy on eligibility discounts).
         if (!host.querySelector('.admit-plan-discount-note')) {
           const note = document.createElement('p');
           note.className = 'admit-plan-discount-note';
-          note.textContent = `🎓 ही सवलत YouTube teacher चा channel subscribe केल्याबद्दल आहे — तुमच्या teacher ने subscribe तपासून मंजूर केलं आहे.${preview.discount_first_payment_only ? ' फक्त पहिल्या payment वर; नंतरचे payments पूर्ण किमतीत.' : ''} Teacher चं partner खातं बंद झालं तर सवलत संपते.`;
+          note.textContent = preview.discount_reason === 'first_test_offer'
+            ? `🎁 पहिली free test दिल्याबद्दल सवलत${preview.discount_ends ? ' — ' + new Date(preview.discount_ends).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + ' पर्यंत' : ''}. फक्त पहिल्या payment वर; नंतरचे payments पूर्ण किमतीत.`
+            : `🎓 ही सवलत YouTube teacher चा channel subscribe केल्याबद्दल आहे — तुमच्या teacher ने subscribe तपासून मंजूर केलं आहे.${preview.discount_first_payment_only ? ' फक्त पहिल्या payment वर; नंतरचे payments पूर्ण किमतीत.' : ''} Teacher चं partner खातं बंद झालं तर सवलत संपते.`;
           host.querySelector('#pay-msg')?.before(note);
         }
       } catch { /* keep full price shown */ }

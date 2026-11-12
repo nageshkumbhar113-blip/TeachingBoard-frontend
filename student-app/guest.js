@@ -799,20 +799,24 @@ const GUEST = (() => {
       <div class="gx-card">
         <div class="gx-logo" aria-hidden="true">🎉</div>
         <h2 class="gx-title">अभिनंदन${name ? ', ' + _esc(name) : ''}!</h2>
-        <p class="gx-sub">तुमचं account तयार आहे. Payment page वर ठेवलेला PIN टाका.</p>
+        <p class="gx-sub">तुमचं account तयार आहे. PIN टाका (WhatsApp वर आलेला, किंवा payment page वर ठेवलेला).</p>
         <label class="gx-field"><span>Student Code</span><input class="gx-input" id="gx-code" value="${_esc(code)}" readonly /></label>
         <label class="gx-field"><span>PIN</span><input class="gx-input" id="gx-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" /></label>
         <p class="gx-msg" id="gx-msg" role="alert"></p>
         <button type="button" class="gx-btn gx-big gx-shine" id="gx-in">🚀 सुरू करा</button>
       </div>`);
     fireworks(1.4);
+    // the free account's PIN kept on this phone (from the number sheet) — filled in
+    if (_state.acct?.code === code && /^\d{4}$/.test(_state.acct?.pin || '')) el.querySelector('#gx-pin').value = _state.acct.pin;
     el.querySelector('#gx-in').onclick = async () => {
       const pin = el.querySelector('#gx-pin').value.trim();
       const msg = el.querySelector('#gx-msg');
       if (!/^\d{4}$/.test(pin)) { msg.textContent = '4 अंकी PIN टाका'; return; }
       msg.style.color = ''; msg.textContent = '⏳ उघडत आहे…';
       try {
-        await API.loginStudent({ student_code: code, pin, device_id: window.APP?.deviceId?.() || '' });
+        // in a browser no device id: the account is tied to a phone only when the app logs in (else the app says
+        // "registered on another device" to a family that just paid)
+        await API.loginStudent({ student_code: code, pin, device_id: _isNative() ? (window.APP?.deviceId?.() || '') : '' });
         await API.setGuestState({});
         // the PIN was just checked: the reload must not ask for it again (app.js reads this once)
         try { sessionStorage.setItem('tb_pin_ok', code); } catch { /* then the PIN is asked once more */ }
