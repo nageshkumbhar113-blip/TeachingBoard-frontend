@@ -1757,6 +1757,7 @@ const AD_STUDIO = (() => {
           ${a.fb_post ? `<a class="ads-act good" href="${_esc(a.fb_post)}" target="_blank" rel="noopener" title="लोकांना दिसणारी post — share करा, comments ना उत्तर द्या">👁 Facebook post + comments</a><button type="button" class="ads-act" data-copy="${_esc(a.fb_post)}" title="Post ची link copy">📋 post link</button>` : ''}
           ${a.ig_post ? `<a class="ads-act good" href="${_esc(a.ig_post)}" target="_blank" rel="noopener">📸 Instagram post</a>` : ''}
           <button type="button" class="ads-act" data-copy="${_amLink('ads', a.ad_id)}">📋</button>
+          <button type="button" class="ads-act warn lv-del" data-kind="ad" data-id="${_esc(a.ad_id)}" title="ही ad कायमची काढा">🗑️ Delete</button>
         </span></div>`;
     };
     const setBox = s => `<div class="lv-set">
@@ -1764,6 +1765,7 @@ const AD_STUDIO = (() => {
           <span class="lv-budget">रोज ₹ <input type="number" min="100" step="10" class="admin-input lv-amt" value="${s.budget || ''}" data-old="${s.budget || ''}" ${s.budget ? '' : 'disabled'} />
           <button type="button" class="ads-act lv-setb" data-adset="${_esc(s.id)}" ${s.budget ? '' : 'disabled'}>💾 बजेट बदला</button></span>
           <a class="ads-act" href="${_amLink('adsets', s.id)}" target="_blank" rel="noopener">🔗</a>
+          <button type="button" class="ads-act warn lv-del" data-kind="adset" data-id="${_esc(s.id)}" title="हा ad set आणि त्यातल्या सगळ्या ads कायमच्या काढा">🗑️ ad set Delete</button>
           ${/-(gata|marathwada|nashik|kolhapur)(-lead)?$/.test(s.name) ? `<button type="button" class="ads-act lv-geo" data-adset="${_esc(s.id)}" data-geo="${/-(gata|marathwada|nashik|kolhapur)(-lead)?$/.exec(s.name)[1]}" title="या गटाची आत्ताची शहरं या ad set ला लावा (उदा. नवीन शहर जोडलं असेल तर)">📍 शहरं अपडेट करा</button>` : ''}</div>
         ${s.ads.map(adRow).join('')}
         <small class="lv-note">बजेट या ad set मधल्या ${s.ads.length} ads मिळून आहे — Meta तो चांगल्या ad कडे आपोआप जास्त वळवतो.</small>
@@ -1802,6 +1804,12 @@ const AD_STUDIO = (() => {
       const out = await API.metaAction({ action: 'replace_video', ad_id: btn.dataset.ad, ..._sent[btn.dataset.name], message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link });
       APP.toast(`✅ ${out.name}: नवीन video लावला. Meta तो पुन्हा तपासेल (review), मग ad परत चालू.`, 'success');
     }, 'पक्कं? नवीन video बनवून याच ad वर लावायचा (पुन्हा दाबा)')));
+    // 🗑️ delete for good (two presses); an ad set takes its ads with it. Then the same ad can be sent again from above.
+    box.querySelectorAll('.lv-del').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
+      const set = btn.dataset.kind === 'adset';
+      const out = await API.metaAction(set ? { action: 'delete_adset', adset_id: btn.dataset.id } : { action: 'delete_ad', ad_id: btn.dataset.id });
+      APP.toast(`🗑️ ${out.name}: ${set ? 'ad set आणि त्यातल्या ads' : 'ad'} काढल्या. हवं तर वरून पुन्हा "📤 Meta वर पाठवा".`, 'success');
+    }, btn.dataset.kind === 'adset' ? 'पक्कं? ad set + सगळ्या ads कायमच्या जातील — पुन्हा दाबा' : 'पक्कं? ad कायमची जाईल — पुन्हा दाबा')));
     box.querySelectorAll('.lv-do').forEach(btn => btn.addEventListener('click', () => _sure(btn, async () => {
       const out = await API.metaAction({ action: btn.dataset.act, ad_id: btn.dataset.ad });
       APP.toast(`${out.name}: ${out.status === 'PAUSED' ? 'बंद केली' : 'चालू केली'}${out.note === 'adset' ? ' (ad set मधली शेवटची चालू ad — ad set पण बंद, खर्च थांबला)' : ''}`, 'success');
