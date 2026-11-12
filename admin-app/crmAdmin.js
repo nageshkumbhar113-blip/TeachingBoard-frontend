@@ -77,7 +77,8 @@ const CRM_ADMIN = (() => {
   const REASONS = ['फी जास्त', 'पाल्याला वेळ नाही', 'दुसरा क्लास', 'Phone नाही', 'इतर'];
   let _conn = null;              // { url, token, at }
   let _list = 'first', _label = '', _q = '', _open = '', _ready = false, _rowsCache = [], _teamToday = 0;
-  let _waReady = null;           // { gid, waMe, text }: a team message ready to open (a real tap opens WhatsApp)
+  let _waReady = null;
+  let _byMob = {};               // mobile → how many families in the list share it (siblings, or one child twice)           // { gid, waMe, text }: a team message ready to open (a real tap opens WhatsApp)
 
   async function _connect(force) {
     if (!force && _conn && Date.now() - _conn.at < 10 * 3600e3) return _conn;
@@ -179,14 +180,24 @@ const CRM_ADMIN = (() => {
     // a label shows its families from every list
     const path = _fuStep ? `/crm/fu/list?step=${_fuStep}` : _label ? `/crm/list?list=all&label=${_label}&q=${encodeURIComponent(_q)}` : `/crm/list?list=${_list}&q=${encodeURIComponent(_q)}`;
     let rows = await _call(path).catch(e => { APP.toast(e.message, 'error'); return []; });
+    // a list shows 50 at a time: "आणखी" brings the next ones
+    if (!_fuStep && rows.length === 50) {
+      for (let off = 50; off < 500; off += 50) {
+        const more = await _call(path + '&offset=' + off).catch(() => []);
+        rows = rows.concat(more);
+        if (more.length < 50) break;
+      }
+    }
     if (_fuStep && _q) rows = rows.filter(r => `${r.name} ${r.mobile}`.toLowerCase().includes(_q.toLowerCase()));
     _rowsCache = rows;
+    _byMob = {}; for (const r of rows) if (r.mobile) _byMob[r.mobile] = (_byMob[r.mobile] || 0) + 1;
     $('crm-rows').innerHTML = rows.length ? rows.map(r => `
       <button type="button" class="crm-row${r.gid === _open ? ' on' : ''}" style="--c:${rowColor(r)}" data-gid="${esc(r.gid)}">
         <span class="crm-name">${esc(r.name || '—')} <small>${esc(r.cls || '')}${r.place ? ' · ' + esc(r.place) : ''}</small> ${_labelPills(r.labels)}</span>
         <span class="crm-meta">${r.mobile ? '📱 ' + esc(r.mobile) : '—'} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.no_test ? ' · ⚠️ test नाही' : ''}${r.open ? ' · 🟢 खिडकी उघडी' : ''}${r.app ? ' · 📲 app' : r.acct ? ' · 👤 Code आहे, app नाही' : ''}${r.push_on ? ' · 🔔' : ''}${r.sent ? ` · 💬 ${r.sent} message` : ''}</span>
         <span class="crm-meta">${r.fu_step ? `📋 Step ${r.fu_step} · पुढचा message: <b>${_dueText(r.fu_due)}</b> · ` : ''}${r.closed ? '❌ ' + esc(r.closed) + ' · ' : ''}शेवटचा reply ${ago(r.last_in)}</span>
-        ${r.offer_end || r.mt ? `<span class="crm-meta crm-hot">${r.offer_end ? `🎁 सूट ${left(r.offer_end)}` : ''}${r.offer_end && r.mt ? ' · ' : ''}${r.mt ? `🏆 महा-Test ${r.mt.score}/${r.mt.total}${r.mt.rank ? ` · #${r.mt.rank}/${r.mt.of}` : ''}` : ''}</span>` : ''}
+        ${r.offer || r.mt ? `<span class="crm-meta crm-hot">${r.offer ? `🎁 ${r.offer.pct}% सूट · ${left(r.offer.end)}` : ''}${r.offer && r.mt ? ' · ' : ''}${r.mt ? `🏆 महा-Test ${r.mt.score}/${r.mt.total}${r.mt.rank ? ` · #${r.mt.rank}/${r.mt.of}` : ''}` : ''}</span>` : ''}
+        ${r.mobile && _byMob[r.mobile] > 1 ? `<span class="crm-meta crm-dupe">🔁 हा नंबर ${_byMob[r.mobile]} नोंदींमध्ये — एकच मूल असेल तर एकालाच message / call</span>` : ''}
       </button>`).join('') : '<p class="crm-empty">या यादीत कोणी नाही.</p>';
     $('crm-rows').querySelectorAll('.crm-row').forEach(b => b.onclick = () => _lead(b.dataset.gid));
   }
@@ -206,7 +217,7 @@ const CRM_ADMIN = (() => {
     const box = $('crm-lead'); box.classList.remove('hidden'); box.innerHTML = '⏳'; box.scrollTop = 0;
     document.body.classList.add('crm-lead-open');
     let d; try { d = await _call('/crm/lead/' + gid); } catch (e) { box.textContent = '⚠️ ' + e.message; return; }
-    const L = d.lead;
+    const L = d.lead; L._offer = d.offer || null;
     const idx = _rowsCache.findIndex(r => r.gid === gid), nextRow = idx >= 0 ? _rowsCache[idx + 1] : null;
     box.innerHTML = `
       <div class="crm-lead-head">
@@ -282,10 +293,10 @@ const CRM_ADMIN = (() => {
     if (L.paid) return '✅ Paid — काही करायचं नाही. App मध्ये अडचण असेल तरच मदत.';
     if (L.closed) return '❌ Closed — पालकांनी स्वतः message केला तरच पुन्हा.';
     if (L.crm === 'call') return '📞 पालकांनी call मागितला — <b>आत्ता call करा</b>.';
-    const offer = L.offerEnd && new Date(L.offerEnd) > Date.now();
+    const offer = !!L._offer;
     if (!L.testsDone) return '<b>Call करा</b>: "test दिली का?" उचलला नाही → 💬 "👋 पहिला संपर्क".';
     if (acct?.code && !L.app) return '📲 App नाही — <b>call करून install + login करायला मदत</b>, किंवा 💬 "🔑 Code + PIN".';
-    if (offer) return `🎁 सवलत ${left(L.offerEnd)} — <b>call: फी आणि फायदे</b>, मग 💬 "🎁 सवलत".`;
+    if (offer) return `🎁 ${L._offer.pct}% सवलत ${left(L._offer.end)} — <b>call: फी आणि फायदे</b>, मग 💬 "🎁 सवलत".`;
     if (L.stopped) return '❄️ Reply नाही — 💬 "📝 पुढची free test", 2 दिवसांनी call.';
     return '🔥 Tests चालू — <b>call करून course बद्दल सांगा</b>, मग 💬 "📚 पूर्ण course".';
   }
@@ -293,7 +304,7 @@ const CRM_ADMIN = (() => {
     const acct = _acct[L.gid] || L.acct;
     if (!L.testsDone) return 'hello';
     if (acct?.code && !L.app) return 'acct';
-    if (L.offerEnd && new Date(L.offerEnd) > Date.now()) return 'offer';
+    if (L._offer) return 'offer';
     if (L.stopped) return 'next';
     return 'course';
   }
@@ -302,8 +313,8 @@ const CRM_ADMIN = (() => {
   function _fill(text, L) {
     const acct = _acct[L.gid] || (L.acct?.code ? L.acct : null), g = L.gid;
     if (/\{(code|pin)\}/.test(text) && !(acct?.code && acct.pin)) return null;
-    const offer = L.offerEnd && new Date(L.offerEnd) > Date.now()
-      ? ' ' + new Date(L.offerEnd).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + ' पर्यंत' : '';
+    const offer = L._offer
+      ? ` (${L._offer.pct}%) ` + new Date(L._offer.end).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + ' पर्यंत' : '';
     const bot = kw => _botNum ? `\n\n${String(kw).toUpperCase() === 'MTWANT' ? 'गुण आणि क्रमांक test संपताच WhatsApp वर हवे? इथे फक्त Send दाबा' : 'प्रश्न / पुढची test: आमच्या WhatsApp bot ला इथे message करा (फक्त Send दाबा)'} 👇\nhttps://wa.me/${_botNum}?text=${encodeURIComponent(String(kw || 'TEST').toUpperCase() + ' ' + g)}` : '';
     return text
       .replace(/\{bot(?::([A-Za-z]+))?\}/g, (_, kw) => bot(kw))
@@ -413,6 +424,7 @@ const CRM_ADMIN = (() => {
     if (!st) { _close(); return; }
     const queue = await _call(`/crm/fu/list?step=${step}&due=1`).catch(() => []);
     let i = 0, done = 0;
+    const sentMob = new Set();   // numbers already sent in this round (one parent, two entries)
     const draw = async () => {
       if (i >= queue.length) {
         box.innerHTML = `<h4>✅ Step ${step} चे आजचे सगळे झाले (${done} पाठवले)</h4><div class="crm-acts"><button type="button" class="admin-btn-primary" id="crm-r-end">बंद</button></div>`;
@@ -422,13 +434,15 @@ const CRM_ADMIN = (() => {
       const r = queue[i];
       box.innerHTML = `<h4>📤 Step ${step} · ${esc(st.name)} — ${i + 1} / ${queue.length}</h4><p class="crm-meta">⏳ ${esc(r.name || r.mobile)}…</p>`;
       let d; try { d = await _call('/crm/lead/' + r.gid); } catch (e) { i++; return draw(); }
-      const L = d.lead, tpl = _tplById(st.tpl) || _tpls[0];
+      const L = d.lead, tpl = _tplById(st.tpl) || _tpls[0]; L._offer = d.offer || null;
+      const dupe = sentMob.has(L.mobile);
       let text = _fill(tpl.text, L);
       if (text === null) {                      // the message needs the app account: make it now
         try { const p = await API.crmLeadPin(L.gid); _acct[L.gid] = { code: p.data.code, pin: p.data.pin }; text = _fill(tpl.text, L); } catch { text = null; }
       }
       box.innerHTML = `<h4>📤 Step ${step} · ${esc(st.name)} — ${i + 1} / ${queue.length} <small>(${done} पाठवले)</small></h4>
         <p><b>${esc(L.name || '—')}</b> · ${esc(L.cls || '')}${L.place ? ' · ' + esc(L.place) : ''} · 📞 ${esc(L.mobile)} ${_labelPills(L.labels)}</p>
+        ${dupe ? '<p class="crm-meta crm-dupe">🔁 या नंबरला आत्ताच message पाठवला — तेच मूल असेल तर "⏰ उद्या" किंवा "🏁" दाबा</p>' : ''}
         <textarea class="admin-input crm-ttext" id="crm-r-text" rows="7" aria-label="मजकूर">${esc(text || '')}</textarea>
         <div class="crm-acts">
           <a class="admin-btn-primary" id="crm-r-wa" target="_blank" rel="noopener">💬 WhatsApp पाठवा</a>
@@ -443,6 +457,7 @@ const CRM_ADMIN = (() => {
       ta.oninput = links; links();
       const sent = via => () => {
         _call(`/crm/lead/${L.gid}/sent`, { via, advance: true, tpl: tpl.title, tpl_id: tpl.id, text: ta.value }).catch(() => {});
+        sentMob.add(L.mobile);
         if (via === 'wa') _teamToday++;
         done++; i++; setTimeout(draw, 700);   // WhatsApp opens; the next family is ready when they come back
       };

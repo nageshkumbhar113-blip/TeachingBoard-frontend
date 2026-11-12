@@ -2959,3 +2959,5 @@ body.crm-lead-open { overflow: hidden; }
 .crm-lead .crm-msg { font-size: .95rem; }
 .crm-lead .admin-btn-primary, .crm-lead .admin-btn-secondary { font-size: .95rem; }
 #crm-close { position: sticky; top: 0; }
+
+.crm-meta.crm-dupe { color: #9a3412; font-weight: 600; }
