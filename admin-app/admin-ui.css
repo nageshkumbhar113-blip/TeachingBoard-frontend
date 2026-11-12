@@ -2939,3 +2939,23 @@ body.admin-app {
 /* CRM ✅ Paid (हाताने) */
 .crm-paidbox { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .crm-paidbox select, .crm-paidbox input { width: auto; max-width: 110px; }
+
+/* CRM — bigger, clearer (owner 2026-11-13): the family opens as a window over the list, larger letters */
+.crm-row { padding: 10px 12px; gap: 4px; }
+.crm-name { font-size: 1.1rem; }
+.crm-name small { font-size: .85rem; }
+.crm-row .crm-meta { font-size: .92rem; color: #4a4470; }
+.crm-lead:not(.hidden) {
+  position: fixed; z-index: 1200; left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  width: min(940px, calc(100vw - 24px)); overflow-y: auto; margin: 0; padding: 14px 16px;
+  background: #fff; font-size: 1.02rem; box-shadow: 0 0 0 100vmax rgba(20, 12, 60, .45), 0 20px 60px rgba(0, 0, 0, .3);
+}
+body.crm-lead-open { overflow: hidden; }
+.crm-lead .crm-lead-head b { font-size: 1.2rem; }
+.crm-lead .crm-meta { font-size: .95rem; color: #4a4470; }
+.crm-lead .crm-next, .crm-lead .crm-fu-now { font-size: 1rem; }
+.crm-lead .crm-ttext { font-size: 1rem; line-height: 1.5; }
+.crm-lead .crm-msg { font-size: .95rem; }
+.crm-lead .admin-btn-primary, .crm-lead .admin-btn-secondary { font-size: .95rem; }
+#crm-close { position: sticky; top: 0; }

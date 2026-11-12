@@ -203,7 +203,8 @@ const CRM_ADMIN = (() => {
   async function _lead(gid) {
     _open = gid;
     $('crm-rows').querySelectorAll('.crm-row').forEach(b => b.classList.toggle('on', b.dataset.gid === gid));
-    const box = $('crm-lead'); box.classList.remove('hidden'); box.innerHTML = '⏳';
+    const box = $('crm-lead'); box.classList.remove('hidden'); box.innerHTML = '⏳'; box.scrollTop = 0;
+    document.body.classList.add('crm-lead-open');
     let d; try { d = await _call('/crm/lead/' + gid); } catch (e) { box.textContent = '⚠️ ' + e.message; return; }
     const L = d.lead;
     const idx = _rowsCache.findIndex(r => r.gid === gid), nextRow = idx >= 0 ? _rowsCache[idx + 1] : null;
@@ -216,7 +217,7 @@ const CRM_ADMIN = (() => {
       <div class="crm-lbls" aria-label="Labels">🏷️ ${_labels.length ? _labels.map(l => `<button type="button" class="crm-lbl${(L.labels || []).includes(l.id) ? ' on' : ''}" style="--c:${esc(l.color)}" data-lbl="${esc(l.id)}">${esc(l.name)}</button>`).join('') : '<small>"🏷️ Labels" मधून label बनवा</small>'}</div>
       ${d.fu ? `<div class="crm-fu-now" style="--c:${esc((d.fu_steps[d.fu.step - 1] || {}).color || '#64748b')}">📋 <b>Step ${d.fu.step} · ${esc((d.fu_steps[d.fu.step - 1] || {}).name || '')}</b> · पुढचा message: ${_dueText(d.fu.due)}
         <select class="admin-input" id="crm-fu-set" aria-label="Step बदला">${d.fu_steps.map((st, i) => `<option value="${i + 1}"${i + 1 === d.fu.step ? ' selected' : ''}>Step ${i + 1} · ${esc(st.name)}</option>`).join('')}</select>
-        <button type="button" class="admin-btn-secondary" id="crm-fu-later">⏭ उद्या</button><button type="button" class="admin-btn-secondary" id="crm-fu-done">🏁 Follow-up बंद</button></div>`
+        <button type="button" class="admin-btn-primary" id="crm-fu-next">✅ झालं → पुढची Step</button><button type="button" class="admin-btn-secondary" id="crm-fu-later">⏰ उद्या</button><button type="button" class="admin-btn-secondary" id="crm-fu-done">🏁 Follow-up बंद</button></div>`
         : (L.paid || L.closed ? '' : `<div class="crm-fu-now">📋 Follow-up मध्ये नाही${d.open ? ' — bot शी बोलणं चालू आहे' : ''} <button type="button" class="admin-btn-secondary" id="crm-fu-restart">↩️ Step 1 पासून</button></div>`)}
       <p class="crm-next">👉 <b>पुढचं पाऊल:</b> ${_next(L)}</p>
       ${_msgBox(L, nextRow, d.fu ? (d.fu_steps[d.fu.step - 1] || {}).tpl : '')}
@@ -236,7 +237,7 @@ const CRM_ADMIN = (() => {
         <button type="button" class="admin-btn-secondary" id="crm-note">📝 Note</button>
       </form>`;
     const chat = $('crm-chat'); chat.scrollTop = chat.scrollHeight;
-    $('crm-close').onclick = () => { _open = ''; box.classList.add('hidden'); _rows(); };
+    $('crm-close').onclick = () => { _open = ''; box.classList.add('hidden'); document.body.classList.remove('crm-lead-open'); _rows(); };
     const openTeam = r => { const t = r?.team?.[0]; _waReady = t?.waMe ? { gid, waMe: t.waMe, text: t.text } : null; };
     if ($('crm-wa-open')) $('crm-wa-open').onclick = () => { _waReady = null; setTimeout(() => _lead(gid), 300); };
     const act = (btn, fn) => async () => {
@@ -254,6 +255,7 @@ const CRM_ADMIN = (() => {
     const fuAct = body => _call(`/crm/lead/${gid}/fu`, body).then(() => _load()).catch(e => APP.toast(e.message, 'error'));
     $('crm-fu-set')?.addEventListener('change', e => fuAct({ action: 'set', step: Number(e.target.value) }));
     $('crm-fu-later')?.addEventListener('click', () => fuAct({ action: 'snooze' }));
+    $('crm-fu-next')?.addEventListener('click', () => fuAct({ action: 'next' }).then(() => APP.toast('✅ पुढच्या Step मध्ये गेला', 'success')));
     $('crm-fu-done')?.addEventListener('click', () => fuAct({ action: 'done' }));
     $('crm-fu-restart')?.addEventListener('click', () => fuAct({ action: 'restart' }));
     $('crm-team').onclick = act($('crm-team'), async () => openTeam(await _call(`/crm/lead/${gid}/team`, {})));
@@ -703,6 +705,8 @@ const CRM_ADMIN = (() => {
       .finally(() => { if (btn.isConnected) { btn.disabled = false; delete btn.dataset.sure; btn.textContent = btn.dataset.label; } });
   }
 
+  // Esc closes the open family's window
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && _open) $('crm-close')?.click(); });
   function init() {
     if (!$('crm-admin')) return;
     if (!_ready) { _shell(); _ready = true; }
