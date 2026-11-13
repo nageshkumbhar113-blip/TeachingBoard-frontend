@@ -48,3 +48,4 @@ site-out/
 /sitemap.xml
 /robots.txt
 .vercel/output/
+dist-team/

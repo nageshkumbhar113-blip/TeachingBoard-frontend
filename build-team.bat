@@ -1,0 +1,102 @@
+@echo off
+echo ========================================
+echo  NKs Team â€” TEAM (CRM) APK Build
+echo ========================================
+
+:: â”€â”€ Version â€” update BOTH values for every release â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+set VERSION=1.0.0
+set VERSION_CODE=1
+:: â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+:: [PRE] Stale .bak cleanup
+if exist capacitor.config.ts.bak (
+  echo [PRE] WARNING: stale .bak à¤¸à¤¾à¤ªà¤¡à¤²à¤¾ â€” cleanup...
+  del capacitor.config.ts.bak >nul 2>&1
+)
+
+echo [1/7] Patching version %VERSION% (code %VERSION_CODE%)...
+node tools/patch-version.mjs %VERSION% %VERSION_CODE%
+if errorlevel 1 ( echo ERROR: version patch failed & pause & exit /b 1 )
+
+echo [2/7] Preparing web assets...
+node tools/prepare-team.mjs
+if errorlevel 1 ( echo ERROR: prepare failed & pause & exit /b 1 )
+
+echo [3/7] Switching config â†’ TEAM...
+copy /Y capacitor-team.config.ts capacitor.config.ts >nul 2>&1
+
+echo [4/7] Patching applicationId â†’ com.nkseduorbit.team ...
+node tools/patch-appid.mjs com.nkseduorbit.team
+if errorlevel 1 (
+  echo ERROR: applicationId patch failed â€” restoring config
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
+
+echo [5/7] Setting Team icon (indigo) + app name...
+copy /Y icons-team\ic_launcher_background.xml android\app\src\main\res\values\ic_launcher_background.xml >nul 2>&1
+copy /Y icons-team\strings.xml android\app\src\main\res\values\strings.xml >nul 2>&1
+
+:: compileSdk/targetSdk (currently 36) â€” android/ is gitignored/regenerable
+:: with no backup, so android-shared\variables.gradle is the tracked
+:: source of truth (shared by both apps' builds, see build-student.bat's
+:: matching copy step for the full explanation).
+copy /Y android-shared\variables.gradle android\variables.gradle >nul 2>&1
+
+echo [6/7] Capacitor sync...
+call npx cap sync android
+if errorlevel 1 (
+  echo ERROR: cap sync failed â€” restoring config
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
+
+echo [7/7] Building APK via Gradle (clean + assembleRelease)...
+pushd android
+:: Android Studio auto-generates gradle-daemon-jvm.properties pinning vendor=jetbrains,
+:: which breaks CLI builds (no JBR on PATH). Remove it so Gradle uses JAVA_HOME (Temurin 21).
+if exist gradle\gradle-daemon-jvm.properties del gradle\gradle-daemon-jvm.properties >nul 2>&1
+call .\gradlew.bat clean
+if errorlevel 1 ( popd & echo ERROR: Gradle clean failed & copy /Y ..\capacitor-student.config.ts ..\capacitor.config.ts >nul 2>&1 & pause & exit /b 1 )
+call .\gradlew.bat assembleRelease
+set BUILD_ERR=%errorlevel%
+popd
+if %BUILD_ERR% neq 0 (
+  echo ERROR: Gradle build failed â€” à¤–à¤¾à¤²à¥€à¤² errors à¤¬à¤˜à¤¾
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
+
+:: APK rename + move to release folder
+if not exist android\app\release\ mkdir android\app\release\
+if not exist "android\app\build\outputs\apk\release\app-release.apk" (
+  echo ERROR: built APK not found ^(android\app\build\outputs\apk\release\app-release.apk^) â€” Gradle output missing
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
+copy /Y "android\app\build\outputs\apk\release\app-release.apk" "android\app\release\team%VERSION%.apk" >nul
+if not exist "android\app\release\team%VERSION%.apk" (
+  echo ERROR: APK copy/rename failed
+  copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+  pause & exit /b 1
+)
+
+:: ALWAYS restore student config
+copy /Y capacitor-student.config.ts capacitor.config.ts >nul 2>&1
+
+:: Verify â€” applicationId confirm à¤•à¤°à¤¾
+echo.
+echo  Verifying APK applicationId...
+"C:\Users\A\AppData\Local\Android\Sdk\build-tools\37.0.0\aapt.exe" dump badging "android\app\release\team%VERSION%.apk" 2>nul | findstr "^package:"
+
+echo.
+echo ========================================
+echo  NKs Team APK ready!
+echo ========================================
+echo  App ID   : com.nkseduorbit.team
+echo  App Name : NKs Team
+echo  Icon     : Indigo (#3730A3)
+echo  Version  : %VERSION% (code %VERSION_CODE%)
+echo  APK      : android\app\release\team%VERSION%.apk
+echo.
+pause

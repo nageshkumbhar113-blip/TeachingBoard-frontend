@@ -10,7 +10,8 @@
     { "source": "/admin",    "destination": "/admin-app/admin.html",     "permanent": false },
     { "source": "/get-app",  "destination": "/get-app.html",             "permanent": false },
     { "source": "/shop",     "destination": "/shop.html",                "permanent": false },
-    { "source": "/teachers", "destination": "/teacher-portal/index.html","permanent": false }
+    { "source": "/teachers", "destination": "/teacher-portal/index.html","permanent": false },
+    { "source": "/team",     "destination": "/team-app/index.html",      "permanent": false }
   ],
   "rewrites": [
     { "source": "/exams",        "destination": "/exams/index.html" },
