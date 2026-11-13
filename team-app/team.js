@@ -169,6 +169,7 @@
         <div class="mt">📝 ${L.testsDone || 0}/${L.freeTotal || 0} tests · ${L.app ? '📲 app ✓' : (L.acct?.code ? '👤 Code आहे, app नाही' : 'app नाही')}${offer ? ` · <span class="pill offer">🎁 ${offer.pct}% सूट · ${left(offer.end)}</span>` : ''}${L.paid ? ' · ✅ Paid' : ''}</div>
         ${d.fu ? `<span class="step" style="--c:${esc(st?.color || '#4338ca')}">📋 Step ${d.fu.step} · ${esc(st?.name || '')} · ${dueText(d.fu.due)}</span>` : (L.closed ? `<span class="step" style="--c:#64748b">❌ ${esc(L.closed)}</span>` : '')}
         ${d.usage && (d.usage.last || d.usage.tests) ? `<div class="mt" style="color:#0e7490;font-weight:600">${usageText(d.usage)}</div>` : ''}
+        ${L.checkoutAt || L.paySeenAt || L.payWantAt ? `<div class="mt"><span class="pill dupe">💳 ${L.checkoutAt ? 'Pay दाबलं, पूर्ण नाही' : L.paySeenAt ? 'Pay पान उघडलं' : 'Bot मध्ये course मागितला'} · ${ago(Date.parse(L.checkoutAt || L.paySeenAt || L.payWantAt))} — आधी call</span></div>` : ''}
         ${L.lastTeam ? `<div class="mt">शेवटचं: ${esc(L.lastTeam.by)} — ${esc(L.lastTeam.reason || L.lastTeam.result)} (${ago(Date.parse(L.lastTeam.at))})</div>` : ''}
         ${d.open && L.mobile ? `<div class="mt"><span class="pill open">🟢 Bot chat उघडी — bot मधून मोफत message पाठवता येतो</span></div>` : ''}
         ${dupe ? '<div class="mt"><span class="pill dupe">🔁 या नंबरला आत्ताच message पाठवला</span></div>' : ''}
@@ -286,7 +287,7 @@
     const byMob = {}; rows.forEach(r => { if (r.mobile) byMob[r.mobile] = (byMob[r.mobile] || 0) + 1; });
     return rows.map(r => `<button type="button" class="row" style="--c:${r.question ? '#be123c' : r.paid ? '#15803d' : r.closed ? '#64748b' : '#4338ca'}" data-gid="${esc(r.gid)}">
       <span class="nm">${esc(r.name || '—')} <small>${esc(r.cls || '')}</small></span>
-      <span class="mt">📱 ${esc(r.mobile || '—')} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.open ? ' · 🟢 Bot chat' : ''}${r.app ? ' · 📲 app' : ''}${r.paid ? ' · ✅ Paid' : ''}${r.fu_step ? ` · 📋 Step ${r.fu_step} · ${dueText(r.fu_due)}` : ''}</span>
+      <span class="mt">📱 ${esc(r.mobile || '—')} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.pay ? ` · <b style="color:#b91c1c">💳 ${r.pay.checkout ? 'Pay दाबलं, पूर्ण नाही' : r.pay.bot ? 'Course मागितला' : 'Pay पान उघडलं' + (r.pay.n > 1 ? ' ' + r.pay.n + ' वेळा' : '')} · ${ago(Date.parse(r.pay.at))}</b>` : ''}${r.open ? ' · 🟢 Bot chat' : ''}${r.app ? ' · 📲 app' : ''}${r.paid ? ' · ✅ Paid' : ''}${r.fu_step ? ` · 📋 Step ${r.fu_step} · ${dueText(r.fu_due)}` : ''}</span>
       ${r.question ? `<span class="q">❓ "${esc(r.question.text)}" · ${ago(Date.parse(r.question.at))}</span>` : ''}
       ${r.offer ? `<span><span class="pill offer">🎁 ${r.offer.pct}% सूट · ${left(r.offer.end)}</span></span>` : ''}
       ${r.mobile && byMob[r.mobile] > 1 ? '<span><span class="pill dupe">🔁 हा नंबर दोन नोंदींमध्ये</span></span>' : ''}

@@ -242,7 +242,7 @@
   function load() {
     show('v-loading');
     if (!/^[0-9A-F]{10}$/.test(gid)) { err('Link अपूर्ण आहे', 'पाल्याने पाठवलेली पूर्ण link उघडा.'); return; }
-    fetch(API + '/guest/public/' + gid).then(function (r) { return r.json(); }).then(function (b) {
+    fetch(API + '/guest/public/' + gid + '?v=pay').then(function (r) { return r.json(); }).then(function (b) {
       if (!b || !b.success) throw new Error(b && b.message);
       info = b.data;
       if (info.paid && info.student_code) { done(info.student_code, info.name); return; }
