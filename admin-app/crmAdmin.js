@@ -28,10 +28,10 @@ const CRM_ADMIN = (() => {
   const left = iso => { const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)} तास ${m % 60} मि. बाकी` : `${m} मि. बाकी`; };
   // the day's work, in this order (1 → 7); the rest are look-up lists. Each list (and family row) has its colour.
   const LISTS = [
-    ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
+    ['q', '❓ प्रश्न'], ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
     ['form', '📝 Form नंबर'], ['active', '💬 चालू'], ['paid', '✅ Paid'], ['closed', '❌ Closed'], ['nextyear', '📅 पुढचं वर्ष'],
   ];
-  const COLOR = { first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
+  const COLOR = { q: '#be123c', first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
     form: '#0891b2', active: '#16a34a', paid: '#15803d', closed: '#111827', nextyear: '#475569' };
   const rowColor = r => COLOR[r.crm || (r.paid ? 'paid' : r.closed ? 'closed' : 'active')] || COLOR.active;
   const STEPS = {
@@ -106,6 +106,7 @@ const CRM_ADMIN = (() => {
       <div class="crm-head"><h3>📇 CRM — पालक</h3><button type="button" class="admin-btn-secondary" id="crm-refresh" aria-label="पुन्हा उघडा">🔄</button></div>
       <div class="crm-tools">
         <button type="button" class="admin-btn-primary crm-mt-btn" data-panel="mt">🏆 महा-Test आठवण</button>
+        <button type="button" class="admin-btn-primary crm-team-btn" data-panel="team">👥 Team</button>
         <button type="button" class="admin-btn-primary" data-panel="add">➕ नवीन पालक</button>
         <button type="button" class="admin-btn-secondary" data-panel="import">📤 Import</button>
         <button type="button" class="admin-btn-secondary" data-panel="labels">🏷️ Labels</button>
@@ -194,6 +195,7 @@ const CRM_ADMIN = (() => {
     $('crm-rows').innerHTML = rows.length ? rows.map(r => `
       <button type="button" class="crm-row${r.gid === _open ? ' on' : ''}" style="--c:${rowColor(r)}" data-gid="${esc(r.gid)}">
         <span class="crm-name">${esc(r.name || '—')} <small>${esc(r.cls || '')}${r.place ? ' · ' + esc(r.place) : ''}</small> ${_labelPills(r.labels)}</span>
+        ${r.question ? `<span class="crm-q">❓ "${esc(r.question.text)}" <small>${ago(Date.parse(r.question.at))}</small></span>` : ''}
         <span class="crm-meta">${r.mobile ? '📱 ' + esc(r.mobile) : '—'} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.no_test ? ' · ⚠️ test नाही' : ''}${r.open ? ' · 🟢 खिडकी उघडी' : ''}${r.app ? ' · 📲 app' : r.acct ? ' · 👤 Code आहे, app नाही' : ''}${r.push_on ? ' · 🔔' : ''}${r.sent ? ` · 💬 ${r.sent} message` : ''}</span>
         <span class="crm-meta">${r.fu_step ? `📋 Step ${r.fu_step} · पुढचा message: <b>${_dueText(r.fu_due)}</b> · ` : ''}${r.closed ? '❌ ' + esc(r.closed) + ' · ' : ''}शेवटचा reply ${ago(r.last_in)}</span>
         ${r.offer || r.mt ? `<span class="crm-meta crm-hot">${r.offer ? `🎁 ${r.offer.pct}% सूट · ${left(r.offer.end)}` : ''}${r.offer && r.mt ? ' · ' : ''}${r.mt ? `🏆 महा-Test ${r.mt.score}/${r.mt.total}${r.mt.rank ? ` · #${r.mt.rank}/${r.mt.of}` : ''}` : ''}</span>` : ''}
@@ -230,6 +232,8 @@ const CRM_ADMIN = (() => {
         <select class="admin-input" id="crm-fu-set" aria-label="Step बदला">${d.fu_steps.map((st, i) => `<option value="${i + 1}"${i + 1 === d.fu.step ? ' selected' : ''}>Step ${i + 1} · ${esc(st.name)}</option>`).join('')}</select>
         <button type="button" class="admin-btn-primary" id="crm-fu-next">✅ झालं → पुढची Step</button><button type="button" class="admin-btn-secondary" id="crm-fu-later">⏰ उद्या</button><button type="button" class="admin-btn-secondary" id="crm-fu-done">🏁 Follow-up बंद</button></div>`
         : (L.paid || L.closed ? '' : `<div class="crm-fu-now">📋 Follow-up मध्ये नाही${d.open ? ' — bot शी बोलणं चालू आहे' : ''} <button type="button" class="admin-btn-secondary" id="crm-fu-restart">↩️ Step 1 पासून</button></div>`)}
+      ${L.question && !L.question.answered ? `<div class="crm-qbox">❓ <b>पालकांचा प्रश्न:</b> "${esc(L.question.text)}" <small>${ago(Date.parse(L.question.at))}</small>
+        <div class="crm-acts"><button type="button" class="admin-btn-primary" id="crm-q-done">✅ उत्तर दिलं</button><small class="crm-meta">${d.open ? 'खालच्या उत्तराच्या जागेत लिहून "पाठवा" (मोफत) — मग आपोआप सुटतो' : 'Call करा किंवा 💬 WhatsApp ने उत्तर द्या, मग "✅ उत्तर दिलं"'}</small></div></div>` : ''}
       <p class="crm-next">👉 <b>पुढचं पाऊल:</b> ${_next(L)}</p>
       ${_msgBox(L, nextRow, d.fu ? (d.fu_steps[d.fu.step - 1] || {}).tpl : '')}
       <div class="crm-acts">
@@ -266,6 +270,7 @@ const CRM_ADMIN = (() => {
     const fuAct = body => _call(`/crm/lead/${gid}/fu`, body).then(() => _load()).catch(e => APP.toast(e.message, 'error'));
     $('crm-fu-set')?.addEventListener('change', e => fuAct({ action: 'set', step: Number(e.target.value) }));
     $('crm-fu-later')?.addEventListener('click', () => fuAct({ action: 'snooze' }));
+    $('crm-q-done')?.addEventListener('click', () => _call(`/crm/lead/${gid}/answered`, {}).then(() => { APP.toast('✅ प्रश्न सुटला', 'success'); _load(); }).catch(e => APP.toast(e.message, 'error')));
     $('crm-fu-next')?.addEventListener('click', () => fuAct({ action: 'next' }).then(() => APP.toast('✅ पुढच्या Step मध्ये गेला', 'success')));
     $('crm-fu-done')?.addEventListener('click', () => fuAct({ action: 'done' }));
     $('crm-fu-restart')?.addEventListener('click', () => fuAct({ action: 'restart' }));
@@ -400,6 +405,7 @@ const CRM_ADMIN = (() => {
     if (which === 'fusteps') return _panelFuSteps(box);
     if (which === 'run') return _panelRun(box);
     if (which === 'mt') return _panelMt(box);
+    if (which === 'team') return _panelTeam(box);
   }
   const _close = () => { _panelOpen = ''; $('crm-panel').classList.add('hidden'); $('crm-panel').innerHTML = ''; };
   const _labelList = () => `<datalist id="crm-label-names">${_labels.map(l => `<option value="${esc(l.name)}"></option>`).join('')}</datalist>`;
@@ -531,6 +537,56 @@ const CRM_ADMIN = (() => {
         $('crm-m-close').onclick = draw;
       };
       step();
+    };
+    draw();
+  }
+
+  // 👥 Team: the members of the NKs Team app (name, mobile, PIN, on / off) and what each did on a day
+  async function _panelTeam(box) {
+    const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+    let day = today, by = '';
+    const fmt = t => new Date(t).toLocaleTimeString('mr-IN-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
+    const draw = async () => {
+      let members = [], work = { people: [], list: [], names: {} };
+      try { members = (await API.teamMembers('list'))?.data || []; } catch (e) { box.innerHTML = `<p class="crm-meta">⚠️ ${esc(e.message)}</p>`; return; }
+      try { work = await _call(`/crm/acts?day=${day}${by ? '&by=' + encodeURIComponent(by) : ''}`); } catch { /* the bot not connected: members only */ }
+      if (_panelOpen !== 'team') return;
+      const N = work.names || {};
+      const workOf = id => work.people.find(p => p.id === id);
+      const chips = p => Object.entries(p?.counts || {}).map(([k, n]) => `<span class="crm-tchip">${esc(N[k] || k)} <b>${n}</b></span>`).join('') || '<span class="crm-meta">आज काम नाही</span>';
+      box.innerHTML = `<h4>👥 Team — "NKs Team" app वापरणारे</h4>
+        <p class="crm-meta">Team ला फक्त पालकांचं काम: call, WhatsApp / SMS, पुढची Step, free account चा Code + PIN, प्रश्नांची उत्तरं. पैसे, import, students, settings नाहीत. Login: mobile + PIN.</p>
+        <div class="crm-team-add"><input class="admin-input" id="tm-name" maxlength="40" placeholder="नाव"><input class="admin-input" id="tm-mob" type="tel" inputmode="tel" maxlength="14" placeholder="Mobile"><input class="admin-input" id="tm-pin" inputmode="numeric" maxlength="4" placeholder="PIN (4 अंकी)"><button type="button" class="admin-btn-primary" id="tm-add">➕ जोडा</button></div>
+        <p class="crm-meta" id="tm-msg" role="alert"></p>
+        <div class="crm-team-list">${members.map(m => `<div class="crm-tm${m.active ? '' : ' off'}">
+          <div class="crm-tm-h"><b>${esc(m.name)}</b> · 📱 ${esc(m.mobile)} · ${m.active ? '🟢 चालू' : '⛔ बंद'}${m.last_login_at ? ` · शेवटचं login ${new Date(m.last_login_at).toLocaleDateString('mr-IN-u-nu-latn')}` : ' · अजून login नाही'}</div>
+          <div class="crm-tchips">${day === today ? 'आज: ' : day + ': '}${chips(workOf(m.id))}${workOf(m.id)?.last ? ` <span class="crm-meta">· शेवटचं काम ${fmt(workOf(m.id).last)}</span>` : ''}</div>
+          <div class="crm-acts"><button type="button" class="admin-btn-secondary" data-tm-by="${esc(m.id)}">📋 काय काय केलं</button>
+            <button type="button" class="admin-btn-secondary" data-tm-on="${esc(m.id)}" data-v="${m.active ? '0' : '1'}">${m.active ? '⛔ बंद करा' : '🟢 चालू करा'}</button>
+            <button type="button" class="admin-btn-secondary" data-tm-pin="${esc(m.id)}">🔑 नवा PIN</button>
+            <button type="button" class="admin-btn-secondary" data-tm-del="${esc(m.id)}">🗑️</button></div>
+        </div>`).join('') || '<p class="crm-empty">अजून कोणी नाही — वर नाव, mobile, PIN टाकून ➕</p>'}</div>
+        ${(work.people || []).some(p => p.id === 'admin') ? `<p class="crm-meta">Admin (तुम्ही): ${chips(workOf('admin'))}</p>` : ''}
+        <h4>📋 ${by ? esc((members.find(m => m.id === by) || {}).name || by) + ' चं' : 'सगळ्यांचं'} काम <input type="date" class="admin-input" id="tm-day" value="${day}" max="${today}" aria-label="दिवस">${by ? ' <button type="button" class="admin-btn-secondary" id="tm-all">सगळे</button>' : ''}</h4>
+        <div class="crm-acts-list">${(work.list || []).map(a => `<div class="crm-act"><small>${fmt(a.at)}</small> <b>${esc(a.by_name)}</b> · ${esc(N[a.action] || a.action)} · ${esc(a.name || a.mobile || '')}${a.detail ? ` — <i>${esc(a.detail)}</i>` : ''}</div>`).join('') || '<p class="crm-empty">या दिवशी काम नाही.</p>'}</div>
+        <div class="crm-acts"><button type="button" class="admin-btn-secondary" id="tm-close">बंद</button></div>`;
+      $('tm-close').onclick = _close;
+      $('tm-day').onchange = e => { day = e.target.value || today; draw(); };
+      $('tm-all')?.addEventListener('click', () => { by = ''; draw(); });
+      $('tm-add').onclick = async () => {
+        const msg = $('tm-msg');
+        try {
+          await API.teamMembers('create', '', { name: $('tm-name').value.trim(), mobile: $('tm-mob').value, pin: $('tm-pin').value.trim() });
+          APP.toast(`✅ ${$('tm-name').value.trim()} team मध्ये — त्यांना "NKs Team" app, mobile आणि PIN द्या`, 'success'); draw();
+        } catch (e) { msg.textContent = e.message; }
+      };
+      box.querySelectorAll('[data-tm-by]').forEach(b => b.onclick = () => { by = b.dataset.tmBy; draw(); });
+      box.querySelectorAll('[data-tm-on]').forEach(b => b.onclick = () => _sure(b, async () => { await API.teamMembers('update', b.dataset.tmOn, { active: b.dataset.v === '1' }); draw(); }, b.dataset.v === '1' ? 'पक्कं? चालू करायचं — पुन्हा दाबा' : 'पक्कं? बंद केलं की लगेच logout — पुन्हा दाबा'));
+      box.querySelectorAll('[data-tm-pin]').forEach(b => b.onclick = async () => {
+        const pin = String(Math.floor(1000 + Math.random() * 9000));
+        try { await API.teamMembers('update', b.dataset.tmPin, { pin }); APP.toast(`🔑 नवा PIN: ${pin} — त्यांना सांगा (जुना बंद, पुन्हा login)`, 'success'); } catch (e) { APP.toast(e.message, 'error'); }
+      });
+      box.querySelectorAll('[data-tm-del]').forEach(b => b.onclick = () => _sure(b, async () => { await API.teamMembers('delete', b.dataset.tmDel); draw(); }, 'पक्कं? काढून टाकायचं — पुन्हा दाबा'));
     };
     draw();
   }

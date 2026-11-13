@@ -2302,6 +2302,16 @@ const API = (() => {
     const token = await ensureAdminSession();
     return request('/guest/admin/lead-paid', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ gid, period, amount }) });
   }
+  // 👥 Team (sub-admins) — Admin › CRM › 👥 Team
+  async function teamMembers(op = 'list', id = '', body = null) {
+    const token = await ensureAdminSession();
+    const h = { Authorization: `Bearer ${token}` };
+    if (op === 'list') return request('/team/admin/members', { headers: h });
+    if (op === 'create') return request('/team/admin/members', { method: 'POST', headers: h, body: JSON.stringify(body) });
+    if (op === 'update') return request('/team/admin/members/' + encodeURIComponent(id), { method: 'PATCH', headers: h, body: JSON.stringify(body) });
+    if (op === 'delete') return request('/team/admin/members/' + encodeURIComponent(id), { method: 'DELETE', headers: h });
+    throw new Error('op?');
+  }
   async function crmMtList() {
     const token = await ensureAdminSession();
     return request('/guest/admin/mt-list', { headers: { Authorization: `Bearer ${token}` } });
@@ -3129,7 +3139,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmMtList, crmMtReminded, crmLeadPaid, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

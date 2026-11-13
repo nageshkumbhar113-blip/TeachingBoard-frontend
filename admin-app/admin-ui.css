@@ -2961,3 +2961,17 @@ body.crm-lead-open { overflow: hidden; }
 #crm-close { position: sticky; top: 0; }
 
 .crm-meta.crm-dupe { color: #9a3412; font-weight: 600; }
+
+/* CRM ❓ questions + 👥 Team */
+.crm-q { font-size: .95rem; color: #9f1239; font-weight: 600; overflow-wrap: anywhere; }
+.crm-qbox { margin: 8px 0; padding: 10px 12px; border-radius: 12px; background: #fff1f2; border: 2px solid #fda4af; color: #4c0519; font-size: 1rem; }
+.crm-team-btn { background: #4338ca; border-color: #4338ca; }
+.crm-team-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+.crm-team-list { display: grid; gap: 8px; margin: 8px 0; }
+.crm-tm { border: 1px solid #e0e7ff; border-left: 5px solid #4338ca; border-radius: 12px; padding: 8px 10px; background: #fff; }
+.crm-tm.off { opacity: .6; border-left-color: #94a3b8; }
+.crm-tm-h { font-size: 1rem; }
+.crm-tchips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; align-items: center; font-size: .9rem; }
+.crm-tchip { background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 2px 8px; font-size: .85rem; }
+.crm-acts-list { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; font-size: .92rem; }
+.crm-act { padding: 4px 6px; border-bottom: 1px solid #f1f0fa; overflow-wrap: anywhere; }
