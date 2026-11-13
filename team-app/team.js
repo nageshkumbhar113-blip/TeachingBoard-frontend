@@ -112,6 +112,8 @@
     const due = fu.counts.reduce((t, c) => t + c.due, 0);
     const sat = [0, 6].includes(new Date().getDay());
     shell(`
+      <button type="button" class="big wide today" style="--c:#b91c1c" data-go="today"><span class="n">${sum.counts.today || 0}</span><span class="t">🎯 आजचं काम</span><span class="s">${sum.counts.today_now ? `<b>${sum.counts.today_now} लगेच</b> (💳 pay / 📞 call / ❓) · ` : ''}एकामागून एक — कारण, वेळ आणि message तयार</span></button>
+      <details class="more"${ls.get('nks_team_more') === '1' ? ' open' : ''}><summary>अधिक याद्या</summary>
       <div class="grid">
         <button type="button" class="big wide" style="--c:#059669" data-go="new"><span class="n">${sum.counts.new || 0}</span><span class="t">🆕 नवीन पालक (48 तास)</span><span class="s">${sum.counts.new_untouched ? `<b>${sum.counts.new_untouched} ना अजून संपर्क नाही</b> — लगेच call` : 'सगळ्यांना संपर्क झाला ✅'}</span></button>
         <button type="button" class="big wide" style="--c:#4338ca" data-go="all"><span class="n">${due}</span><span class="t">📋 आज पाठवायचे / call</span><span class="s">एकामागून एक — Step प्रमाणे message तयार</span></button>
@@ -123,7 +125,10 @@
         ${sat ? '<button type="button" class="big wide" style="--c:#b45309" data-go="mt"><span class="n">🏆</span><span class="t">महा-Test आठवण</span><span class="s">नोंदणी केलेल्या पालकांना</span></button>' : ''}
       </div>
       <div class="h2">📋 Steps</div>
-      ${steps.map((st, i) => { const c = fu.counts[i] || { total: 0, due: 0 }; return `<button type="button" class="row" style="--c:${esc(st.color)}" data-step="${i + 1}"><span class="nm">Step ${i + 1} · ${esc(st.name)}</span><span class="mt">${c.total} पालक · <b>आज ${c.due}</b></span></button>`; }).join('')}`, 'आजचं काम', stale ? '⏳ ताजे आकडे येत आहेत…' : '');
+      ${steps.map((st, i) => { const c = fu.counts[i] || { total: 0, due: 0 }; return `<button type="button" class="row" style="--c:${esc(st.color)}" data-step="${i + 1}"><span class="nm">Step ${i + 1} · ${esc(st.name)}</span><span class="mt">${c.total} पालक · <b>आज ${c.due}</b></span></button>`; }).join('')}
+      </details>`, 'आजचं काम', stale ? '⏳ ताजे आकडे येत आहेत…' : '');
+    // "अधिक याद्या" stays open / closed as the member left it (the screen redraws with fresh numbers)
+    app.querySelector('details.more')?.addEventListener('toggle', e => ls.set('nks_team_more', e.target.open ? '1' : null));
     app.querySelectorAll('[data-step]').forEach(b => b.onclick = () => startQueue(`Step ${b.dataset.step}`, `/crm/fu/list?step=${b.dataset.step}&due=1`, Number(b.dataset.step)));
     app.querySelectorAll('[data-go]').forEach(b => b.onclick = async () => {
       const g = b.dataset.go;
@@ -132,7 +137,7 @@
       }
       if (g === 'q') { tab = 'q'; return route(); }
       if (g === 'mt') return mtQueue();
-      return startQueue({ new: '🆕 नवीन पालक', first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free' }[g], `/crm/list?list=${g}`, 0);
+      return startQueue({ today: '🎯 आजचं काम', new: '🆕 नवीन पालक', first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free' }[g], `/crm/list?list=${g}`, 0);
     });
   }
 
@@ -159,7 +164,8 @@
     if (queue && queue.rows[queue.i + 1]) fetchCard(queue.rows[queue.i + 1].gid);
     const L = d.lead, offer = d.offer, st = d.fu ? (d.fu_steps || [])[d.fu.step - 1] : null;
     steps = d.fu_steps || steps;
-    const pick = st && tplById(st.tpl) ? st.tpl : suggest(L, offer);
+    const qr = queue && queue.rows[queue.i] && queue.rows[queue.i].gid === gid ? queue.rows[queue.i] : null;   // 🎯 why / when / which message
+    const pick = qr && qr.tpl && tplById(qr.tpl) ? qr.tpl : st && tplById(st.tpl) ? st.tpl : suggest(L, offer);
     const q = L.question && !L.question.answered ? L.question : null;
     const dupe = queue && queue.sentMob.has(L.mobile);
     shell(`
@@ -169,8 +175,9 @@
         <div class="mt">📝 ${L.testsDone || 0}/${L.freeTotal || 0} tests · ${L.app ? '📲 app ✓' : (L.acct?.code ? '👤 Code आहे, app नाही' : 'app नाही')}${offer ? ` · <span class="pill offer">🎁 ${offer.pct}% सूट · ${left(offer.end)}</span>` : ''}${L.paid ? ' · ✅ Paid' : ''}</div>
         ${d.fu ? `<span class="step" style="--c:${esc(st?.color || '#4338ca')}">📋 Step ${d.fu.step} · ${esc(st?.name || '')} · ${dueText(d.fu.due)}</span>` : (L.closed ? `<span class="step" style="--c:#64748b">❌ ${esc(L.closed)}</span>` : '')}
         ${d.usage && (d.usage.last || d.usage.tests) ? `<div class="mt" style="color:#0e7490;font-weight:600">${usageText(d.usage)}</div>` : ''}
-        ${L.checkoutAt || L.paySeenAt || L.payWantAt ? `<div class="mt"><span class="pill dupe">💳 ${L.checkoutAt ? 'Pay दाबलं, पूर्ण नाही' : L.paySeenAt ? 'Pay पान उघडलं' : 'Bot मध्ये course मागितला'} · ${ago(Date.parse(L.checkoutAt || L.paySeenAt || L.payWantAt))} — आधी call</span></div>` : ''}
+        ${!(qr && qr.why) && (L.checkoutAt || L.paySeenAt || L.payWantAt) ? `<div class="mt"><span class="pill dupe">💳 ${L.checkoutAt ? 'Pay दाबलं, पूर्ण नाही' : L.paySeenAt ? 'Pay पान उघडलं' : 'Bot मध्ये course मागितला'} · ${ago(Date.parse(L.checkoutAt || L.paySeenAt || L.payWantAt))} — आधी call</span></div>` : ''}
         ${L.lastTeam ? `<div class="mt">शेवटचं: ${esc(L.lastTeam.by)} — ${esc(L.lastTeam.reason || L.lastTeam.result)} (${ago(Date.parse(L.lastTeam.at))})</div>` : ''}
+        ${qr && qr.why ? `<div class="why"><b>${esc(qr.why)}</b><span>⏰ ${esc(qr.when || '')}${qr.no_answer ? ` · 📵 ${qr.no_answer} वेळा उचलला नाही` : ''}</span></div>` : ''}
         ${d.open && L.mobile ? `<div class="mt"><span class="pill open">🟢 Bot chat उघडी — bot मधून मोफत message पाठवता येतो</span></div>` : ''}
         ${dupe ? '<div class="mt"><span class="pill dupe">🔁 या नंबरला आत्ताच message पाठवला</span></div>' : ''}
       </div>

@@ -105,3 +105,10 @@ textarea.in { min-height: 140px; resize: vertical; line-height: 1.5; }
 .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 
 .pill.open { background: #dcfce7; color: #166534; }
+
+.big.today { width: 100%; margin-bottom: 12px; }
+.big.today .n { font-size: 2.6rem; }
+details.more { margin-top: 4px; }
+details.more > summary { cursor: pointer; font-weight: 700; color: var(--brand); padding: 10px 4px; font-size: 1rem; }
+.why { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: #fef2f2; color: #991b1b; display: flex; flex-direction: column; gap: 2px; font-size: 1rem; }
+.why span { color: #7f1d1d; font-size: .9rem; }

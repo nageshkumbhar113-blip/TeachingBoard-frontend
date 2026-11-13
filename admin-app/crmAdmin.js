@@ -28,13 +28,14 @@ const CRM_ADMIN = (() => {
   const left = iso => { const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)} तास ${m % 60} मि. बाकी` : `${m} मि. बाकी`; };
   // the day's work, in this order (1 → 7); the rest are look-up lists. Each list (and family row) has its colour.
   const LISTS = [
-    ['new', '🆕 नवीन (48 तास)'], ['q', '❓ प्रश्न'], ['appfree', '📲 App · free'], ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
+    ['today', '🎯 आजचं काम'], ['new', '🆕 नवीन (48 तास)'], ['q', '❓ प्रश्न'], ['appfree', '📲 App · free'], ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
     ['form', '📝 Form नंबर'], ['active', '💬 चालू'], ['paid', '✅ Paid'], ['closed', '❌ Closed'], ['nextyear', '📅 पुढचं वर्ष'],
   ];
-  const COLOR = { new: '#059669', q: '#be123c', appfree: '#0e7490', first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
+  const COLOR = { today: '#b91c1c', new: '#059669', q: '#be123c', appfree: '#0e7490', first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
     form: '#0891b2', active: '#16a34a', paid: '#15803d', closed: '#111827', nextyear: '#475569' };
   const rowColor = r => COLOR[r.crm || (r.paid ? 'paid' : r.closed ? 'closed' : 'active')] || COLOR.active;
   const STEPS = {
+    today: 'Team ची <b>एकच यादी</b>, सगळ्यात महत्त्वाचे वर: 1 💳 pay पान / Pay दाबलं / course मागितला (लगेच) · 2 📞 call मागितला / ❓ प्रश्न (लगेच) · 3 test दिली + सूट चालू: app नाही → Code + PIN ने app, app आहे → सूट (संध्याकाळी 5–8) · 4 नवीन, 4 तासांनी test नाही (7–8). आज संपर्क केलेले / "नंतर" ठेवलेले उद्या.',
     new: 'गेल्या 48 तासांत आलेले (ad / WhatsApp / website) — सगळ्यात नवीन वर. <b>लगेच call</b>: आत्ता रस असतो. Bot बोलत असला तरी call चालतो.',
     appfree: 'मूल app वापरतंय पण pay नाही — सगळ्यात जास्त वापरणारे वर. <b>Call: "app आवडतंय ना? पूर्ण course मध्ये सगळे chapters"</b>, मग 💬 "📚 पूर्ण course".',
     first: 'सवलत संपत आलेले, महा-Test दिलेले आणि नंबर देऊन test न दिलेले. <b>Call करा</b>; उचलला नाही तर 💬 "👋 पहिला संपर्क" किंवा "🎁 सवलत".',
@@ -81,7 +82,7 @@ const CRM_ADMIN = (() => {
   const _kept = {};              // gid → { tpl, text? }: the message chosen / edited in the box
   const REASONS = ['फी जास्त', 'पाल्याला वेळ नाही', 'दुसरा क्लास', 'Phone नाही', 'इतर'];
   let _conn = null;              // { url, token, at }
-  let _list = 'first', _label = '', _q = '', _open = '', _ready = false, _rowsCache = [], _teamToday = 0;
+  let _list = 'today', _label = '', _q = '', _open = '', _ready = false, _rowsCache = [], _teamToday = 0;
   let _waReady = null;
   let _byMob = {};               // mobile → how many families in the list share it (siblings, or one child twice)           // { gid, waMe, text }: a team message ready to open (a real tap opens WhatsApp)
 
@@ -207,6 +208,7 @@ const CRM_ADMIN = (() => {
     $('crm-rows').innerHTML = rows.length ? rows.map(r => `
       <button type="button" class="crm-row${r.gid === _open ? ' on' : ''}" style="--c:${rowColor(r)}" data-gid="${esc(r.gid)}">
         <span class="crm-name">${esc(r.name || '—')} <small>${esc(r.cls || '')}${r.place ? ' · ' + esc(r.place) : ''}</small> ${_labelPills(r.labels)}</span>
+        ${_list === 'today' && r.why && !_fuStep && !_label ? `<span class="crm-meta crm-why"><b>${esc(r.why)}</b> · ⏰ ${esc(r.when || '')}${r.no_answer ? ` · 📵 ${r.no_answer}` : ''}</span>` : ''}
         ${r.created_at && _list === 'new' && !_fuStep && !_label ? `<span class="crm-meta crm-new">🆕 ${ago(r.created_at)} आले${r.from ? ' · ' + ({ ad: '📣 WhatsApp ad', whatsapp: '💬 WhatsApp', wa: '💬 WhatsApp', form: '🌐 website', app: '📲 app', import: '📥 import' }[r.from] || esc(r.from)) : ''}${r.sent || r.team ? ' · ✅ संपर्क झाला' : ' · <b>अजून संपर्क नाही</b>'}</span>` : ''}
         ${r.usage ? `<span class="crm-meta crm-use">${usageText(r.usage)}</span>` : ''}
         ${r.question ? `<span class="crm-q">❓ "${esc(r.question.text)}" <small>${ago(Date.parse(r.question.at))}</small></span>` : ''}
@@ -250,7 +252,7 @@ const CRM_ADMIN = (() => {
         <div class="crm-acts"><button type="button" class="admin-btn-primary" id="crm-q-done">✅ उत्तर दिलं</button><small class="crm-meta">${d.open ? 'खालच्या उत्तराच्या जागेत लिहून "पाठवा" (मोफत) — मग आपोआप सुटतो' : 'Call करा किंवा 💬 WhatsApp ने उत्तर द्या, मग "✅ उत्तर दिलं"'}</small></div></div>` : ''}
       ${d.usage && (d.usage.last || d.usage.tests) ? `<p class="crm-meta crm-use">${usageText(d.usage)}</p>` : ''}
       <p class="crm-next">👉 <b>पुढचं पाऊल:</b> ${_next(L)}</p>
-      ${_msgBox(L, nextRow, d.fu ? (d.fu_steps[d.fu.step - 1] || {}).tpl : '')}
+      ${_msgBox(L, nextRow, (idx >= 0 && _list === 'today' && _rowsCache[idx].tpl) || (d.fu ? (d.fu_steps[d.fu.step - 1] || {}).tpl : ''))}
       <div class="crm-acts">
         <button type="button" class="admin-btn-secondary" id="crm-team">📱 टीमच्या WhatsApp वरून: bot ची link (₹0)</button>
         ${L.paid ? '' : `<span class="crm-paidbox"><select class="admin-input" id="crm-paid-period" aria-label="Plan"><option value="monthly">महिना</option><option value="yearly">वर्ष</option></select><input class="admin-input crm-days" id="crm-paid-amt" type="number" min="0" placeholder="₹" aria-label="किती भरले"><button type="button" class="admin-btn-primary" id="crm-paid">✅ Paid (हाताने)</button></span>`}
