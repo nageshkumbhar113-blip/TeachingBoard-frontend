@@ -256,6 +256,9 @@
       if (info.converted && info.student_code) {
         ['f-name', 'f-mobile', 'f-pin'].forEach(function (id) { $(id).style.display = 'none'; var l = document.querySelector('label[for="' + id + '"]'); if (l) l.style.display = 'none'; });
         document.querySelector('#f-pin + .hint').textContent = '👤 Student Code ' + info.student_code + ' — pay केलं की याच account वर पूर्ण course उघडेल.';
+      } else if (info.parent_mobile_known) {
+        // the number is already with us: never asked again (the server uses it)
+        $('f-mobile').style.display = 'none'; var lm = document.querySelector('label[for="f-mobile"]'); if (lm) lm.style.display = 'none';
       }
       show('v-main');
       var k = 0, ring = $('c-ring');
@@ -277,12 +280,13 @@
     }).catch(function () { err('Link उघडता आली नाही', navigator.onLine ? 'ही link जुनी किंवा अपूर्ण आहे. पाल्याकडून नवीन link मागवा.' : 'Internet चालू करून पुन्हा प्रयत्न करा.'); });
   }
 
-  function done(code, name) {
+  function done(code, name, reused) {
+    if (reused && info) info.auto_account = true;   // the child's account already existed: its PIN stays the same
     $('d-code').textContent = code;
     $('d-name').textContent = name || '';
     // an account made with the parent's number: its PIN came on the result / WhatsApp; forgotten → WhatsApp login
     if (info && info.auto_account) {
-      var pinLine = 'PIN: test च्या result वर / WhatsApp वर दिलेला. विसरलात? App › Login › "📲 WhatsApp ने login" → नवीन PIN.';
+      var pinLine = 'PIN: आधीचाच (test च्या result वर / WhatsApp वर दिलेला). विसरलात? App › Login › "📲 WhatsApp ने login" → नवीन PIN.';
       document.querySelector('#v-done > p.muted').textContent = 'App मध्ये हा Student Code आणि PIN टाकून login करा. ' + pinLine;
       var s2 = document.querySelector('#v-done .next-steps div:nth-of-type(2) p'); if (s2) s2.textContent = '👤 हा Student Code + 🔑 PIN टाकून login (' + pinLine + ')';
     }
@@ -306,7 +310,7 @@
     var existing = !!(info && info.converted && info.student_code);
     if (!existing) {
       if (name.length < 2) { msg.textContent = 'विद्यार्थ्याचं नाव लिहा'; return; }
-      if (mobile.replace(/\D/g, '').length < 10) { msg.textContent = 'पालकांचा 10 अंकी mobile नंबर द्या'; return; }
+      if (!(info && info.parent_mobile_known) && mobile.replace(/\D/g, '').length < 10) { msg.textContent = 'पालकांचा 10 अंकी mobile नंबर द्या'; return; }
       if (weak(pin)) { msg.textContent = '4 अंकी PIN ठेवा (1234, 1111 असा सोपा नको)'; return; }
     }
     msg.textContent = ''; btn.disabled = true; btn.textContent = '⏳ तयार होत आहे…';
@@ -315,12 +319,12 @@
       var rz = new Razorpay({
         key: o.key_id, amount: o.amount, currency: o.currency || 'INR', order_id: o.order_id,
         name: 'NKs EduOrbit', description: o.batch + ' — ' + (o.period === 'yearly' ? 'Yearly' : 'Monthly'),
-        prefill: { name: name, contact: mobile.replace(/\D/g, '').slice(-10) }, theme: { color: '#7b2ff7' },
+        prefill: { name: name || o.name, contact: mobile.replace(/\D/g, '').slice(-10) }, theme: { color: '#7b2ff7' },
         handler: function (r) {
           btn.textContent = '⏳ Payment तपासत आहे…';
           post('/payment/verify-public', { razorpay_order_id: r.razorpay_order_id, razorpay_payment_id: r.razorpay_payment_id, razorpay_signature: r.razorpay_signature })
-            .then(function () { done(o.student_code, o.name); })
-            .catch(function () { done(o.student_code, o.name); msg.textContent = ''; });
+            .then(function () { done(o.student_code, o.name, o.reused); })
+            .catch(function () { done(o.student_code, o.name, o.reused); msg.textContent = ''; });
         },
         modal: { ondismiss: function () { btn.disabled = false; btn.textContent = '🔒 सुरक्षित Payment करा'; } }
       });

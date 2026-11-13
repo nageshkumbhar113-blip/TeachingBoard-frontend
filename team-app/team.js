@@ -58,14 +58,15 @@
   let tpls = DEFAULT_TPLS, botNum = '', steps = [], acct = {};
   const tplById = id => tpls.find(t => t.id === id) || DEFAULT_TPLS.find(t => t.id === id) || null;
   function fill(text, L, offer) {
-    const a = acct[L.gid] || (L.acct?.code ? L.acct : null), g = L.gid;
-    if (/\{(code|pin)\}/.test(text) && !(a?.code && a.pin)) return null;
+    // the account's PIN not with us (the parent's own): the same code with "तुमचा आधीचाच PIN" — never a second account / PIN
+    const a = acct[L.gid] || (L.acct?.code ? { ...L.acct, own: !L.acct.pin } : null), g = L.gid;
+    if (/\{(code|pin)\}/.test(text) && !(a?.code && (a.pin || a.own))) return null;
     const off = offer ? ` (${offer.pct}%) ` + new Date(offer.end).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + ' पर्यंत' : '';
     const b = kw => botNum ? `\n\nप्रश्न / पुढची test: आमच्या WhatsApp bot ला इथे message करा (फक्त Send दाबा) 👇\nhttps://wa.me/${botNum}?text=${encodeURIComponent(String(kw || 'TEST').toUpperCase() + ' ' + g)}` : '';
     return text.replace(/\{bot(?::([A-Za-z]+))?\}/g, (_, kw) => b(kw))
       .replace(/\{नाव\}/g, L.name || 'तुमचा पाल्य').replace(/\{class\}/g, L.cls || '').replace(/\{tests\}/g, String(L.testsDone || 0))
       .replace(/\{test\}/g, `${SITE}/student-app/?free=1&g=${g}`).replace(/\{pay\}/g, `${SITE}/parent-pay.html?g=${g}`).replace(/\{app\}/g, PLAY)
-      .replace(/\{code\}/g, a?.code || '').replace(/\{pin\}/g, a?.pin || '').replace(/\{सवलत\}/g, off)
+      .replace(/\{code\}/g, a?.code || '').replace(/\{pin\}/g, a?.pin || (a?.own ? 'तुमचा आधीचाच PIN (विसरलात तर App › Login › "📲 WhatsApp ने login")' : '')).replace(/\{सवलत\}/g, off)
       .replace(/\{महा-test वेळ\}/g, 'येत्या रविवारी').replace(/\{महा-test\}/g, `${SITE}/maha-test.html?class=${encodeURIComponent(L.cls || '')}`);
   }
   const suggest = (L, offer) => !L.testsDone ? 'hello' : (acct[L.gid] || L.acct)?.code && !L.app ? 'acct' : offer ? 'offer' : L.stopped ? 'next' : 'course';
@@ -224,7 +225,7 @@
     });
     pin?.addEventListener('click', async () => {
       pin.disabled = true;
-      try { const r = await rq('/guest/admin/lead-pin', { body: { gid } }); acct[gid] = { code: r.data.code, pin: r.data.pin }; crm(`/crm/lead/${gid}/act`, { action: 'acct', detail: r.data.code }).catch(() => {}); toast(`🔑 Code ${r.data.code} · PIN ${r.data.pin || '(पालकांचा)'}`); show(); }
+      try { const r = await rq('/guest/admin/lead-pin', { body: { gid } }); acct[gid] = { code: r.data.code, pin: r.data.pin, own: !!r.data.own }; crm(`/crm/lead/${gid}/act`, { action: 'acct', detail: r.data.code }).catch(() => {}); toast(r.data.own ? `🔑 Code ${r.data.code} — आधीचंच account; PIN पालकांचा आधीचाच` : `🔑 Code ${r.data.code} · PIN ${r.data.pin}`); show(); }
       catch (e) { toast(e.message, true); } finally { pin.disabled = false; }
     });
     // the question

@@ -331,8 +331,9 @@ const CRM_ADMIN = (() => {
 
   // {…} → this family's details; null when the message needs the app account and there is none yet
   function _fill(text, L) {
-    const acct = _acct[L.gid] || (L.acct?.code ? L.acct : null), g = L.gid;
-    if (/\{(code|pin)\}/.test(text) && !(acct?.code && acct.pin)) return null;
+    // the PIN not with us (the parent's own): the same code with "तुमचा आधीचाच PIN" — never a second account / PIN
+    const acct = _acct[L.gid] || (L.acct?.code ? { ...L.acct, own: !L.acct.pin } : null), g = L.gid;
+    if (/\{(code|pin)\}/.test(text) && !(acct?.code && (acct.pin || acct.own))) return null;
     const offer = L._offer
       ? ` (${L._offer.pct}%) ` + new Date(L._offer.end).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + ' पर्यंत' : '';
     const bot = kw => _botNum ? `\n\n${String(kw).toUpperCase() === 'MTWANT' ? 'गुण आणि क्रमांक test संपताच WhatsApp वर हवे? इथे फक्त Send दाबा' : 'प्रश्न / पुढची test: आमच्या WhatsApp bot ला इथे message करा (फक्त Send दाबा)'} 👇\nhttps://wa.me/${_botNum}?text=${encodeURIComponent(String(kw || 'TEST').toUpperCase() + ' ' + g)}` : '';
@@ -340,7 +341,7 @@ const CRM_ADMIN = (() => {
       .replace(/\{bot(?::([A-Za-z]+))?\}/g, (_, kw) => bot(kw))
       .replace(/\{नाव\}/g, L.name || 'तुमचा पाल्य').replace(/\{class\}/g, L.cls || '').replace(/\{tests\}/g, String(L.testsDone || 0))
       .replace(/\{test\}/g, `${SITE}/student-app/?free=1&g=${g}`).replace(/\{pay\}/g, `${SITE}/parent-pay.html?g=${g}`).replace(/\{app\}/g, PLAY)
-      .replace(/\{code\}/g, acct?.code || '').replace(/\{pin\}/g, acct?.pin || '').replace(/\{सवलत\}/g, offer)
+      .replace(/\{code\}/g, acct?.code || '').replace(/\{pin\}/g, acct?.pin || (acct?.own ? 'तुमचा आधीचाच PIN (विसरलात तर App › Login › "📲 WhatsApp ने login")' : '')).replace(/\{सवलत\}/g, offer)
       .replace(/\{महा-test वेळ\}/g, L.mtWhen || 'येत्या रविवारी').replace(/\{महा-test\}/g, `${SITE}/maha-test.html?class=${encodeURIComponent(L.cls || '')}`);
   }
 
@@ -397,9 +398,9 @@ const CRM_ADMIN = (() => {
       pin.disabled = true;
       try {
         const r = await API.crmLeadPin(gid, pin.dataset.pin === 'fresh');
-        if (r?.data?.paid && !r.data.pin) { pin.dataset.pin = 'fresh'; pin.textContent = '🔄 नवीन PIN (जुना बंद होईल)'; APP.toast('Paid account — PIN पालकांनी ठेवलेला. बदलायचा असेल तरच "नवीन PIN".', 'info'); return; }
-        _acct[gid] = { code: r.data.code, pin: r.data.pin };
-        APP.toast('🔑 Code ' + r.data.code + ' · PIN ' + r.data.pin, 'success');
+        _acct[gid] = { code: r.data.code, pin: r.data.pin, own: !!r.data.own };
+        if (r?.data?.own) { pin.dataset.pin = 'fresh'; pin.textContent = '🔄 नवीन PIN (जुना बंद होईल)'; APP.toast(`🔑 Code ${r.data.code} — आधीचंच account, PIN पालकांचा आधीचाच. विसरले असतील तरच "नवीन PIN".`, 'info'); }
+        else APP.toast('🔑 Code ' + r.data.code + ' · PIN ' + r.data.pin, 'success');
         show();
       } catch (e) { APP.toast(e.message, 'error'); } finally { if (pin.isConnected) pin.disabled = false; }
     };
@@ -460,7 +461,7 @@ const CRM_ADMIN = (() => {
       const dupe = sentMob.has(L.mobile);
       let text = _fill(tpl.text, L);
       if (text === null) {                      // the message needs the app account: make it now
-        try { const p = await API.crmLeadPin(L.gid); _acct[L.gid] = { code: p.data.code, pin: p.data.pin }; text = _fill(tpl.text, L); } catch { text = null; }
+        try { const p = await API.crmLeadPin(L.gid); _acct[L.gid] = { code: p.data.code, pin: p.data.pin, own: !!p.data.own }; text = _fill(tpl.text, L); } catch { text = null; }
       }
       box.innerHTML = `<h4>📤 Step ${step} · ${esc(st.name)} — ${i + 1} / ${queue.length} <small>(${done} पाठवले)</small></h4>
         <p><b>${esc(L.name || '—')}</b> · ${esc(L.cls || '')}${L.place ? ' · ' + esc(L.place) : ''} · 📞 ${esc(L.mobile)} ${_labelPills(L.labels)}</p>
