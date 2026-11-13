@@ -28,13 +28,14 @@ const CRM_ADMIN = (() => {
   const left = iso => { const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)} तास ${m % 60} मि. बाकी` : `${m} मि. बाकी`; };
   // the day's work, in this order (1 → 7); the rest are look-up lists. Each list (and family row) has its colour.
   const LISTS = [
-    ['q', '❓ प्रश्न'], ['appfree', '📲 App · free'], ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
+    ['new', '🆕 नवीन (48 तास)'], ['q', '❓ प्रश्न'], ['appfree', '📲 App · free'], ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
     ['form', '📝 Form नंबर'], ['active', '💬 चालू'], ['paid', '✅ Paid'], ['closed', '❌ Closed'], ['nextyear', '📅 पुढचं वर्ष'],
   ];
-  const COLOR = { q: '#be123c', appfree: '#0e7490', first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
+  const COLOR = { new: '#059669', q: '#be123c', appfree: '#0e7490', first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
     form: '#0891b2', active: '#16a34a', paid: '#15803d', closed: '#111827', nextyear: '#475569' };
   const rowColor = r => COLOR[r.crm || (r.paid ? 'paid' : r.closed ? 'closed' : 'active')] || COLOR.active;
   const STEPS = {
+    new: 'गेल्या 48 तासांत आलेले (ad / WhatsApp / website) — सगळ्यात नवीन वर. <b>लगेच call</b>: आत्ता रस असतो. Bot बोलत असला तरी call चालतो.',
     appfree: 'मूल app वापरतंय पण pay नाही — सगळ्यात जास्त वापरणारे वर. <b>Call: "app आवडतंय ना? पूर्ण course मध्ये सगळे chapters"</b>, मग 💬 "📚 पूर्ण course".',
     first: 'सवलत संपत आलेले, महा-Test दिलेले आणि नंबर देऊन test न दिलेले. <b>Call करा</b>; उचलला नाही तर 💬 "👋 पहिला संपर्क" किंवा "🎁 सवलत".',
     call: 'पालकांनी स्वतः call मागितला — <b>लगेच call</b>.',
@@ -206,6 +207,7 @@ const CRM_ADMIN = (() => {
     $('crm-rows').innerHTML = rows.length ? rows.map(r => `
       <button type="button" class="crm-row${r.gid === _open ? ' on' : ''}" style="--c:${rowColor(r)}" data-gid="${esc(r.gid)}">
         <span class="crm-name">${esc(r.name || '—')} <small>${esc(r.cls || '')}${r.place ? ' · ' + esc(r.place) : ''}</small> ${_labelPills(r.labels)}</span>
+        ${r.created_at && _list === 'new' && !_fuStep && !_label ? `<span class="crm-meta crm-new">🆕 ${ago(r.created_at)} आले${r.from ? ' · ' + ({ ad: '📣 WhatsApp ad', whatsapp: '💬 WhatsApp', wa: '💬 WhatsApp', form: '🌐 website', app: '📲 app', import: '📥 import' }[r.from] || esc(r.from)) : ''}${r.sent || r.team ? ' · ✅ संपर्क झाला' : ' · <b>अजून संपर्क नाही</b>'}</span>` : ''}
         ${r.usage ? `<span class="crm-meta crm-use">${usageText(r.usage)}</span>` : ''}
         ${r.question ? `<span class="crm-q">❓ "${esc(r.question.text)}" <small>${ago(Date.parse(r.question.at))}</small></span>` : ''}
         <span class="crm-meta">${r.mobile ? '📱 ' + esc(r.mobile) : '—'} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.no_test ? ' · ⚠️ test नाही' : ''}${r.open ? ' · 🟢 खिडकी उघडी' : ''}${r.app ? ' · 📲 app' : r.acct ? ' · 👤 Code आहे, app नाही' : ''}${r.push_on ? ' · 🔔' : ''}${r.sent ? ` · 💬 ${r.sent} message` : ''}</span>
@@ -620,7 +622,7 @@ const CRM_ADMIN = (() => {
         try {
           await API.teamMembers('create', '', { name: $('tm-name').value.trim(), mobile: $('tm-mob').value, pin: $('tm-pin').value.trim() });
           APP.toast(`✅ ${$('tm-name').value.trim()} team मध्ये — त्यांना "NKs Team" app, mobile आणि PIN द्या`, 'success'); draw();
-        } catch (e) { msg.textContent = e.message; }
+        } catch (e) { msg.textContent = '⚠️ ' + e.message; msg.classList.add('crm-q'); APP.toast(e.message, 'error'); }
       };
       box.querySelectorAll('[data-tm-by]').forEach(b => b.onclick = () => { by = b.dataset.tmBy; draw(); });
       box.querySelectorAll('[data-tm-on]').forEach(b => b.onclick = () => _sure(b, async () => { await API.teamMembers('update', b.dataset.tmOn, { active: b.dataset.v === '1' }); draw(); }, b.dataset.v === '1' ? 'पक्कं? चालू करायचं — पुन्हा दाबा' : 'पक्कं? बंद केलं की लगेच logout — पुन्हा दाबा'));

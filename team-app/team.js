@@ -112,6 +112,7 @@
     const sat = [0, 6].includes(new Date().getDay());
     shell(`
       <div class="grid">
+        <button type="button" class="big wide" style="--c:#059669" data-go="new"><span class="n">${sum.counts.new || 0}</span><span class="t">🆕 नवीन पालक (48 तास)</span><span class="s">${sum.counts.new_untouched ? `<b>${sum.counts.new_untouched} ना अजून संपर्क नाही</b> — लगेच call` : 'सगळ्यांना संपर्क झाला ✅'}</span></button>
         <button type="button" class="big wide" style="--c:#4338ca" data-go="all"><span class="n">${due}</span><span class="t">📋 आज पाठवायचे / call</span><span class="s">एकामागून एक — Step प्रमाणे message तयार</span></button>
         <button type="button" class="big" style="--c:#be123c" data-go="q"><span class="n">${qCount}</span><span class="t">❓ प्रश्न</span><span class="s">पालकांनी विचारलेलं</span></button>
         <button type="button" class="big" style="--c:#e11d48" data-go="first"><span class="n">${sum.counts.first || 0}</span><span class="t">☀️ आधी call</span><span class="s">सूट संपतेय / test नाही</span></button>
@@ -130,7 +131,7 @@
       }
       if (g === 'q') { tab = 'q'; return route(); }
       if (g === 'mt') return mtQueue();
-      return startQueue({ first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free' }[g], `/crm/list?list=${g}`, 0);
+      return startQueue({ new: '🆕 नवीन पालक', first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free' }[g], `/crm/list?list=${g}`, 0);
     });
   }
 

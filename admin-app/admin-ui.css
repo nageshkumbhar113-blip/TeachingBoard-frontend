@@ -2977,3 +2977,5 @@ body.crm-lead-open { overflow: hidden; }
 .crm-act { padding: 4px 6px; border-bottom: 1px solid #f1f0fa; overflow-wrap: anywhere; }
 
 .crm-meta.crm-use { color: #0e7490; font-weight: 600; }
+
+.crm-meta.crm-new { color: #047857; font-weight: 600; }
