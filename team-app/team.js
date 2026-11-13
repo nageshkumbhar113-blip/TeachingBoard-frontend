@@ -169,6 +169,7 @@
         ${d.fu ? `<span class="step" style="--c:${esc(st?.color || '#4338ca')}">📋 Step ${d.fu.step} · ${esc(st?.name || '')} · ${dueText(d.fu.due)}</span>` : (L.closed ? `<span class="step" style="--c:#64748b">❌ ${esc(L.closed)}</span>` : '')}
         ${d.usage && (d.usage.last || d.usage.tests) ? `<div class="mt" style="color:#0e7490;font-weight:600">${usageText(d.usage)}</div>` : ''}
         ${L.lastTeam ? `<div class="mt">शेवटचं: ${esc(L.lastTeam.by)} — ${esc(L.lastTeam.reason || L.lastTeam.result)} (${ago(Date.parse(L.lastTeam.at))})</div>` : ''}
+        ${d.open && L.mobile ? `<div class="mt"><span class="pill open">🟢 Bot chat उघडी — bot मधून मोफत message पाठवता येतो</span></div>` : ''}
         ${dupe ? '<div class="mt"><span class="pill dupe">🔁 या नंबरला आत्ताच message पाठवला</span></div>' : ''}
       </div>
       ${q ? `<div class="box qbox"><h3>❓ पालकांचा प्रश्न <small>${ago(Date.parse(q.at))}</small></h3><div class="qt">"${esc(q.text)}"</div>
@@ -182,6 +183,7 @@
       <div class="box"><h3>💬 Message</h3>
         <select class="in" id="c-tpl" aria-label="Message">${tpls.map(t => `<option value="${esc(t.id)}"${t.id === pick ? ' selected' : ''}>${esc(t.title)}</option>`).join('')}</select>
         <textarea class="in" id="c-text" aria-label="मजकूर" style="margin-top:8px"></textarea>
+        ${d.open ? '<button type="button" class="btn pri" id="c-bot" style="width:100%;margin-top:8px">🤖 Bot च्या WhatsApp मधून पाठवा (मोफत)</button><p class="mt">पालकांना हा message NKs च्या bot नंबरवरून जातो — त्यांनी उत्तर दिलं की ते इथे 💬 Chat मध्ये दिसतं.</p>' : ''}
         <button type="button" class="btn ghost hidden" id="c-pin" style="width:100%;margin-top:8px">🔑 Code + PIN बनवा / मिळवा</button>
       </div>` : '<p class="empty">या पालकांचा नंबर नाही.</p>'}
       ${!L.paid && !L.closed ? `<div class="box"><h3>📞 Call / message नंतर — निकाल निवडा</h3>
@@ -193,7 +195,7 @@
           <button type="button" class="btn bad" data-out="close">❌ नको</button>
         </div></div>` : ''}
       ${queue ? '<button type="button" class="btn ghost" id="c-skip" style="width:100%">⏭ हा नंतर — पुढचा पालक</button>' : ''}
-      <details class="box"><summary><b>💬 Chat (${(d.msgs || []).filter(m => m.dir === 'in').length} messages)</b></summary>
+      <details class="box"${d.open ? ' open' : ''}><summary><b>💬 Chat (${(d.msgs || []).filter(m => m.dir === 'in').length} messages)</b></summary>
         <div class="chat">${(d.msgs || []).slice(-60).map(m => { let b = m.body || ''; if (m.dir === 'out' && b.startsWith('{')) { try { b = JSON.parse(b).body?.text || b; } catch {} } const c = { in: 'in', out: 'out', team: 'team' }[m.dir] || 'log'; return `<div class="cm ${c}">${esc(b)}<small>${new Date(m.at).toLocaleString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</small></div>`; }).join('') || '<p class="mt">अजून नाही</p>'}</div>
       </details>`, queue ? `${queue.title} · ${queue.i + 1}/${queue.rows.length}` : 'पालक', L.name || '');
 
@@ -209,6 +211,17 @@
       if (queue) { queue.sentMob.add(L.mobile); setTimeout(nextInQueue, 900); }
     };
     wa?.addEventListener('click', sent('wa')); sms?.addEventListener('click', sent('sms'));
+    // 🤖 inside the bot's chat (the window is open: free)
+    $('c-bot')?.addEventListener('click', async () => {
+      const b = $('c-bot'), text = ta.value.trim();
+      if (!text) return toast('Message लिहा', true);
+      b.disabled = true;
+      try {
+        await crm(`/crm/lead/${gid}/reply`, { text });
+        toast('📤 Bot मधून गेलं');
+        if (queue) { queue.sentMob.add(L.mobile); setTimeout(nextInQueue, 900); } else openCard(gid);
+      } catch (e) { toast(e.message, true); b.disabled = false; }
+    });
     pin?.addEventListener('click', async () => {
       pin.disabled = true;
       try { const r = await rq('/guest/admin/lead-pin', { body: { gid } }); acct[gid] = { code: r.data.code, pin: r.data.pin }; crm(`/crm/lead/${gid}/act`, { action: 'acct', detail: r.data.code }).catch(() => {}); toast(`🔑 Code ${r.data.code} · PIN ${r.data.pin || '(पालकांचा)'}`); show(); }
@@ -272,7 +285,7 @@
     const byMob = {}; rows.forEach(r => { if (r.mobile) byMob[r.mobile] = (byMob[r.mobile] || 0) + 1; });
     return rows.map(r => `<button type="button" class="row" style="--c:${r.question ? '#be123c' : r.paid ? '#15803d' : r.closed ? '#64748b' : '#4338ca'}" data-gid="${esc(r.gid)}">
       <span class="nm">${esc(r.name || '—')} <small>${esc(r.cls || '')}</small></span>
-      <span class="mt">📱 ${esc(r.mobile || '—')} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.app ? ' · 📲 app' : ''}${r.paid ? ' · ✅ Paid' : ''}${r.fu_step ? ` · 📋 Step ${r.fu_step} · ${dueText(r.fu_due)}` : ''}</span>
+      <span class="mt">📱 ${esc(r.mobile || '—')} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.open ? ' · 🟢 Bot chat' : ''}${r.app ? ' · 📲 app' : ''}${r.paid ? ' · ✅ Paid' : ''}${r.fu_step ? ` · 📋 Step ${r.fu_step} · ${dueText(r.fu_due)}` : ''}</span>
       ${r.question ? `<span class="q">❓ "${esc(r.question.text)}" · ${ago(Date.parse(r.question.at))}</span>` : ''}
       ${r.offer ? `<span><span class="pill offer">🎁 ${r.offer.pct}% सूट · ${left(r.offer.end)}</span></span>` : ''}
       ${r.mobile && byMob[r.mobile] > 1 ? '<span><span class="pill dupe">🔁 हा नंबर दोन नोंदींमध्ये</span></span>' : ''}
