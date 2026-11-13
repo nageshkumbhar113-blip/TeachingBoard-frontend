@@ -21,7 +21,7 @@
   function toast(t, err) { const el = document.createElement('div'); el.className = 'toast' + (err ? ' err' : ''); el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
 
   // ── server calls ──
-  let tok = ls.get('nks_team_token'), me = JSON.parse(ls.get('nks_team_me') || 'null'), bot = null;
+  let tok = ls.get('nks_team_token'), me = JSON.parse(ls.get('nks_team_me') || 'null'), bot = JSON.parse(ls.get('nks_team_bot') || 'null');
   async function rq(path, { body, method } = {}) {
     const r = await fetch(API() + path, { method: method || (body ? 'POST' : 'GET'), headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: 'Bearer ' + tok } : {}) }, body: body ? JSON.stringify(body) : undefined });
     const j = await r.json().catch(() => ({}));
@@ -34,14 +34,15 @@
       const d = (await rq('/guest/admin/bot-token')).data;
       if (!d?.ready) throw new Error('Bot अजून जोडलेला नाही');
       bot = { url: d.url, token: d.token, at: Date.now() };
+      ls.set('nks_team_bot', JSON.stringify(bot));
     }
     const r = await fetch(bot.url + path, { method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + bot.token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
     const j = await r.json().catch(() => ({}));
-    if (r.status === 401) { bot = null; throw new Error('पुन्हा प्रयत्न करा'); }
+    if (r.status === 401) { bot = null; ls.set('nks_team_bot', null); throw new Error('पुन्हा प्रयत्न करा'); }
     if (!r.ok || j.success === false) throw new Error(j.message || 'काहीतरी चूक झाली');
     return j.data;
   }
-  function logout(why) { tok = null; me = null; bot = null; ls.set('nks_team_token', null); ls.set('nks_team_me', null); showLogin(why); }
+  function logout(why) { tok = null; me = null; bot = null; ls.set('nks_team_token', null); ls.set('nks_team_me', null); ls.set('nks_team_bot', null); ls.set('nks_team_home', null); showLogin(why); }
 
   // ── ready messages (the admin's own from the bot, else these) ──
   const DEFAULT_TPLS = [
@@ -97,10 +98,15 @@
   }
 
   async function home() {
-    shell('<p class="empty">⏳ उघडत आहे…</p>', 'आजचं काम');
+    const kept = JSON.parse(ls.get('nks_team_home') || 'null');
+    if (kept) drawHome(kept.sum, kept.fu, true); else shell('<p class="empty">⏳ उघडत आहे…</p>', 'आजचं काम');
     const [sum, fu, tp] = await Promise.all([crm('/crm/summary'), crm('/crm/fu'), crm('/crm/templates').catch(() => null)]);
-    botNum = /^91\d{10}$/.test(String(sum.bot_number || '')) ? sum.bot_number : '';
     if (Array.isArray(tp) && tp.length) tpls = tp;
+    ls.set('nks_team_home', JSON.stringify({ sum, fu }));
+    if (tab === 'home' && !queue) drawHome(sum, fu, false);
+  }
+  function drawHome(sum, fu, stale) {
+    botNum = /^91\d{10}$/.test(String(sum.bot_number || '')) ? sum.bot_number : '';
     steps = fu.steps || []; qCount = sum.counts.q || 0;
     const due = fu.counts.reduce((t, c) => t + c.due, 0);
     const sat = [0, 6].includes(new Date().getDay());
@@ -115,14 +121,12 @@
         ${sat ? '<button type="button" class="big wide" style="--c:#b45309" data-go="mt"><span class="n">🏆</span><span class="t">महा-Test आठवण</span><span class="s">नोंदणी केलेल्या पालकांना</span></button>' : ''}
       </div>
       <div class="h2">📋 Steps</div>
-      ${steps.map((st, i) => { const c = fu.counts[i] || { total: 0, due: 0 }; return `<button type="button" class="row" style="--c:${esc(st.color)}" data-step="${i + 1}"><span class="nm">Step ${i + 1} · ${esc(st.name)}</span><span class="mt">${c.total} पालक · <b>आज ${c.due}</b></span></button>`; }).join('')}`, 'आजचं काम');
+      ${steps.map((st, i) => { const c = fu.counts[i] || { total: 0, due: 0 }; return `<button type="button" class="row" style="--c:${esc(st.color)}" data-step="${i + 1}"><span class="nm">Step ${i + 1} · ${esc(st.name)}</span><span class="mt">${c.total} पालक · <b>आज ${c.due}</b></span></button>`; }).join('')}`, 'आजचं काम', stale ? '⏳ ताजे आकडे येत आहेत…' : '');
     app.querySelectorAll('[data-step]').forEach(b => b.onclick = () => startQueue(`Step ${b.dataset.step}`, `/crm/fu/list?step=${b.dataset.step}&due=1`, Number(b.dataset.step)));
     app.querySelectorAll('[data-go]').forEach(b => b.onclick = async () => {
       const g = b.dataset.go;
       if (g === 'all') {
-        let rows = [];
-        for (let i = 1; i <= steps.length; i++) rows = rows.concat(await crm(`/crm/fu/list?step=${i}&due=1`).catch(() => []));
-        return startQueue('आजचे सगळे', null, 0, rows);
+        return startQueue('आजचे सगळे', '/crm/fu/list?step=all&due=1', 0);
       }
       if (g === 'q') { tab = 'q'; return route(); }
       if (g === 'mt') return mtQueue();
@@ -144,9 +148,13 @@
   }
 
   // 👨‍👩‍👧 one family
+  const ahead = new Map();   // gid → Promise of the card's data, fetched while the previous family is on screen
+  const fetchCard = gid => { const p = crm('/crm/lead/' + gid); ahead.set(gid, { p, at: Date.now() }); p.catch(() => ahead.delete(gid)); return p; };
   async function openCard(gid) {
-    shell('<p class="empty">⏳</p>', queue ? `${queue.title} · ${queue.i + 1}/${queue.rows.length}` : 'पालक');
-    let d; try { d = await crm('/crm/lead/' + gid); } catch (e) { toast(e.message, true); return queue ? nextInQueue() : route(); }
+    const pre = ahead.get(gid); ahead.delete(gid);
+    if (!pre) shell('<p class="empty">⏳</p>', queue ? `${queue.title} · ${queue.i + 1}/${queue.rows.length}` : 'पालक');
+    let d; try { d = await (pre && Date.now() - pre.at < 120e3 ? pre.p : crm('/crm/lead/' + gid)); } catch (e) { toast(e.message, true); return queue ? nextInQueue() : route(); }
+    if (queue && queue.rows[queue.i + 1]) fetchCard(queue.rows[queue.i + 1].gid);
     const L = d.lead, offer = d.offer, st = d.fu ? (d.fu_steps || [])[d.fu.step - 1] : null;
     steps = d.fu_steps || steps;
     const pick = st && tplById(st.tpl) ? st.tpl : suggest(L, offer);
