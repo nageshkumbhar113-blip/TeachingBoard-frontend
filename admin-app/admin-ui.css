@@ -2975,3 +2975,5 @@ body.crm-lead-open { overflow: hidden; }
 .crm-tchip { background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 2px 8px; font-size: .85rem; }
 .crm-acts-list { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; font-size: .92rem; }
 .crm-act { padding: 4px 6px; border-bottom: 1px solid #f1f0fa; overflow-wrap: anywhere; }
+
+.crm-meta.crm-use { color: #0e7490; font-weight: 600; }

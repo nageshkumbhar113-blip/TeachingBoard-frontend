@@ -15,6 +15,9 @@
   const ago = ms => { if (!ms) return '—'; const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'आत्ता' : m < 60 ? `${m} मि. पूर्वी` : m < 1440 ? `${Math.round(m / 60)} तासांपूर्वी` : `${Math.round(m / 1440)} दिवसांपूर्वी`; };
   const left = iso => { const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)} तास बाकी` : `${m} मि. बाकी`; };
   const dueText = ms => { if (!ms) return 'आज'; const d = Math.round((new Date(ms).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 864e5); return d <= 0 ? 'आज' : d === 1 ? 'उद्या' : new Date(ms).toLocaleDateString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short' }); };
+  // "📲 शेवटचं app मध्ये: काल · 12 tests · 45 मि. (7 दिवस)"
+  const usageText = u => { if (!u) return ''; const days = u.last ? Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(u.last).setHours(0, 0, 0, 0)) / 864e5) : null;
+    return `📲 शेवटचं app मध्ये: ${days == null ? '—' : days <= 0 ? 'आज' : days === 1 ? 'काल' : days + ' दिवसांपूर्वी'} · ${u.tests || 0} tests${u.min7 ? ` · ${u.min7} मि. (7 दिवस)` : ''}`; };
   function toast(t, err) { const el = document.createElement('div'); el.className = 'toast' + (err ? ' err' : ''); el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
 
   // ── server calls ──
@@ -107,6 +110,7 @@
         <button type="button" class="big" style="--c:#be123c" data-go="q"><span class="n">${qCount}</span><span class="t">❓ प्रश्न</span><span class="s">पालकांनी विचारलेलं</span></button>
         <button type="button" class="big" style="--c:#e11d48" data-go="first"><span class="n">${sum.counts.first || 0}</span><span class="t">☀️ आधी call</span><span class="s">सूट संपतेय / test नाही</span></button>
         <button type="button" class="big" style="--c:#ea580c" data-go="call"><span class="n">${sum.counts.call || 0}</span><span class="t">📞 Call मागितला</span><span class="s">लगेच call</span></button>
+        <button type="button" class="big wide" style="--c:#0e7490" data-go="appfree"><span class="n">${sum.counts.appfree || 0}</span><span class="t">📲 App वापरतात · pay नाही</span><span class="s">सगळ्यात जास्त वापरणारे आधी — course बद्दल call</span></button>
         <button type="button" class="big" style="--c:#7c3aed" data-go="noapp"><span class="n">${sum.counts.noapp || 0}</span><span class="t">📲 App नाही</span><span class="s">install मदत</span></button>
         ${sat ? '<button type="button" class="big wide" style="--c:#b45309" data-go="mt"><span class="n">🏆</span><span class="t">महा-Test आठवण</span><span class="s">नोंदणी केलेल्या पालकांना</span></button>' : ''}
       </div>
@@ -122,7 +126,7 @@
       }
       if (g === 'q') { tab = 'q'; return route(); }
       if (g === 'mt') return mtQueue();
-      return startQueue({ first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही' }[g], `/crm/list?list=${g}`, 0);
+      return startQueue({ first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free' }[g], `/crm/list?list=${g}`, 0);
     });
   }
 
@@ -154,6 +158,7 @@
         <div class="mt">${esc(L.cls || '')}${L.place ? ' · ' + esc(L.place) : ''} · 📱 ${esc(L.mobile || '—')}</div>
         <div class="mt">📝 ${L.testsDone || 0}/${L.freeTotal || 0} tests · ${L.app ? '📲 app ✓' : (L.acct?.code ? '👤 Code आहे, app नाही' : 'app नाही')}${offer ? ` · <span class="pill offer">🎁 ${offer.pct}% सूट · ${left(offer.end)}</span>` : ''}${L.paid ? ' · ✅ Paid' : ''}</div>
         ${d.fu ? `<span class="step" style="--c:${esc(st?.color || '#4338ca')}">📋 Step ${d.fu.step} · ${esc(st?.name || '')} · ${dueText(d.fu.due)}</span>` : (L.closed ? `<span class="step" style="--c:#64748b">❌ ${esc(L.closed)}</span>` : '')}
+        ${d.usage && (d.usage.last || d.usage.tests) ? `<div class="mt" style="color:#0e7490;font-weight:600">${usageText(d.usage)}</div>` : ''}
         ${L.lastTeam ? `<div class="mt">शेवटचं: ${esc(L.lastTeam.by)} — ${esc(L.lastTeam.reason || L.lastTeam.result)} (${ago(Date.parse(L.lastTeam.at))})</div>` : ''}
         ${dupe ? '<div class="mt"><span class="pill dupe">🔁 या नंबरला आत्ताच message पाठवला</span></div>' : ''}
       </div>

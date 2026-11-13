@@ -2287,6 +2287,11 @@ const API = (() => {
     return request('/guest/admin/lead-pin', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ gid, fresh }) });
   }
   // Admin › CRM "🔄 जुने leads आणा": every visitor with a parent's number into the bot's CRM (no message to anyone)
+  // once: free students who registered in the app themselves (with a parent's number) → CRM families
+  async function crmAppStudents() {
+    const token = await ensureAdminSession();
+    return request('/guest/admin/app-students-backfill', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: '{}' });
+  }
   async function crmBackfill() {
     const token = await ensureAdminSession();
     return request('/guest/admin/bot-backfill', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: '{}' });
@@ -3139,7 +3144,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

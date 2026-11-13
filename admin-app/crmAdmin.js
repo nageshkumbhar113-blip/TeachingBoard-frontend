@@ -28,13 +28,14 @@ const CRM_ADMIN = (() => {
   const left = iso => { const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 60 ? `${Math.floor(m / 60)} तास ${m % 60} मि. बाकी` : `${m} मि. बाकी`; };
   // the day's work, in this order (1 → 7); the rest are look-up lists. Each list (and family row) has its colour.
   const LISTS = [
-    ['q', '❓ प्रश्न'], ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
+    ['q', '❓ प्रश्न'], ['appfree', '📲 App · free'], ['first', '1️⃣ ☀️ आधी call'], ['call', '2️⃣ 📞 Call मागितला'], ['noapp', '3️⃣ 📲 App नाही'], ['hot', '4️⃣ 🔥 गरम'], ['later', '5️⃣ ⏰ नंतर'], ['cold', '6️⃣ ❄️ थंड'], ['import', '7️⃣ 📥 Import / हाताने'],
     ['form', '📝 Form नंबर'], ['active', '💬 चालू'], ['paid', '✅ Paid'], ['closed', '❌ Closed'], ['nextyear', '📅 पुढचं वर्ष'],
   ];
-  const COLOR = { q: '#be123c', first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
+  const COLOR = { q: '#be123c', appfree: '#0e7490', first: '#e11d48', call: '#ea580c', noapp: '#7c3aed', hot: '#ca8a04', later: '#2563eb', cold: '#64748b', import: '#a16207',
     form: '#0891b2', active: '#16a34a', paid: '#15803d', closed: '#111827', nextyear: '#475569' };
   const rowColor = r => COLOR[r.crm || (r.paid ? 'paid' : r.closed ? 'closed' : 'active')] || COLOR.active;
   const STEPS = {
+    appfree: 'मूल app वापरतंय पण pay नाही — सगळ्यात जास्त वापरणारे वर. <b>Call: "app आवडतंय ना? पूर्ण course मध्ये सगळे chapters"</b>, मग 💬 "📚 पूर्ण course".',
     first: 'सवलत संपत आलेले, महा-Test दिलेले आणि नंबर देऊन test न दिलेले. <b>Call करा</b>; उचलला नाही तर 💬 "👋 पहिला संपर्क" किंवा "🎁 सवलत".',
     call: 'पालकांनी स्वतः call मागितला — <b>लगेच call</b>.',
     noapp: 'App account (Code + PIN) बनलं पण app उघडलं नाही — <b>call करून install आणि login करायला मदत</b>, किंवा 💬 "🔑 Code + PIN".',
@@ -43,6 +44,9 @@ const CRM_ADMIN = (() => {
     cold: 'Reply बंद — एकदा 💬 "📝 पुढची free test", 2 दिवसांनी call → close किंवा नंतर.',
     import: 'तुम्ही टाकलेले / import केलेले नंबर — <b>💬 "👋 पहिला संपर्क"</b> पाठवा ("पुढचा पालक →" ने पटापट), किंवा call. दिवसाला 50–80 पेक्षा जास्त नवीन नंबर नको.',
   };
+  // "📲 शेवटचं app मध्ये: काल · 12 tests · 45 मि. (7 दिवस)"
+  const usageText = u => { if (!u) return ''; const days = u.last ? Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(u.last).setHours(0, 0, 0, 0)) / 864e5) : null;
+    return `📲 शेवटचं app मध्ये: ${days == null ? '—' : days <= 0 ? 'आज' : days === 1 ? 'काल' : days + ' दिवसांपूर्वी'} · ${u.tests || 0} tests${u.min7 ? ` · ${u.min7} मि. (7 दिवस)` : ''}`; };
   const SITE = 'https://nkseduorbit.in', PLAY = 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
   // the ready messages; {…} are filled for each family. Admin › ✏️ Messages can change them (kept in the bot).
   const DEFAULT_TPLS = [
@@ -112,6 +116,8 @@ const CRM_ADMIN = (() => {
         <button type="button" class="admin-btn-secondary" data-panel="labels">🏷️ Labels</button>
         <button type="button" class="admin-btn-secondary" data-panel="tpls">✏️ Messages</button>
         <button type="button" class="admin-btn-secondary" data-panel="fusteps">⚙️ पायऱ्या</button>
+        <button type="button" class="admin-btn-secondary" data-panel="check">🔄 Sync ↔ CRM तपासा</button>
+        <button type="button" class="admin-btn-secondary" id="crm-appbf" title="Play Store वरून स्वतः register झालेले free विद्यार्थी (पालकांच्या नंबरसह) CRM मध्ये — कोणालाही message जात नाही">📥 App चे विद्यार्थी आणा</button>
         <button type="button" class="admin-btn-secondary" id="crm-backfill" title="Website वरचे जुने नंबर CRM मध्ये (कोणालाही message जात नाही)">📥 जुने leads आणा</button>
       </div>
       <div id="crm-panel" class="crm-panel hidden"></div>
@@ -130,6 +136,11 @@ const CRM_ADMIN = (() => {
       APP.toast(`📥 ${r?.data?.sent || 0} नंबर CRM कडे पाठवले — 1-2 मिनिटांत याद्यांमध्ये दिसतील`, 'success');
       setTimeout(() => _load(), 60000);
     }, 'सगळे जुने नंबर आणायचे? पुन्हा दाबा');
+    $('crm-appbf').onclick = () => _sure($('crm-appbf'), async () => {
+      const r = await API.crmAppStudents();
+      APP.toast(`📥 ${r?.data?.added || 0} app चे free विद्यार्थी CRM मध्ये आले (${r?.data?.seen || 0} तपासले) — 1-2 मिनिटांत "📲 App · free" मध्ये`, 'success');
+      setTimeout(() => _load(), 30000);
+    }, 'App चे free विद्यार्थी CRM मध्ये आणायचे? पुन्हा दाबा');
     $('crm-admin').querySelectorAll('[data-panel]').forEach(b => b.onclick = () => _panel(b.dataset.panel));
     let t; $('crm-q').oninput = e => { clearTimeout(t); t = setTimeout(() => { _q = e.target.value.trim(); _rows(); }, 300); };
   }
@@ -195,6 +206,7 @@ const CRM_ADMIN = (() => {
     $('crm-rows').innerHTML = rows.length ? rows.map(r => `
       <button type="button" class="crm-row${r.gid === _open ? ' on' : ''}" style="--c:${rowColor(r)}" data-gid="${esc(r.gid)}">
         <span class="crm-name">${esc(r.name || '—')} <small>${esc(r.cls || '')}${r.place ? ' · ' + esc(r.place) : ''}</small> ${_labelPills(r.labels)}</span>
+        ${r.usage ? `<span class="crm-meta crm-use">${usageText(r.usage)}</span>` : ''}
         ${r.question ? `<span class="crm-q">❓ "${esc(r.question.text)}" <small>${ago(Date.parse(r.question.at))}</small></span>` : ''}
         <span class="crm-meta">${r.mobile ? '📱 ' + esc(r.mobile) : '—'} · 📝 ${r.tests || 0}/${r.free_total || 0}${r.no_test ? ' · ⚠️ test नाही' : ''}${r.open ? ' · 🟢 खिडकी उघडी' : ''}${r.app ? ' · 📲 app' : r.acct ? ' · 👤 Code आहे, app नाही' : ''}${r.push_on ? ' · 🔔' : ''}${r.sent ? ` · 💬 ${r.sent} message` : ''}</span>
         <span class="crm-meta">${r.fu_step ? `📋 Step ${r.fu_step} · पुढचा message: <b>${_dueText(r.fu_due)}</b> · ` : ''}${r.closed ? '❌ ' + esc(r.closed) + ' · ' : ''}शेवटचा reply ${ago(r.last_in)}</span>
@@ -234,6 +246,7 @@ const CRM_ADMIN = (() => {
         : (L.paid || L.closed ? '' : `<div class="crm-fu-now">📋 Follow-up मध्ये नाही${d.open ? ' — bot शी बोलणं चालू आहे' : ''} <button type="button" class="admin-btn-secondary" id="crm-fu-restart">↩️ Step 1 पासून</button></div>`)}
       ${L.question && !L.question.answered ? `<div class="crm-qbox">❓ <b>पालकांचा प्रश्न:</b> "${esc(L.question.text)}" <small>${ago(Date.parse(L.question.at))}</small>
         <div class="crm-acts"><button type="button" class="admin-btn-primary" id="crm-q-done">✅ उत्तर दिलं</button><small class="crm-meta">${d.open ? 'खालच्या उत्तराच्या जागेत लिहून "पाठवा" (मोफत) — मग आपोआप सुटतो' : 'Call करा किंवा 💬 WhatsApp ने उत्तर द्या, मग "✅ उत्तर दिलं"'}</small></div></div>` : ''}
+      ${d.usage && (d.usage.last || d.usage.tests) ? `<p class="crm-meta crm-use">${usageText(d.usage)}</p>` : ''}
       <p class="crm-next">👉 <b>पुढचं पाऊल:</b> ${_next(L)}</p>
       ${_msgBox(L, nextRow, d.fu ? (d.fu_steps[d.fu.step - 1] || {}).tpl : '')}
       <div class="crm-acts">
@@ -406,6 +419,7 @@ const CRM_ADMIN = (() => {
     if (which === 'run') return _panelRun(box);
     if (which === 'mt') return _panelMt(box);
     if (which === 'team') return _panelTeam(box);
+    if (which === 'check') return _panelCheck(box);
   }
   const _close = () => { _panelOpen = ''; $('crm-panel').classList.add('hidden'); $('crm-panel').innerHTML = ''; };
   const _labelList = () => `<datalist id="crm-label-names">${_labels.map(l => `<option value="${esc(l.name)}"></option>`).join('')}</datalist>`;
@@ -539,6 +553,34 @@ const CRM_ADMIN = (() => {
       step();
     };
     draw();
+  }
+
+  // 🔄 Sync ↔ CRM: every family with a parent's number in Sync › Leads (Render) should be in the CRM (the bot) — and back
+  async function _panelCheck(box) {
+    box.innerHTML = '<p class="crm-meta">⏳ दोन्ही याद्या तपासत आहे…</p>';
+    let sync, crm;
+    try { [sync, crm] = await Promise.all([API.fetchGuestLeads({ status: 'with_mobile', days: 365 }), _call('/crm/gids')]); }
+    catch (e) { box.innerHTML = `<p class="crm-meta">⚠️ ${esc(e.message)}</p>`; return; }
+    const crmG = new Set(crm.map(r => r.gid)), crmM = new Set(crm.map(r => r.mobile).filter(Boolean));
+    const syncG = new Set(sync.map(l => l.gid));
+    const missing = sync.filter(l => !crmG.has(l.gid));
+    const missingNum = missing.filter(l => !crmM.has(String(l.parent_mobile || '').slice(-10)));
+    const extra = crm.filter(r => r.mobile && !syncG.has(r.gid));
+    box.innerHTML = `<h4>🔄 Sync ↔ CRM</h4>
+      <p>📋 Sync (पालकांच्या नंबरसह, 1 वर्ष): <b>${sync.length}</b> · 📇 CRM: <b>${crm.filter(r => r.mobile).length}</b> नंबर</p>
+      <p class="crm-meta">Sync मध्ये नंबर नसलेले visitors पण दिसतात (फक्त page उघडलं) — ते CRM मध्ये येत नाहीत, म्हणून Sync चा एकूण आकडा मोठा असतो.</p>
+      ${missing.length ? `<p class="crm-q">⚠️ Sync मध्ये आहेत पण CRM मध्ये नाहीत: <b>${missing.length}</b>${missing.length !== missingNum.length ? ` (त्यातले ${missing.length - missingNum.length} नंबर CRM मध्ये दुसऱ्या नोंदीत आहेत)` : ''}</p>
+        <ul class="crm-mt-rows">${missing.slice(0, 30).map(l => `<li>${esc(l.name || '—')} · 📱 ${esc(l.parent_mobile)} · ${esc(l.batch || '')}</li>`).join('')}</ul>
+        <div class="crm-acts"><button type="button" class="admin-btn-primary" id="ck-fix">📥 हे CRM मध्ये आणा</button></div>`
+        : '<p>✅ Sync मधले नंबरवाले सगळे पालक CRM मध्ये आहेत.</p>'}
+      ${extra.length ? `<p class="crm-meta">ℹ️ CRM मध्ये ${extra.length} नंबर Sync च्या यादीत दिसत नाहीत — 1 वर्षापेक्षा जुने, किंवा WhatsApp वरून आलेले ज्यांची नोंद Render वर अजून पोचायची आहे.</p>` : ''}
+      <div class="crm-acts"><button type="button" class="admin-btn-secondary" id="ck-close">बंद</button></div>`;
+    $('ck-close').onclick = _close;
+    $('ck-fix')?.addEventListener('click', async () => {
+      $('ck-fix').disabled = true;
+      try { const r = await API.crmBackfill(); APP.toast(`📥 ${r?.data?.sent || 0} नंबर CRM कडे पाठवले — 1 मिनिटाने पुन्हा तपासा`, 'success'); setTimeout(() => { if (_panelOpen === 'check') _panelCheck(box); }, 20000); }
+      catch (e) { APP.toast(e.message, 'error'); $('ck-fix').disabled = false; }
+    });
   }
 
   // 👥 Team: the members of the NKs Team app (name, mobile, PIN, on / off) and what each did on a day
