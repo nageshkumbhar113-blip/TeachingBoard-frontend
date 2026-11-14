@@ -733,8 +733,10 @@ SECTIONS:
           <div class="tb-section-tabs" role="tablist" aria-label="Question source">
             <button type="button" class="tb-sec-tab active" id="tb-src-bank" role="tab" aria-selected="true">📚 Question Bank</button>
             <button type="button" class="tb-sec-tab" id="tb-src-fig" role="tab" aria-selected="false">🧩 Reasoning प्रश्न तयार करा</button>
+            <button type="button" class="tb-sec-tab" id="tb-src-sch" role="tab" aria-selected="false">🎓 शिष्यवृत्ती प्रश्न तयार करा</button>
           </div>
           <div id="tb-fig-panel" class="hidden"></div>
+          <div id="tb-sch-panel" class="hidden"></div>
           <div id="tb-bank-wrap" style="display:flex;flex-direction:column;gap:10px;min-height:0">
           <div class="tb-bank-header">
             <span class="tb-panel-title">📚 Question Bank</span>
@@ -922,20 +924,23 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
       });
     });
 
-    // Question source: the bank (as before) or the new reasoning-figure generator
-    const showSource = fig => {
-      $('tb-src-bank').classList.toggle('active', !fig); $('tb-src-bank').setAttribute('aria-selected', String(!fig));
-      $('tb-src-fig').classList.toggle('active', fig);   $('tb-src-fig').setAttribute('aria-selected', String(fig));
-      $('tb-bank-wrap').classList.toggle('hidden', fig);
-      $('tb-fig-panel').classList.toggle('hidden', !fig);
-      if (fig && !$('tb-fig-panel').dataset.mounted) {
-        if (!window.FIGGEN) { $('tb-fig-panel').innerHTML = '<p class="tb-empty-hint">Reload the page once (new module).</p>'; return; }
-        FIGGEN.mountPanel($('tb-fig-panel'), { onAdd: _addFigureQuestions });
-        $('tb-fig-panel').dataset.mounted = '1';
+    // Question source: the bank (as before), the reasoning-figure generator or the scholarship generator
+    const SOURCES = { bank: ['tb-src-bank', 'tb-bank-wrap'], fig: ['tb-src-fig', 'tb-fig-panel'], sch: ['tb-src-sch', 'tb-sch-panel'] };
+    const showSource = src => {
+      for (const [k, [tab, box]] of Object.entries(SOURCES)) {
+        $(tab).classList.toggle('active', k === src); $(tab).setAttribute('aria-selected', String(k === src));
+        $(box).classList.toggle('hidden', k !== src);
       }
+      const box = src === 'fig' ? $('tb-fig-panel') : src === 'sch' ? $('tb-sch-panel') : null;
+      if (!box || box.dataset.mounted) return;
+      const mod = src === 'fig' ? window.FIGGEN : window.SCHGEN;
+      if (!mod) { box.innerHTML = '<p class="tb-empty-hint">Reload the page once (new module).</p>'; return; }
+      mod.mountPanel(box, { onAdd: src === 'fig' ? _addFigureQuestions : _addScholarshipQuestions });
+      box.dataset.mounted = '1';
     };
-    $('tb-src-bank').addEventListener('click', () => showSource(false));
-    $('tb-src-fig').addEventListener('click', () => showSource(true));
+    $('tb-src-bank').addEventListener('click', () => showSource('bank'));
+    $('tb-src-fig').addEventListener('click', () => showSource('fig'));
+    $('tb-src-sch').addEventListener('click', () => showSource('sch'));
 
     // Auto-mix & bulk parse
     $('tb-do-automix').addEventListener('click', _doAutoMix);
@@ -989,9 +994,35 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
     APP.toast(`✅ ${saved.length} आकृती प्रश्न "${sec.label}" मध्ये जोडले`, 'success');
   }
 
+  // Scholarship questions from SCHGEN (गणित / बुद्धिमत्ता, figures as pictures): saved the same way.
+  async function _addScholarshipQuestions(items, info, progress) {
+    const sec = state.sections[state.activeSection];
+    if (!sec) throw new Error('No section');
+    const mixed = state.paperMode === 'mixed';
+    const meta = {
+      exam   : info?.exam,
+      batch  : (mixed && sec.source_batch) || state.quiz?.batch || '',
+      subject: (mixed && sec.subject) || state.quiz?.subject || '',
+      chapter: state.quiz?.chapter || '',
+    };
+    const records = await SCHGEN.toBankQuestions(items, meta, progress);
+    progress?.('save');
+    const saved = await DB.saveQuestionsBatch(records);
+    saved.forEach(s => { if (!sec.question_ids.includes(s.q_id)) sec.question_ids.push(s.q_id); });
+    await _pushReasoningToServerBank(saved);
+    await _loadBankQuestions();
+    _renderBankList();
+    _renderSelectedList();
+    _renderSectionTabs();
+    APP.toast(`✅ ${saved.length} प्रश्न "${sec.label}" मध्ये जोडले`, 'success');
+  }
+
+  // generated here (figures / scholarship), so this app owns the server-bank copy
+  const _isGenerated = q => (q.tags || []).some(t => t === 'reasoning' || t === 'qgen');
+
   // Server question bank copy (Paper Builder reads it). Not fatal when offline: retried on Publish.
   async function _pushReasoningToServerBank(list) {
-    const todo = list.filter(q => (q.tags || []).includes('reasoning') && !q.bank_synced);
+    const todo = list.filter(q => _isGenerated(q) && !q.bank_synced);
     if (!todo.length) return true;
     try {
       for (let i = 0; i < todo.length; i += 50) await API.bulkSaveQuestions(todo.slice(i, i + 50));
@@ -1738,7 +1769,7 @@ IMPORTANT formatting rules — follow exactly, do not deviate:
       // reasoning questions added while offline still need their server-bank copy
       try {
         const ids = new Set(_getAllSelectedQIds());
-        const mine = (await DB.getAllQuestions()).filter(q => ids.has(q.q_id) && (q.tags || []).includes('reasoning') && !q.bank_synced);
+        const mine = (await DB.getAllQuestions()).filter(q => ids.has(q.q_id) && _isGenerated(q) && !q.bank_synced);
         if (mine.length) await _pushReasoningToServerBank(mine);
       } catch { /* the quiz itself still publishes */ }
       try {
