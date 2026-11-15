@@ -1159,7 +1159,7 @@ const APP = (() => {
     const until = Date.parse(profile?.free_until || '');
     const show = !!profile && profile.access_level === 'free' && Number.isFinite(until) && !window.GUEST?.isActive?.();
     if (!show || !home) { el?.remove(); return; }
-    if (!el) { el = document.createElement('div'); el.id = 'fw-banner'; el.className = 'fw-banner'; home.prepend(el); }
+    if (!el) { el = document.createElement('div'); el.id = 'fw-banner'; el.className = 'fw-banner'; const b = $('home-banners'); if (b) b.after(el); else home.prepend(el); }
     const left = until - _safeNow(profile);
     if (_freeOverNow) {
       el.classList.add('over');
@@ -1955,6 +1955,8 @@ const APP = (() => {
           _goHomeRoleAware();
           // the WhatsApp bot's push: its buttons ("💬 WhatsApp वर सूट / रिपोर्ट …") in a sheet over Home
           if (data.kind === 'wa_bot') setTimeout(() => window.GUEST?.botPushSheet?.({ ...data, body: action.notification?.body || '' }), 900);
+          // the Personal Digital Teacher push (and the older Study Plan pushes): open the teacher's window
+          if (['teacher_chat', 'study_plan_today', 'study_plan_pending'].includes(data.type)) setTimeout(() => window.DIGITAL_TEACHER?.open?.(), 1200);
           // the 7 pm study notification names one test: a tap opens it (the quiz may still be syncing: a few tries)
           if (data.type === 'study_nudge' && data.quiz_id) {
             let tries = 0;
@@ -2058,6 +2060,7 @@ const APP = (() => {
         <h2 style="margin:0 0 4px;font-size:1.1rem;color:var(--text1);text-align:center">${_escHtml(name)}</h2>
         ${infoHtml}
         ${window.GUEST?.isActive?.() ? `<button id="ps-unlock-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#ff7a18,#ff3d77,#7b2ff7);color:#fff;font-weight:700;cursor:pointer;margin-bottom:8px">🔓 सगळे tests उघडा</button>` : ''}
+        ${role || window.GUEST?.isActive?.() ? '' : `<button id="ps-teachers-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">👩‍🏫 माझे Teachers</button>`}
         ${role ? '' : `<button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>`}
         <button id="ps-board-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🖥️ Board Mode ${_activeUiMode() === 'board' ? 'बंद करा' : 'चालू करा'}</button>
         ${role || window.GUEST?.isActive?.() || !window.HELP_BOT?.openMove ? '' : `<button id="ps-move-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📱 नवीन phone वर shift करा</button>`}
@@ -2070,6 +2073,15 @@ const APP = (() => {
 
     function _close() { overlay.remove(); }
     overlay.querySelector('#ps-close-btn')?.addEventListener('click', _close);
+    overlay.querySelector('#ps-teachers-btn')?.addEventListener('click', () => {
+      _close();
+      const box = document.createElement('div');
+      box.className = 're-modal'; box.id = 'teachers-modal';
+      box.innerHTML = '<div class="re-sheet"><div class="re-sheet-head"><h3>👩‍🏫 माझे Teachers</h3><button type="button" class="re-x" aria-label="Close">✕</button></div><div id="teachers-host"><p class="re-hint">लोड होत आहे…</p></div></div>';
+      document.body.appendChild(box);
+      box.addEventListener('click', e => { if (e.target === box || e.target.closest('.re-x')) box.remove(); });
+      window.TEACHER_CONNECT?.renderHomeCard?.($('teachers-host'));
+    });
     overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
 
     if (window.GUEST?.isActive?.()) {
@@ -2495,6 +2507,7 @@ const APP = (() => {
     }
 
     _currentScreen = name;
+    window.DIGITAL_TEACHER?.onScreen?.(name);   // floating teacher on Home; reacts when a viewer closes
 
     if (!_screenEls.length) _cacheScreens();
     const el = _screenMap.get(name) || $('screen-' + name);
@@ -2939,10 +2952,16 @@ const APP = (() => {
     // Cache renders instantly; network refresh happens in the background —
     // see _loadHomeBanners's own doc-comment.
     _loadHomeBanners().catch(() => {});
+    // Personal Digital Teacher (owner 2026-11-15): for a student it takes over Study Plan, Share,
+    // Refer & Earn and माझे Teachers (now in Me); Home keeps महा-Test, banners, search, classes.
+    const homeEl = $('screen-home');
+    const dtOn = !guest && !!window.DIGITAL_TEACHER && !_isTeacherOrParentMode;
+    homeEl?.classList.toggle('dt-on', dtOn);
     if (!guest) {
       window.REFER_EARN?.refresh();
-      window.STUDY_PLAN?.refresh();
-      window.TEACHER_CONNECT?.renderHomeCard();   // 👩‍🏫 माझे Teachers
+      const oldHome = () => { homeEl?.classList.remove('dt-on'); window.STUDY_PLAN?.refresh(); window.TEACHER_CONNECT?.renderHomeCard(); };
+      if (dtOn) window.DIGITAL_TEACHER.refresh().then(ok => { if (!ok) oldHome(); }).catch(() => {});
+      else oldHome();
       window.TEACHER_CONNECT?.afterLogin();       // opened a teacher's join link?
     }
 
@@ -3310,6 +3329,8 @@ const APP = (() => {
     isChapterLocked,
     isQuizLocked,
     isFreeWindowOver,
+    shareApp: () => _shareApp(),
+    offerSubscribe: () => { _lastSubscribeAt = 0; return _offerSubscribe(); },
     getFreeChapterIds,
     offerSubscribe: _offerSubscribe,
     deviceId: () => _getDeviceId(),

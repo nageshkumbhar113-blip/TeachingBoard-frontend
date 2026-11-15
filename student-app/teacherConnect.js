@@ -105,16 +105,19 @@ const TEACHER_CONNECT = (() => {
   }
 
   // ── Home: "👩‍🏫 माझे Teachers" ─────────────────────────────
-  async function renderHomeCard() {
-    const home = $('screen-home');
-    if (!home || window.GUEST?.isActive?.() || !navigator.onLine) return;
+  // host (optional): draw the card there (Me › माझे Teachers) instead of on Home
+  async function renderHomeCard(host) {
+    const home = host || $('screen-home');
+    if (!home || window.GUEST?.isActive?.()) return;
+    if (!navigator.onLine) { if (host) host.innerHTML = '<p class="re-hint">Internet सुरू करा.</p>'; return; }
     let teachers;
     try { teachers = (await _api('GET', '/teacher-connect/mine')).data.teachers; } catch { return; }
     let card = home.querySelector('.tc-card');
-    if (!card) {
+    if (host) host.innerHTML = '';
+    if (!card || host) {
       card = document.createElement('div');
       card.className = 're-card tc-card';
-      const refer = $('home-refer-card');
+      const refer = !host && $('home-refer-card');
       if (refer) refer.after(card); else home.appendChild(card);
     }
     card.innerHTML = `<div class="re-card-head"><b>👩‍🏫 माझे Teachers</b></div>
@@ -129,7 +132,7 @@ const TEACHER_CONNECT = (() => {
       try {
         const r = await _api('POST', '/teacher-connect/join', { teacher_code: code, via: 'code' });
         toast(`✅ ${r.teacher.name} यांच्या वर्गात जोडलं`, 'success');
-        renderHomeCard();
+        renderHomeCard(host);
       } catch (err) { toast(err.message, 'error'); e.target.disabled = false; }
     };
   }

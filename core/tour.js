@@ -75,7 +75,7 @@ body:has(.gx-layer:not(.gx-leaving)) .tour-spot, body:has(.gx-layer:not(.gx-leav
     return null;
   }
   // another popup (the free part's welcome, a sheet) is up: the tour waits
-  const busy = () => !!document.querySelector('.gx-layer:not(.gx-leaving), .td-dialog, #profile-settings-overlay, .update-sheet:not(.hidden)');
+  const busy = () => !!document.querySelector('.gx-layer:not(.gx-leaving), .td-dialog, #profile-settings-overlay, .update-sheet:not(.hidden), #dt-sheet');
 
   function stop(finished) {
     if (!_running) return;

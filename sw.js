@@ -1,4 +1,4 @@
-const SW_VERSION = 'v273';
+const SW_VERSION = 'v274';
 const CACHE_PREFIX = 'nkseduorbit';
 const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
@@ -56,6 +56,7 @@ const CORE_ASSETS = [
   './student-app/partnerEarnings.js',
   './student-app/referEarn.js',
   './student-app/studyPlan.js',
+  './student-app/digitalTeacher.js',
   './student-app/teacherPaperBuilder.js',
   './student-app/parentDashboard.js',
   './student-app/student-mobile.js',

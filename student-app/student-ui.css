@@ -5330,3 +5330,49 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .fw-text b { font-size: .92rem; }
 .fw-btn { flex: none; border: 0; border-radius: 10px; padding: 9px 12px; font-weight: 800; font-size: .85rem; cursor: pointer; color: #fff; background: var(--accent, #e16b13); }
 .fw-banner.over .fw-btn { background: #dc2626; }
+
+/* ── Personal Digital Teacher (digitalTeacher.js) ── */
+/* Home for a student: these moved into the teacher window / Me */
+#screen-home.dt-on #home-plan-card, #screen-home.dt-on #home-share-app-btn, #screen-home.dt-on #home-refer-card,
+#screen-home.dt-on .tc-card, #screen-home.dt-on .stats-grid, #screen-home.dt-on section[aria-label="Recent Attempts"] { display: none !important; }
+#screen-home.dt-on { padding-bottom: 110px; }
+.dt-svg { width: 100%; height: 100%; display: block; border-radius: 50%; }
+.dt-fab { position: fixed; right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(78px + env(safe-area-inset-bottom, 0px)); z-index: 900; display: flex; align-items: flex-end; gap: 8px; border: 0; background: transparent; padding: 0; cursor: pointer; }
+.dt-fab.hidden { display: none; }
+.dt-bub { background: var(--surface, #fff); color: var(--text1, var(--text, #1f2328)); border: 1px solid rgba(249,115,22,.45); border-radius: 14px 14px 4px 14px; padding: 7px 11px; font-size: .82rem; font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,.12); max-width: 190px; text-align: left; line-height: 1.3; }
+.dt-face { position: relative; width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--accent, #e16b13); background: #fde2c8; box-shadow: 0 8px 20px rgba(225,107,19,.4); animation: dtBob 3s ease-in-out infinite; }
+.dt-badge { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 99px; background: #dc2626; color: #fff; font-size: .74rem; font-weight: 800; display: grid; place-items: center; border: 2px solid var(--surface, #fff); }
+.dt-badge.hidden { display: none; }
+@keyframes dtBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.dt-sheet { position: fixed; inset: 0; z-index: 950; background: var(--bg, #f6f8fa); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); animation: dtUp .22s ease-out; }
+@keyframes dtUp { from { transform: translateY(24px); opacity: .5; } to { transform: none; opacity: 1; } }
+.dt-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface, #fff); box-shadow: 0 1px 0 var(--border, #e6e9ed); }
+.dt-hface { width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--accent, #e16b13); overflow: hidden; flex: none; }
+.dt-head div { flex: 1; min-width: 0; }
+.dt-head b { display: block; font-size: 1.05rem; }
+.dt-head small { color: var(--text2, #656d76); font-size: .78rem; }
+.dt-x { border: 1px solid var(--border, #d0d7de); background: var(--bg, #f6f8fa); color: inherit; border-radius: 12px; width: 40px; height: 40px; font-size: 1rem; cursor: pointer; }
+.dt-log { flex: 1; overflow-y: auto; padding: 12px 12px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px; max-width: 720px; width: 100%; margin: 0 auto; }
+.dt-msg { max-width: 88%; padding: 9px 12px; border-radius: 16px; font-size: .95rem; line-height: 1.45; overflow-wrap: anywhere; animation: dtPop .22s ease-out; }
+@keyframes dtPop { from { transform: translateY(6px); opacity: .4; } to { transform: none; opacity: 1; } }
+.dt-t { background: rgba(249,115,22,.08); border: 1px solid rgba(249,115,22,.35); border-bottom-left-radius: 4px; align-self: flex-start; }
+.dt-me { background: #1f6f5c; color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+.dt-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.dt-tiles div, .dt-task, .dt-card { background: var(--surface, #fff); border: 1px solid var(--border, #e6e9ed); border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.dt-tiles div { padding: 8px 10px; }
+.dt-tiles b { display: block; font-size: 1.35rem; color: var(--accent, #e16b13); line-height: 1.1; }
+.dt-tiles small { color: var(--text2, #656d76); font-size: .76rem; }
+.dt-task { padding: 10px 12px; display: flex; gap: 10px; align-items: center; animation: dtPop .22s ease-out; }
+.dt-task.done { opacity: .6; }
+.dt-ic { font-size: 1.35rem; }
+.dt-task div { flex: 1; min-width: 0; font-size: .92rem; }
+.dt-task small { display: block; color: var(--text2, #656d76); font-size: .76rem; }
+.dt-go, .dt-pill { border: 0; background: var(--accent, #e16b13); color: #fff; border-radius: 12px; padding: 8px 12px; font-weight: 800; font-size: .84rem; flex: none; cursor: pointer; }
+.dt-go:disabled { background: rgba(21,128,61,.14); color: #15803d; cursor: default; }
+.dt-pill.alt { background: transparent; color: var(--accent, #e16b13); border: 1.5px solid var(--accent, #e16b13); }
+.dt-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.dt-card { padding: 12px 14px; display: grid; gap: 6px; background: rgba(249,115,22,.08); border-color: rgba(249,115,22,.4); }
+.dt-card small { color: var(--text2, #656d76); }
+.dt-lab { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; }
+.dt-lab input { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border, #d0d7de); background: var(--surface, #fff); color: inherit; }
+@media (prefers-reduced-motion: reduce) { .dt-face, .dt-sheet, .dt-msg, .dt-task { animation: none; } }
