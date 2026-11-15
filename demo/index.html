@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NKs EduOrbit · Teacher Demo</title>
+<meta name="description" content="NKs EduOrbit Student app आणि Teacher app चा demo">
+<meta name="theme-color" content="#e16b13">
+<link rel="icon" href="/icons/icon-72.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap">
+<style>
+/* Standalone demo — no server. Only the login's name + number go to the team's CRM (Cloudflare worker). */
+:root { --bg:#f6f8fa; --surface:#fff; --ink:#1f2328; --muted:#656d76; --border:#e6e9ed; --border2:#d0d7de; --accent:#e16b13; --accent2:#c2410c;
+  --peach:rgba(249,115,22,.08); --peachline:rgba(249,115,22,.4); --ok:#15803d; --oksoft:#e4f4e9; --bad:#b42318; --badsoft:#fdecea; --me:#1f6f5c;
+  --shadow:0 1px 4px rgba(0,0,0,.08); --font:"Baloo 2","Noto Sans Devanagari",system-ui,sans-serif; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1216; --surface:#1a1f25; --ink:#e8ecf0; --muted:#9aa4ae; --border:#2b323a; --border2:#3a434d; --peach:rgba(249,115,22,.13); --oksoft:#173322; --badsoft:#3a1c1a; --ok:#4ade80; --bad:#f87171; --shadow:0 1px 4px rgba(0,0,0,.4); color-scheme: dark; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); line-height: 1.5; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.shell { max-width: 480px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+@media (min-width: 700px) { body { background: #e9ecef; } .shell { margin: 16px auto; min-height: calc(100% - 32px); border-radius: 26px; overflow: hidden; box-shadow: 0 18px 50px rgba(20,30,40,.18); } }
+.ribbon { background: #1f2328; color: #fff; display: flex; align-items: center; gap: 8px; padding: 6px 10px; padding-top: max(6px, env(safe-area-inset-top)); font-size: .8rem; }
+.ribbon b { background: #fcd34d; color: #1f2328; border-radius: 6px; padding: 0 7px; font-size: .74rem; letter-spacing: .05em; }
+.ribbon .sp { flex: 1; }
+.switch { display: flex; background: rgba(255,255,255,.12); border-radius: 99px; padding: 2px; }
+.switch button { border: 0; background: transparent; color: #fff; border-radius: 99px; padding: 3px 10px; font-size: .78rem; font-weight: 700; }
+.switch button.on { background: var(--accent); }
+.appbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); box-shadow: 0 1px 0 var(--border); position: sticky; top: 0; z-index: 3; }
+.appbar .back { border: 0; background: transparent; font-size: 1.3rem; padding: 0 4px; }
+.appbar .t { flex: 1; font-size: 1.05rem; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.page { flex: 1; overflow-y: auto; padding: 12px 12px 96px; display: flex; flex-direction: column; gap: 12px; }
+.nav { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--border); padding: 6px 0 max(8px, env(safe-area-inset-bottom)); z-index: 3; }
+.nav button { border: 0; background: transparent; display: grid; justify-items: center; font-size: .62rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+.nav button i { font-style: normal; font-size: 1.35rem; line-height: 1.15; }
+.nav button.on { color: var(--accent); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 14px; box-shadow: var(--shadow); }
+.lbl { font-size: .8rem; font-weight: 700; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+.btn { border: 0; background: var(--accent); color: #fff; border-radius: 12px; padding: 10px 14px; font-weight: 800; }
+.btn.alt { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+.btn.wide { width: 100%; }
+.btn:disabled { opacity: .5; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.muted { color: var(--muted); font-size: .86rem; }
+.toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #1f2328; color: #fff; border-radius: 12px; padding: 9px 14px; font-size: .88rem; z-index: 99; max-width: 90%; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+/* login */
+.login { padding: 28px 18px; display: grid; gap: 14px; }
+.login h1 { margin: 0; font-size: 1.6rem; line-height: 1.2; }
+.login .logo { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, var(--accent), #f59e0b); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 1.4rem; }
+.field { display: grid; gap: 4px; font-size: .86rem; font-weight: 700; }
+.field input { font: inherit; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--border2); background: var(--surface); color: var(--ink); }
+.feat { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.feat div { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px; font-size: .84rem; }
+.feat b { display: block; font-size: .95rem; }
+/* student home */
+.wk { border-radius: 20px; padding: 14px 16px; color: #fff; background: linear-gradient(135deg, #1b1340, #3b1d86 55%, #7b2ff7); box-shadow: 0 12px 28px rgba(59,29,134,.35); display: grid; gap: 4px; }
+.wk .tag { justify-self: start; background: #fcd34d; color: #3b1d86; border-radius: 99px; padding: 1px 10px; font-weight: 800; font-size: .82rem; }
+.wk button { margin-top: 6px; border: 0; border-radius: 14px; padding: 10px; font-weight: 800; background: linear-gradient(90deg, #f59e0b, #f97316); color: #fff; }
+.banner { border-radius: 20px; padding: 18px 16px; color: #fff; background: linear-gradient(135deg, #0f4c81, #1565c0 60%, #1e88e5); display: grid; gap: 4px; min-height: 110px; }
+.banner b { font-size: 1.2rem; line-height: 1.25; }
+.search { display: flex; gap: 10px; background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 10px 14px; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.batch { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 14px 12px; box-shadow: var(--shadow); display: grid; gap: 8px; text-align: center; }
+.thumb { border-radius: 12px; padding: 10px 8px; color: #fff; font-size: .74rem; font-weight: 700; text-align: left; display: grid; gap: 3px; }
+.list { display: grid; gap: 8px; }
+.item { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); text-align: left; width: 100%; }
+.item .ic { font-size: 1.5rem; }
+.item div { flex: 1; min-width: 0; }
+.item small { display: block; color: var(--muted); font-size: .8rem; }
+.hub { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hub button { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 6px; display: grid; justify-items: center; gap: 4px; font-weight: 700; font-size: .88rem; box-shadow: var(--shadow); }
+.hub button i { font-style: normal; font-size: 1.7rem; }
+/* notes / exercise / test */
+.note h3 { margin: 0 0 6px; font-size: 1.15rem; }
+.note ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.key { background: var(--peach); border: 1px solid var(--peachline); border-radius: 12px; padding: 10px 12px; font-size: .9rem; }
+.fig { background: #fff; border-radius: 12px; padding: 6px; display: flex; justify-content: center; border: 1px solid var(--border); }
+.fig svg { max-width: 100%; height: auto; display: block; }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.opt { border: 1.5px solid var(--border2); background: var(--surface); border-radius: 12px; padding: 10px; text-align: left; font-size: .92rem; display: flex; gap: 6px; align-items: center; }
+.opt svg { width: 54px; height: 54px; flex: none; background: #fff; border-radius: 8px; }
+.opt.sel { border-color: var(--accent); background: var(--peach); font-weight: 700; }
+.opt.right { border-color: var(--ok); background: var(--oksoft); }
+.opt.wrong { border-color: var(--bad); background: var(--badsoft); }
+.tp-top { display: flex; justify-content: space-between; font-size: .86rem; color: var(--muted); }
+.dots { display: flex; gap: 4px; flex-wrap: wrap; }
+.dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); }
+.dots i.d { background: var(--accent); }
+.big { font-size: 2.4rem; font-weight: 800; color: var(--accent); line-height: 1; }
+.sol { background: var(--oksoft); border-radius: 12px; padding: 10px 12px; font-size: .88rem; }
+/* digital teacher */
+.fab { position: fixed; z-index: 20; display: flex; align-items: flex-end; gap: 8px; border: 0; background: transparent; padding: 0; }
+.fab .bub { background: var(--surface); border: 1px solid var(--peachline); border-radius: 14px 14px 4px 14px; padding: 7px 11px; font-size: .82rem; font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,.12); max-width: 180px; text-align: left; line-height: 1.3; }
+.face { position: relative; width: 62px; height: 62px; border-radius: 50%; border: 3px solid var(--accent); background: #fde2c8; box-shadow: 0 8px 20px rgba(225,107,19,.4); animation: bob 3s ease-in-out infinite; flex: none; }
+.face svg, .hf svg { width: 100%; height: 100%; display: block; border-radius: 50%; }
+.badge { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; border-radius: 99px; background: #dc2626; color: #fff; font-size: .74rem; font-weight: 800; display: grid; place-items: center; border: 2px solid var(--surface); }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .face { animation: none; } }
+.chat { display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 88%; padding: 9px 12px; border-radius: 16px; font-size: .95rem; }
+.msg.t { background: var(--peach); border: 1px solid var(--peachline); border-bottom-left-radius: 4px; align-self: flex-start; }
+.msg.me { background: var(--me); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tiles div { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 10px; }
+.tiles b { display: block; font-size: 1.35rem; color: var(--accent); line-height: 1.1; }
+.tiles small { color: var(--muted); font-size: .76rem; }
+.task { display: flex; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; }
+.task div { flex: 1; min-width: 0; font-size: .92rem; font-weight: 600; }
+.task small { display: block; color: var(--muted); font-weight: 400; font-size: .76rem; }
+.task.done { opacity: .6; }
+.hf { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); overflow: hidden; flex: none; }
+/* teacher */
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+.tabs button { flex: none; border: 1px solid var(--border2); background: var(--bg); border-radius: 99px; padding: 6px 12px; font-size: .84rem; font-weight: 700; }
+.tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stu { display: flex; gap: 10px; align-items: center; }
+.av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; flex: none; }
+.bar { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.chk { display: flex; flex-wrap: wrap; gap: 6px; }
+.chk label { display: flex; gap: 6px; align-items: center; border: 1px solid var(--border2); border-radius: 99px; padding: 5px 11px; font-size: .86rem; background: var(--surface); }
+.paper { background: #fff; color: #111; border-radius: 12px; padding: 14px; border: 1px solid var(--border); font-size: .88rem; }
+.paper .ph { text-align: center; border-bottom: 3px double #1e3a8a; padding-bottom: 8px; margin-bottom: 10px; }
+.paper .q { margin-bottom: 10px; break-inside: avoid; }
+.paper .po { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; margin-top: 2px; }
+.paper svg { width: 46px; height: 46px; vertical-align: middle; }
+.paper .sf { margin: 4px 0; }
+.paper .sf svg { width: 100%; max-width: 300px; height: auto; }
+.qr { width: 150px; height: 150px; margin: 0 auto; background: #fff; padding: 8px; border-radius: 10px; }
+.sheet { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="shell" id="shell"></div>
+<script>
+(() => {
+'use strict';
+// ── config ──
+const LEAD_URL = 'https://nks-wa-bot.nageshkumbhar113.workers.dev/demo/lead';
+const KEY = 'nks_demo_v1';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+let ST = {}; try { ST = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { ST = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(ST)); } catch { /* private mode */ } };
+function toast(m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
+const DEMO_OFF = what => toast(`🎬 Demo मध्ये ${what} बंद आहे. खऱ्या app मध्ये हे चालतं.`);
+
+// ── pictures (drawn, no files) ──
+const S = (inner, vb = '0 0 100 100') => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+const ARROW = r => S(`<rect x="2" y="2" width="96" height="96" fill="#fff" stroke="#111" stroke-width="2"/><g transform="rotate(${r} 50 50)"><path d="M50 18 L70 44 L57 44 L57 82 L43 82 L43 44 L30 44 Z" fill="#111"/></g>`);
+const DOTS = n => S(`<rect x="2" y="2" width="96" height="96" fill="#fff" stroke="#111" stroke-width="2"/>${[[50,50],[25,25],[75,75],[75,25],[25,75],[50,25],[50,75],[25,50],[75,50]].slice(0, n).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8" fill="#111"/>`).join('')}`);
+const SHAPE = (k, fill) => S(`<rect x="2" y="2" width="96" height="96" fill="#fff" stroke="#111" stroke-width="2"/>${{ tri: `<polygon points="50,18 82,78 18,78" fill="${fill}" stroke="#111" stroke-width="3"/>`, sq: `<rect x="24" y="24" width="52" height="52" fill="${fill}" stroke="#111" stroke-width="3"/>`, circ: `<circle cx="50" cy="50" r="28" fill="${fill}" stroke="#111" stroke-width="3"/>`, pent: `<polygon points="50,18 82,42 70,80 30,80 18,42" fill="${fill}" stroke="#111" stroke-width="3"/>`, star: `<polygon points="50,14 59,40 86,40 64,56 72,84 50,67 28,84 36,56 14,40 41,40" fill="${fill}" stroke="#111" stroke-width="3"/>` }[k]}`);
+const FLAG = flip => S(`<rect x="2" y="2" width="96" height="96" fill="#fff" stroke="#111" stroke-width="2"/><g transform="${flip ? 'translate(100 0) scale(-1 1)' : ''}"><path d="M30 85 L30 15" stroke="#111" stroke-width="4"/><path d="M30 15 L72 28 L30 42 Z" fill="#111"/><circle cx="62" cy="70" r="7" fill="#111"/></g>`);
+const FRAC = (n, k) => S(Array.from({ length: n }, (_, i) => { const a0 = -Math.PI / 2 + i * 2 * Math.PI / n, a1 = a0 + 2 * Math.PI / n, p = a => `${(50 + 44 * Math.cos(a)).toFixed(1)},${(50 + 44 * Math.sin(a)).toFixed(1)}`; return `<path d="M50,50 L${p(a0)} A44,44 0 0,1 ${p(a1)} Z" fill="${i < k ? '#f59e0b' : '#fff'}" stroke="#111" stroke-width="2"/>`; }).join(''));
+const SERIES = arr => `<div class="fig">${S(arr.map((svg, i) => `<g transform="translate(${i * 105} 0)">${svg.replace(/^<svg[^>]*>|<\/svg>$/g, '')}</g>`).join('') + `<g transform="translate(${arr.length * 105} 0)"><rect x="2" y="2" width="96" height="96" fill="#fff" stroke="#111" stroke-width="2" stroke-dasharray="6 4"/><text x="50" y="66" font-size="52" text-anchor="middle" font-weight="700" fill="#111">?</text></g>`, `0 0 ${(arr.length + 1) * 105 - 5} 100`)}</div>`;
+const TEACHER = '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#fde2c8"/><path d="M10 64c2-13 11-19 22-19s20 6 22 19z" fill="#e16b13"/><path d="M26 45l6 7 6-7z" fill="#fff"/><rect x="28" y="38" width="8" height="8" rx="3" fill="#f2b98d"/><path d="M17 30c0-11 7-18 15-18s15 7 15 18c0 3-1 6-2 8-1-7-4-12-13-14-6 3-10 7-13 14-1-2-2-5-2-8z" fill="#3b2418"/><ellipse cx="32" cy="30" rx="11" ry="12.5" fill="#f6c39b"/><path d="M21 27c3-6 8-9 14-9 4 1 7 4 8 9-6-1-11-3-14-6-2 3-5 5-8 6z" fill="#3b2418"/><circle cx="32" cy="12" r="5" fill="#3b2418"/><g fill="none" stroke="#3b2418" stroke-width="1.6"><circle cx="27.5" cy="31" r="3.4"/><circle cx="36.5" cy="31" r="3.4"/><path d="M30.9 31h2.2"/></g><circle cx="27.5" cy="31" r="1.1" fill="#3b2418"/><circle cx="36.5" cy="31" r="1.1" fill="#3b2418"/><path d="M28.5 37q3.5 3 7 0" fill="none" stroke="#b4533a" stroke-width="1.6" stroke-linecap="round"/></svg>';
+
+// ── demo content (sample, written for the demo) ──
+const q = (text, opts, a, why, fig) => ({ text, opts, a, why, fig });
+const COURSES = [
+  { id: 'nmms', name: '8th NMMS', grad: 'linear-gradient(135deg,#f97316,#db2777)', meta: 'Exam · मराठी', subjects: [
+    { name: 'बुद्धिमत्ता', ic: '🧠', chapters: [
+      { name: 'आकृती मालिका', notes: { pts: ['प्रत्येक आकृतीत एकच बदल शोधा: फिरणे, संख्या वाढणे किंवा जागा बदलणे.', 'बाण किंवा चिन्ह किती अंश फिरले ते मोजा (90°, 180°, 45°).', 'तोच बदल पुढच्या पायरीला लावा.'], key: 'युक्ती: एका वेळी एकच चिन्ह पाहा.' },
+        ex: [['प्रत्येक पायरीत बाण 90° घड्याळाच्या दिशेने फिरतो. 4थ्या पायरीत बाण कोणत्या दिशेला असेल?', 'सुरुवात वर → उजवीकडे → खाली → डावीकडे. म्हणून 4थ्या पायरीत डावीकडे.']],
+        test: [
+          q('मालिकेत प्रश्नचिन्हाच्या जागी कोणती आकृती येईल?', [ARROW(270), ARROW(90), ARROW(180), ARROW(0)], 0, 'बाण दर वेळी 90° घड्याळाच्या दिशेने फिरतो: 0° → 90° → 180° → 270°.', SERIES([ARROW(0), ARROW(90), ARROW(180)])),
+          q('मालिकेत पुढची आकृती कोणती?', [DOTS(5), DOTS(4), DOTS(6), DOTS(3)], 0, 'ठिपके 2, 3, 4 असे एकेकाने वाढतात → 5.', SERIES([DOTS(2), DOTS(3), DOTS(4)])),
+          q('मालिका पूर्ण करा: 3, 6, 12, 24, ?', ['48', '36', '30', '42'], 0, 'प्रत्येक संख्या दुप्पट होते: 24 × 2 = 48.'),
+          q('A, C, F, J, ? या मालिकेत पुढचे अक्षर कोणते?', ['O', 'N', 'P', 'M'], 0, 'फरक +2, +3, +4, +5 → J + 5 = O.'),
+        ] },
+      { name: 'विसंगत आकृती', notes: { pts: ['चार आकृत्यांपैकी तीन एकाच नियमात बसतात, एक बसत नाही.', 'बाजूंची संख्या, भरलेले/पोकळ, आरशातील प्रतिमा हे नियम तपासा.'], key: 'युक्ती: आधी बाजू मोजा, मग रंग पाहा.' },
+        ex: [['त्रिकोण, चौरस, पंचकोन आणि वर्तुळ यांपैकी विसंगत कोणते?', 'वर्तुळाला सरळ बाजू नाहीत; बाकी सर्व बहुभुज आहेत.']],
+        test: [
+          q('विसंगत आकृती ओळखा.', [SHAPE('circ', '#fff'), SHAPE('tri', '#fff'), SHAPE('sq', '#fff'), SHAPE('pent', '#fff')], 0, 'वर्तुळाला सरळ बाजू नाहीत; बाकी सर्व बहुभुज.'),
+          q('विसंगत आकृती ओळखा.', [FLAG(true), FLAG(false), FLAG(false), FLAG(false)], 0, 'तीन झेंडे एकसारखे; पहिला आरशासारखा उलटा आहे.'),
+          q('गटात न बसणारी संख्या: 16, 25, 36, 42', ['42', '16', '25', '36'], 0, '16, 25, 36 या वर्गसंख्या आहेत; 42 नाही.'),
+        ] },
+      { name: 'सहसंबंध', notes: { pts: ['पहिल्या जोडीतील संबंध एका शब्दात सांगा.', 'तोच संबंध दुसऱ्या जोडीत लावा.'], key: 'उदा. डॉक्टर : दवाखाना :: शिक्षक : शाळा' },
+        ex: [['पुस्तक : वाचनालय :: औषध : ?', 'पुस्तके वाचनालयात मिळतात, तशी औषधे औषधालयात → औषधालय.']],
+        test: [
+          q('डॉक्टर : दवाखाना :: शिक्षक : ?', ['शाळा', 'शेत', 'न्यायालय', 'दुकान'], 0, 'व्यक्ती → कामाचे ठिकाण.'),
+          q('3 : 9 :: 5 : ?', ['25', '15', '10', '125'], 0, 'नियम: संख्येचा वर्ग. 5² = 25.'),
+          q('गाय : वासरू :: घोडा : ?', ['शिंगरू', 'करडू', 'पाडस', 'रेडकू'], 0, 'प्राणी → त्याचे पिल्लू.'),
+        ] },
+    ] },
+    { name: 'गणित', ic: '➗', chapters: [
+      { name: 'परिमेय संख्या', notes: { pts: ['p/q (q ≠ 0) रूपात लिहिता येणाऱ्या संख्या म्हणजे परिमेय संख्या.', 'दोन परिमेय संख्यांच्या मध्ये असंख्य परिमेय संख्या असतात.', 'बेरीज करताना छेद समान करा.'], key: 'a/b + c/d = (ad + bc) / bd' },
+        ex: [['2/3 + 1/4 = ?', 'छेद 12: 8/12 + 3/12 = 11/12.']],
+        test: [
+          q('2/3 + 1/4 = ?', ['11/12', '3/7', '3/12', '9/12'], 0, 'छेद 12: 8/12 + 3/12 = 11/12.'),
+          q('खालीलपैकी परिमेय संख्या कोणती?', ['7/9', '√2', 'π', '√5'], 0, '7/9 हे p/q रूपात आहे.'),
+          q('−3/5 चा गुणाकार व्यस्त कोणता?', ['−5/3', '5/3', '3/5', '−3/5'], 0, 'गुणाकार व्यस्त: अंश-छेद उलटे, चिन्ह तेच.'),
+        ] },
+    ] },
+  ] },
+  { id: 'sch4', name: '4th Scholarship', grad: 'linear-gradient(135deg,#0ea5e9,#6366f1)', meta: 'Exam · मराठी', subjects: [
+    { name: 'गणित', ic: '🔢', chapters: [
+      { name: 'अपूर्णांक', notes: { pts: ['अपूर्णांक = भाग / एकूण भाग.', 'छेद समान असेल तर अंश मोठा तो अपूर्णांक मोठा.', 'अंश व छेद दोघांना एकाच संख्येने गुणल्यास सममूल्य अपूर्णांक मिळतो.'], key: '1/2 = 2/4 = 3/6' },
+        ex: [['आकृतीतील रेखांकित भाग किती?', '8 भागांपैकी 3 रेखांकित → 3/8.']],
+        test: [
+          q('आकृतीतील रेखांकित भागाचा अपूर्णांक कोणता?', ['3/8', '5/8', '3/5', '1/3'], 0, '8 समान भागांपैकी 3 रेखांकित → 3/8.', `<div class="fig">${FRAC(8, 3)}</div>`),
+          q('खालीलपैकी सर्वांत मोठा अपूर्णांक कोणता?', ['5/7', '3/7', '2/7', '4/7'], 0, 'छेद समान; अंश सर्वांत मोठा 5.'),
+          q('48 ची 3/4 पट किती?', ['36', '12', '32', '24'], 0, '48 ÷ 4 = 12; 12 × 3 = 36.'),
+        ] },
+      { name: 'नफा-तोटा', notes: { pts: ['विक्री > खरेदी → नफा = विक्री − खरेदी.', 'खरेदी > विक्री → तोटा = खरेदी − विक्री.', 'दुरुस्ती खर्च खरेदीत मिळवावा.'], key: 'एकूण खरेदी = खरेदी + खर्च' },
+        ex: [['₹450 ला घेतलेली सायकल ₹520 ला विकली. नफा किती?', '520 − 450 = ₹70 नफा.']],
+        test: [
+          q('₹4700 ला गाडी घेतली, ₹250 दुरुस्ती केली आणि ₹5500 ला विकली. नफा किती?', ['₹550', '₹800', '₹500', '₹750'], 0, 'एकूण खरेदी 4950; 5500 − 4950 = 550.'),
+          q('₹80 चे पेन ₹65 ला विकले तर?', ['₹15 तोटा', '₹15 नफा', '₹25 तोटा', '₹65 नफा'], 0, 'खरेदी जास्त → तोटा 80 − 65 = 15.'),
+        ] },
+    ] },
+    { name: 'बुद्धिमत्ता', ic: '🧩', chapters: [
+      { name: 'दिशा', notes: { pts: ['उजवीकडे वळणे = घड्याळाच्या दिशेने 90°.', 'उत्तर → पूर्व → दक्षिण → पश्चिम हा घड्याळाचा क्रम.'], key: 'उत्तरेकडे तोंड: उजवा हात पूर्वेकडे.' },
+        ex: [['सोहम उत्तरेकडे तोंड करून उभा आहे. तो उजवीकडे वळला. आता तोंड कुठे?', 'उत्तर → (उजवीकडे) पूर्व.']],
+        test: [
+          q('रशीद पूर्वेकडे तोंड करून उभा आहे. तो डावीकडे काटकोनात वळला. आता तोंड कुठे?', ['उत्तर', 'दक्षिण', 'पश्चिम', 'पूर्व'], 0, 'पूर्व → (डावीकडे) उत्तर.'),
+          q('दक्षिणेकडे तोंड असताना उजव्या हाताकडे कोणती दिशा?', ['पश्चिम', 'पूर्व', 'उत्तर', 'दक्षिण'], 0, 'दक्षिणेकडे तोंड: उजवा हात पश्चिमेकडे.'),
+        ] },
+    ] },
+  ] },
+];
+const allChapters = c => c.subjects.flatMap(s => s.chapters.map(ch => ({ s, ch })));
+
+// ── shared frame ──
+function frame(app, inner, { title = '', back = null, nav = true } = {}) {
+  $('#shell').innerHTML = `
+    <div class="ribbon"><b>DEMO</b><span>${esc(ST.name || '')}</span><span class="sp"></span>
+      <div class="switch" role="tablist" aria-label="App"><button type="button" class="${app === 's' ? 'on' : ''}" data-app="s">🎓 Student</button><button type="button" class="${app === 't' ? 'on' : ''}" data-app="t">👩‍🏫 Teacher</button></div></div>
+    ${title || back ? `<div class="appbar">${back ? '<button type="button" class="back" data-back aria-label="मागे">←</button>' : ''}<div class="t">${esc(title)}</div><span class="muted">🔊</span></div>` : ''}
+    ${inner}
+    ${app === 's' && nav ? `<div class="nav">${[['home', '🏠', 'Home'], ['notes', '📄', 'Notes'], ['exercise', '📝', 'Exercise'], ['words', '📚', 'Words'], ['me', '👤', 'Me']].map(([k, i, l]) => `<button type="button" class="${ST.tab === k ? 'on' : ''}" data-tab="${k}"><i>${i}</i>${l}</button>`).join('')}</div>` : ''}`;
+  $('#shell').querySelectorAll('[data-app]').forEach(b => b.onclick = () => { ST.app = b.dataset.app; save(); route(); });
+  $('#shell').querySelector('[data-back]')?.addEventListener('click', () => back());
+  $('#shell').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { ST.tab = b.dataset.tab; save(); studentTab(); });
+  window.scrollTo(0, 0);
+  placeFab();
+}
+
+// ── login: name + number → the team's CRM ──
+function login() {
+  $('#shell').innerHTML = `
+    <div class="login">
+      <div class="logo">NK</div>
+      <h1>NKs EduOrbit<br><span style="color:var(--accent)">Teacher Demo</span></h1>
+      <p class="muted" style="margin:0">Student app आणि Teacher app चे features एकाच ठिकाणी पाहा. हा demo तुमच्या phone वरच चालतो.</p>
+      <div class="feat">
+        <div><b>🧑‍🏫 Personal Digital Teacher</b>रोजचा अभ्यास स्वतः करवून घेतो</div>
+        <div><b>🧩 आकृती प्रश्न</b>NMMS / शिष्यवृत्ती पॅटर्न</div>
+        <div><b>🏆 महा-Test</b>दर रविवारी rank</div>
+        <div><b>📄 एका click मध्ये paper</b>Teacher साठी PDF</div>
+      </div>
+      <form id="lf" class="card" style="display:grid;gap:10px" novalidate>
+        <label class="field">तुमचे नाव<input id="ln" autocomplete="name" placeholder="उदा. पाटील सर" required></label>
+        <label class="field">Mobile number<input id="lm" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="10 अंकी number" required></label>
+        <label class="field">शाळा / Classes (optional)<input id="ls" placeholder="उदा. ज्ञानदीप Classes"></label>
+        <p class="muted" style="margin:0">Demo नंतर आमची team तुम्हाला call करू शकते.</p>
+        <p id="le" class="muted" style="margin:0;color:var(--bad)" role="alert"></p>
+        <button class="btn wide" type="submit">▶ Demo सुरू करा</button>
+      </form>
+    </div>`;
+  $('#lf').onsubmit = e => {
+    e.preventDefault();
+    const name = $('#ln').value.trim(), mob = $('#lm').value.replace(/\D/g, '').slice(-10), school = $('#ls').value.trim();
+    if (!name) return ($('#le').textContent = 'नाव लिहा');
+    if (!/^[6-9]\d{9}$/.test(mob)) return ($('#le').textContent = 'बरोबर 10 अंकी mobile number लिहा');
+    Object.assign(ST, { name, mobile: mob, school, app: 's', tab: 'home', sent: false, freeDay: 3 });
+    save(); sendLead(); route();
+  };
+}
+function sendLead() {
+  if (ST.sent || !ST.mobile || LEAD_URL.includes('WORKER_SUBDOMAIN')) return;
+  fetch(LEAD_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: ST.name, mobile: ST.mobile, school: ST.school }) })
+    .then(r => r.json()).then(d => { if (d && d.success) { ST.sent = true; save(); } }).catch(() => { /* offline: tried again next time */ });
+}
+
+// ── STUDENT APP ──
+function studentTab() {
+  const t = ST.tab || 'home';
+  if (t === 'home') return sHome();
+  if (t === 'notes' || t === 'exercise') return sCourses(t);
+  if (t === 'words') return sWords();
+  return sMe();
+}
+function sHome() {
+  frame('s', `<div class="page">
+    <div class="wk"><span class="tag">🏆 महा-Test</span><b>बुद्धिमत्ता · 20 प्रश्न · 20 मिनिटं</b><span style="font-size:.85rem;opacity:.9">📅 रविवारी 11 वाजता · सुरू व्हायला 2 दिवस</span><button type="button" id="mt">${ST.mtReg ? '🏆 मागच्या आठवड्याचा Result पाहा' : '✍️ Register करा (Free)'}</button></div>
+    <div class="banner"><b>रोज थोडा अभ्यास, मोठं यश.</b><small>NKs EduOrbit</small></div>
+    ${ST.freeDay ? `<div class="card" style="background:var(--peach);border-color:var(--peachline)"><b>🎁 मोफत वापर: अजून ${6 - ST.freeDay} दिवस</b><div class="muted">त्यानंतर Notes आणि Tests साठी Course घ्यावा लागेल.</div></div>` : ''}
+    <div class="search">🔍 Question किंवा Concept शोधा…</div>
+    <div class="lbl">📚 Classes</div>
+    <div class="grid2">${COURSES.map(c => `<button type="button" class="batch" data-c="${c.id}"><div class="thumb" style="background:${c.grad}">${esc(c.meta)}<span>📚 ${c.subjects.length} विषय · ${allChapters(c).length} धडे</span></div><b>${esc(c.name)}</b></button>`).join('')}</div>
+  </div>`, { title: 'Home' });
+  $('#mt').onclick = () => { if (!ST.mtReg) { ST.mtReg = true; save(); toast('✅ Registered! (demo: result लगेच दाखवतो)'); sHome(); } else mahaResult(); };
+  $('#shell').querySelectorAll('[data-c]').forEach(b => b.onclick = () => sCourse(b.dataset.c));
+}
+function sCourses(kind) {
+  frame('s', `<div class="page"><div class="lbl">${kind === 'notes' ? '📄 Notes' : '📝 Exercise'} · Class निवडा</div><div class="list">${COURSES.map(c => `<button type="button" class="item" data-c="${c.id}"><span class="ic">🎓</span><div><b>${esc(c.name)}</b><small>${c.subjects.map(s => s.name).join(' · ')}</small></div>›</button>`).join('')}</div></div>`, { title: kind === 'notes' ? 'Notes' : 'Exercise' });
+  $('#shell').querySelectorAll('[data-c]').forEach(b => b.onclick = () => sCourse(b.dataset.c));
+}
+function sCourse(cid) {
+  const c = COURSES.find(x => x.id === cid);
+  frame('s', `<div class="page"><div class="lbl">विषय</div><div class="list">${c.subjects.map((s, i) => `<button type="button" class="item" data-s="${i}"><span class="ic">${s.ic}</span><div><b>${esc(s.name)}</b><small>${s.chapters.length} धडे</small></div>›</button>`).join('')}</div></div>`, { title: c.name, back: studentTab });
+  $('#shell').querySelectorAll('[data-s]').forEach(b => b.onclick = () => sSubject(cid, +b.dataset.s));
+}
+function sSubject(cid, si) {
+  const c = COURSES.find(x => x.id === cid), s = c.subjects[si];
+  frame('s', `<div class="page"><div class="lbl">धडे</div><div class="list">${s.chapters.map((ch, i) => `<button type="button" class="item" data-ch="${i}"><span class="ic">📖</span><div><b>${esc(ch.name)}</b><small>Notes · Exercise · ${ch.test.length} प्रश्नांचा Test</small></div>›</button>`).join('')}</div></div>`, { title: s.name, back: () => sCourse(cid) });
+  $('#shell').querySelectorAll('[data-ch]').forEach(b => b.onclick = () => sHub(cid, si, +b.dataset.ch));
+}
+function sHub(cid, si, ci, after) {
+  const ch = COURSES.find(x => x.id === cid).subjects[si].chapters[ci], back = after || (() => sSubject(cid, si));
+  frame('s', `<div class="page"><div class="card"><b style="font-size:1.1rem">${esc(ch.name)}</b><div class="muted">इथून सुरू करा</div></div>
+    <div class="hub"><button type="button" data-k="n"><i>📒</i>Notes</button><button type="button" data-k="e"><i>✍️</i>Exercise</button><button type="button" data-k="t"><i>📝</i>Test</button></div></div>`, { title: ch.name, back });
+  const again = () => sHub(cid, si, ci, after);
+  $('#shell').querySelector('[data-k="n"]').onclick = () => sNotes(ch, again);
+  $('#shell').querySelector('[data-k="e"]').onclick = () => sExercise(ch, again);
+  $('#shell').querySelector('[data-k="t"]').onclick = () => sTest(ch, again);
+}
+function sNotes(ch, back) {
+  frame('s', `<div class="page"><div class="card note"><h3>📒 ${esc(ch.name)}</h3><ul>${ch.notes.pts.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div><div class="key">🔑 ${esc(ch.notes.key)}</div>
+    <button type="button" class="btn alt" id="tts">🔊 मोठ्याने वाचून दाखवा</button><button type="button" class="btn" id="done">✓ वाचलं</button></div>`, { title: 'Notes', back, nav: false });
+  $('#tts').onclick = () => { try { const u = new SpeechSynthesisUtterance(ch.notes.pts.join('. ')); u.lang = 'mr-IN'; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { DEMO_OFF('आवाज'); } };
+  $('#done').onclick = () => { try { speechSynthesis.cancel(); } catch { /* */ } back({ notes: true }); };
+}
+function sExercise(ch, back) {
+  frame('s', `<div class="page">${ch.ex.map(([qq, a], i) => `<div class="card"><b>प्रश्न ${i + 1}.</b> ${esc(qq)}<div style="margin-top:8px"><button type="button" class="btn alt" data-show="${i}">उत्तर दाखवा</button></div><div class="sol" data-ans="${i}" hidden>✅ ${esc(a)}</div></div>`).join('')}
+    <p class="muted">आधी स्वतः उत्तर लिहा, मग "उत्तर दाखवा" दाबून तपासा. ✍️</p></div>`, { title: 'Exercise', back, nav: false });
+  $('#shell').querySelectorAll('[data-show]').forEach(b => b.onclick = () => { $(`[data-ans="${b.dataset.show}"]`).hidden = false; b.remove(); });
+}
+function sTest(ch, back, onDone) {
+  const qs = ch.test.map(x => { const order = shuffle([0, 1, 2, 3].slice(0, x.opts.length)); return { ...x, order }; });
+  let i = 0, score = 0; const ans = [];
+  const draw = () => {
+    const x = qs[i];
+    frame('s', `<div class="page">
+      <div class="tp-top"><span>प्रश्न ${i + 1}/${qs.length}</span><span>⏱ 00:${String(30 - (i * 3) % 30).padStart(2, '0')}</span></div>
+      <div class="dots">${qs.map((_, k) => `<i class="${k < i ? 'd' : ''}"></i>`).join('')}</div>
+      <div class="card"><b>${esc(x.text)}</b></div>${x.fig || ''}
+      <div class="opts">${x.order.map((o, k) => `<button type="button" class="opt" data-o="${o}"><b>${'ABCD'[k]})</b>${String(x.opts[o]).startsWith('<svg') ? x.opts[o] : esc(x.opts[o])}</button>`).join('')}</div>
+      <div id="fb"></div></div>`, { title: ch.name + ' · Test', back, nav: false });
+    $('#shell').querySelectorAll('[data-o]').forEach(b => b.onclick = () => {
+      if ($('#fb').innerHTML) return;
+      const o = +b.dataset.o, ok = o === x.a; if (ok) score++; ans.push(ok);
+      $('#shell').querySelectorAll('[data-o]').forEach(z => { if (+z.dataset.o === x.a) z.classList.add('right'); else if (z === b) z.classList.add('wrong'); });
+      $('#fb').innerHTML = `<div class="sol" style="${ok ? '' : 'background:var(--badsoft)'}">${ok ? '✅ बरोबर!' : '❌ चूक.'} 💡 ${esc(x.why)}</div><button type="button" class="btn wide" id="nx" style="margin-top:8px">${i < qs.length - 1 ? 'पुढचा प्रश्न ▶' : 'Result पाहा'}</button>`;
+      $('#nx').onclick = () => { i++; if (i < qs.length) draw(); else result(); };
+    });
+  };
+  const result = () => {
+    const pct = Math.round(score * 100 / qs.length);
+    frame('s', `<div class="page"><div class="card" style="text-align:center;display:grid;gap:6px"><div class="big">${score}/${qs.length}</div><b>${pct >= 80 ? 'शाब्बास! 🎉' : pct >= 50 ? 'छान प्रयत्न! 💪' : 'पुन्हा प्रयत्न करूया 🙂'}</b><div class="muted">वर्गात तुमचा क्रमांक: #${Math.max(1, 12 - score * 2)} / 48</div></div>
+      <button type="button" class="btn wide" id="ok">पूर्ण</button></div>`, { title: 'Result', back, nav: false });
+    $('#ok').onclick = () => back({ score, total: qs.length });
+  };
+  draw();
+}
+function sWords() {
+  const W = [['Brave', 'धाडसी'], ['Honest', 'प्रामाणिक'], ['Journey', 'प्रवास'], ['Curious', 'जिज्ञासू']];
+  frame('s', `<div class="page"><div class="lbl">📚 आजचे शब्द</div>${W.map(([e, m]) => `<div class="card row" style="justify-content:space-between"><b style="font-size:1.1rem">${e}</b><span class="muted">${m}</span></div>`).join('')}<button type="button" class="btn" id="wt">📝 Word Test द्या</button></div>`, { title: 'Words' });
+  $('#wt').onclick = () => toast('🎬 Word Test: खऱ्या app मध्ये रोज नवीन शब्द आणि test.');
+}
+function sMe() {
+  frame('s', `<div class="page"><div class="card" style="text-align:center;display:grid;gap:4px"><div class="av" style="background:var(--accent);margin:0 auto;width:56px;height:56px;font-size:1.4rem">${esc((ST.name || 'S')[0])}</div><b>${esc(ST.name || 'Student')}</b><span class="muted">Code: DEMO123 · 8th NMMS</span></div>
+    <button type="button" class="btn alt" data-x="analytics">📊 माझे Analytics</button><button type="button" class="btn alt" data-x="teachers">👩‍🏫 माझे Teachers</button><button type="button" class="btn alt" data-x="board">🖥️ Board Mode</button><button type="button" class="btn" data-x="buy">🔓 Course घ्या</button>
+    <button type="button" class="btn alt" id="out">↩ Demo मधून बाहेर</button></div>`, { title: 'Me' });
+  $('#shell').querySelectorAll('[data-x]').forEach(b => b.onclick = () => b.dataset.x === 'buy' ? subscribe() : b.dataset.x === 'analytics' ? analytics() : DEMO_OFF(b.textContent.trim()));
+  $('#out').onclick = () => { localStorage.removeItem(KEY); ST = {}; route(); };
+}
+function analytics() {
+  const rows = [['आकृती मालिका', 85], ['विसंगत आकृती', 70], ['सहसंबंध', 62], ['परिमेय संख्या', 45]];
+  frame('s', `<div class="page"><div class="card"><b>📊 धड्यांनुसार गुण</b>${rows.map(([n, p]) => `<div style="margin-top:8px"><div class="row" style="justify-content:space-between"><span>${n}</span><b>${p}%</b></div><div class="bar"><span style="width:${p}%;background:${p >= 70 ? 'var(--ok)' : p >= 50 ? 'var(--accent)' : 'var(--bad)'}"></span></div></div>`).join('')}</div>
+    <div class="card"><b>💡 सुचवलेला सराव</b><div class="muted">परिमेय संख्या: Notes पुन्हा वाचा, मग test द्या.</div></div></div>`, { title: 'Analytics', back: sMe, nav: false });
+}
+function subscribe() {
+  frame('s', `<div class="page"><div class="card" style="display:grid;gap:8px"><b style="font-size:1.15rem">🔓 पूर्ण Access घ्या · 8th NMMS</b>
+    <div class="item"><div><b>Monthly</b><small>सगळे Notes, Tests, महा-Test उत्तरं</small></div><b>₹149</b></div>
+    <div class="item"><div><b>Yearly</b><small>सर्वांत स्वस्त</small></div><b>₹499</b></div>
+    <button type="button" class="btn wide" id="pay">💳 आत्ता Subscribe करा</button></div></div>`, { title: 'Subscribe', back: studentTab, nav: false });
+  $('#pay').onclick = () => DEMO_OFF('payment');
+}
+function mahaResult() {
+  const rows = [['आदिती', 20], ['रोहन', 19], [ST.name || 'तुम्ही', 18, 1], ['समीर', 17], ['प्रिया', 16]];
+  frame('s', `<div class="page"><div class="wk" style="text-align:center"><span class="tag" style="justify-self:center">🏆 महा-Test · बुद्धिमत्ता</span><div style="font-size:2.6rem">🥉</div><div>312 students पैकी तुमचा क्रमांक</div><b>🎯 18/20</b></div>
+    <div class="card"><b>🏆 Rank Board</b>${rows.map(([n, s, me], k) => `<div class="row" style="justify-content:space-between;padding:6px 0;${me ? 'font-weight:800;color:var(--accent)' : ''}"><span>${['🥇', '🥈', '🥉', '#4', '#5'][k]} ${esc(n)}${me ? ' (तुम्ही)' : ''}</span><b>${s}/20</b></div>`).join('')}</div>
+    <button type="button" class="btn wide" id="ans">🔒 बरोबर उत्तरं आणि उकल पाहण्यासाठी Course घ्या</button></div>`, { title: 'महा-Test Result', back: sHome, nav: false });
+  $('#ans').onclick = subscribe;
+}
+
+// ── Personal Digital Teacher ──
+function placeFab() {
+  document.getElementById('fab')?.remove();
+  if (ST.app !== 's' || (ST.tab || 'home') !== 'home' || !$('.nav')) return;
+  const left = TASKS.filter(t => !(ST.dtDone || []).includes(t.id)).length;
+  const f = document.createElement('button');
+  f.type = 'button'; f.id = 'fab'; f.className = 'fab'; f.setAttribute('aria-label', 'Personal Digital Teacher उघडा');
+  f.innerHTML = `<span class="bub">${left ? `Welcome back! आज ${left} ${left === 1 ? 'काम' : 'कामं'} 👋` : 'आजचं सगळं पूर्ण 🔥'}</span><span class="face">${TEACHER}${left ? `<span class="badge">${left}</span>` : ''}</span>`;
+  const shell = $('#shell').getBoundingClientRect();
+  f.style.right = `${Math.max(14, window.innerWidth - shell.right + 14)}px`;
+  f.style.bottom = '84px';
+  f.onclick = () => teacher();
+  document.body.appendChild(f);
+}
+const TASKS = [
+  { id: 'n', ic: '📓', title: 'Notes: आकृती मालिका', sub: 'बुद्धिमत्ता · धडा 1', kind: 'notes' },
+  { id: 't', ic: '📝', title: 'Test: आकृती मालिका', sub: '4 प्रश्न', kind: 'test' },
+  { id: 'e', ic: '✍️', title: 'Exercise: विसंगत आकृती', sub: 'बुद्धिमत्ता · धडा 2', kind: 'ex' },
+];
+function teacher(reaction) {
+  document.getElementById('fab')?.remove();
+  const done = ST.dtDone || [], left = TASKS.filter(t => !done.includes(t.id));
+  const h = new Date().getHours(), g = h < 12 ? '☀️ सुप्रभात' : h < 17 ? '🙏 नमस्कार' : h < 21 ? '🌇 शुभ संध्या' : '🌙 शुभरात्री';
+  const nm = (ST.name || '').split(/\s+/)[0];
+  const html = `<div class="sheet" id="dt"><div class="appbar"><span class="hf">${TEACHER}</span><div class="t">Personal Digital Teacher<br><span class="muted" style="font-weight:400">आजचा अभ्यास · ${done.length}/${TASKS.length}</span></div><button type="button" class="btn alt" id="dtx" aria-label="बंद करा">✕</button></div>
+    <div class="page chat">
+      ${!ST.planMade ? `<div class="msg t">नमस्कार ${esc(nm)}! 😊 मी तुमचा Personal Digital Teacher. रोज काय अभ्यास करायचा ते मी सांगेन आणि Study Plan मीच सांभाळेन.</div><div class="msg t">तुमची परीक्षा <b>NMMS, 21 डिसेंबर</b> ला आहे ना?</div><div class="row"><button type="button" class="btn" id="plan">हो, बरोबर</button></div>`
+      : `<div class="msg t">${g} ${esc(nm)}! Welcome back 👋 ${left.length ? `आज ${left.length} ${left.length === 1 ? 'काम आहे' : 'कामं आहेत'}.` : 'आजचं सगळं झालं 🔥'}</div>
+      <div class="tiles"><div><b>36</b><small>NMMS ला दिवस</small></div><div><b>${6 - (ST.freeDay || 3)}</b><small>मोफत दिवस उरले</small></div></div>
+      ${(ST.dtLog || []).map(m => `<div class="msg t">${m}</div>`).join('')}${reaction ? `<div class="msg t">${reaction}</div>` : ''}
+      <div class="msg t">${left.length ? (done.length ? 'उरलेली कामं 👇' : 'चला, आजचा अभ्यास सुरू करूया 👇') : 'आजची कामं ✓'}</div>
+      ${TASKS.map(t => `<div class="task${done.includes(t.id) ? ' done' : ''}"><span style="font-size:1.35rem">${t.ic}</span><div>${t.title}<small>${t.sub}</small></div><button type="button" class="btn" data-task="${t.id}" ${done.includes(t.id) ? 'disabled' : ''}>${done.includes(t.id) ? '✓ झालं' : t.kind === 'test' ? 'सुरू करा' : 'उघडा'}</button></div>`).join('')}
+      ${!left.length ? `<div class="msg t">आजचं सगळं पूर्ण! 🔥 सलग 4 दिवस. मित्रांनाही हे app दाखवा? 📤</div><div class="row"><button type="button" class="btn" id="share">📤 मित्रांना App Share करा</button></div>` : '<div class="msg t">🎁 मित्रांनी तुमच्या code ने app घेतलं तर बक्षीस मिळतं! <b>Refer & Earn</b></div>'}
+      <div class="msg t">🏆 महा-Test रविवारी 11 वाजता आहे.</div>`}
+    </div></div>`;
+  document.getElementById('dt')?.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  const close = () => { document.getElementById('dt')?.remove(); placeFab(); };
+  $('#dtx').onclick = close;
+  $('#plan')?.addEventListener('click', () => { ST.planMade = true; ST.dtLog = ['Plan तयार ✓ रोज 3 कामं. परीक्षेपर्यंत सगळे धडे पूर्ण होतील. 💪']; save(); teacher(); });
+  $('#share')?.addEventListener('click', () => DEMO_OFF('WhatsApp share'));
+  document.querySelectorAll('#dt [data-task]').forEach(b => b.onclick = () => {
+    const t = TASKS.find(x => x.id === b.dataset.task), ch = COURSES[0].subjects[0].chapters[t.id === 'e' ? 1 : 0];
+    close();
+    const backTo = res => {
+      if (!res) { ST.dtLog = [...(ST.dtLog || []), 'ठीक आहे, नंतर पूर्ण करू. ते काम इथेच आहे 👇'].slice(-6); save(); ST.tab = 'home'; sHome(); return teacher(); }
+      ST.dtDone = [...new Set([...(ST.dtDone || []), t.id])];
+      const line = t.kind === 'notes' ? 'Notes झाले ✓ छान! आता त्यावरचा test 👇' : t.kind === 'ex' ? 'Exercise झाला ✓ छान!' : (res && res.total ? (res.score / res.total >= .8 ? `शाब्बास! 🎉 ${res.score}/${res.total} गुण.` : res.score / res.total >= .5 ? `छान प्रयत्न! ${res.score}/${res.total}. चुकलेले प्रश्न एकदा पाहा 💪` : `हरकत नाही. ${res.score}/${res.total}. आधी Notes पुन्हा वाचू, मग test परत 👇`) : 'ठीक आहे, नंतर पूर्ण करू.');
+      if (res && res.total && res.score / res.total < .5) ST.dtDone = ST.dtDone.filter(x => x !== 't' && x !== 'n');
+      ST.dtLog = [...(ST.dtLog || []), line].slice(-6); save();
+      ST.tab = 'home'; sHome(); teacher();
+    };
+    if (t.kind === 'notes') sNotes(ch, backTo); else if (t.kind === 'ex') sExercise(ch, () => backTo({})); else sTest(ch, backTo);
+  });
+}
+
+// ── TEACHER APP ──
+const STUDENTS = [['आर्यन पाटील', 82, '#f97316'], ['सई जाधव', 91, '#16a34a'], ['ओम शिंदे', 64, '#6366f1'], ['प्रिया कदम', 47, '#db2777'], ['रोहन माने', 73, '#0ea5e9'], ['आदिती गायकवाड', 88, '#a16207']];
+function tApp(tab) {
+  ST.ttab = tab || ST.ttab || 'students'; save();
+  const T = [['students', '👨‍🎓 Students'], ['analytics', '📊 Analytics'], ['paper', '📄 Paper'], ['notify', '🔔 Notify'], ['share', '📤 Share'], ['fee', '💰 Fee']];
+  frame('t', `<div class="tabs">${T.map(([k, l]) => `<button type="button" class="${ST.ttab === k ? 'on' : ''}" data-tt="${k}">${l}</button>`).join('')}</div><div class="page" id="tp"></div>`, { title: `👩‍🏫 ${ST.name || 'Teacher'} · Teacher app` });
+  $('#shell').querySelectorAll('[data-tt]').forEach(b => b.onclick = () => tApp(b.dataset.tt));
+  ({ students: tStudents, analytics: tAnalytics, paper: tPaper, notify: tNotify, share: tShare, fee: tFee })[ST.ttab]();
+}
+function tStudents() {
+  $('#tp').innerHTML = `<div class="muted">तुमच्या वर्गातील students (नमुना)</div>${STUDENTS.map(([n, p, c], i) => `<button type="button" class="item" data-st="${i}"><div class="av" style="background:${c}">${n[0]}</div><div><b>${n}</b><small>8th NMMS · 12 tests · शेवटचा अभ्यास: आज</small><div class="bar" style="margin-top:4px"><span style="width:${p}%;background:${p >= 70 ? 'var(--ok)' : p >= 50 ? 'var(--accent)' : 'var(--bad)'}"></span></div></div><b>${p}%</b></button>`).join('')}`;
+  $('#tp').querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+    const [n, p, c] = STUDENTS[+b.dataset.st];
+    $('#tp').innerHTML = `<div class="card stu"><div class="av" style="background:${c}">${n[0]}</div><div><b>${n}</b><div class="muted">सरासरी ${p}% · Study Plan 4/5 दिवस</div></div></div>
+      <div class="card"><b>📝 शेवटचे tests</b>${[['आकृती मालिका', 9], ['सहसंबंध', 7], ['परिमेय संख्या', 5]].map(([t, s]) => `<div class="row" style="justify-content:space-between;padding:5px 0"><span>${t}</span><b>${s}/10</b></div>`).join('')}</div>
+      <div class="card"><b>⚠️ कमजोर धडा</b><div class="muted">परिमेय संख्या — सराव सुचवा</div><button type="button" class="btn" style="margin-top:8px" id="nudge">🔔 ${n.split(' ')[0]} ला सराव पाठवा</button></div>
+      <button type="button" class="btn alt" id="bk">← Students</button>`;
+    $('#nudge').onclick = () => DEMO_OFF('notification पाठवणे');
+    $('#bk').onclick = tStudents;
+  });
+}
+function tAnalytics() {
+  const ch = [['आकृती मालिका', 78], ['विसंगत आकृती', 71], ['सहसंबंध', 66], ['परिमेय संख्या', 52]];
+  $('#tp').innerHTML = `<div class="tiles"><div><b>6</b><small>Students</small></div><div><b>74%</b><small>वर्गाची सरासरी</small></div><div><b>58</b><small>या आठवड्याचे tests</small></div><div><b>5/6</b><small>आज अभ्यास केला</small></div></div>
+    <div class="card"><b>📊 धड्यानुसार वर्गाचे गुण</b>${ch.map(([n, p]) => `<div style="margin-top:8px"><div class="row" style="justify-content:space-between"><span>${n}</span><b>${p}%</b></div><div class="bar"><span style="width:${p}%"></span></div></div>`).join('')}</div>
+    <div class="card"><b>🏆 वर्गातील toppers</b>${STUDENTS.slice().sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, p], k) => `<div class="row" style="justify-content:space-between;padding:4px 0"><span>${['🥇', '🥈', '🥉'][k]} ${n}</span><b>${p}%</b></div>`).join('')}</div>`;
+}
+function tPaper() {
+  const c = COURSES[0];
+  $('#tp').innerHTML = `<div class="card" style="display:grid;gap:10px"><b>📄 Competitive Test · प्रत्येक प्रश्न 1 mark</b>
+    <div class="muted">Batch: <b>8th NMMS</b></div>
+    <div class="lbl">विषय आणि धडे</div>
+    <div class="chk">${allChapters(c).map(({ s, ch }, i) => `<label><input type="checkbox" data-pc="${i}" checked> ${esc(ch.name)} <span class="muted">(${esc(s.name)})</span></label>`).join('')}</div>
+    <label class="field">किती प्रश्न (= एकूण marks)<input id="pn" type="number" min="3" max="13" value="10"></label>
+    <label class="field">Institution Name (PDF वर)<input id="pi" value="${esc(ST.school || '')}" placeholder="तुमच्या Classes चं नाव"></label>
+    <button type="button" class="btn" id="pg">✨ Test तयार करा</button></div><div id="pout"></div>`;
+  $('#pg').onclick = () => {
+    const chosen = allChapters(c).filter((_, i) => $(`[data-pc="${i}"]`).checked);
+    if (!chosen.length) return toast('किमान एक धडा निवडा');
+    const n = Math.max(3, Math.min(13, +$('#pn').value || 10));
+    const pools = chosen.map(({ ch }) => shuffle(ch.test)), picked = [];
+    while (picked.length < n && pools.some(p => p.length)) for (const p of pools) { if (picked.length >= n) break; const x = p.shift(); if (x) picked.push(x); }
+    // options in a new order on every paper (the right answer is not always A)
+    picked.forEach(x => { x.order = shuffle(x.opts.map((_, k) => k)); x.key = 'ABCD'[x.order.indexOf(x.a)]; });
+    const inst = $('#pi').value.trim() || 'NKS EDUORBIT';
+    $('#pout').innerHTML = `<div class="paper"><div class="ph"><b style="color:#1e3a8a">${esc(inst)}</b><div style="font-size:1.05rem;font-weight:800">8th NMMS · सराव Test</div><div style="font-size:.8rem">प्रश्न: ${picked.length} · एकूण गुण: ${picked.length} · नाव: ________</div></div>
+      ${picked.map((x, i) => `<div class="q"><b>${i + 1}.</b> ${esc(x.text)} <span style="color:#e16b13">[1]</span>${x.fig ? `<div class="sf">${x.fig.replace('class="fig"', 'style="display:flex"')}</div>` : ''}<div class="po">${x.order.map((o, k) => `<span>${'ABCD'[k]}) ${String(x.opts[o]).startsWith('<svg') ? x.opts[o] : esc(x.opts[o])}</span>`).join('')}</div></div>`).join('')}
+      <div style="border-top:3px double #1e3a8a;margin-top:8px;padding-top:6px"><b>🔑 उत्तरसूची:</b> ${picked.map((x, i) => `${i + 1}-${x.key}`).join(' · ')}</div></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn" id="pdf">📄 Question Paper PDF</button><button type="button" class="btn alt" id="pdf2">📝 Answer Sheet PDF</button></div>`;
+    $('#pdf').onclick = $('#pdf2').onclick = () => DEMO_OFF('PDF download');
+    $('#pout').scrollIntoView({ behavior: 'smooth' });
+  };
+}
+function tNotify() {
+  $('#tp').innerHTML = `<div class="card" style="display:grid;gap:8px"><b>🔔 Students ना notification</b><label class="field">कोणाला<input value="8th NMMS · सगळे students" readonly></label><label class="field">Message<input id="nm" value="उद्या सकाळी 7 वाजता सराव test आहे. वेळेवर या!"></label><button type="button" class="btn" id="ns">📤 पाठवा</button></div>
+    <div class="card"><b>📨 पालकांना रोजचा अहवाल</b><div class="muted">संध्याकाळी app आपोआप पालकांना मुलाचा अभ्यास कळवतो.</div></div>`;
+  $('#ns').onclick = () => DEMO_OFF('notification पाठवणे');
+}
+function tShare() {
+  const cells = []; let seed = 7; for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) { seed = (seed * 9301 + 49297) % 233280; const corner = (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13); const ring = corner && (x % 20 === 0 || y % 20 === 0 || x === 6 || y === 6 || x === 14 || y === 14 || (x > 1 && x < 5 && y > 1 && y < 5) || (x > 15 && x < 19 && y > 1 && y < 5) || (x > 1 && x < 5 && y > 15 && y < 19)); if ((corner && ring) || (!corner && seed / 233280 > .55)) cells.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`); }
+  $('#tp').innerHTML = `<div class="card" style="display:grid;gap:8px;text-align:center"><b>🔗 Students ना जोडा</b><div class="muted">ही link किंवा QR students ना द्या. ते लगेच तुमच्या यादीत येतात.</div>
+    <div class="qr">${S(`<g fill="#111">${cells.join('')}</g>`, '0 0 21 21')}</div><code style="word-break:break-all;font-size:.8rem">nkseduorbit.in/student?join=DEMO-T1</code>
+    <button type="button" class="btn" id="wa">💬 WhatsApp वर पाठवा</button></div>`;
+  $('#wa').onclick = () => DEMO_OFF('WhatsApp');
+}
+function tFee() {
+  $('#tp').innerHTML = `<div class="card"><b>💰 Fee नोंद</b>${STUDENTS.slice(0, 4).map(([n], i) => `<div class="row" style="justify-content:space-between;padding:6px 0"><span>${n}</span><span style="color:${i === 3 ? 'var(--bad)' : 'var(--ok)'};font-weight:700">${i === 3 ? 'बाकी ₹500' : 'भरली ✓'}</span></div>`).join('')}<button type="button" class="btn" id="fr">🔔 बाकी fee ची आठवण</button></div>`;
+  $('#fr').onclick = () => DEMO_OFF('पालकांना message');
+}
+
+// ── routing ──
+function route() {
+  document.getElementById('dt')?.remove(); document.getElementById('fab')?.remove();
+  if (!ST.mobile) return login();
+  sendLead();
+  if (ST.app === 't') return tApp();
+  ST.app = 's'; studentTab();
+}
+window.addEventListener('resize', () => { if (document.getElementById('fab')) placeFab(); });
+window.addEventListener('online', sendLead);
+route();
+})();
+</script>
+</body>
+</html>
