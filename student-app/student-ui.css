@@ -5376,3 +5376,6 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .dt-lab { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; }
 .dt-lab input { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border, #d0d7de); background: var(--surface, #fff); color: inherit; }
 @media (prefers-reduced-motion: reduce) { .dt-face, .dt-sheet, .dt-msg, .dt-task { animation: none; } }
+
+/* उकलीतील आकृती ("🖼 url" line in an explanation) */
+.sol-fig { display: block; max-width: 100%; height: auto; margin: 8px 0 4px; background: #fff; border-radius: 10px; border: 1px solid rgba(128,128,128,.25); }

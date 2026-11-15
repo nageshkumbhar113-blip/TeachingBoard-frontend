@@ -2645,6 +2645,7 @@ const ADMIN = (() => {
     const links = [
       { icon: '🖥️', label: 'Web Admin',                   url: `${SITE}/admin` },
       { icon: '🎓', label: 'Web Student',                  url: `${SITE}/student` },
+      { icon: '🎬', label: 'Teacher Demo (Student + Teacher app)', url: `${SITE}/demo` },
       { icon: '▶️', label: 'YouTube Partner Portal',       url: `${SITE}/teachers` },
       { icon: '📲', label: 'App Download',                 url: `${SITE}/get-app` },
       { icon: '🏠', label: 'Website / Home',                url: `${SITE}/` },

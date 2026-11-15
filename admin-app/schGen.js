@@ -357,7 +357,7 @@
     if (typeof o.a === 'number') for (let k = 1; ws.length < 3 && k < 60; k++) [o.a + k, o.a - k].forEach(v => ws.length < 3 && add(v));
     if (ws.length < 3) return null;
     const opts = R.shuffle([A, ...ws.slice(0, 3)]);
-    return { q: o.q, fig: o.fig || '', options: { A: opts[0], B: opts[1], C: opts[2], D: opts[3] }, answer: 'ABCD'[opts.indexOf(A)], steps: o.steps || [] };
+    return { q: o.q, fig: o.fig || '', sfig: o.sfig || '', options: { A: opts[0], B: opts[1], C: opts[2], D: opts[3] }, answer: 'ABCD'[opts.indexOf(A)], steps: o.steps || [] };
   }
   const nf = v => (Math.abs(v) >= 10000 ? v.toLocaleString('en-IN') : String(v));
   const rs = v => '₹' + nf(v);
@@ -471,7 +471,7 @@
 
   T.fracOf = { name: 'संख्येची अपूर्णांक पट', gen(R, L, g7) {
     const b = R.ri(2, 9 + (g7 ? 3 : 0)), a = R.ri(1, b - 1), n = b * R.ri(2, 12); if (gcd(a, b) !== 1) return null;
-    return mk(R, { q: `${n} ची ${a}/${b} पट किती?`, a: n * a / b, w: [n / b, n * a, n - n * a / b, n * a / b + a], steps: [`${n} ÷ ${b} = ${n / b}`, `${n / b} × ${a} = ${n * a / b}`] });
+    return mk(R, { q: `${n} ची ${a}/${b} पट किती?`, a: n * a / b, w: [n / b, n * a, n - n * a / b, n * a / b + a], steps: [`${n} ÷ ${b} = ${n / b}`, `${n / b} × ${a} = ${n * a / b}`], sfig: b <= 12 ? sfFracBar(n, a, b) : '' });
   } };
 
   T.fracOrder = { name: 'अपूर्णांकांची तुलना', gen(R, L, g7) {
@@ -676,20 +676,20 @@
     const how = same ? `${tt(turns[0])} ${turns.length === 1 ? 'एकदा' : W[turns.length] + ' वेळा'} वळला` : turns.map((t, i) => (i ? 'नंतर ' : 'आधी ') + tt(t)).join(', ') + ' वळला';
     const hand = l >= 2 && R.r() < 0.5, ans = hand ? (f + 2) % 8 : f;
     return mk(R, { q: `${who} ${DIR[s]} दिशेकडे तोंड करून उभा आहे. तो ${how}. तर आता ${hand ? 'त्याच्या उजव्या हाताकडे कोणती दिशा असेल?' : 'त्याचे तोंड कोणत्या दिशेला असेल?'}`, a: DIR[ans], w: [DIR[(ans + 4) % 8], DIR[(ans + 2) % 8], DIR[(ans + 6) % 8], DIR[(ans + 1) % 8]],
-      steps: ['उजवीकडे = घड्याळाच्या दिशेने, काटकोन = 90°', `शेवटी तोंड ${DIR[f]} कडे`, hand ? `उजवा हात = तोंडापासून 90° उजवीकडे → ${DIR[ans]}` : `उत्तर: ${DIR[ans]}`] });
+      steps: ['उजवीकडे = घड्याळाच्या दिशेने, काटकोन = 90°', `शेवटी तोंड ${DIR[f]} कडे`, hand ? `उजवा हात = तोंडापासून 90° उजवीकडे → ${DIR[ans]}` : `उत्तर: ${DIR[ans]}`], sfig: sfCompass(DIR, s, f, hand ? ans : null) });
   } };
 
   T.distance = { name: 'दिशा: अंतर', gen(R) {
     const rot = R.ri(0, 3), D4 = ['उत्तर', 'पूर्व', 'दक्षिण', 'पश्चिम'].map((_, i, a) => a[(i + rot) % 4]);
     const a = R.ri(8, 30), c = R.ri(2, a - 2), b = R.ri(3, 20), who = R.pick(PEOPLE);
     return mk(R, { q: `${who} आधी ${D4[3]}ेला ${a} किमी गेला, नंतर ${D4[2]}ेला ${b} किमी, नंतर ${D4[1]}ेला ${c} किमी आणि शेवटी ${D4[0]}ेला ${b} किमी जाऊन थांबला. तर तो मूळ ठिकाणापासून किती किमी अंतरावर आहे?`.replace(/उत्तरेला/g, 'उत्तरेला').replace(/पूर्वेला/g, 'पूर्वेला'), a: a - c, fmt: v => v + ' किमी', w: [a + c, a + 2 * b + c, b, a],
-      steps: [`${D4[2]} ${b} आणि ${D4[0]} ${b} एकमेकांना रद्द करतात`, `${D4[3]} ${a} − ${D4[1]} ${c} = ${a - c} किमी`] });
+      steps: [`${D4[2]} ${b} आणि ${D4[0]} ${b} एकमेकांना रद्द करतात`, `${D4[3]} ${a} − ${D4[1]} ${c} = ${a - c} किमी`], sfig: sfDistance([[D4[3], a], [D4[2], b], [D4[1], c], [D4[0], b]], a - c) });
   } };
 
   T.rank = { name: 'रांगेतील क्रमांक', gen(R, L, g7) {
     const l = Math.min(3, L + (g7 ? 1 : 0)), a = R.ri(5, 30), b = R.ri(5, 30), who = R.pick(PEOPLE);
-    if (l === 1) return mk(R, { q: `एका रांगेत ${who} पुढून ${a} वा आणि मागून ${b} वा आहे. तर रांगेत एकूण किती मुले आहेत?`, a: a + b - 1, w: [a + b, a + b + 1, a + b - 2], steps: [`एकूण = ${a} + ${b} − 1 (${who} दोनदा मोजला)`, `= ${a + b - 1}`] });
-    if (l === 2) { const N = a + b; return mk(R, { q: `${N} मुलांच्या रांगेत ${who} पुढून ${a} वा आहे. तर मागून तो कितवा?`, a: N - a + 1, w: [N - a, N - a + 2, a], steps: [`मागून = ${N} − ${a} + 1 = ${N - a + 1}`] }); }
+    if (l === 1) return mk(R, { q: `एका रांगेत ${who} पुढून ${a} वा आणि मागून ${b} वा आहे. तर रांगेत एकूण किती मुले आहेत?`, a: a + b - 1, w: [a + b, a + b + 1, a + b - 2], steps: [`एकूण = ${a} + ${b} − 1 (${who} दोनदा मोजला)`, `= ${a + b - 1}`], sfig: sfRank(a, b, who) });
+    if (l === 2) { const N = a + b; return mk(R, { q: `${N} मुलांच्या रांगेत ${who} पुढून ${a} वा आहे. तर मागून तो कितवा?`, a: N - a + 1, w: [N - a, N - a + 2, a], steps: [`मागून = ${N} − ${a} + 1 = ${N - a + 1}`], sfig: sfRank(a, N - a + 1, who) }); }
     const N = a + b - 1, c = R.ri(1, N); if (c === a) return null;
     return mk(R, { q: `एका रांगेत ${who} पुढून ${a} वा आणि मागून ${b} वा आहे. त्याच रांगेत सोहम पुढून ${c} वा आहे. तर सोहम मागून कितवा?`, a: N - c + 1, w: [N - c, N - c + 2, a + b - c], steps: [`एकूण = ${a} + ${b} − 1 = ${N}`, `सोहम मागून = ${N} − ${c} + 1 = ${N - c + 1}`] });
   } };
@@ -698,7 +698,7 @@
     const ord = R.shuffle(['अजय', 'रमेश', 'सदू', 'विजय']), tallQ = R.r() < 0.5;
     const st = R.shuffle([0, 1, 2]).map(i => `${ord[i]} ${ord[i + 1]}पेक्षा उंच आहे`);
     const ans = tallQ ? ord[0] : ord[3];
-    return mk(R, { q: `${st.join('. ')}. तर सर्वांत ${tallQ ? 'उंच' : 'ठेंगणा'} कोण?`, a: ans, w: ord.filter(x => x !== ans), steps: [`क्रम (उंच → ठेंगणा): ${ord.join(' > ')}`] });
+    return mk(R, { q: `${st.join('. ')}. तर सर्वांत ${tallQ ? 'उंच' : 'ठेंगणा'} कोण?`, a: ans, w: ord.filter(x => x !== ans), steps: [`क्रम (उंच → ठेंगणा): ${ord.join(' > ')}`], sfig: sfHeights(ord) });
   } };
 
   T.ageSum = { name: 'वयांची बेरीज', gen(R) {
@@ -710,11 +710,11 @@
 
   T.alpha = { name: 'वर्णमालेतील स्थान', gen(R, L, g7) {
     const l = Math.min(3, L + (g7 ? 1 : 0));
-    if (l === 1) { const p = R.ri(3, 24); return mk(R, { q: `इंग्रजी वर्णमालेत (A ते Z) डावीकडून ${p} वे अक्षर कोणते?`, a: AB[p - 1], w: [AB[p], AB[p - 2], AB[26 - p]], steps: [`A=1 … ${AB[p - 1]}=${p}`] }); }
+    if (l === 1) { const p = R.ri(3, 24); return mk(R, { q: `इंग्रजी वर्णमालेत (A ते Z) डावीकडून ${p} वे अक्षर कोणते?`, a: AB[p - 1], w: [AB[p], AB[p - 2], AB[26 - p]], steps: [`A=1 … ${AB[p - 1]}=${p}`], sfig: sfLetters(AB.split(''), null, p - 1) }); }
     const p = R.ri(5, 22), q = R.ri(2, 6), fromR = l === 3;
     const i = fromR ? 26 - p - q : p - 1 + q; if (i < 0 || i > 25) return null;
     return mk(R, { q: `इंग्रजी वर्णमालेत (A ते Z) ${fromR ? 'उजवीकडून' : 'डावीकडून'} ${p} व्या अक्षराच्या ${fromR ? 'डावीकडील' : 'उजवीकडील'} ${q} वे अक्षर कोणते?`, a: AB[i], w: [AB[i + 1], AB[i - 1], AB[25 - i]].filter(Boolean).concat([AB[(i + 2) % 26]]),
-      steps: [fromR ? `उजवीकडून ${p} वे = ${AB[26 - p]}` : `डावीकडून ${p} वे = ${AB[p - 1]}`, `${fromR ? 'डावीकडे' : 'उजवीकडे'} ${q} → ${AB[i]}`] });
+      steps: [fromR ? `उजवीकडून ${p} वे = ${AB[26 - p]}` : `डावीकडून ${p} वे = ${AB[p - 1]}`, `${fromR ? 'डावीकडे' : 'उजवीकडे'} ${q} → ${AB[i]}`], sfig: sfLetters(AB.split(''), fromR ? 26 - p : p - 1, i) });
   } };
 
   const LONG = ['EXTRAORDINARY', 'ADJECTIVE', 'INTELLIGENCE', 'BEAUTIFUL', 'MAHARASHTRA', 'SCHOLARSHIP', 'EDUCATION', 'COMPUTER', 'KNOWLEDGE', 'PLAYGROUND'];
@@ -725,7 +725,7 @@
     if (j < 0 || j >= w.length) return null;
     const pool = [...new Set(w)].filter(x => x !== w[j]);
     return mk(R, { q: `'${w}' या शब्दात '${c}' या अक्षराच्या ${right ? 'उजवीकडील' : 'डावीकडील'} ${k} वे अक्षर कोणते?`, a: w[j], w: [w[j + 1], w[j - 1], ...R.shuffle(pool)].filter(x => x && x !== w[j]),
-      steps: [`${c} हे ${i + 1} वे अक्षर`, `${right ? '+' : '−'}${k} → ${j + 1} वे = ${w[j]}`] });
+      steps: [`${c} हे ${i + 1} वे अक्षर`, `${right ? '+' : '−'}${k} → ${j + 1} वे = ${w[j]}`], sfig: sfLetters(w.split(''), i, j) });
   } };
 
   T.digitCount = { name: 'मालिकेत अटीनुसार मोजणी', gen(R) {
@@ -804,7 +804,7 @@
   T.clock = { name: 'आकृती: घड्याळ', gen(R, L, g7) {
     const h = R.ri(1, 12), m = L === 1 && !g7 ? R.pick([0, 15, 30, 45]) : R.ri(1, 11) * 5, nh = (h % 12) + 1;
     if (L === 3 || (g7 && L === 2)) { const add = R.pick([25, 40, 55, 75, 95]), t = (h * 60 + m + add), H = Math.floor(t / 60) % 12 || 12, M = t % 60;
-      return mk(R, { fig: clockSvg(h, m), q: `घड्याळात दाखवलेल्या वेळेनंतर ${add} मिनिटांनी किती वाजतील?`, a: tm(H, M), w: [tm(H % 12 + 1, M), tm(H, (M + 5) % 60), tm(h, (m + add) % 60), tm((H + 10) % 12 + 1, M)], steps: [`घड्याळात ${tm(h, m)}`, `+ ${add} मिनिटे = ${tm(H, M)}`] }); }
+      return mk(R, { fig: clockSvg(h, m), q: `घड्याळात दाखवलेल्या वेळेनंतर ${add} मिनिटांनी किती वाजतील?`, a: tm(H, M), w: [tm(H % 12 + 1, M), tm(H, (M + 5) % 60), tm(h, (m + add) % 60), tm((H + 10) % 12 + 1, M)], steps: [`घड्याळात ${tm(h, m)}`, `+ ${add} मिनिटे = ${tm(H, M)}`], sfig: clockSvg(H, M) }); }
     const sw = m % 5 === 0 && m / 5 >= 1 && m / 5 <= 12 ? tm(m / 5, (h % 12) * 5) : tm(nh, m);
     return mk(R, { fig: clockSvg(h, m), q: 'घड्याळात किती वाजले आहेत?', a: tm(h, m), w: [sw, tm(nh, m), tm(h, (60 - m) % 60 || 30), tm(h === 1 ? 12 : h - 1, m)],
       steps: ['लहान काटा = तास, मोठा काटा = मिनिटे', `मोठा काटा ${m / 5 || 12} वर → ${m} मिनिटे`, `उत्तर: ${tm(h, m)}`] });
@@ -985,9 +985,9 @@
   } };
   T.trees = { name: 'झाडे लावणे / तार कापणे', gen(R) {
     if (R.r() < 0.5) { const g = R.pick([2, 4, 5, 10]), Lk = g * R.ri(5, 25), both = R.r() < 0.6, n = (Lk / g + 1) * (both ? 2 : 1);
-      return mk(R, { q: `${Lk} किमी लांबीच्या रस्त्यावर ${both ? 'दुतर्फा' : 'एका बाजूला'} दर ${g} किमी अंतरावर एक झाड (सुरुवात व शेवट धरून) लावायचे आहे. एकूण किती झाडे लागतील?`, a: n, w: [Lk / g * (both ? 2 : 1), (Lk / g + 1) * (both ? 1 : 2), Lk / g, n + 2], steps: [`एका बाजूला: ${Lk} ÷ ${g} + 1 = ${Lk / g + 1}`, both ? `दुतर्फा: × 2 = ${n}` : `उत्तर ${n}`] }); }
+      return mk(R, { q: `${Lk} किमी लांबीच्या रस्त्यावर ${both ? 'दुतर्फा' : 'एका बाजूला'} दर ${g} किमी अंतरावर एक झाड (सुरुवात व शेवट धरून) लावायचे आहे. एकूण किती झाडे लागतील?`, a: n, w: [Lk / g * (both ? 2 : 1), (Lk / g + 1) * (both ? 1 : 2), Lk / g, n + 2], steps: [`एका बाजूला: ${Lk} ÷ ${g} + 1 = ${Lk / g + 1}`, both ? `दुतर्फा: × 2 = ${n}` : `उत्तर ${n}`], sfig: sfPosts(Lk / g, g, 'किमी', both) }); }
     const c = R.ri(3, 11), each = R.ri(5, 70), L = each * (c + 1);
-    return mk(R, { q: `${L} मीटर लांब तार ${c} ठिकाणी कापून तिचे समान तुकडे केले. तर प्रत्येक तुकड्याची लांबी किती?`, a: each, fmt: v => v + ' मी', w: [L % c === 0 ? L / c : each + 7, each - 1, L % (c + 2) === 0 ? L / (c + 2) : each + 3, each + 5], steps: [`${c} ठिकाणी कापले → ${c + 1} तुकडे`, `${L} ÷ ${c + 1} = ${each} मी`] });
+    return mk(R, { q: `${L} मीटर लांब तार ${c} ठिकाणी कापून तिचे समान तुकडे केले. तर प्रत्येक तुकड्याची लांबी किती?`, a: each, fmt: v => v + ' मी', w: [L % c === 0 ? L / c : each + 7, each - 1, L % (c + 2) === 0 ? L / (c + 2) : each + 3, each + 5], steps: [`${c} ठिकाणी कापले → ${c + 1} तुकडे`, `${L} ÷ ${c + 1} = ${each} मी`], sfig: sfCuts(c, each) });
   } };
   T.serial = { name: 'नोटांचे अनुक्रमांक', gen(R) {
     const k = R.ri(4, 15), cnt = 5 * k, A = R.ri(10000, 89999), B = A + cnt - 1;
@@ -1009,9 +1009,9 @@
   } };
   T.tiling = { name: 'क्षेत्रफळ व खर्च', gen(R) {
     const l = R.ri(6, 20), b = R.ri(3, l - 1), r = R.ri(2, 9) * 10;
-    if (R.r() < 0.5) return mk(R, { q: `एका आयताकृती वर्गखोलीची लांबी ${l} मी व रुंदी ${b} मी आहे. फरशी बसवण्यासाठी ₹${r} प्रति चौ.मी. दराने किती खर्च येईल?`, a: l * b * r, fmt: rs, w: [2 * (l + b) * r, (l + b) * r, l * b, l * b * r + r], steps: [`क्षेत्रफळ = ${l} × ${b} = ${l * b} चौ.मी.`, `× ₹${r} = ₹${nf(l * b * r)}`] });
+    if (R.r() < 0.5) return mk(R, { q: `एका आयताकृती वर्गखोलीची लांबी ${l} मी व रुंदी ${b} मी आहे. फरशी बसवण्यासाठी ₹${r} प्रति चौ.मी. दराने किती खर्च येईल?`, a: l * b * r, fmt: rs, w: [2 * (l + b) * r, (l + b) * r, l * b, l * b * r + r], steps: [`क्षेत्रफळ = ${l} × ${b} = ${l * b} चौ.मी.`, `× ₹${r} = ₹${nf(l * b * r)}`], sfig: sfRect(l, b, `${l} × ${b} = ${l * b} चौ.मी.`) });
     const cost = l * b * r;
-    return mk(R, { q: `एका आयताकृती भिंतीला रंग देण्यासाठी ₹${r} प्रति चौ.मी. दराने ₹${nf(cost)} खर्च येतो. भिंतीची लांबी ${l} मी असल्यास रुंदी किती?`, a: b, fmt: v => v + ' मी', w: [cost / r, b + 2, b + 1, l], steps: [`क्षेत्रफळ = ${nf(cost)} ÷ ${r} = ${l * b} चौ.मी.`, `रुंदी = ${l * b} ÷ ${l} = ${b} मी`] });
+    return mk(R, { q: `एका आयताकृती भिंतीला रंग देण्यासाठी ₹${r} प्रति चौ.मी. दराने ₹${nf(cost)} खर्च येतो. भिंतीची लांबी ${l} मी असल्यास रुंदी किती?`, a: b, fmt: v => v + ' मी', w: [cost / r, b + 2, b + 1, l], steps: [`क्षेत्रफळ = ${nf(cost)} ÷ ${r} = ${l * b} चौ.मी.`, `रुंदी = ${l * b} ÷ ${l} = ${b} मी`], sfig: sfRect(l, b, `क्षेत्रफळ ${l * b} चौ.मी.`) });
   } };
 
 
@@ -1135,7 +1135,7 @@
     else if (kind === 1 && i < n - 1) { q = `तर ${x}च्या लगेच उजवीकडे कोण आहे?`; a = sol[i + 1]; }
     else { q = 'तर उजव्या टोकाला कोण आहे?'; a = sol[n - 1]; }
     return mk(R, { q: `${names.join(', ')} हे ${W[n]} मित्र एका रांगेत उत्तरेकडे तोंड करून बसले आहेत. ${R.shuffle(used).map(c => c[0]).join('. ')}. ${q}`, a, w: names.filter(y => y !== a),
-      steps: ['माहितीप्रमाणे एक-एक जागा ठरवा (डावीकडून उजवीकडे)', `रांग: ${sol.join(' – ')}`, `उत्तर: ${a}`] });
+      steps: ['माहितीप्रमाणे एक-एक जागा ठरवा (डावीकडून उजवीकडे)', `रांग: ${sol.join(' – ')}`, `उत्तर: ${a}`], sfig: sfRow(sol, a) });
   } };
 
   // वर्तनविषयक (योग्य कृती ओळखा)
@@ -1161,6 +1161,117 @@
     const [q, a, w] = R.pick(BEH);
     return mk(R, { q, a, w, steps: [`योग्य वर्तन: ${a}`, 'प्रामाणिकपणा, मदत, सुरक्षितता आणि जबाबदारी दाखवणारी कृती निवडा'] });
   } };
+
+
+  // ═════════════ उकलीतील आकृती (solution figures, SVG) — drawn from the same numbers as the answer ═════════════
+  const SF = 'font-family="Nirmala UI, Noto Sans Devanagari, Mangal, Arial, sans-serif"';
+  const T_ = (x, y, t, o = '') => `<text x="${x}" y="${y}" ${SF}${/font-size=/.test(o) ? '' : ' font-size="13"'} text-anchor="middle" ${o}>${t}</text>`;
+  const ARROWDEF = '<defs><marker id="sa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#e16b13"/></marker><marker id="sb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#15803d"/></marker><marker id="sg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#9aa5b1"/></marker></defs>';
+  const VEC = { 'उत्तर': [0, -1], 'पूर्व': [1, 0], 'दक्षिण': [0, 1], 'पश्चिम': [-1, 0] };
+  // path on a grid: every leg with its length, start, end and the straight distance
+  function sfDistance(legs, ans) {
+    let x = 0, y = 0; const pts = [[0, 0]];
+    for (const [d, k] of legs) { x += VEC[d][0] * k; y += VEC[d][1] * k; pts.push([x, y]); }
+    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+    const W = 340, H = 260, pad = 62, sx = (W - 2 * pad) / Math.max(1, Math.max(...xs) - Math.min(...xs)), sy = (H - 2 * pad) / Math.max(1, Math.max(...ys) - Math.min(...ys)), k = Math.min(sx, sy);
+    const P = ([a, b]) => [pad + (a - Math.min(...xs)) * k, pad + (b - Math.min(...ys)) * k];
+    const PP = pts.map(P), cx = PP.reduce((t, q) => t + q[0], 0) / PP.length, cy = PP.reduce((t, q) => t + q[1], 0) / PP.length;
+    let o = ARROWDEF;
+    for (let i = 0; i < legs.length; i++) {
+      const [x1, y1] = PP[i], [x2, y2] = PP[i + 1];
+      o += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#e16b13" stroke-width="3" marker-end="url(#sa)"/>`;
+      // the length on the outer side of each leg, so labels never sit on the path
+      let mx = (x1 + x2) / 2, my = (y1 + y2) / 2; const horiz = Math.abs(y1 - y2) < 1;
+      // the walk ends on this leg: put its length on the part before the end point
+      const [ex0, ey0] = PP[PP.length - 1];
+      if (i === 0 && !horiz && Math.abs(ex0 - x1) < 1 && (ey0 - y1) * (ey0 - y2) < 0) my = (y1 + ey0) / 2;
+      if (i === 0 && horiz && Math.abs(ey0 - y1) < 1 && (ex0 - x1) * (ex0 - x2) < 0) mx = (x1 + ex0) / 2;
+      if (horiz) o += T_(mx, my <= cy ? my - 9 : my + 20, `${legs[i][1]} किमी`, 'font-weight="700"');
+      else o += `<text x="${mx <= cx ? mx - 8 : mx + 8}" y="${my + 4}" ${SF} font-size="13" font-weight="700" text-anchor="${mx <= cx ? 'end' : 'start'}">${legs[i][1]} किमी</text>`;
+    }
+    const [sx0, sy0] = PP[0], [ex, ey] = PP[PP.length - 1];
+    o += `<line x1="${sx0}" y1="${sy0}" x2="${ex}" y2="${ey}" stroke="#15803d" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+    const side = (px, py) => (px <= cx ? { x: px - 10, a: 'end' } : { x: px + 10, a: 'start' });
+    const st = side(sx0, sy0), en = side(ex, ey);
+    o += `<circle cx="${sx0}" cy="${sy0}" r="6" fill="#1e3a8a"/><text x="${st.x}" y="${sy0 + (sy0 >= cy ? 18 : -10)}" ${SF} font-size="13" fill="#1e3a8a" text-anchor="${st.a}">सुरुवात</text>`;
+    o += `<circle cx="${ex}" cy="${ey}" r="6" fill="#15803d"/><text x="${en.x}" y="${ey + (ey >= cy ? 18 : -10)}" ${SF} font-size="13" fill="#15803d" font-weight="700" text-anchor="${en.a}">शेवट</text>`;
+    o += `<rect x="6" y="${H - 30}" width="${W - 12}" height="24" rx="8" fill="#e4f4e9"/>` + T_(W / 2, H - 13, `सुरुवात ते शेवट (हिरवी रेषा) = ${ans} किमी`, 'font-weight="700" fill="#15803d"');
+    o += `<g transform="translate(${W - 20} 34)"><line x1="0" y1="14" x2="0" y2="-8" stroke="#111" stroke-width="2" marker-end="url(#sa)"/>${T_(0, 28, 'उत्तर', 'font-size="11"')}</g>`;
+    return svg(W, H, o);
+  }
+  // compass: where the face was, where it is now (and the right hand when asked)
+  function sfCompass(dirNames, start, end, hand) {
+    const W = 260, H = 300, c = 130, r = 92;
+    let o = ARROWDEF + `<circle cx="${c}" cy="${c}" r="${r + 18}" fill="#fff7ef" stroke="#e7c9a9"/>`;
+    dirNames.forEach((d, i) => { const a = (-90 + i * 45) * Math.PI / 180; o += T_((c + (r + 2) * Math.cos(a)).toFixed(1), (c + 5 + (r + 2) * Math.sin(a)).toFixed(1), d, i % 2 ? 'font-size="11" fill="#666"' : 'font-weight="700"'); });
+    const arm = (i, col, mk, len = 62) => { const a = (-90 + i * 45) * Math.PI / 180; return `<line x1="${c}" y1="${c}" x2="${(c + len * Math.cos(a)).toFixed(1)}" y2="${(c + len * Math.sin(a)).toFixed(1)}" stroke="${col}" stroke-width="4" marker-end="url(#${mk})"/>`; };
+    o += arm(start, '#9aa5b1', 'sg', 50) + arm(end, '#e16b13', 'sa');
+    if (hand != null) o += arm(hand, '#15803d', 'sb', 70);
+    o += `<circle cx="${c}" cy="${c}" r="6" fill="#111"/>`;
+    o += `<text x="8" y="${H - 24}" ${SF} font-size="12" fill="#666">राखाडी: सुरुवातीचं तोंड</text><text x="8" y="${H - 8}" ${SF} font-size="12" fill="#e16b13">नारिंगी: आता तोंड${hand != null ? ' · हिरवा: उजवा हात' : ''}</text>`;
+    return svg(W, H, o);
+  }
+  // a queue: front block, the child, back block
+  function sfRank(front, back, who) {
+    const W = 320, H = 120;
+    let o = `${T_(24, 20, 'पुढे', 'font-weight="700"')}${T_(W - 24, 20, 'मागे', 'font-weight="700"')}`;
+    o += `<rect x="10" y="34" width="110" height="40" rx="8" fill="#e8eef7" stroke="#1e3a8a"/>${T_(65, 59, `${front - 1} मुले`)}`;
+    o += `<rect x="130" y="30" width="60" height="48" rx="8" fill="#e16b13"/>${T_(160, 59, who, 'fill="#fff" font-weight="700"')}`;
+    o += `<rect x="200" y="34" width="110" height="40" rx="8" fill="#e8eef7" stroke="#1e3a8a"/>${T_(255, 59, `${back - 1} मुले`)}`;
+    o += T_(160, 100, `पुढून ${front} वा · मागून ${back} वा · एकूण ${front - 1} + 1 + ${back - 1} = ${front + back - 1}`, 'font-size="12"');
+    return svg(W, H + 10, o);
+  }
+  // tallest → shortest
+  function sfHeights(order) {
+    const W = 300, H = 170, n = order.length;
+    let o = '';
+    order.forEach((nm, i) => { const h = 120 - i * 24, x = 20 + i * (W - 40) / n; o += `<rect x="${x}" y="${140 - h}" width="${(W - 40) / n - 14}" height="${h}" rx="6" fill="${i === 0 ? '#e16b13' : i === n - 1 ? '#1e3a8a' : '#9aa5b1'}"/>${T_(x + ((W - 40) / n - 14) / 2, 160, nm, 'font-weight="700"')}`; });
+    return svg(W, H + 6, o);
+  }
+  // seats left → right, facing north
+  function sfRow(names, mark) {
+    const n = names.length, bw = 58, W = n * (bw + 8) + 16, H = 110;
+    let o = T_(W / 2, 16, '↑ उत्तरेकडे तोंड', 'font-size="12" fill="#666"');
+    names.forEach((nm, i) => { const x = 12 + i * (bw + 8); o += `<rect x="${x}" y="28" width="${bw}" height="44" rx="8" fill="${nm === mark ? '#e16b13' : '#e8eef7'}" stroke="#1e3a8a"/>${T_(x + bw / 2, 55, nm, nm === mark ? 'fill="#fff" font-weight="700"' : 'font-weight="700"')}${T_(x + bw / 2, 92, i + 1, 'font-size="11" fill="#666"')}`; });
+    o += T_(W / 2, 106, 'डावीकडून → उजवीकडे', 'font-size="11" fill="#666"');
+    return svg(W, H + 4, o);
+  }
+  // A–Z strip: the starting letter and the answer
+  function sfLetters(letters, from, to) {
+    const n = letters.length, bw = 22, W = n * bw + 8, H = 78;
+    let o = '';
+    for (let i = 0; i < n; i++) { const x = 4 + i * bw, col = i === to ? '#15803d' : i === from ? '#e16b13' : '#fff'; o += `<rect x="${x}" y="20" width="${bw - 2}" height="26" fill="${col}" stroke="#555"/>${T_(x + bw / 2 - 1, 38, letters[i], `font-weight="700" ${i === to || i === from ? 'fill="#fff"' : ''}`)}${T_(x + bw / 2 - 1, 62, i + 1, 'font-size="10" fill="#666"')}`; }
+    if (from != null && from !== to) { const x1 = 4 + from * bw + bw / 2, x2 = 4 + to * bw + bw / 2; o += ARROWDEF + `<path d="M${x1} 18 Q${(x1 + x2) / 2} 0 ${x2} 18" fill="none" stroke="#15803d" stroke-width="2" marker-end="url(#sb)"/>`; }
+    return svg(W, H, o);
+  }
+  // bar model: n split into b equal parts, a of them taken
+  function sfFracBar(n, a, b) {
+    const W = 300, H = 90, pw = (W - 20) / b;
+    let o = '';
+    for (let i = 0; i < b; i++) o += `<rect x="${10 + i * pw}" y="24" width="${pw}" height="34" fill="${i < a ? '#f59e0b' : '#fff'}" stroke="#333"/>${T_(10 + i * pw + pw / 2, 46, n / b, 'font-weight="700" font-size="12"')}`;
+    o += T_(W / 2, 16, `${n} चे ${b} समान भाग · प्रत्येक ${n / b}`, 'font-size="12"') + T_(W / 2, 80, `${a} भाग = ${a} × ${n / b} = ${n * a / b}`, 'font-weight="700" fill="#b45309"');
+    return svg(W, H, o);
+  }
+  // posts along a road (first and last counted) / a wire cut in c places
+  function sfPosts(gaps, gap, unit, both) {
+    const W = 320, H = 96, show = Math.min(gaps, 8), step = (W - 40) / show;
+    let o = `<line x1="20" y1="50" x2="${W - 20}" y2="50" stroke="#555" stroke-width="3"/>`;
+    for (let i = 0; i <= show; i++) { const x = 20 + i * step; o += `<circle cx="${x}" cy="40" r="7" fill="#15803d"/><rect x="${x - 1.5}" y="44" width="3" height="10" fill="#7c4a1e"/>`; if (i < show) o += T_(x + step / 2, 72, gaps > show && i === show - 2 ? '…' : `${gap} ${unit}`, 'font-size="11"'); }
+    o += T_(W / 2, 92, `${gaps} अंतरे → ${gaps + 1} झाडे${both ? ` · दुतर्फा × 2 = ${(gaps + 1) * 2}` : ''}`, 'font-weight="700"');
+    return svg(W, H + 4, o);
+  }
+  function sfCuts(cuts, each) {
+    const W = 320, H = 86, pieces = cuts + 1, show = Math.min(pieces, 9), pw = (W - 40) / show;
+    let o = '';
+    for (let i = 0; i < show; i++) o += `<rect x="${20 + i * pw}" y="30" width="${pw - 4}" height="12" rx="3" fill="#9aa5b1"/>${i < show - 1 ? `<text x="${20 + (i + 1) * pw - 2}" y="26" font-size="13" text-anchor="middle">✂</text>` : ''}`;
+    o += T_(W / 2, 64, `${cuts} ठिकाणी कापले → ${pieces} तुकडे · प्रत्येक ${each} मी`, 'font-weight="700"');
+    return svg(W, H, o);
+  }
+  // a room / wall with its sides
+  function sfRect(l, b, inner) {
+    const W = 280, H = 190, k = Math.min(200 / l, 120 / b), w = l * k, h = b * k, x = (W - w) / 2, y = 24;
+    return svg(W, H, `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff7ef" stroke="#e16b13" stroke-width="3"/>${T_(W / 2, y - 6, `लांबी ${l} मी`, 'font-weight="700"')}<text x="${x - 6}" y="${y + h / 2}" ${SF} font-size="13" text-anchor="end" font-weight="700">${b} मी</text>${T_(W / 2, y + h / 2 + 5, inner, 'font-weight="700" fill="#b45309"')}`);
+  }
 
   // lessons per standard (draft — the real build takes the chapter list from the batch)
   // 4थी शिष्यवृत्ती: प्रकरणे (2020–2024 च्या papers मधून)
@@ -1297,17 +1408,27 @@ const SCHGEN = (() => {
   async function toBankQuestions(items, meta, onProgress) {
     const tag = (EXAMS.find(e => e.id === meta.exam) || EXAMS[0]).tag;
     const sch = items.filter(it => it.src === 'sch'), fig = items.filter(it => it.src === 'fig');
-    const png = new Map(), withFig = sch.filter(it => it.q.fig);
-    for (let i = 0; i < withFig.length; i++) { png.set(withFig[i], await svgToPng(withFig[i].q.fig)); onProgress?.('draw', i + 1, withFig.length); }
+    // question pictures and उकल pictures (the solution drawn: path, compass, queue, bar model…)
+    const png = new Map(), spng = new Map(), withFig = sch.filter(it => it.q.fig || it.q.sfig);
+    for (let i = 0; i < withFig.length; i++) {
+      const it = withFig[i];
+      if (it.q.fig) png.set(it, await svgToPng(it.q.fig));
+      if (it.q.sfig) spng.set(it, await svgToPng(it.q.sfig));
+      onProgress?.('draw', i + 1, withFig.length);
+    }
     const figRecs = fig.length ? await window.FIGGEN.toBankQuestions(fig.map(it => it.q), { ...meta, level: 1 }, onProgress) : [];
-    const urls = png.size ? await window.FIGGEN.uploadAll([...png.values()], (a, b) => onProgress?.('upload', a, b)) : new Map();
+    const urls = png.size || spng.size ? await window.FIGGEN.uploadAll([...png.values(), ...spng.values()], (a, b) => onProgress?.('upload', a, b)) : new Map();
     let k = 0;
     return items.map(it => {
       const base = { difficulty: LEVELS[it.L - 1] || 'medium', batch: meta.batch || '', subject: meta.subject || '', chapter: meta.chapter || it.lesson };
       if (it.src === 'fig') { const r = figRecs[k++]; return { ...r, ...base, tags: [...(r.tags || []), 'qgen', tag] }; }
       const q = it.q;
       return { ...base, question: q.q, image: png.has(it) ? urls.get(png.get(it)) || null : null, type: 'mcq', tags: ['qgen', tag, it.key],
-        options: { ...q.options }, option_images: { A: null, B: null, C: null, D: null }, answer: q.answer, explanation: explText(q) };
+        options: { ...q.options }, option_images: { A: null, B: null, C: null, D: null }, answer: q.answer,
+        // "🖼 <url>" on its own line: the app draws it as a picture under the उकल
+        explanation: explText(q) + (spng.has(it) && urls.get(spng.get(it)) ? `
+
+🖼 ${urls.get(spng.get(it))}` : '') };
     });
   }
 
@@ -1364,7 +1485,7 @@ const SCHGEN = (() => {
     }
     return `<div class="sg-card">${head}<p class="sg-q">${esc(q.q)}</p>${q.fig ? `<div class="sg-fig">${q.fig}</div>` : ''}
       <div class="sg-opts">${OPTL.map(k => `<span class="sg-opt${k === q.answer ? ' ans' : ''}">${k}) ${esc(q.options[k])}</span>`).join('')}</div>
-      <ol class="sg-steps">${q.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol></div>`;
+      <ol class="sg-steps">${q.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>${q.sfig ? `<div class="sg-fig" title="उकलीतील आकृती">${q.sfig}</div>` : ''}</div>`;
   }
 
   // host: element to fill. opts.onAdd(items, meta, progress) → Promise (saves them and puts them in the quiz)

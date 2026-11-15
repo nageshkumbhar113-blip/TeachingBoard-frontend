@@ -64,6 +64,9 @@ const QUIZ = (() => {
         i = j + 1;
         continue;
       }
+      // "🖼 https://…png" on its own line: a picture of the उकल (Admin › शिष्यवृत्ती प्रश्न: path, compass, queue…)
+      const pic = line.match(/^\s*🖼\s+(https:\/\/[^\s"'<>]+\.(?:png|jpe?g|webp|gif))\s*$/i);
+      if (pic) { flushText(); out.push(`<img class="sol-fig" src="${pic[1]}" alt="उकलीतील आकृती" loading="lazy">`); i++; continue; }
       textBuf.push(line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'));
       i++;
     }

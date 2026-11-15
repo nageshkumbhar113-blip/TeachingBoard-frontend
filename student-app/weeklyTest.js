@@ -374,7 +374,7 @@ const WEEKLY = (() => {
             const ok = q.given && (q.given === q.answer || String((q.options || {})[q.given] ?? q.given).trim().toLowerCase() === String((q.options || {})[q.answer] ?? q.answer).trim().toLowerCase());
             return `<div class="wk-rv ${q.given ? (ok ? 'ok' : 'bad') : 'skip'}">${q.subject && (i === 0 || d.review[i - 1].subject !== q.subject) && d.paper_order === 'sections' ? `<div class="wk-sec">${_esc(q.subject)}</div>` : ''}<b>${i + 1}. ${_esc(q.question)}</b>
               <div>✅ ${_esc((q.options || {})[q.answer] ?? q.answer)}${q.given && !ok ? ` · ❌ तुमचं: ${_esc((q.options || {})[q.given] ?? q.given)}` : ''}${!q.given ? ' · ⏭ सोडला' : ''}</div>
-              ${q.explanation ? `<small>${_esc(q.explanation)}</small>` : ''}</div>`;
+              ${q.explanation ? `<small>${_esc(q.explanation).replace(/(^|\n)\s*🖼\s+(https:\/\/[^\s"'<>]+\.(?:png|jpe?g|webp|gif))[ \t]*(?=\n|$)/gi, '$1<img class="sol-fig" src="$2" alt="उकलीतील आकृती" loading="lazy">')}</small>` : ''}</div>`;
           }).join('')}
         </details>`}
       </div>`;
