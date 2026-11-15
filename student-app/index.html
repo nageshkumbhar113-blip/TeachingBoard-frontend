@@ -1104,6 +1104,17 @@
               </div>
             </div>
 
+            <!-- Competitive course (8th NMMS, scholarship …): lessons → number of questions → one click (1 mark MCQs) -->
+            <div class="tpb-form-section" id="tpb-comp-section" style="display:none">
+              <h4>🎯 Competitive Test · प्रत्येक प्रश्न 1 mark (MCQ)</h4>
+              <div class="tpb-autofill-row">
+                <input id="tpb-comp-count" class="td-modal-select" type="number" min="5" max="200" value="50" style="width:110px" aria-label="एकूण प्रश्न / marks" />
+                <span class="td-hint td-hint-sm">प्रश्न = एकूण marks</span>
+                <button type="button" id="tpb-comp-btn" class="td-send-notif-btn">✨ Test तयार करा</button>
+              </div>
+              <p class="td-hint td-hint-sm" id="tpb-comp-status">निवडलेल्या धड्यांतून MCQ प्रश्न समान वाटून घेतले जातील.</p>
+            </div>
+
             <div class="tpb-form-section" id="tpb-selected-section" style="display:none">
               <div class="tpb-selected-header">
                 <h4>Paper मध्ये जोडलेले प्रश्न</h4>
@@ -1559,6 +1570,7 @@
   <script src="../core/helpBot.js" defer></script>
   <script src="../core/fileExport.js" defer></script>
   <script src="../core/paperPdf.js" defer></script>
+  <script src="../core/quizPdf.js" defer></script>
   <script src="../core/diagramSkeleton.js" defer></script>
   <script src="../core/paperSections.js" defer></script>
   <script src="../core/math.js" defer></script>

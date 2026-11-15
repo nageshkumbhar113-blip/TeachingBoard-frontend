@@ -22,6 +22,8 @@ const TEACHER_PAPER_BUILDER = (() => {
   let _initialized = false;
   let _selectedQuestions = [];
   let _searchDebounce = null;
+  let _isExam = false;          // competitive course (Batch.kind 'exam', else guessed from the name)
+  let _plans = null;            // public batch list (kind), fetched once
 
   const INSTITUTION_NAME_KEY = 'paper_builder_institution_name';
   // Same key as admin-app/paperBuilder.js — DB.getSetting/setSetting is a
@@ -91,6 +93,7 @@ const TEACHER_PAPER_BUILDER = (() => {
     });
 
     $('tpb-autofill-btn')?.addEventListener('click', () => _runAutoFill());
+    $('tpb-comp-btn')?.addEventListener('click', () => _createCompetitive());
     $('tpb-save-btn')?.addEventListener('click', () => _savePaper());
 
     $('tpb-preview-btn')?.addEventListener('click', () => _previewPaper());
@@ -161,8 +164,16 @@ const TEACHER_PAPER_BUILDER = (() => {
     }
   }
 
+  async function _batchIsExam(batch) {
+    if (!batch) return false;
+    if (!_plans) _plans = await API.getBatchPlans().catch(() => []);
+    const b = (_plans || []).find(x => x.name === batch) || { name: batch };
+    return window.COURSE_CARD?.kindOf ? COURSE_CARD.kindOf(b) === 'exam' : /nmms|scholar|शिष्यवृत्ती|navodaya|नवोदय|olymp|ntse|exam|परीक्षा|police|भरती|competitive|स्पर्धा/i.test(batch);
+  }
+
   async function _onBatchChange(batch) {
     _batch = batch;
+    _isExam = await _batchIsExam(batch);
     _refreshQuota();
     _subjects = [];
     _chapters = [];
@@ -249,8 +260,12 @@ const TEACHER_PAPER_BUILDER = (() => {
     _resetPaperState();
 
     const hasChapter = _chapters.length > 0;
-    $('tpb-marks-section').style.display = hasChapter ? '' : 'none';
-    $('tpb-selected-section').style.display = hasChapter ? '' : 'none';
+    // competitive: no 1/2/3-mark pickers or board sections — only "how many questions" + one click
+    $('tpb-marks-section').style.display = hasChapter && !_isExam ? '' : 'none';
+    $('tpb-comp-section').style.display = hasChapter && _isExam ? '' : 'none';
+    const bp = $('tpb-board-panel'); if (bp && _isExam) bp.style.display = 'none';
+    // competitive: one click saves the paper; its Preview / PDFs are in the panel below
+    $('tpb-selected-section').style.display = hasChapter && !_isExam ? '' : 'none';
   }
 
   function _resetPaperState(hidePdfPanel = true) {
@@ -414,6 +429,90 @@ const TEACHER_PAPER_BUILDER = (() => {
     window.PAPER_PDF?.ensureKatex().then(() => window.PAPER_PDF.renderMath(list)).catch(() => {});
   }
 
+  // ── Competitive: one click → N one-mark MCQs spread over the chosen lessons → saved → PDF panel ──
+  const _shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const _usable = r => (r.type || 'mcq') === 'mcq' && ['A', 'B', 'C', 'D'].includes(String(r.answer || '').toUpperCase())
+    && (String(r.question || '').trim() || r.image) && ['A', 'B', 'C', 'D'].filter(k => (r.options || {})[k] || (r.option_images || {})[k]).length >= 2;
+  async function _createCompetitive() {
+    const n = Math.max(1, Math.min(200, parseInt($('tpb-comp-count')?.value, 10) || 0));
+    const status = $('tpb-comp-status'), btn = $('tpb-comp-btn');
+    if (!_batch || !_chapters.length) { APP?.toast?.('आधी विषय आणि धडे निवडा', 'error'); return; }
+    if (_quota && !_quota.allowed) { APP?.toast?.(`You have used the ${_quota.limit} free papers for this batch. Unlimited unlocks when ${_quota.need} students of this batch have paid (${_quota.paid} / ${_quota.need}).`, 'error'); return; }
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = '⏳ तयार होत आहे…';
+    try {
+      // one request per subject; a question with no lesson (made from a whole-subject quiz) counts for that
+      // subject when all of its lessons are chosen
+      const groups = new Map(_chapters.map(c => [c.chapterId, []]));
+      for (const subject of [...new Set(_chapters.map(c => c.subject))]) {
+        const rows = (await API.fetchMcqBankTeacher({ batch: _batch, subject, type: 'mcq' })).filter(_usable);
+        const chosen = _chapters.filter(c => c.subject === subject);
+        const allLessons = (await DB.getChaptersByBatchSubject(_batch, subject).catch(() => [])).length <= chosen.length;
+        for (const r of rows) {
+          const c = chosen.find(x => String(x.chapter).trim().toLowerCase() === String(r.chapter || '').trim().toLowerCase());
+          if (c) groups.get(c.chapterId).push(r);
+          else if (!String(r.chapter || '').trim() && allLessons) {
+            const key = `subject::${subject}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(r);
+          }
+        }
+      }
+      // + the questions inside every published test of this class (same lessons), not already in the bank
+      const haveQ = new Set([...groups.values()].flat().map(r => r.q_id).filter(Boolean));
+      const quizzes = (await API.fetchQuizzesTeacher().catch(() => [])).filter(qz => qz.batch === _batch);
+      for (const qz of quizzes) {
+        for (const qq of qz.questions || []) {
+          const r = { ...qq, _id: `quiz:${qz.quiz_id}:${qq.q_id}`, quizRef: { quizId: qz.quiz_id, qId: qq.q_id }, subject: qq.subject || qz.subject, chapter: qq.chapter || qz.chapter };
+          if (!qq.q_id || haveQ.has(qq.q_id) || !_usable(r)) continue;
+          const c = _chapters.find(x => x.subject === r.subject && String(x.chapter).trim().toLowerCase() === String(r.chapter || '').trim().toLowerCase());
+          if (!c) continue;
+          haveQ.add(qq.q_id); groups.get(c.chapterId).push(r);
+        }
+      }
+      const pools = [...groups.values()].map(_shuffle).filter(p => p.length);
+      const picked = []; const seen = new Set();
+      while (picked.length < n && pools.some(p => p.length)) {
+        for (const p of pools) {
+          if (picked.length >= n) break;
+          const r = p.shift(); if (!r || seen.has(r._id)) continue;
+          seen.add(r._id); picked.push(r);
+        }
+      }
+      if (!picked.length) { if (status) status.textContent = '❌ या धड्यांत अजून MCQ प्रश्न नाहीत. दुसरे धडे निवडा.'; return; }
+      // pictures saved on the phone now (like the student app's tests), so preview / PDF work offline and fast
+      if (window.IMAGE_CACHE) for (const r of picked) for (const u of [r.image, ...Object.values(r.option_images || {})].filter(Boolean)) IMAGE_CACHE.save(u).catch(() => {});
+      _selectedQuestions = picked.map(r => ({
+        _id: r._id, ...(r.quizRef ? { quizRef: r.quizRef } : { isMcq: true, mcqId: r._id }), marks: 1,
+        questionText: { english: String(r.question || '').trim() || '🖼 आकृती प्रश्न' },
+        chapterId: _makeChapterId(_batch, r.subject, r.chapter || ''),
+      }));
+      _renderSelectedList();
+      if (status) status.textContent = picked.length < n ? `फक्त ${picked.length} प्रश्न मिळाले (या धड्यांत एवढेच आहेत).` : `✅ ${picked.length} प्रश्न तयार.`;
+      await _savePaper();
+    } catch (err) {
+      console.error('competitive test failed', err);
+      if (status) status.textContent = '❌ Test तयार करता आला नाही. Internet तपासा.';
+    } finally { btn.disabled = false; btn.textContent = orig; }
+  }
+  // saved competitive paper → the MCQ quiz shape core/quizPdf.js prints (pictures, 2 columns, answer key)
+  async function _localPics(quiz) {
+    if (!window.IMAGE_CACHE) return quiz;
+    const loc = async u => (u ? (await IMAGE_CACHE.urlFor(u).catch(() => null)) || u : u);
+    for (const q of quiz.questions) {
+      q.image = await loc(q.image);
+      for (const k of Object.keys(q.option_images || {})) q.option_images[k] = await loc(q.option_images[k]);
+    }
+    return quiz;
+  }
+  function _quizFromPaper(full) {
+    const qs = (full.questions || []).filter(q => q.mcq).map(q => ({
+      q_id: q.mcq.qid, question: q.mcq.text, options: q.mcq.options || {}, option_images: q.mcq.option_images || {},
+      image: q.mcq.image || '', answer: q.mcq.answer, explanation: q.mcq.explanation || '',
+    }));
+    return { title: full.paperTitle || 'Test', batch: full.batchId || _batch, subject: (full.subjectIds || [full.subjectId]).filter(Boolean).join(', '), questions: qs, positive_marks: 1 };
+  }
+  const _isMcqPaper = full => (full.questions || []).length > 0 && (full.questions || []).every(q => q.mcq) && !(full.sections || []).length;
+
   async function _runAutoFill() {
     const target = parseInt($('tpb-autofill-target')?.value, 10);
     if (!target || target <= 0) {
@@ -557,9 +656,10 @@ const TEACHER_PAPER_BUILDER = (() => {
         subjectIds: _subjects,
         paperTitle: title || undefined,
         ...(_sections?.payload() || {}),
-        questions: _selectedQuestions.map(q => ({ ...(q.isMcq ? { mcqId: q.mcqId } : { questionId: q._id }), marks: q.marks, ...(q.sectionId ? { sectionId: q.sectionId } : {}) }))
+        questions: _selectedQuestions.map(q => ({ ...(q.isMcq ? { mcqId: q.mcqId } : q.quizRef ? { quizRef: q.quizRef } : { questionId: q._id }), marks: q.marks, ...(q.sectionId ? { sectionId: q.sectionId } : {}) }))
       });
       APP?.toast?.(`✅ Paper "${paper.paperTitle}" saved (Paper #${paper.paperNumber})`, 'success');
+      if (_isExam && _selectedQuestions.length && _selectedQuestions.every(q => q.isMcq || q.quizRef)) paper._mcqPaper = true;
       window.USAGE?.bump('papers');
       _showPdfExportPanel(paper);
       _resetPaperState(false);
@@ -604,13 +704,31 @@ const TEACHER_PAPER_BUILDER = (() => {
         </select>
       </div>
       <div class="tpb-pdf-actions">
+        ${paper._mcqPaper ? '<button type="button" class="admin-btn-secondary" id="tpb-pdf-prev-btn">👁 Preview करा</button>' : ''}
         <button type="button" class="td-send-notif-btn" id="tpb-pdf-qp-btn">📄 Question Paper PDF</button>
         <button type="button" class="td-send-notif-btn" id="tpb-pdf-ans-btn">📝 Answer Sheet PDF</button>
       </div>
       <p class="td-hint td-hint-sm" id="tpb-pdf-status"></p>
     `;
     $('tpb-pdf-qp-btn').addEventListener('click', () => _exportPdf(paper, false, $('tpb-pdf-qp-btn')));
+    $('tpb-pdf-prev-btn')?.addEventListener('click', () => _previewSavedMcq(paper));
     $('tpb-pdf-ans-btn').addEventListener('click', () => _exportPdf(paper, true, $('tpb-pdf-ans-btn')));
+  }
+
+  // Preview of a saved competitive MCQ paper (same page as its PDF), Question Paper / Answer Sheet
+  async function _previewSavedMcq(paper) {
+    const body = $('tpb-preview-body');
+    const institutionName = $('tpb-institution-name')?.value?.trim() || '';
+    const language = $('tpb-pdf-language')?.value || 'marathi';
+    const full = await API.fetchTeacherSlsPaper(paper._id).catch(() => null);
+    if (!full) { APP?.toast?.('Paper उघडता आला नाही', 'error'); return; }
+    const show = async withAns => {
+      document.querySelectorAll('.tpb-preview-mode-btn').forEach(b => b.classList.toggle('active', (b.dataset.mode === 'answer') === withAns));
+      if (body) body.innerHTML = await QUIZ_PDF.previewHtml(await _localPics(_quizFromPaper(full)), withAns, { institutionName, language });
+    };
+    document.querySelectorAll('.tpb-preview-mode-btn').forEach(b => { b.onclick = () => show(b.dataset.mode === 'answer'); });
+    await show(false);
+    $('tpb-preview-modal')?.classList.remove('hidden');
   }
 
   async function _exportPdf(paper, withAnswers, btn) {
@@ -625,7 +743,8 @@ const TEACHER_PAPER_BUILDER = (() => {
       await DB.setSetting?.(INSTITUTION_NAME_KEY, institutionName).catch(() => {});
       await DB.setSetting?.(PDF_LANGUAGE_KEY, language).catch(() => {});
       const full = await API.fetchTeacherSlsPaper(paper._id);
-      if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName, language });
+      if (_isMcqPaper(full) && window.QUIZ_PDF) await QUIZ_PDF.exportQuizPaper(await _localPics(_quizFromPaper(full)), { withAnswers, institutionName, language });
+      else if (withAnswers) await PAPER_PDF.exportAnswerSheet(full, { institutionName, language });
       else await PAPER_PDF.exportQuestionPaper(full, { institutionName, language });
       if (status) status.textContent = '✅ PDF तयार झाला — share sheet उघडलं आहे.';
     } catch (err) {

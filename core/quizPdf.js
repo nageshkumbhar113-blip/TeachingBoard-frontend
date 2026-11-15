@@ -315,7 +315,12 @@ const QUIZ_PDF = (() => {
    *   one compact Q.No->Answer grid appended after all sections. Mutually
    *   exclusive with withAnswers in practice (Books never use withAnswers).
    */
+  const _LBL = {
+    english: { name: 'Name', roll: 'Roll No', seat: 'Seat No', date: 'Date', questions: 'Questions', total: 'Total Marks', key: '— Answer Key —', instr: 'Instructions to Candidates' },
+    marathi: { name: 'नाव', roll: 'हजेरी क्र.', seat: 'बैठक क्र.', date: 'दिनांक', questions: 'प्रश्न', total: 'एकूण गुण', key: '— उत्तरसूची —', instr: 'परीक्षार्थींसाठी सूचना' },
+  };
   function _buildHtml(paper, withAnswers, answersAtEnd) {
+    const T = _LBL[paper.lang] || _LBL.english;
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     const totalQuestions = paper.sections.reduce((sum, s) => sum + s.questions.length, 0);
     const totalMarks = paper.sections.reduce((sum, s) => sum + s.questions.length * s.marks, 0);
@@ -333,25 +338,25 @@ const QUIZ_PDF = (() => {
     return `
       ${_PAGE_WRAP_OPEN}
         <div style="text-align:center;border-bottom:3px double #1e3a8a;padding-bottom:12px;margin-bottom:16px">
-          <div style="font-size:11px;letter-spacing:1px;color:#666">NKS EDUORBIT</div>
+          <div style="font-size:${paper.institution ? '15px;font-weight:800;color:#1e3a8a' : '11px;letter-spacing:1px;color:#666'}">${_esc(paper.institution || 'NKS EDUORBIT')}</div>
           <div style="font-size:20px;font-weight:800;margin:4px 0">${_esc(paper.title)}</div>
           ${subtitle ? `<div style="font-size:13px;color:#333">${_esc(subtitle)}</div>` : ''}
-          ${withAnswers ? '<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">— Answer Key —</div>' : ''}
+          ${withAnswers ? `<div style="font-size:12px;color:#16a34a;font-weight:700;margin-top:4px">${T.key}</div>` : ''}
         </div>
         ${(!withAnswers && !answersAtEnd) ? `
         <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 16px;border:1px solid #999;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px">
-          <div>Name: <span style="display:inline-block;border-bottom:1px solid #333;min-width:180px">&nbsp;</span></div>
-          <div>Roll No: <span style="display:inline-block;border-bottom:1px solid #333;min-width:70px">&nbsp;</span></div>
-          <div>Seat No: <span style="display:inline-block;border-bottom:1px solid #333;min-width:70px">&nbsp;</span></div>
+          <div>${T.name}: <span style="display:inline-block;border-bottom:1px solid #333;min-width:180px">&nbsp;</span></div>
+          <div>${T.roll}: <span style="display:inline-block;border-bottom:1px solid #333;min-width:70px">&nbsp;</span></div>
+          <div>${T.seat}: <span style="display:inline-block;border-bottom:1px solid #333;min-width:70px">&nbsp;</span></div>
         </div>` : ''}
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:18px;color:#333">
-          <span>Date: ${dateStr}</span>
-          <span>Questions: <b>${totalQuestions}</b></span>
-          <span>Total Marks: <b>${_formatMarks(totalMarks)}</b></span>
+          <span>${T.date}: ${dateStr}</span>
+          <span>${T.questions}: <b>${totalQuestions}</b></span>
+          <span>${T.total}: <b>${_formatMarks(totalMarks)}</b></span>
         </div>
         ${paper.instructions ? `
         <div style="margin-bottom:20px;padding:12px 16px;border:1px solid #1e3a8a;border-radius:6px;background:#f8faff;page-break-inside:avoid">
-          <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:8px">Instructions to Candidates</div>
+          <div style="font-weight:700;font-size:13px;color:#1e3a8a;margin-bottom:8px">${T.instr}</div>
           <div style="font-size:12px;line-height:1.7;white-space:pre-line">${_esc(paper.instructions)}</div>
         </div>` : ''}
         ${sectionsHtml}
@@ -570,10 +575,10 @@ const QUIZ_PDF = (() => {
       ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
 
       const sliceHeightMm = sliceHeightPx / pxPerMm;
-      const imgData = pageCanvas.toDataURL('image/png');
+      const imgData = pageCanvas.toDataURL('image/jpeg', 0.9);   // JPEG: a 10-question paper was ~11 MB as PNG
 
       if (!firstPage) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
+      pdf.addImage(imgData, 'JPEG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
       _drawWatermark(pdf, pageWidth, pageHeight);
 
       renderedPx += sliceHeightPx;
@@ -652,10 +657,10 @@ const QUIZ_PDF = (() => {
         ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
 
         const sliceHeightMm = sliceHeightPx / pxPerMm;
-        const imgData = pageCanvas.toDataURL('image/png');
+        const imgData = pageCanvas.toDataURL('image/jpeg', 0.9);   // JPEG: a 10-question paper was ~11 MB as PNG
 
         if (!isVeryFirstSlice) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
+        pdf.addImage(imgData, 'JPEG', MARGIN, MARGIN, contentWidthMm, sliceHeightMm);
         _drawWatermark(pdf, pageWidth, pageHeight);
         pageNum++;
         _drawPageChrome(pdf, pageWidth, pageHeight, pageNum, chrome.sideLabel, chrome.footerLabel);
@@ -673,8 +678,9 @@ const QUIZ_PDF = (() => {
     return `${base || 'Quiz'}_${suffix}.pdf`;
   }
 
-  async function exportQuizPaper(quiz, { withAnswers = false } = {}) {
+  async function exportQuizPaper(quiz, { withAnswers = false, institutionName = '', language = '' } = {}) {
     const paper = await _normalizeQuizForPdf(quiz || {});
+    paper.institution = institutionName; paper.lang = language;
     if (!paper.sections.length) {
       APP.toast('No questions in this quiz', 'error');
       return;
@@ -784,7 +790,14 @@ const QUIZ_PDF = (() => {
     await FILE_EXPORT.saveAndShare(blob, `${base || 'Test_Book'}.pdf`);
   }
 
-  return { exportQuizPaper, exportById, exportTestBookPdf, _normalizeQuizForPdf, _renderToBlob, _buildHtml, _buildBookGroups, _renderGroupsToBlob };
+  // Teacher › competitive MCQ paper: the same page as the PDF, for the Preview window
+  async function previewHtml(quiz, withAnswers, { institutionName = '', language = '' } = {}) {
+    const paper = await _normalizeQuizForPdf(quiz || {});
+    paper.institution = institutionName; paper.lang = language;
+    return paper.sections.length ? _buildHtml(paper, withAnswers) : '<p>No questions</p>';
+  }
+
+  return { exportQuizPaper, exportById, previewHtml, exportTestBookPdf, _normalizeQuizForPdf, _renderToBlob, _buildHtml, _buildBookGroups, _renderGroupsToBlob };
 })();
 
 window.QUIZ_PDF = QUIZ_PDF;

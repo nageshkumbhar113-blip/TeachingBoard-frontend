@@ -2515,6 +2515,12 @@ const API = (() => {
   }
   async function fetchMcqBankAdmin(params = {}) { return _fetchMcqBank(await ensureAdminSession(), params); }
   async function fetchMcqBankTeacher(params = {}) { return _fetchMcqBank(await ensureTeacherSession(), params); }
+  // every published test (with its questions) — Teacher › competitive paper
+  async function fetchQuizzesTeacher() {
+    const token = await ensureTeacherSession();
+    const payload = await request('/quizzes?status=published', { headers: { Authorization: `Bearer ${token}` } });
+    return payload?.data || [];
+  }
 
   async function fetchAdminSlsQuestions(params = {}) {
     const token = await ensureAdminSession();
@@ -3219,7 +3225,7 @@ const API = (() => {
     deleteAdminSlsQuestion, publishAdminSlsQuestion,
     createAdminSlsPaperManual, generateAdminSlsPaper, fetchAdminSlsPapers,
     fetchAdminSlsPaper, publishAdminSlsPaper,
-    fetchTeacherSlsQuestions, createTeacherSlsPaperManual, fetchMcqBankAdmin, fetchMcqBankTeacher,
+    fetchTeacherSlsQuestions, createTeacherSlsPaperManual, fetchMcqBankAdmin, fetchMcqBankTeacher, fetchQuizzesTeacher,
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
     fetchStudentExerciseQuestions,
     fetchYoutubeVideosForExercise, recordYoutubeVideoOpen,
