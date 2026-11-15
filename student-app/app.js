@@ -387,12 +387,26 @@ const APP = (() => {
       _offerSubscribe().catch(err => console.warn('subscribe offer failed', err));
     });
 
+    // Free days over: every button on Home opens the subscribe sheet, except महा-Test, the
+    // free-days strip itself, share / refer and the banners. (The server locks the content too.)
+    document.addEventListener('click', e => {
+      if (!_freeOverNow) return;
+      const home = $('screen-home');
+      if (!home || home.classList.contains('hidden') || !home.contains(e.target)) return;
+      const t = e.target.closest('button, a, input, [role="button"], [role="listitem"], [data-quiz-id], .batch-card, .subject-card, .chapter-item');
+      if (!t || !home.contains(t)) return;
+      if (t.closest('.wk-card, #fw-banner, #home-share-app-btn, #home-refer-card, #home-banners')) return;
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      _offerSubscribe().catch(() => {});
+    }, true);
+
     // Full sync refreshed the free-chapter list (core/sync.js): drop the
     // in-memory copy so lock checks use the new one — admin changes to free
     // chapters and a plan change mid-session apply without an app restart.
     window.addEventListener('teachingboard:access-refresh', () => {
       _freeChapterKeys = null;
       _freeChapterIds = null;
+      _renderFreeWindowBanner().catch(() => {});
       window.NOTES_VIEWER?.updateLocksQuietly?.().catch(() => {});
     });
 
@@ -1119,11 +1133,55 @@ const APP = (() => {
     return _freeChapterKeys;
   }
 
+  // ── 5-day free window (owner 2026-11-15) ──
+  // The server sends free_until for a self-registered, never-paid student. After it every
+  // chapter / note / test is locked, offline too (the date is saved on the phone; a phone clock
+  // turned back does not reopen it). महा-Test stays open. Paying clears it (access_level 'full').
+  const _DAY = 864e5;
+  let _freeOverNow = false;
+  let _fwTimer = null;
+  const _safeNow = profile => Math.max(Date.now(), Date.parse(profile?.server_seen || '') || 0);
+  function _freeOver(profile) {
+    if (!profile || profile.access_level !== 'free' || !profile.free_until) return false;
+    if (window.GUEST?.isActive?.()) return false;
+    const until = Date.parse(profile.free_until);
+    return Number.isFinite(until) && _safeNow(profile) >= until;
+  }
+  async function isFreeWindowOver() {
+    return _freeOver(await API.getStudentProfile().catch(() => null));
+  }
+  // Home strip: days left while free, or "free days are over" + Course button after.
+  async function _renderFreeWindowBanner() {
+    const profile = await API.getStudentProfile().catch(() => null);
+    const home = $('screen-home');
+    let el = $('fw-banner');
+    _freeOverNow = _freeOver(profile);
+    const until = Date.parse(profile?.free_until || '');
+    const show = !!profile && profile.access_level === 'free' && Number.isFinite(until) && !window.GUEST?.isActive?.();
+    if (!show || !home) { el?.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'fw-banner'; el.className = 'fw-banner'; home.prepend(el); }
+    const left = until - _safeNow(profile);
+    if (_freeOverNow) {
+      el.classList.add('over');
+      el.innerHTML = `<div class="fw-text"><b>🔒 मोफत वापराचे दिवस संपले</b><span>सगळे Notes, Exercise आणि Tests उघडण्यासाठी Course घ्या. 🏆 महा-Test मात्र मोफत सुरू राहील.</span></div><button type="button" class="fw-btn" data-fw="buy">🔓 Course घ्या</button>`;
+    } else {
+      el.classList.remove('over');
+      const days = Math.max(1, Math.ceil(left / _DAY));
+      const d = new Date(until);
+      el.innerHTML = `<div class="fw-text"><b>🎁 मोफत वापर: अजून ${days} दिवस</b><span>${d.getDate()}/${d.getMonth() + 1} नंतर Notes आणि Tests साठी Course घ्यावा लागेल.</span></div><button type="button" class="fw-btn" data-fw="buy">Course पाहा</button>`;
+      // the free part closes while the app is open: lock on time
+      clearTimeout(_fwTimer);
+      if (left < _DAY) _fwTimer = setTimeout(() => { _renderFreeWindowBanner().then(() => refreshHome()).catch(() => {}); }, left + 1000);
+    }
+    el.querySelector('[data-fw="buy"]').onclick = () => { _lastSubscribeAt = 0; _offerSubscribe().catch(() => {}); };
+  }
+
   // Set of free chapterIds for a free-plan student, or null when the student
   // has full access (nothing is locked).
   async function getFreeChapterIds() {
     const profile = await API.getStudentProfile().catch(() => null);
     if (!_isFreePlan(profile)) return null;
+    if (_freeOver(profile)) return new Set();   // free days over: nothing is free
     await _loadFreeChapterKeys();
     return _freeChapterIds;
   }
@@ -1131,6 +1189,7 @@ const APP = (() => {
   async function isChapterLocked(batch, subject, chapter) {
     const profile = await API.getStudentProfile().catch(() => null);
     if (!_isFreePlan(profile)) return false;
+    if (_freeOver(profile)) return true;
     const keys = await _loadFreeChapterKeys();
     return !keys.has(_lockKey(batch, subject, chapter));
   }
@@ -1152,6 +1211,7 @@ const APP = (() => {
     if (quiz.locked === true) return true;
     const profile = await API.getStudentProfile().catch(() => null);
     if (!_isFreePlan(profile)) return false;
+    if (_freeOver(profile)) return true;
     if (quiz.paper_mode === 'mixed') return true;
     return isChapterLocked(quiz.batch, quiz.subject, quiz.chapter);
   }
@@ -1170,7 +1230,8 @@ const APP = (() => {
       return;
     }
     const profile = await API.getStudentProfile().catch(() => null);
-    toast('🔒 Subscribe to unlock this chapter', 'info');
+    if (!navigator.onLine) { toast(_freeOver(profile) ? '🔒 मोफत वापराचे दिवस संपले. Course घेण्यासाठी Internet सुरू करा.' : '🔒 Subscribe करण्यासाठी Internet सुरू करा.', 'info'); return; }
+    toast(_freeOver(profile) ? '🔒 मोफत वापराचे दिवस संपले — Course घेऊन सगळं उघडा' : '🔒 Subscribe to unlock this chapter', 'info');
 
     PAYMENT.openPlanSelect(
       { student_code: code, pin, name: profile?.name || '', contact: profile?.mobile || '' },
@@ -1181,6 +1242,8 @@ const APP = (() => {
         _freeChapterKeys = null;
         _freeChapterIds = null;
         await _refreshProfileAfterLogin();
+        _freeOverNow = false;
+        _renderFreeWindowBanner().catch(() => {});
         window.NOTES_VIEWER?.refreshLocks?.();
         showScreen('home');
         loadHome();
@@ -2852,6 +2915,7 @@ const APP = (() => {
   async function loadHome() {
     _screenHistory = [];   // clear back-stack when going to home
     showScreen('home', { addToHistory: false });
+    _renderFreeWindowBanner().catch(err => console.warn('free window banner failed', err));   // first: works offline, before any await
     // Delayed on purpose — a real crash was traced to this running on an
     // auto-resumed session (app cold-started already logged in, straight to
     // loadHome with no user interaction yet): requesting the runtime
@@ -2920,6 +2984,7 @@ const APP = (() => {
     _syncServerHierarchyInBackground();
     _runFullOfflineSyncIfNeeded().catch(() => {}); // not awaited — see its own doc-comment
     _loadHomeBanners().catch(() => {}); // not awaited — see its own doc-comment
+    await _renderFreeWindowBanner().catch(() => {});
     await UI.renderHomeStats();
     await UI.renderRecentAttempts();
     await _renderHomeHierarchy({ preserveSelection: true });
@@ -3244,6 +3309,7 @@ const APP = (() => {
     // Free-chapter locks
     isChapterLocked,
     isQuizLocked,
+    isFreeWindowOver,
     getFreeChapterIds,
     offerSubscribe: _offerSubscribe,
     deviceId: () => _getDeviceId(),

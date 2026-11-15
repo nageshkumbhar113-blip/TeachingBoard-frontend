@@ -5322,3 +5322,11 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   color: var(--text2, #6b7280);
   background: var(--surface2, rgba(127,127,127,0.06));
 }
+
+/* 5-day free window strip on Home (app.js _renderFreeWindowBanner) */
+.fw-banner { display: flex; align-items: center; gap: 10px; margin: 8px 0 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(249,115,22,.45); background: rgba(249,115,22,.10); }
+.fw-banner.over { border-color: rgba(220,38,38,.5); background: rgba(220,38,38,.10); }
+.fw-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: .82rem; line-height: 1.4; color: var(--text, inherit); }
+.fw-text b { font-size: .92rem; }
+.fw-btn { flex: none; border: 0; border-radius: 10px; padding: 9px 12px; font-weight: 800; font-size: .85rem; cursor: pointer; color: #fff; background: var(--accent, #e16b13); }
+.fw-banner.over .fw-btn { background: #dc2626; }

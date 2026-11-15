@@ -159,6 +159,11 @@ const API = (() => {
       // 'free' = free chapters only (unpaid / expired); anything else, incl. an
       // older server that doesn't send it, means full access.
       access_level: user.access_level === 'free' ? 'free' : 'full',
+      // Free tier: when the free part closes (5 days, owner 2026-11-15). Kept on the phone so the app
+      // locks on time even offline; server_seen = latest server clock seen (a phone clock turned back
+      // does not reopen it).
+      free_until: String(user.free_until || '').trim(),
+      server_seen: (() => { const a = Date.parse(user.server_time || '') || 0; return new Date(Math.max(a, Date.now())).toISOString(); })(),
       // Free-part visitor (no login): see startGuestSession / student-app/guest.js.
       guest: user.guest === true,
     };

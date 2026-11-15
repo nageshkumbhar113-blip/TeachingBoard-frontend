@@ -369,20 +369,22 @@ const WEEKLY = (() => {
           <button type="button" class="gx-btn gx-wa" id="wk-share">📤 Share करा</button>
           ${me ? `<button type="button" class="gx-btn gx-cool" id="wk-photo">${me.rank && me.rank <= 10 ? '🏅 Topper certificate' : '📸 Status photo'}</button>` : ''}
         </div>
-        <details class="wk-review"><summary>📖 बरोबर उत्तरं बघा</summary>
+        ${d.review_locked ? `<button type="button" class="gx-btn gx-cool wk-review-lock" id="wk-unlock" style="width:100%;margin-top:10px">🔒 बरोबर उत्तरं आणि उकल पाहण्यासाठी Course घ्या</button>` : `<details class="wk-review"><summary>📖 बरोबर उत्तरं बघा</summary>
           ${d.review.map((q, i) => {
             const ok = q.given && (q.given === q.answer || String((q.options || {})[q.given] ?? q.given).trim().toLowerCase() === String((q.options || {})[q.answer] ?? q.answer).trim().toLowerCase());
             return `<div class="wk-rv ${q.given ? (ok ? 'ok' : 'bad') : 'skip'}">${q.subject && (i === 0 || d.review[i - 1].subject !== q.subject) && d.paper_order === 'sections' ? `<div class="wk-sec">${_esc(q.subject)}</div>` : ''}<b>${i + 1}. ${_esc(q.question)}</b>
               <div>✅ ${_esc((q.options || {})[q.answer] ?? q.answer)}${q.given && !ok ? ` · ❌ तुमचं: ${_esc((q.options || {})[q.given] ?? q.given)}` : ''}${!q.given ? ' · ⏭ सोडला' : ''}</div>
               ${q.explanation ? `<small>${_esc(q.explanation)}</small>` : ''}</div>`;
           }).join('')}
-        </details>
+        </details>`}
       </div>`;
     document.body.appendChild(el);
     if (me?.rank && me.rank <= 10) window.GUEST?.fireworks?.(me.rank <= 3 ? 1.6 : 1); else window.GUEST?.fireworks?.(.6);
     // good marks -> Google Play review sheet (app only, at most once a month)
     if (me?.total) window.APP_REVIEW?.afterResult((me.score / me.total) * 100, 3500);
     el.querySelector('.gx-close').onclick = () => el.remove();
+    // answers + उकल are for paid students: open the subscribe sheet (guests get the free-part offer)
+    el.querySelector('#wk-unlock')?.addEventListener('click', () => { el.remove(); window.dispatchEvent(new CustomEvent('teachingboard:locked', { detail: { code: 'CHAPTER_LOCKED', from: 'weekly' } })); });
     el.querySelector('#wk-photo')?.addEventListener('click', () => _sharePhoto(d).catch(() => _toast('Photo तयार करता आला नाही', 'error')));
     el.querySelector('#wk-share').onclick = () => {
       const text = me
