@@ -205,6 +205,15 @@
 @keyframes wkbBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .wkb-medal { animation: none; } }
 .wk-show-name { margin-top: 8px; }
+.home-banner.wkb.wkb-m { background: radial-gradient(120% 120% at 50% 0%, #0f766e, #102a43 72%); }
+.wkb-mine { position: relative; flex: 1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.wkb-mine-rank { font-size: 2rem; font-weight: 900; color: #ffc83d; line-height: 1; white-space: nowrap; }
+.wkb-mine-of { font-size: .8rem; font-weight: 700; opacity: .9; }
+.wkb-mine-score { display: flex; flex-direction: column; align-items: flex-end; }
+.wkb-mine-score b { font-size: 1.5rem; line-height: 1.1; }
+.wkb-mine-score small { font-size: .78rem; opacity: .85; font-weight: 700; }
+.wk-first { margin: 10px 0 0; padding: 8px 12px; border-radius: 12px; background: #dcfce7; color: #14532d; font-weight: 800; font-size: .9rem; text-align: center; }
+.wk-apponly { margin: 8px 0; }
 /* 👩‍🏫 माझे Teachers (Home) + Connect student QR (teacher Share tab) */
 .tc-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed rgba(128,128,128,.25); }
 .tc-row small { opacity: .75; }

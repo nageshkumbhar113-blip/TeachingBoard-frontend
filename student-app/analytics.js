@@ -42,6 +42,7 @@ const ANALYTICS = (() => {
 
   const TABS = [
     { id: 'overview',    label: '📈 Overview'    },
+    { id: 'maha',        label: '🏆 महा-Test'    },
     { id: 'performance', label: '🎯 Performance' },
     { id: 'history',     label: '📋 History'     },
     { id: 'subjects',    label: '📚 Subjects'    },
@@ -53,12 +54,23 @@ const ANALYTICS = (() => {
   // OPEN
   // ════════════════════════
 
-  async function open() {
+  // Me (bottom bar): the child's page — who I am + all of my analytics, महा-Test results too (owner 2026-11-16)
+  async function open(opts = {}) {
+    if (opts.tab && TABS.some(t => t.id === opts.tab)) _activeTab = opts.tab;
     APP.showScreen('analytics');
-    APP.setBreadcrumb('Analytics');
+    APP.setBreadcrumb('Me');
     await _loadData();
     _renderShell();
     _renderTab(_activeTab);
+  }
+
+  async function _meInfo() {
+    if (window.GUEST?.isActive?.()) {
+      const g = await API.getGuestState().catch(() => ({}));
+      return { name: g.name || 'मित्रा', sub: `🎁 Free अभ्यास · ${g.batch || ''}` };
+    }
+    const p = await API.getStudentProfile?.().catch(() => null);
+    return { name: p?.name || p?.student_code || 'Student', sub: [p?.student_code ? `Code ${p.student_code}` : '', (p?.assigned_batches || []).join(', ')].filter(Boolean).join(' · ') };
   }
 
   async function _loadData() {
@@ -74,7 +86,7 @@ const ANALYTICS = (() => {
       DB.getSetting('student_profile', null).catch(() => null),
     ]);
     const visibleAttempts = _filterAttemptsForProfile(attempts, profile);
-    _data = { attempts: visibleAttempts, stats: _buildAttemptStats(visibleAttempts), weakQs, allQs };
+    _data = { attempts: visibleAttempts, stats: _buildAttemptStats(visibleAttempts), weakQs, allQs, me: await _meInfo() };
   }
 
   // ════════════════════════
@@ -85,9 +97,15 @@ const ANALYTICS = (() => {
     const root = $('analytics-root');
     if (!root) return;
 
+    const me = _data.me || { name: 'Student', sub: '' };
     root.innerHTML = `
+      <div class="me-head">
+        <div class="me-avatar" aria-hidden="true">${_esc((me.name[0] || 'S').toUpperCase())}</div>
+        <div class="me-who"><b>${_esc(me.name)}</b><small>${_esc(me.sub)}</small></div>
+        <button type="button" class="me-settings" id="me-settings">⚙️ Account</button>
+      </div>
       <div class="an-header">
-        <h2 class="an-title">📊 Analytics</h2>
+        <h2 class="an-title">📊 माझे Analytics</h2>
       </div>
       <nav class="an-tabs" id="an-tab-bar" role="tablist">
         ${TABS.map(t => `
@@ -101,6 +119,8 @@ const ANALYTICS = (() => {
 
     // No in-page "← Back": the top ‹ and the phone's Back do it (two back
     // buttons on one screen confused students).
+    // ⚙️ Account: Teachers, Board Mode, Tour, new phone, Switch Account (the old Me window)
+    $('me-settings')?.addEventListener('click', () => APP.openProfileSettings?.());
 
     $('an-tab-bar').addEventListener('click', e => {
       const btn = e.target.closest('[data-tab]');
@@ -117,6 +137,7 @@ const ANALYTICS = (() => {
   function _renderTab(tab) {
     switch (tab) {
       case 'overview':    return _renderOverview();
+      case 'maha':        return _renderMaha();
       case 'performance': return _renderPerformance();
       case 'history':     return _renderHistory();
       case 'subjects':    return _renderSubjects();
@@ -220,6 +241,59 @@ const ANALYTICS = (() => {
         });
       });
     });
+  }
+
+  // ════════════════════════
+  // TAB: महा-Test — every महा-Test I gave: marks, rank, subject-wise; a tap opens the full result
+  // ════════════════════════
+
+  async function _renderMaha() {
+    const body = $('an-tab-body');
+    if (!body) return;
+    const KEY = 'weekly_history_cache';
+    let rows = await DB.getSetting(KEY, null).catch(() => null);
+    if (!Array.isArray(rows)) { rows = null; body.innerHTML = '<p class="an-empty-sub" style="text-align:center;padding:24px">⏳ महा-Test results आणत आहे…</p>'; }
+    else _paintMaha(body, rows);
+    if (navigator.onLine && API.weeklyHistory) {
+      try { rows = await API.weeklyHistory(); DB.setSetting(KEY, rows).catch(() => {}); }
+      catch { if (!rows) rows = []; }
+    } else if (!rows) rows = [];
+    if (_activeTab === 'maha' && $('an-tab-body') === body) _paintMaha(body, rows);
+  }
+
+  function _paintMaha(body, rows) {
+    if (!rows.length) {
+      body.innerHTML = _emptyState('🏆', 'अजून महा-Test दिला नाही.', 'दर रविवारी महा-Test — Home वर वरती 🏆 card मधून Register करा.');
+      return;
+    }
+    const done = rows.filter(r => r.total);
+    const avg = done.length ? Math.round(done.reduce((s, r) => s + (r.score / r.total) * 100, 0) / done.length) : 0;
+    const ranks = rows.map(r => r.rank).filter(Boolean);
+    const best = ranks.length ? Math.min(...ranks) : null;
+    const medal = n => n === 1 ? '🥇' : n === 2 ? '🥈' : n === 3 ? '🥉' : n <= 10 ? '🏅' : '🎯';
+    body.innerHTML = `
+      <div class="an-kpi-grid">
+        <div class="an-kpi-card"><div class="an-kpi-icon">🏆</div><div class="an-kpi-value">${rows.length}</div><div class="an-kpi-label">महा-Test दिले</div></div>
+        <div class="an-kpi-card"><div class="an-kpi-icon">📊</div><div class="an-kpi-value">${avg}%</div><div class="an-kpi-label">सरासरी</div></div>
+        <div class="an-kpi-card"><div class="an-kpi-icon">${best ? medal(best) : '🎯'}</div><div class="an-kpi-value">${best ? '#' + best : '—'}</div><div class="an-kpi-label">सर्वोत्तम क्रमांक</div></div>
+      </div>
+      <div class="mt-hist">${rows.map(r => {
+        const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
+        return `<button type="button" class="mt-row" data-ev="${_esc(r.event_id)}" ${r.results && r.can_open ? '' : 'data-wait="1"'}>
+          <span class="mt-row-top"><b>${_esc(r.title || 'महा-Test')} · ${_esc(r.subject || '')}</b><small>${_fmtDate(r.starts_at)}</small></span>
+          <span class="mt-row-mid">
+            <span class="mt-rank">${r.rank ? `${medal(r.rank)} #${r.rank}<small>${r.participants ? ` / ${r.participants}` : ''}</small>` : (r.results ? '—' : '⏳ Rank लवकरच')}</span>
+            <span class="mt-score"><b>${r.score}/${r.total}</b><small>${pct}% · ✅ ${r.correct ?? 0} · ❌ ${r.wrong ?? 0}</small></span>
+          </span>
+          ${(r.by_subject || []).length > 1 ? `<span class="mt-subs">${r.by_subject.map(x => `<span class="an-stat-chip">${_esc(x.subject)} ${x.score}/${x.total}</span>`).join('')}</span>` : ''}
+          <span class="mt-open">${r.results && r.can_open ? '👆 पूर्ण result, उत्तरं आणि 📸 photo' : r.results ? '' : '🏆 Rank list ' + _fmtDate(r.reveal_at) + ' ला'}</span>
+        </button>`;
+      }).join('')}</div>`;
+    body.querySelectorAll('.mt-row').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.wait) return;
+      if (!navigator.onLine) { APP.toast?.('Result बघण्यासाठी Internet सुरू करा', 'info'); return; }
+      window.WEEKLY?.showResult({ event_id: b.dataset.ev });
+    }));
   }
 
   // ════════════════════════

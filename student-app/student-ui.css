@@ -5379,3 +5379,26 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 
 /* उकलीतील आकृती ("🖼 url" line in an explanation) */
 .sol-fig { display: block; max-width: 100%; height: auto; margin: 8px 0 4px; background: #fff; border-radius: 10px; border: 1px solid rgba(128,128,128,.25); }
+
+/* Me page (bottom bar Me): who I am + analytics + महा-Test results */
+.me-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin: 0 0 6px; border-radius: 16px; background: var(--surface, #fff); border: 1px solid var(--border, #e5e7eb); }
+.me-avatar { flex: none; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 800; color: #fff; background: linear-gradient(135deg, #7b2ff7, #ff3d77); }
+.me-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.me-who b { font-size: 1.05rem; color: var(--text1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-who small { font-size: .78rem; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-settings { flex: none; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 2px solid var(--border, #ddd); background: transparent; color: var(--text1); font-weight: 700; cursor: pointer; }
+.mt-hist { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.mt-row { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border, #e5e7eb); background: var(--surface, #fff); color: var(--text1); cursor: pointer; font: inherit; }
+.mt-row[data-wait] { cursor: default; opacity: .85; }
+.mt-row-top { display: flex; justify-content: space-between; gap: 8px; }
+.mt-row-top b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-row-top small { flex: none; color: var(--text2); }
+.mt-row-mid { display: flex; justify-content: space-between; align-items: center; }
+.mt-rank { font-size: 1.35rem; font-weight: 900; }
+.mt-rank small { font-size: .8rem; font-weight: 700; color: var(--text2); }
+.mt-score { display: flex; flex-direction: column; align-items: flex-end; }
+.mt-score b { font-size: 1.15rem; }
+.mt-score small { font-size: .76rem; color: var(--text2); }
+.mt-subs { display: flex; flex-wrap: wrap; gap: 4px; }
+.mt-open { font-size: .8rem; font-weight: 700; color: var(--accent, #7b2ff7); }
+.an-tabs { overflow-x: auto; }

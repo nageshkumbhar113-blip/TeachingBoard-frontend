@@ -51,6 +51,35 @@ const WEEKLY = (() => {
     return JSON.parse(new TextDecoder().decode(plain));
   }
 
+  // ── Website: after the family's first महा-Test, the next ones are in the app only ──
+  const _native = () => !!window.Capacitor?.isNativePlatform?.();
+  async function _openGetApp() {
+    const gs = window.GUEST?.isActive?.() ? await API.getGuestState().catch(() => ({})) : {};
+    const site = /^https?:$/.test(location.protocol) && !/localhost$/.test(location.hostname) ? location.origin : 'https://nkseduorbit.in';
+    const q = new URLSearchParams(gs.gid ? { guest: gs.gid } : {});
+    if (gs.src === 'teacher' && gs.ref) q.set('teacher', gs.ref);
+    window.GUEST?.isActive?.() && API.guestEvent?.('app_click');
+    window.open(`${site}/get-app.html${q.toString() ? '?' + q : ''}`, '_blank', 'noopener');
+  }
+  const APP_ONLY_TEXT = '📲 पुढचे महा-Test फक्त NKs EduOrbit app मध्ये — app download करा, तिथेच महा-Test मिळेल.';
+  function _appOnlySheet(msg) {
+    const el = document.createElement('div');
+    el.className = 'gx-layer gx-dim';
+    el.setAttribute('role', 'dialog');
+    el.innerHTML = `
+      <div class="gx-card" style="text-align:center">
+        <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
+        <div class="gx-logo" aria-hidden="true">📲</div>
+        <h2 class="gx-title">महा-Test <span class="gx-grad-text">App मध्ये</span></h2>
+        <p class="gx-sub">${_esc(msg || APP_ONLY_TEXT)}</p>
+        <p class="gx-sub">पहिला महा-Test website वर दिलात 👏 आता पुढचे सगळे महा-Test, rank आणि उत्तरं app मध्ये.</p>
+        <button type="button" class="gx-btn gx-big gx-shine" id="wk-ao-app">📲 App download करा</button>
+      </div>`;
+    document.body.appendChild(el);
+    el.querySelector('.gx-close').onclick = () => el.remove();
+    el.querySelector('#wk-ao-app').onclick = () => { _openGetApp(); };
+  }
+
   // ── Home card ───────────────────────────────────────────────────
   async function renderHomeCard() {
     const home = document.getElementById('screen-home');
@@ -88,6 +117,14 @@ const WEEKLY = (() => {
       ? `<div class="wk-meta">${ev.sections.map(s => `${_esc(s.subject)} ${s.count}`).join(' · ')}${ev.negative ? ` · चुकीला −${ev.negative}` : ''}</div>` : '';
     const head = `<div class="wk-tag">🏆 ${_esc(ev.title || 'महा-Test')}</div>
       <div class="wk-sub">${_esc(ev.subject)} · ${ev.question_count} प्रश्न · ${ev.duration_minutes} मिनिटं</div>${parts}`;
+    if (_events.app_only && !_native() && ev.state !== 'closed' && !ev.me.submitted) {
+      card.innerHTML = `${head}
+        <div class="wk-when">📅 ${_esc(_when(ev.starts_at))}</div>
+        <div class="wk-ok wk-apponly">${_esc(_events.app_only_msg || APP_ONLY_TEXT)}</div>
+        <button type="button" class="gx-btn gx-big gx-shine wk-btn" data-act="app">📲 App download करा</button>`;
+      card.querySelector('[data-act="app"]').addEventListener('click', () => _openGetApp());
+      return;
+    }
     if (ev.state === 'upcoming') {
       card.innerHTML = `${head}
         <div class="wk-when">📅 ${_esc(_when(ev.starts_at))} · सुरू व्हायला <b class="wk-count">${_left(new Date(ev.starts_at) - Date.now())}</b></div>
@@ -138,7 +175,6 @@ const WEEKLY = (() => {
                  <input class="gx-input" id="wk-r-mob" type="tel" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="98XXXXXXXX" /></label>
                  <label class="gx-check"><input type="checkbox" id="wk-r-ok" /> <span>Test ची आठवण आणि result साठी NKs EduOrbit कडून संपर्कास पालकांची संमती आहे</span></label>` : '')
             : `<label class="gx-field"><span>Mobile</span><input class="gx-input" value="${_esc(profile?.mobile || '—')}" readonly /></label>`}
-          ${_consent ? '' : `<label class="gx-check wk-show-name"><input type="checkbox" id="wk-r-show" /> <span>🏆 <b>माझं नाव दाखवा</b> — top 10 मध्ये आलो तर माझं पूर्ण नाव माझ्या class च्या toppers banner आणि rank board वर दिसेल (पालकांची संमती)</span></label>`}
           <p class="gx-msg" id="wk-r-msg" role="alert"></p>
           <button type="button" class="gx-btn gx-big gx-shine" id="wk-r-go">✍️ Register करा</button>
           ${guest && !window.Capacitor?.isNativePlatform?.() ? `
@@ -155,12 +191,7 @@ const WEEKLY = (() => {
       document.body.appendChild(el);
       const done = v => { el.remove(); resolve(v); };
       el.querySelector('.gx-close').onclick = () => done(false);
-      el.querySelector('#wk-r-app')?.addEventListener('click', () => {
-        const site = /^https?:$/.test(location.protocol) && !/localhost$/.test(location.hostname) ? location.origin : 'https://nkseduorbit.in';
-        const q = new URLSearchParams(gs.gid ? { guest: gs.gid } : {});
-        if (gs.src === 'teacher' && gs.ref) q.set('teacher', gs.ref);
-        window.open(`${site}/get-app.html${q.toString() ? '?' + q : ''}`, '_blank', 'noopener');
-      });
+      el.querySelector('#wk-r-app')?.addEventListener('click', () => _openGetApp());
       const mob = el.querySelector('#wk-r-mob');
       mob?.addEventListener('focus', async () => {
         if (mob.value.trim() || mob.dataset.hinted) return;
@@ -177,8 +208,7 @@ const WEEKLY = (() => {
         try {
           if (guest && name !== gs.name) { await API.startGuestSession({ name }); await API.setGuestState({ name }); }
           if (needMobile) await API.saveGuestContact(mob.value);
-          const showBox = el.querySelector('#wk-r-show');
-          await API.weeklyRegister(ev.event_id, showBox ? { show_name: showBox.checked } : {});
+          await API.weeklyRegister(ev.event_id, { show_name: true });
           _consent = true;
           await window.GUEST?.refresh?.();
           _toast('✅ Registered! वेळेवर इथे "सुरू करा" येईल', 'success');
@@ -186,6 +216,7 @@ const WEEKLY = (() => {
           done(true);
         } catch (err) {
           e.target.disabled = false;
+          if (err?.code === 'APP_ONLY') { done(false); _events.app_only = true; _appOnlySheet(err.message); renderHomeCard(); return; }
           msg.textContent = err?.message || 'Register झालं नाही';
         }
       };
@@ -202,6 +233,7 @@ const WEEKLY = (() => {
       const questions = await _openPaper(paper, key);
       _play(ev, questions);
     } catch (err) {
+      if (err?.code === 'APP_ONLY') { _appOnlySheet(err.message); return; }
       _toast(err?.code === 'NOT_YET' ? 'Test अजून सुरू झाला नाही' : (err?.message || 'Test उघडता आला नाही'), 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '▶ आत्ता सुरू करा'; }
@@ -362,6 +394,7 @@ const WEEKLY = (() => {
           <div class="gx-stats"><div class="gx-stat">🎯 ${me.score}/${me.total}<small>गुण</small></div><div class="gx-stat">✅ ${me.correct}<small>बरोबर</small></div><div class="gx-stat">⏱ ${me.time_taken < 60 ? me.time_taken + ' से' : Math.round(me.time_taken / 60) + ' मि'}<small>वेळ</small></div></div>
           ${_bySubject(me.by_subject)}`
           : '<p class="gx-sub">तुम्ही हा test दिला नाही. पुढच्या आठवड्यात नक्की द्या!</p>'}
+        ${d.first_free ? '<div class="wk-first">🎁 पहिला महा-Test — सगळी बरोबर उत्तरं आणि उकल मोफत!</div>' : ''}
         <h3 class="wk-h">🏆 Rank Board · ${d.participants} students</h3>
         <ol class="wk-top10 wk-board">${d.top.map(t => `<li class="${t.me ? 'me' : ''}${t.rank <= 3 ? ' podium' : ''}"><span>${medal(t.rank)}</span><span>${_esc(t.name)}${t.me ? ' (तुम्ही)' : ''}</span><b>${t.score}/${t.total}</b></li>`).join('')}
           ${me?.rank && !d.top.some(t => t.me) ? `<li class="wk-gap">⋯</li><li class="me"><span>#${me.rank}</span><span>तुम्ही</span><b>${me.score}/${me.total}</b></li>` : ''}</ol>
@@ -462,7 +495,9 @@ const WEEKLY = (() => {
     const byBatch = [...new Map(live.map(e => [e.batch, e])).values()];
     if (!byBatch.length) return [];
     const ev = byBatch[Math.floor(now / 864e5) % byBatch.length];
-    const slides = [{ banner_id: `wk-top-${ev.event_id}-a`, kind: 'toppers', part: 'podium', ev }];
+    const slides = [];
+    if (ev.me?.submitted) slides.push({ banner_id: `wk-top-${ev.event_id}-m`, kind: 'toppers', part: 'mine', ev });
+    slides.push({ banner_id: `wk-top-${ev.event_id}-a`, kind: 'toppers', part: 'podium', ev });
     if (ev.toppers.length > 3) slides.push({ banner_id: `wk-top-${ev.event_id}-b`, kind: 'toppers', part: 'list', ev });
     return slides;
   }
@@ -473,6 +508,15 @@ const WEEKLY = (() => {
     const mine = ev.me?.rank
       ? (ev.me.rank <= 10 ? `🎉 तुम्ही #${ev.me.rank}!` : `तुमचा क्रमांक #${ev.me.rank} · पुढच्या वेळी top 10 💪`)
       : '👆 Rank board बघा';
+    if (b.part === 'mine') {
+      const m = ev.me || {}, pct = m.total ? Math.round((m.score / m.total) * 100) : 0;
+      const medal = m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : m.rank === 3 ? '🥉' : m.rank && m.rank <= 10 ? '🏅' : '🎯';
+      return `<div class="wkb-head">🏆 माझा महा-Test Result · ${_esc(ev.subject)}</div>
+        <div class="wkb-mine"><span class="wkb-mine-rank">${medal} ${m.rank ? '#' + m.rank : '—'}</span>
+          <span class="wkb-mine-of">${ev.participants ? `${ev.participants} पैकी` : ''}</span>
+          <span class="wkb-mine-score"><b>${m.score ?? '—'}/${m.total ?? '—'}</b><small>${pct}%</small></span></div>
+        <div class="wkb-me">👆 पूर्ण result, उत्तरं आणि 📸 photo</div>`;
+    }
     if (b.part === 'podium') {
       const cell = (x, cls, medal) => x ? `<div class="wkb-pod ${cls}"><span class="wkb-medal">${medal}</span><b>${_esc(x.name)}</b><small>${x.score}/${x.total}</small></div>` : '<div class="wkb-pod"></div>';
       return `${head}<div class="wkb-podium">${cell(t[1], 'p2', '🥈')}${cell(t[0], 'p1', '🥇')}${cell(t[2], 'p3', '🥉')}</div><div class="wkb-me">${mine}</div>`;

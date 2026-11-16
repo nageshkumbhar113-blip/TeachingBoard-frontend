@@ -2061,7 +2061,6 @@ const APP = (() => {
         ${infoHtml}
         ${window.GUEST?.isActive?.() ? `<button id="ps-unlock-btn" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#ff7a18,#ff3d77,#7b2ff7);color:#fff;font-weight:700;cursor:pointer;margin-bottom:8px">🔓 सगळे tests उघडा</button>` : ''}
         ${role || window.GUEST?.isActive?.() ? '' : `<button id="ps-teachers-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">👩‍🏫 माझे Teachers</button>`}
-        ${role ? '' : `<button id="ps-analytics-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📊 माझे Analytics</button>`}
         <button id="ps-board-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🖥️ Board Mode ${_activeUiMode() === 'board' ? 'बंद करा' : 'चालू करा'}</button>
         ${role || window.GUEST?.isActive?.() || !window.HELP_BOT?.openMove ? '' : `<button id="ps-move-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">📱 नवीन phone वर shift करा</button>`}
         ${role || !window.TOUR ? '' : `<button id="ps-tour-btn" style="width:100%;padding:12px;border:2px solid var(--border,#ddd);border-radius:10px;background:transparent;color:var(--text1,#333);font-weight:600;cursor:pointer;margin-bottom:8px">🎓 Tour पुन्हा पाहा</button>`}
@@ -2310,7 +2309,7 @@ const APP = (() => {
 
     track.innerHTML = _bannerList.map((b, i) => {
       if (b.kind === 'toppers') {
-        return `<div class="home-banner wkb ${b.part === 'podium' ? 'wkb-a' : 'wkb-b'}" data-idx="${i}" role="button" tabindex="0">${WEEKLY.topperSlideHtml(b)}</div>`;
+        return `<div class="home-banner wkb ${b.part === 'podium' ? 'wkb-a' : b.part === 'mine' ? 'wkb-m' : 'wkb-b'}" data-idx="${i}" role="button" tabindex="0">${WEEKLY.topperSlideHtml(b)}</div>`;
       }
       const gradClass = _BANNER_GRADIENT_CLASSES[i % _BANNER_GRADIENT_CLASSES.length];
       const bgAttr = b.imageUrl ? ` style="background-image:url('${_escBanner((window.IMAGE_CACHE ? IMAGE_CACHE.lightUrl(b.imageUrl) : b.imageUrl))}')"` : '';
@@ -2485,7 +2484,11 @@ const APP = (() => {
 
     // ── Bottom Navigation ────────────────────────────
     $('bnav-home')?.addEventListener('click', () => { _goHomeGuarded().catch(err => console.warn('home failed', err)); });
-    $('bnav-me')?.addEventListener('click', () => _openProfileSettings());
+    // Me = the child's page (profile + all analytics + महा-Test results); teachers / parents keep the window
+    $('bnav-me')?.addEventListener('click', () => {
+      if (_dashboardRole || !window.ANALYTICS?.open) return _openProfileSettings();
+      window.ANALYTICS.open().catch(err => { console.warn('me page failed', err); _openProfileSettings(); });
+    });
   }
 
   // ════════════════════════
@@ -2539,7 +2542,7 @@ const APP = (() => {
 
     const labels = {
       home: 'Home', quiz: 'Practice', results: 'Results',
-      'test-player': 'Test', analytics: 'Analytics', 'deep-study': 'Deep Study',
+      'test-player': 'Test', analytics: 'Me', 'deep-study': 'Deep Study',
       exercise: 'Exercise', 'chapter-hub': 'Chapter', 'test-list': 'Tests',
       notes: 'Notes', vocab: 'Words', 'word-test': 'Word Tests',
     };
@@ -2551,7 +2554,7 @@ const APP = (() => {
   function _updateBottomNav(screen) {
     const tabMap = {
       home: 'bnav-home',
-      analytics: 'bnav-analytics',
+      analytics: 'bnav-me',
       quiz: null,
       'test-player': null,
       results: 'bnav-home',
@@ -3314,6 +3317,7 @@ const APP = (() => {
     currentScreen,
     setBreadcrumb,
     openAdminApp,
+    openProfileSettings: () => _openProfileSettings(),
     // Home
     loadHome,
     openChapter,

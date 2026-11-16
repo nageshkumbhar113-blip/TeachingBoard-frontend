@@ -264,8 +264,9 @@
       var k = 0, ring = $('c-ring');
       var t = setInterval(function () { k = Math.min(pct, k + Math.max(1, Math.round(pct / 25))); ring.style.setProperty('--p', k); $('c-pct').textContent = k + '%'; if (k >= pct) clearInterval(t); }, 30);
       if (info.offer && info.offer.active) {
-        $('offer-head').textContent = 'पहिल्या payment वर ' + info.offer.percent + '% सवलत!';
-        // the whole rule, so nobody is surprised: 50 % for 24 hours, then 30 % until Sunday 11 pm, then the full price
+        // the team's own offer (NKs Team app, 3 hours) reads as a special one
+        $('offer-head').textContent = info.offer.stage === 'team' ? '🎁 खास सवलत: पहिल्या payment वर ' + info.offer.percent + '%!' : 'पहिल्या payment वर ' + info.offer.percent + '% सवलत!';
+        // the whole rule, so nobody is surprised: 50 % for 24 hours, then 30 % for 2 days, then the full price
         var st = info.offer.steps || [];
         if (st.length === 2 && !$('offer-rule')) {
           var f = function (d) { return new Date(d).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); };

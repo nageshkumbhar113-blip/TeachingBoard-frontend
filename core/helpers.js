@@ -2241,7 +2241,14 @@ const API = (() => {
     const payload = await request('/weekly/my', { headers: await _studentAuth() });
     const list = Array.isArray(payload?.data) ? payload.data : [];
     list.consent = payload?.consent === true;
+    // website: after the family's first महा-Test the next ones are in the app only
+    list.app_only = payload?.app_only === true;
+    list.app_only_msg = payload?.app_only_msg || '';
     return list;
+  }
+  // Me › Analytics "🏆 महा-Test": every महा-Test this child gave
+  async function weeklyHistory() {
+    return (await request('/weekly/history', { headers: await _studentAuth() }))?.data || [];
   }
   async function weeklyRegister(id, body = {}) {
     return request(`/weekly/${encodeURIComponent(id)}/register`, { method: 'POST', headers: await _studentAuth(), body: JSON.stringify(body) });
@@ -3156,7 +3163,7 @@ const API = (() => {
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
     fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
-    fetchWeeklyTests, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
+    fetchWeeklyTests, weeklyHistory, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
