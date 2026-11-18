@@ -104,7 +104,7 @@ const PARTNER_EARNINGS = (() => {
             <b>Total ${rs(s.net)}</b></div>
           ${s.status === 'paid' ? `<small>Paid ${s.paid_at ? new Date(s.paid_at).toLocaleDateString('en-IN') : ''} - reference ${esc(s.utr)}</small>` : ''}
           ${s.status === 'carried' ? `<small>Below ${rs(s.min_payout)}, so it is added to the next month.</small>` : ''}
-        </div>`).join('') : '<p class="td-hint">No statement yet. The first one is made on the 1st of the month after your first commission becomes payable.</p>'}
+        </div>`).join('') : '<p class="td-hint">No statement yet. The first one is made on the 1st of the month after your first discount becomes payable.</p>'}
       <h4 class="pe-h">Payout details</h4>
       <p class="td-share-hint">Saved: ${d.payout.upi_id ? `${esc(d.payout.upi_name)} - ${esc(d.payout.upi_id)}${d.payout.pan ? ` - PAN ${esc(d.payout.pan)}` : ''}` : 'nothing yet'}</p>`;
     $('pe-copy')?.addEventListener('click', async () => {

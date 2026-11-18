@@ -1316,8 +1316,8 @@ const APP = (() => {
       document.getElementById('treg-agree-yt')?.classList.toggle('hidden', !yt);
       const note = document.getElementById('treg-type-note');
       if (note) note.textContent = yt
-        ? 'तुमच्या viewers ना app ची link द्या; तुमच्या link ने आलेल्या प्रत्येक paid विद्यार्थ्यामागे commission.'
-        : 'तुमच्या विद्यार्थ्यांसाठी class link, Paper Builder आणि paid विद्यार्थ्यांवर commission.';
+        ? 'तुमच्या viewers ना app ची link द्या; तुमच्या link ने आलेल्या प्रत्येक paid विद्यार्थ्यामागे discount.'
+        : 'तुमच्या विद्यार्थ्यांसाठी class link, Paper Builder आणि paid विद्यार्थ्यांवर discount.';
     };
     // how our team should reach them to verify: WhatsApp (default) or a call
     let _tregContact = 'whatsapp';
