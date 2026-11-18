@@ -668,6 +668,50 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               </div>
             </section>
 
+            <!-- 📥 Bulk import (studentImport.js) -->
+            <section class="import-section admin-card" id="student-import-section" aria-label="Import students">
+              <h3 class="admin-section-title">📥 Import students (एकदम अनेक)</h3>
+              <p class="import-hint">Code = नावाची पहिली 3 अक्षरं + mobile चे शेवटचे 4 अंक (उदा. <b>MAN4589</b>) · PIN = mobile चे शेवटचे 4 अंक (<b>4589</b>). आधीच असलेला विद्यार्थी (तोच mobile + नाव) update होतो — नवीन account नाही.</p>
+
+              <p class="import-hint" style="margin-top:10px"><b>1. List</b> — Excel / CSV file निवडा, किंवा खाली paste करा (Excel मधून copy, किंवा AI ने दिलेला CSV).</p>
+              <div class="admin-toolbar" style="flex-wrap:wrap">
+                <input id="simp-file" type="file" accept=".csv,.txt,.xlsx,.xls" class="admin-input" aria-label="Student list file" />
+                <button id="simp-sample" class="admin-btn-secondary" type="button">⬇ Sample file</button>
+                <button id="simp-prompt" class="admin-btn-secondary" type="button">🤖 AI prompt copy</button>
+              </div>
+              <textarea id="simp-paste" class="admin-textarea" rows="6" aria-label="Paste the student list"
+                placeholder="name,mobile,school,courses,plan,expiry,amount,teacher_code&#10;Manish Rajan Deshpande,9856234589,ZP School,10th - Semi English,yearly,,,T1234"></textarea>
+
+              <p class="import-hint" style="margin-top:10px"><b>2. सगळ्यांसाठी</b> (file मधल्या एखाद्या ओळीत वेगळं लिहिलं असेल तर ते त्या विद्यार्थ्यासाठी वापरलं जाईल)</p>
+              <div id="simp-batches" class="student-batch-list" aria-label="Courses for the import"></div>
+              <div class="import-target" style="margin-top:8px">
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Plan
+                  <select id="simp-plan" class="admin-select" aria-label="Plan">
+                    <option value="yearly">Yearly — 30 April पर्यंत</option>
+                    <option value="monthly">Monthly — 30 दिवस</option>
+                    <option value="custom">स्वतः तारीख</option>
+                  </select>
+                </label>
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Expiry (आपोआप, बदलता येते)
+                  <input id="simp-expiry" type="date" class="admin-input" aria-label="Expiry date" />
+                </label>
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Teacher code
+                  <input id="simp-teacher" class="admin-input" placeholder="उदा. T1234 (ऐच्छिक)" aria-label="Teacher code" style="text-transform:uppercase" />
+                </label>
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Discount % (रिकामं = teacher चा)
+                  <input id="simp-discount" type="number" min="0" max="100" step="0.5" class="admin-input" placeholder="teacher चा" aria-label="Discount percent" />
+                </label>
+              </div>
+              <p id="simp-teacher-info" class="import-hint"></p>
+              <div class="admin-toolbar">
+                <button id="simp-preview-btn" class="admin-btn-secondary" type="button">🔍 Preview</button>
+                <button id="simp-run-btn" class="admin-btn-primary" type="button" disabled>✅ Accounts बनवा</button>
+              </div>
+              <div id="simp-summary" class="import-hint"></div>
+              <div id="simp-table" style="overflow-x:auto"></div>
+              <div id="simp-result"></div>
+            </section>
+
             <!-- Pending Registration Requests -->
             <section class="import-section admin-card" id="pending-requests-section" style="display:none" aria-label="Pending Registrations">
               <h3 class="admin-section-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -737,6 +781,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                   <input id="teacher-comm-value" class="admin-input" type="number" min="0" step="0.5" placeholder="Amount or percent, e.g. 30" aria-label="Commission value" />
                   <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem"><input id="teacher-comm-first" type="checkbox" checked /> First payment of a student only (no renewal commission)</label>
                 </div>
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Bulk import discount % (या teacher च्या विद्यार्थ्यांना)
+                  <input id="teacher-bulk-discount" class="admin-input" type="number" min="0" max="100" step="0.5" placeholder="उदा. 10" aria-label="Bulk import discount percent" />
+                </label>
                 <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Valid until (optional)
                   <input id="teacher-validity" class="admin-input" type="date" aria-label="Teacher validity date" />
                 </label>
@@ -2594,6 +2641,7 @@ Marks: 1"></textarea>
   <script src="crmAdmin.js" defer></script>
   <script src="../core/courseCard.js" defer></script>
   <script src="admin.js" defer></script>
+  <script src="studentImport.js" defer></script>
   <script src="admin-shell.js" defer></script>
   <script src="admin-mobile.js" defer></script>
 

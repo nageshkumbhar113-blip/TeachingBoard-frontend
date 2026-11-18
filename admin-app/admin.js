@@ -43,10 +43,13 @@ const ADMIN = (() => {
   let _leadsCache = [];
   let _studentSearchTimer = null;
 
-  function _autoStudentCode(name) {
-    const prefix = String(name || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'STU';
-    const num = String(Math.floor(100 + Math.random() * 900));
-    return prefix + num;
+  // Same rule as the bulk import (backend utils/studentCode.js): first 3 letters of the name
+  // (Devanagari transliterated by window.STUDENT_IMPORT) + last 4 digits of the mobile.
+  function _autoStudentCode(name, mobile = '') {
+    const last4 = String(mobile || '').replace(/D/g, '').slice(-4);
+    const prefix = window.STUDENT_IMPORT?.namePrefix?.(name)
+      || String(name || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3).padEnd(3, 'X') || 'STU';
+    return prefix + (last4.length === 4 ? last4 : String(Math.floor(1000 + Math.random() * 9000)));
   }
 
   function _genPin() {
@@ -3372,7 +3375,19 @@ const ADMIN = (() => {
         await API.updateStudent(studentId, payload);
         APP.toast('Student updated', 'success');
       } else {
-        await API.createStudent(payload);
+        const auto = $('student-code')?.dataset.auto === '1';
+        let created = false;
+        for (const suffix of auto ? ['', ...'BCDEFGH'] : ['']) {
+          try {
+            await API.createStudent({ ...payload, student_code: payload.student_code + suffix });
+            payload.student_code += suffix;
+            created = true;
+            break;
+          } catch (err) {
+            if (!auto || !/already exists/i.test(err.message || '')) throw err;
+          }
+        }
+        if (!created) throw new Error('Student code already exists');
         _showCredsModal(payload.student_code, pinVal, payload.assigned_batches, expiryVal);
       }
       _resetStudentForm();
@@ -3407,6 +3422,7 @@ const ADMIN = (() => {
     _setValue('teacher-comm-value', '');
     if ($('teacher-comm-first')) $('teacher-comm-first').checked = true;
     _setValue('teacher-validity', '');
+    _setValue('teacher-bulk-discount', '');
     _setValue('teacher-status', 'active');
     _setValue('teacher-pin', '');
     _setValue('teacher-assigned-students', '');
@@ -3468,6 +3484,7 @@ const ADMIN = (() => {
         _setValue('teacher-comm-value', t.commission_value || '');
         if ($('teacher-comm-first')) $('teacher-comm-first').checked = t.commission_first_payment_only !== false;
         _setValue('teacher-validity', t.validity_until || '');
+        _setValue('teacher-bulk-discount', t.bulk_discount_percent || '');
         _setValue('teacher-status', t.status || 'active');
         _setValue('teacher-assigned-students', (t.assigned_students || []).join(', '));
         $('atab-teachers')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3765,6 +3782,7 @@ const ADMIN = (() => {
         commission_value: Number($('teacher-comm-value')?.value || 0),
         commission_first_payment_only: !!$('teacher-comm-first')?.checked,
         validity_until: String($('teacher-validity')?.value || '').trim(),
+        bulk_discount_percent: String($('teacher-bulk-discount')?.value || '').trim(),
         status: String($('teacher-status')?.value || 'active'),
       };
       if (code)  payload.teacher_code = code;
@@ -4328,9 +4346,25 @@ const ADMIN = (() => {
     $('btn-refresh-dashboard')?.addEventListener('click', () => _loadDashboard());
     $('btn-gen-code')?.addEventListener('click', () => {
       const name = String($('student-name')?.value || '').trim();
-      const code = _autoStudentCode(name);
-      if ($('student-code')) $('student-code').value = code;
+      const code = _autoStudentCode(name, $('student-mobile')?.value);
+      if ($('student-code')) { $('student-code').value = code; $('student-code').dataset.auto = '1'; }
     });
+    // New student: code and PIN fill themselves from the name + mobile (still editable)
+    const _autoFillStudent = () => {
+      if (String($('student-edit-id')?.value || '').trim()) return; // editing an existing student
+      const name = String($('student-name')?.value || '').trim();
+      const mobile = String($('student-mobile')?.value || '').replace(/D/g, '');
+      const codeEl = $('student-code');
+      const pinEl = $('student-pin');
+      if (name && mobile.length === 10) {
+        if (codeEl && (!codeEl.value || codeEl.dataset.auto === '1')) { codeEl.value = _autoStudentCode(name, mobile); codeEl.dataset.auto = '1'; }
+        if (pinEl && (!pinEl.value || pinEl.dataset.auto === '1')) { pinEl.value = mobile.slice(-4); pinEl.dataset.auto = '1'; pinEl.type = 'text'; }
+      }
+    };
+    $('student-name')?.addEventListener('input', _autoFillStudent);
+    $('student-mobile')?.addEventListener('input', _autoFillStudent);
+    $('student-code')?.addEventListener('input', e => { e.target.dataset.auto = ''; });
+    $('student-pin')?.addEventListener('input', e => { e.target.dataset.auto = ''; });
     $('btn-gen-pin')?.addEventListener('click', () => {
       const pin = _genPin();
       if ($('student-pin')) {

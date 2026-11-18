@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#ffffff" />
+<meta name="robots" content="noindex" />
+<title>शिक्षकांसाठी नियम — Nks EduOrbit</title>
+<link rel="icon" href="/icons/icon-72.png" />
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{ --p1:#F0883E; --p2:#C1600F; --bg:#ffffff; --bg2:#FFF7ED; --border:#FDE1C4; --text:#201409; --text2:#5c4a3a; --ok:#15803d; --bad:#b91c1c; }
+  body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,'Noto Sans Devanagari',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;}
+  .nav{position:sticky;top:0;background:rgba(255,255,255,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:14px 20px;font-weight:800;}
+  .nav span{background:linear-gradient(135deg,var(--p1),var(--p2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 18px 80px;}
+  h1{font-size:1.6rem;font-weight:900;margin-bottom:4px;}
+  .updated{color:var(--text2);font-size:0.85rem;margin-bottom:20px;}
+  h2{font-size:1.05rem;font-weight:800;margin:22px 0 8px;color:var(--p2);}
+  ul{margin:0 0 10px 20px;color:var(--text2);} li{margin-bottom:6px;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:26px;}
+  label{display:block;font-size:0.85rem;font-weight:700;margin:10px 0 4px;}
+  input[type=text],input[type=password]{width:100%;padding:12px;border:1px solid #e5d3c0;border-radius:10px;font-size:1rem;}
+  .tick{display:flex;gap:10px;align-items:flex-start;font-weight:600;margin-top:14px;}
+  .tick input{width:22px;height:22px;flex:0 0 auto;margin-top:3px;}
+  button,.btn{display:block;width:100%;margin-top:16px;padding:14px;border:0;border-radius:12px;font-size:1.05rem;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--p1),var(--p2));text-align:center;text-decoration:none;cursor:pointer;}
+  button:disabled{opacity:.5}
+  .msg{margin-top:10px;font-weight:700;} .msg.bad{color:var(--bad);} .msg.ok{color:var(--ok);}
+  .done{text-align:center;} .done .big{font-size:3rem;}
+  .loading{color:var(--text2);}
+</style>
+</head>
+<body>
+<div class="nav">📜 <span>Nks EduOrbit</span> — शिक्षकांसाठी नियम</div>
+<main class="wrap">
+  <div id="rules" class="loading">नियम load होत आहेत…</div>
+
+  <div id="form" class="card" hidden>
+    <b>नियम मान्य करा</b>
+    <label for="code">Teacher code</label>
+    <input id="code" type="text" autocomplete="username" autocapitalize="characters" placeholder="उदा. T1234" />
+    <label for="pin">PIN (4 अंक)</label>
+    <input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••" />
+    <label class="tick"><input id="agree" type="checkbox" /> <span id="agree-text">मी हे सर्व नियम वाचले आहेत आणि ते मला मान्य आहेत.</span></label>
+    <button id="submit" type="button">✅ मान्य करा</button>
+    <p id="msg" class="msg" role="status"></p>
+  </div>
+
+  <div id="done" class="card done" hidden>
+    <div class="big">✅</div>
+    <p><b id="done-name"></b>, नियम मान्य केले. धन्यवाद!</p>
+    <p class="updated" id="done-when"></p>
+    <a id="back-app" class="btn" href="#">📱 App मध्ये परत जा</a>
+    <p class="updated" style="margin-top:10px">App उघडला नाही तर phone चं Back बटण दाबा किंवा NKs EduOrbit app उघडा.</p>
+  </div>
+</main>
+<script src="/env.js"></script>
+<script>
+(function () {
+  var API = (window.TEACHINGBOARD_API_URL || 'https://teachingboard-backend.onrender.com/api').replace(/\/$/, '');
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var version = '';
+  var params = new URLSearchParams(location.search);
+  if (params.get('code')) $('code').value = params.get('code').toUpperCase();
+
+  // Android: open the app again (Chrome "intent:" link; the Play Store if the app is not installed)
+  var PKG = 'com.nkseduorbit.student';
+  $('back-app').href = /android/i.test(navigator.userAgent)
+    ? 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=' + PKG +
+      ';S.browser_fallback_url=' + encodeURIComponent('https://play.google.com/store/apps/details?id=' + PKG) + ';end'
+    : 'https://nkseduorbit.in/student';
+
+  fetch(API + '/teacher-rules').then(function (r) { return r.json(); }).then(function (res) {
+    var d = res.data;
+    version = d.version;
+    $('rules').classList.remove('loading');
+    $('rules').innerHTML = '<h1>' + esc(d.title) + '</h1><p class="updated">' + esc(d.owner) + ' · Version ' + esc(d.version) + ' · ' + esc(d.updated) + '</p>' +
+      d.sections.map(function (s) { return '<h2>' + esc(s.title) + '</h2><ul>' + s.points.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>'; }).join('');
+    $('agree-text').textContent = d.agreeText;
+    $('form').hidden = false;
+  }).catch(function () { $('rules').textContent = 'नियम load झाले नाहीत — internet तपासा आणि page refresh करा.'; });
+
+  $('submit').addEventListener('click', function () {
+    var msg = $('msg');
+    msg.className = 'msg';
+    var code = $('code').value.trim().toUpperCase();
+    var pin = $('pin').value.trim();
+    if (!code || !/^\d{4}$/.test(pin)) { msg.className = 'msg bad'; msg.textContent = 'Teacher code आणि 4 अंकी PIN टाका.'; return; }
+    if (!$('agree').checked) { msg.className = 'msg bad'; msg.textContent = 'नियम मान्य करण्यासाठी ☑ करा.'; return; }
+    $('submit').disabled = true;
+    msg.textContent = '⏳ …';
+    fetch(API + '/teacher-rules/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teacher_code: code, pin: pin, version: version, agree: true })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (x) {
+      if (!x.ok) throw new Error((x.j && x.j.message) || 'झालं नाही — परत प्रयत्न करा');
+      $('form').hidden = true;
+      $('done').hidden = false;
+      $('done-name').textContent = x.j.data.name;
+      $('done-when').textContent = new Date(x.j.data.accepted_at).toLocaleString('en-IN') + ' · ' + x.j.data.version;
+      window.scrollTo({ top: $('done').offsetTop - 80, behavior: 'smooth' });
+    }).catch(function (e) {
+      msg.className = 'msg bad';
+      msg.textContent = e.message;
+      $('submit').disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>

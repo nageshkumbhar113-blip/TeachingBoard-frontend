@@ -1680,6 +1680,33 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  // Admin › Students › 📥 Import: preview (nothing saved) and run (creates / updates accounts)
+  async function previewStudentImport(body, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/students/import/preview', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    return payload?.data || null;
+  }
+
+  async function runStudentImport(body, pin = '') {
+    const token = await ensureAdminSession(pin);
+    const payload = await request('/students/import', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    return payload?.data || null;
+  }
+
+  // 📜 rules a teacher accepts after a bulk import (public)
+  async function fetchTeacherRules() {
+    const payload = await request('/teacher-rules');
+    return payload?.data || null;
+  }
+
   // Public: a teacher registers themselves; the account is pending until an admin approves.
   async function registerTeacher(data = {}) {
     if (data.signup_ad && _FBCLID && !data.fbclid) data = { ...data, fbclid: _FBCLID };
@@ -3172,6 +3199,7 @@ const API = (() => {
     fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz, bulkSaveQuestions, uploadFigures,
     fetchStudents, createStudent, updateStudent, resetStudentDevice, deleteStudent, selfRegister,
+    previewStudentImport, runStudentImport, fetchTeacherRules,
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment, previewPaymentPrice,
     fetchPendingPayments, fetchRevenueSummary,
     searchYoutubeSubscriberPartners, getMySubscriberClaimStatus, claimYoutubeSubscriber,
