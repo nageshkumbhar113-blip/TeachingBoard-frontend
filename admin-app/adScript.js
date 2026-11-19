@@ -81,8 +81,8 @@
     if (!AUDIENCES.includes(out.audience)) errors.push(`"audience" यापैकी हवं: ${AUDIENCES.join(', ')}`);
     const teacher = out.audience === 'school' || out.audience === 'youtube';
     if (!out.link) out.link = teacher ? 'teacher' : 'free';
-    if (!['teacher', 'free'].includes(out.link)) errors.push('"link" हवा: "teacher" (शिक्षकांची नोंदणी) किंवा "free" (class चा free test)');
-    else if (teacher !== (out.link === 'teacher')) errors.push(teacher ? 'शिक्षकांच्या video चा "link" = "teacher" हवा' : 'पालक / विद्यार्थ्यांच्या video चा "link" = "free" हवा');
+    if (!['teacher', 'demo', 'free'].includes(out.link)) errors.push('"link" हवा: "teacher" (शिक्षकांची नोंदणी), "demo" (Teacher Demo page) किंवा "free" (class चा free test)');
+    else if (teacher !== (out.link !== 'free')) errors.push(teacher ? 'शिक्षकांच्या video चा "link" = "teacher" किंवा "demo" हवा' : 'पालक / विद्यार्थ्यांच्या video चा "link" = "free" हवा');
     const st = j.style || {};
     out.style = { theme: THEMES.includes(st.theme) ? st.theme : 'violet', pace: st.pace in PACES ? st.pace : 'normal', music: MUSIC.includes(st.music) ? st.music : 'energetic' };
     if (st.theme && !THEMES.includes(st.theme)) warnings.push(`style.theme "${st.theme}" माहीत नाही — violet वापरला`);
@@ -149,6 +149,15 @@
         if (/₹\s*\d|\d+\s*%/.test(rawT) && !/\{[a-z_]+\}/.test(rawT)) errors.push(`${where} (${s.type}): "${k}" मध्ये ₹ / % चा आकडा थेट लिहिला आहे — { } खूण वापरा`);
       }
       sc.ms = Math.round(T.ms(sc) * (s.type === 'question' || s.type === 'pen' ? 1 : pace));
+      // 🗣️ what the voice says in this scene (Ad Studio makes it in a Marathi voice)
+      if (s.vo !== undefined && s.vo !== null && str(s.vo)) {
+        sc.vo = str(s.vo).slice(0, 300);
+        if (letters(str(s.vo)) > 300) warnings.push(`${where}: "vo" खूप लांब — 300 अक्षरांपर्यंतच बोलला जाईल`);
+      }
+      // a voice-over video: the scene may say how long it stays (2–15 s), so the picture waits for the voice
+      const secs = Number(s.secs);
+      if (s.secs !== undefined && (!Number.isFinite(secs) || secs < 2 || secs > 15)) errors.push(`${where} (${s.type}): "secs" 2 ते 15 सेकंद हवे`);
+      else if (s.secs !== undefined) sc.ms = Math.max(sc.ms, Math.round(secs * 1000));
       out.scenes.push(sc);
     });
     if (out.scenes.length) {
@@ -164,7 +173,7 @@
       if (got !== want) warnings.push(`recipe ${out.recipe} (${recipe.name}) चा क्रम: ${want} — script: ${got}`);
     }
     const ms = out.scenes.reduce((t, s) => t + s.ms, 0);
-    if (ms > 60000) errors.push(`Video ${Math.round(ms / 1000)} सेकंदांचा होतो — 60 पेक्षा कमी हवा (scenes कमी करा)`);
+    if (ms > 90000) errors.push(`Video ${Math.round(ms / 1000)} सेकंदांचा होतो — 90 पेक्षा कमी हवा (scenes कमी करा)`);
     else if (ms > 30000) warnings.push(`Video ${Math.round(ms / 1000)} सेकंदांचा होतो — ads साठी 15–30 चांगले. "${(out.scenes.find((s, i) => i && s.type !== 'cta' && s.type !== 'question') || {}).type || ''}" सारखा एखादा scene काढा`);
     return { ok: !errors.length, script: out, errors: [...new Set(errors)], warnings: [...new Set(warnings)], ms };
   }

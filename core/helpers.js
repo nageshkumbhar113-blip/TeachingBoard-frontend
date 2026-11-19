@@ -2450,6 +2450,13 @@ const API = (() => {
     const token = await ensureAdminSession();
     return (await request('/guest/admin/ad-scripts', { headers: { Authorization: `Bearer ${token}` } }))?.data || [];
   }
+  // 🗣️ one line in Edge's free Marathi voice (मनोहर / आरोही) → ArrayBuffer (MP3), for Ad Studio's voice-over
+  async function adVoice(text, voice = 'manohar', rate = 0) {
+    const token = await ensureAdminSession();
+    const r = await safeFetch(`${getApiUrl()}/guest/admin/ad-voice`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ text, voice, rate }) });
+    if (!r.ok) { let m = 'आवाज बनला नाही'; try { m = (await r.json())?.message || m; } catch { /* not JSON */ } throw new Error(m); }
+    return r.arrayBuffer();
+  }
   async function adScriptSave(body) {
     const token = await ensureAdminSession();
     return request('/guest/admin/ad-scripts', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
@@ -3220,7 +3227,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adVoice, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     adminOfferConfig, adminStopOffer, fetchOfferConfig, fetchWeeklyTests, weeklyHistory, weeklyPracticeMe, fetchTeacherPractice, fetchParentPractice, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

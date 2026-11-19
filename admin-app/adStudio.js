@@ -1091,7 +1091,7 @@ const AD_STUDIO = (() => {
       const k = outBack(p(t - cur.at, 1400, 1800)), bob = Math.sin((t - cur.at) / 140) * 8, tall = st.fmt === '916', y = H - (tall ? 110 : 52);
       x.save(); x.translate(W / 2, y + bob); x.scale(k, k);
       x.fillStyle = C.white; rr(-400, -40, 800, 80, 40); x.fill();
-      text(LL(isTeacher(v.aud) ? ['👇 खालच्या बटणावर टॅप करा — नोंदणी करा', '👇 Tap the button below to register'] : ['👇 खालच्या बटणावर टॅप करा — Free Test', '👇 Tap the button below — free test']), 0, 2, 38, C.violet, 800, 'center', 760);
+      text(LL(isTeacher(v.aud) ? (v.link === 'demo' ? ['👇 खालच्या बटणावर टॅप करा — Free Demo', '👇 Tap the button below — free demo'] : ['👇 खालच्या बटणावर टॅप करा — नोंदणी करा', '👇 Tap the button below to register']) : ['👇 खालच्या बटणावर टॅप करा — Free Test', '👇 Tap the button below — free test']), 0, 2, 38, C.violet, 800, 'center', 760);
       x.restore();
       return;
     }
@@ -1107,7 +1107,9 @@ const AD_STUDIO = (() => {
   const _vkey = v => (String(v).startsWith('s:') ? `v${AUD_LETTER[_audOf(v)] || 'p'}-${String(v).slice(2)}` : v);
   const adId = (v = st.v) => (st.plat === 'yt' ? 'yt-' : '') + (isTeacher(_audOf(v)) ? `t-${_vkey(v)}` : `${_slug(st.batch)}-${_vkey(v)}`);
   const _src = () => (st.plat === 'yt' ? 'yt' : 'meta');
-  const adLink = (v = st.v) => isTeacher(_audOf(v))
+  const adLink = (v = st.v) => isTeacher(_audOf(v)) && _variants(_facts())[v]?.link === 'demo'
+    ? `${SITE}/demo?src=${_src()}&ad=${encodeURIComponent(adId(v))}`
+    : isTeacher(_audOf(v))
     ? `${SITE}/student-app/?treg=${_audOf(v)}&src=${_src()}&ad=${encodeURIComponent(adId(v))}`
     : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}${_variants(_facts())[v]?.kind === 'reg' ? '&k=r' : ''}&src=${_src()}&ad=${encodeURIComponent(adId(v))}`;
   // the ad's parts (also what goes to Meta)
@@ -1318,7 +1320,7 @@ const AD_STUDIO = (() => {
     //           first frame to the last, never follows the cards;
     //  • anim — the animation layer (bright arpeggio, claps, a chord stab on every card): its
     //           loudness follows the scenes. Both stay lower under the admin's own voice.
-    const duck = voice ? .4 : 1;
+    const duck = voice ? .55 : 1;
     const bed = ctx.createGain();
     const light = _variants(_facts())[v]?.style?.music === 'light', bedLv = (light ? .17 : .3) * duck * _mix.bed;
     bed.gain.setValueAtTime(0, t0); bed.gain.linearRampToValueAtTime(bedLv, t0 + .08);
@@ -1424,14 +1426,17 @@ const AD_STUDIO = (() => {
   // The video is drawn frame by frame while it records. If this tab is hidden / minimised or the
   // computer is busy, the browser stops drawing and the video freezes in the middle (the sound goes
   // on). So every recording is checked: a pause of more than 0.4 s, or the tab hidden, → made again.
+  // Chrome's MP4 is 'fragmented' (length 0 in the header): some phones then play it small / can't seek.
+  // mp4fix.js re-arranges it into an ordinary MP4 (same picture and sound, real length).
+  async function _ordinary(r) { if (r && r.ext === 'mp4' && window.MP4FIX) r.blob = await MP4FIX.fixBlob(r.blob); return r; }
   async function record(v, fmt) {
     let best = null;
     for (let attempt = 1; ; attempt++) {
       const r = await _recordOnce(v, fmt);
-      if (r.ok) return r;
+      if (r.ok) return _ordinary(r);
       if (!r.hidden && (!best || r.gap < best.gap)) best = r;
       // a busy computer: after 3 tries keep the smoothest one if its pause is short (≤ 1.5 s)
-      if (attempt >= 3 && best && best.gap <= 1500) { APP.toast(`⚠️ Video मध्ये ${(best.gap / 1000).toFixed(1)} सेकंदाचा छोटा अडथळा राहिला — शक्य तर दुसरं काही बंद करून पुन्हा बनवा.`, 'info'); return best; }
+      if (attempt >= 3 && best && best.gap <= 1500) { APP.toast(`⚠️ Video मध्ये ${(best.gap / 1000).toFixed(1)} सेकंदाचा छोटा अडथळा राहिला — शक्य तर दुसरं काही बंद करून पुन्हा बनवा.`, 'info'); return _ordinary(best); }
       if (attempt >= 3) throw new Error(`Video नीट बनला नाही (${r.why}). Video बनत असताना हे tab समोर उघडं ठेवा, दुसरं tab / window उघडू नका, आणि पुन्हा करा.`);
       APP.toast(`⚠️ Video बनत असताना ${r.why} — पुन्हा बनवत आहे. हे tab समोर उघडं ठेवा.`, 'info');
       if (document.hidden) await new Promise(res => { const on = () => { if (!document.hidden) { document.removeEventListener('visibilitychange', on); res(); } }; document.addEventListener('visibilitychange', on); });
@@ -1935,7 +1940,92 @@ const AD_STUDIO = (() => {
         f.site ? `🗺️ ${f.site.name}` : '🗺️ Site / Exams मध्ये जोडलेली नाही', f.players ? `महा-Test: ${f.players} मुलं, topper ${f.topScore}${f.topName ? ' (' + f.topName + ')' : ''}` : 'महा-Test result नाही'].join(' · ');
   }
   // the 🎤 line: this ad's voice (if any) and whether it fits the video
+  // ── 🗣️ script videos: each scene's "vo" line in a Marathi voice (मनोहर / आरोही), speed of the admin's choice ──
+  const TTS_KEY = 'ad_tts';   // { voice, rate } on this device
+  let _tts = { voice: 'manohar', rate: 12 };
+  const _ttsScript = () => { const v = _variants(_facts())[st.v]; if (!v?.custom) return null; const r = _scriptOf(v.sid, _facts()); return r?.script?.scenes?.some(s => s.vo) ? { v, r } : null; };
+  function _paintTts() {
+    const box = $('ads-tts'); if (!box) return;
+    const on = _ttsScript(); box.hidden = !on;
+    if (!on) return;
+    $('ads-tts-voice').value = _tts.voice; $('ads-tts-rate').value = _tts.rate;
+    $('ads-tts-rate-out').textContent = (_tts.rate >= 0 ? '+' : '') + _tts.rate + '%';
+  }
+  async function _ttsClip(text, ctx) {
+    const buf = await API.adVoice(text, _tts.voice, _tts.rate);
+    const a = await ctx.decodeAudioData(buf);
+    // the voice service leaves a little silence at both ends
+    const d = a.getChannelData(0); let s = 0, e = d.length - 1;
+    while (s < d.length && Math.abs(d[s]) < .01) s++;
+    while (e > s && Math.abs(d[e]) < .01) e--;
+    return { a, s, e, secs: (e - s) / a.sampleRate };
+  }
+  let _ttsPlayer = null;
+  async function _ttsTry() {
+    const on = _ttsScript(); if (!on) return;
+    const line = on.r.script.scenes.find(s => s.vo)?.vo; if (!line) return;
+    $('ads-tts-msg').textContent = '⏳ आवाज बनत आहे…';
+    try {
+      try { await _ttsPlayer?.close(); } catch { /* closed */ }
+      const ctx = _ttsPlayer = new (window.AudioContext || window.webkitAudioContext)();
+      const c = await _ttsClip(line, ctx);
+      const src = ctx.createBufferSource(); src.buffer = c.a; src.connect(ctx.destination); src.start(0, c.s / c.a.sampleRate);
+      $('ads-tts-msg').textContent = `▶ ${_tts.voice === 'aarohi' ? 'आरोही' : 'मनोहर'} · वेग ${_tts.rate >= 0 ? '+' : ''}${_tts.rate}% — आवडला तर "लावा"`;
+    } catch (err) { $('ads-tts-msg').textContent = '⚠️ ' + (err?.message || 'आवाज बनला नाही'); }
+  }
+  // every scene's line → one voice track; each scene stays as long as its line (+ a breath), the last one a
+  // little longer so the voice is never cut at the end; the script keeps those lengths ("secs")
+  async function _ttsSet() {
+    const on = _ttsScript(); if (!on) return;
+    const btn = $('ads-tts-set'); btn.disabled = true;
+    const scenes = on.r.script.scenes, msg = $('ads-tts-msg');
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const clips = [];
+      for (let i = 0; i < scenes.length; i++) {
+        msg.textContent = `⏳ आवाज बनत आहे… ${i + 1}/${scenes.length}`;
+        clips.push(scenes[i].vo ? await _ttsClip(scenes[i].vo, ctx) : null);
+      }
+      ctx.close().catch(() => {});
+      // the scenes' new lengths, saved into the script itself
+      const sc = _scripts.find(x => x.sid === on.v.sid);
+      const j = AD_SCRIPT.extract ? AD_SCRIPT.extract(sc.raw) : JSON.parse(sc.raw);
+      const last = scenes.length - 1;
+      j.scenes.forEach((s, i) => { const c = clips[i]; if (c) s.secs = Math.min(15, Math.max(s.type === 'question' ? 8 : 3, +(c.secs + (i === last ? 1.4 : .6)).toFixed(2))); });
+      sc.raw = JSON.stringify(j, null, 2);
+      _parsed.clear();
+      const r = _scriptOf(sc.sid, _facts());
+      if (!r?.ok) throw new Error(r?.errors?.[0] || 'script मध्ये चूक');
+      if (!sc.draft) await API.adScriptSave({ sid: sc.sid, raw: sc.raw }).catch(() => {});
+      // the voice track: each line at its scene's start
+      const sr = clips.find(Boolean).a.sampleRate, total = r.ms / 1000;
+      const off = new OfflineAudioContext(1, Math.ceil(total * sr), sr);   // exactly the video's length (the last scene has room for its line)
+      let t = 0;
+      r.script.scenes.forEach((s, i) => {
+        const c = clips[i];
+        if (c) {
+          const b = off.createBuffer(1, c.e - c.s + 1, sr); b.copyToChannel(c.a.getChannelData(0).slice(c.s, c.e + 1), 0);
+          const src = off.createBufferSource(); src.buffer = b;
+          // a little studio polish: a clearer voice, an even level
+          const eq = off.createBiquadFilter(); eq.type = 'peaking'; eq.frequency.value = 3000; eq.gain.value = 3; eq.Q.value = .8;
+          const comp = off.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = .005; comp.release.value = .2;
+          const g = off.createGain(); g.gain.value = 1.25;
+          src.connect(eq).connect(comp).connect(g).connect(off.destination);
+          src.start(t + (i === 0 ? .35 : .2));
+        }
+        t += s.ms / 1000;
+      });
+      const voice = await off.startRendering();
+      _voice[adId()] = { decoded: voice, name: `🗣️ ${_tts.voice === 'aarohi' ? 'आरोही' : 'मनोहर'} · वेग ${_tts.rate >= 0 ? '+' : ''}${_tts.rate}%`, secs: voice.duration };
+      _paintVoice();
+      msg.textContent = `✅ आवाज लावला — video ≈ ${Math.round(total)} सेकंद. "▶ आवाजासह पाहा" दाबून ऐका; आवडला नाही तर आवाज / वेग बदलून परत "लावा".`;
+      st.t0 = performance.now(); st.paused = false;
+    } catch (err) { msg.textContent = '⚠️ ' + (err?.message || 'आवाज लावता आला नाही'); }
+    finally { btn.disabled = false; }
+  }
+
   function _paintVoice() {
+    _paintTts();
     const m = $('ads-voice-msg'), del = $('ads-voice-del'); if (!m) return;
     const vo = _voice[adId()], len = lengthOf(_variants(_facts())[st.v]) / 1000;
     del.hidden = !vo;
@@ -2233,6 +2323,16 @@ const AD_STUDIO = (() => {
               <label class="ads-voice">🎤 माझा आवाज (या ad साठी, ऐच्छिक) <input type="file" id="ads-voice" accept="audio/*" /></label>
               <small id="ads-voice-msg" class="import-hint">आवाज phone वर रेकॉर्ड करा (उदा. "NMMS ला फक्त 45 दिवस बाकी…") — असेल तर music आपोआप हळू होतं.</small>
               <button type="button" class="admin-btn-secondary" id="ads-voice-del" hidden>✕ आवाज काढा</button>
+              <div id="ads-tts" class="ads-tts" hidden>
+                <b>🗣️ Script चा मराठी आवाज</b>
+                <label>आवाज <select id="ads-tts-voice" class="admin-input"><option value="manohar">👨 मनोहर (पुरुष)</option><option value="aarohi">👩 आरोही (स्त्री)</option></select></label>
+                <label>वेग <input type="range" id="ads-tts-rate" min="-30" max="40" step="2" value="12" /> <output id="ads-tts-rate-out">+12%</output></label>
+                <div class="admin-toolbar">
+                  <button type="button" class="admin-btn-secondary" id="ads-tts-try">▶ पहिली ओळ ऐका</button>
+                  <button type="button" class="admin-btn-primary" id="ads-tts-set">🎙️ हा आवाज video ला लावा</button>
+                </div>
+                <small id="ads-tts-msg" class="import-hint">आवाज आणि वेग निवडा, ऐका, मग "लावा" — प्रत्येक scene तिच्या ओळीइतका वेळ थांबतो. मग "▶ आवाजासह पाहा".</small>
+              </div>
             </div>
             <div class="ads-recbox ads-metabox" id="ads-metabox" hidden>
               <b>📤 Meta वर पाठवा</b>
@@ -2345,6 +2445,12 @@ const AD_STUDIO = (() => {
         _paintVoice();
       });
       $('ads-voice-del').addEventListener('click', () => { delete _voice[adId()]; _paintVoice(); });
+      _tts = { ..._tts, ...((await DB.getSetting(TTS_KEY, null).catch(() => null)) || {}) };
+      $('ads-tts-voice').addEventListener('change', e => { _tts.voice = e.target.value; DB.setSetting(TTS_KEY, { ..._tts }).catch(() => {}); });
+      $('ads-tts-rate').addEventListener('input', e => { _tts.rate = Number(e.target.value); $('ads-tts-rate-out').textContent = (_tts.rate >= 0 ? '+' : '') + _tts.rate + '%'; });
+      $('ads-tts-rate').addEventListener('change', () => DB.setSetting(TTS_KEY, { ..._tts }).catch(() => {}));
+      $('ads-tts-try').addEventListener('click', _ttsTry);
+      $('ads-tts-set').addEventListener('click', _ttsSet);
       $('ads-meta-send').addEventListener('click', () => sendToMeta());
       $('ads-meta-send-all').addEventListener('click', sendAllToMeta);
       _geoPick = (await DB.getSetting(GEO_KEY, null).catch(() => null)) || {};
@@ -2395,7 +2501,7 @@ const AD_STUDIO = (() => {
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, audioPlan, playWithSound, __mix: _mix, __score: (...a) => _score(...a), __scripts: _scripts, __shots: _shots, __phValues: () => _phValues(_facts()), __st: st, __content: _content, __voice: _voice };
+  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, audioPlan, playWithSound, __mix: _mix, __score: (...a) => _score(...a), __scripts: _scripts, __shots: _shots, __phValues: () => _phValues(_facts()), __st: st, __content: _content, __voice: _voice, __adId: adId, __vidCheck: (...a) => _vidCheck(...a) };
 })();
 
 window.AD_STUDIO = AD_STUDIO;

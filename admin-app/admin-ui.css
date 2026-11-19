@@ -2990,3 +2990,8 @@ body.crm-lead-open { overflow: hidden; }
 .wka-preview { max-height: 420px; overflow: auto; font-size: .88rem; padding-left: 22px; }
 .wka-preview li { margin: 0 0 8px; }
 .wka-form [hidden] { display: none !important; }
+
+/* 🗣️ Ad Studio: the script's Marathi voice (voice, speed, try, set) */
+.ads-tts { display: grid; gap: 6px; margin-top: 8px; padding: 8px; border: 1px dashed rgba(124, 58, 237, .45); border-radius: 10px; }
+.ads-tts[hidden] { display: none; }
+.ads-tts input[type=range] { flex: 1; min-width: 120px; }
