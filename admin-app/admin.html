@@ -951,19 +951,29 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </section>
 
             <section class="sync-section admin-card gxa-card" aria-label="Weekly test">
-              <h3 class="admin-section-title">🏆 Weekly महा-Test (आपोआप)</h3>
+              <h3 class="admin-section-title">🏆 Weekly महा-Test आणि 📝 रोज Paper Pattern Practice (आपोआप)</h3>
               <p class="import-hint">एकदाच set करा: दर आठवड्याला ठरलेल्या दिवशी आणि वेळी app स्वतः test बनवतं — प्रत्येक आठवड्याला पुढचा विषय, पूर्ण विषयातून random प्रश्न. Server वर भार नाही: प्रश्न आधीच phone वर येतात, test phone वर चालतो. Student ला गुण test जमा करताच दिसतात; rank board आणि उत्तरं "Result वेळ" ला. Result लगेच हवा असेल तर Result वेळ = test संपण्याची वेळ (उदा. 18:30) ठेवा.</p>
               <div class="wka-form">
+                <div class="wka-mode" role="radiogroup" aria-label="किती वेळा">किती वेळा:
+                  <label><input type="radio" name="wk-kind" value="weekly" checked /> 🏆 आठवड्यातून एकदा (महा-Test)</label>
+                  <label><input type="radio" name="wk-kind" value="daily" /> 📝 रोज — Paper Pattern Practice</label>
+                </div>
+                <p class="import-hint wk-only-daily" hidden>📝 <b>Paper Pattern Practice:</b> त्या class च्या परीक्षेच्या pattern नुसार रोज पूर्ण पेपर — प्रत्येक पेपर ठरलेल्या वेळी सगळ्या class साठी एकदम सुरू, "सुरू करायची मुदत" नंतर सुरू करता येत नाही, वेळ संपली की सगळ्यांचा एकदम जमा. गुण जमा करताच; उत्तरं + rank पेपर संपल्यावर 5 मिनिटांनी. दिवसाच्या शेवटच्या पेपरनंतर दिवसाचे एकूण गुण (उदा. MAT + SAT = 180) आणि नावासह Toppers banner, दुसऱ्या दिवशीच्या निकालापर्यंत. प्रश्न: कमी वेळा आलेले आधी. 15 मिनिटं आधी आणि निकालानंतर notification (student + पालक).</p>
                 <label>Class <select id="wk-batch" class="admin-input"></select></label>
                 <label>नाव <input id="wk-title" class="admin-input" value="महा-Test" maxlength="60" /></label>
-                <label>दिवस <select id="wk-day" class="admin-input">
+                <label class="wk-only-weekly">दिवस <select id="wk-day" class="admin-input">
                   <option value="0">रविवार</option><option value="1">सोमवार</option><option value="2">मंगळवार</option><option value="3">बुधवार</option><option value="4">गुरुवार</option><option value="5">शुक्रवार</option><option value="6">शनिवार</option>
                 </select></label>
-                <label>Test सुरू <input id="wk-time" class="admin-input" type="time" value="18:00" /></label>
+                <label class="wk-only-weekly">Test सुरू <input id="wk-time" class="admin-input" type="time" value="18:00" /></label>
                 <label>Test चा वेळ (मिनिटं) <input id="wk-dur" class="admin-input" type="number" min="5" max="180" value="30" /></label>
-                <label>सुरू करायची खिडकी (मिनिटं) <input id="wk-win" class="admin-input" type="number" min="10" max="1440" value="30" /></label>
-                <label>Result (rank list) वेळ <input id="wk-result" class="admin-input" type="time" value="20:00" /></label>
-                <div class="wka-mode" role="radiogroup" aria-label="Test चा प्रकार">Test चा प्रकार:
+                <label class="wk-only-weekly">सुरू करायची खिडकी (मिनिटं) <input id="wk-win" class="admin-input" type="number" min="10" max="1440" value="30" /></label>
+                <label class="wk-only-weekly">Result (rank list) वेळ <input id="wk-result" class="admin-input" type="time" value="20:00" /></label>
+                <label class="wk-only-daily" hidden>सुरू करायची मुदत (मिनिटं) <input id="wk-join" class="admin-input" type="number" min="0" max="180" value="15" /></label>
+                <label class="wk-only-daily" hidden>कधीपासून <input id="wk-from" class="admin-input" type="date" /></label>
+                <label class="wk-only-daily" hidden>कधीपर्यंत (परीक्षेची तारीख) <input id="wk-to" class="admin-input" type="date" /></label>
+                <label class="wk-only-daily" hidden>Banner वर Toppers <select id="wk-top" class="admin-input"><option value="3">Top 3</option><option value="5">Top 5</option><option value="10">Top 10</option></select></label>
+                <label class="wk-only-daily wka-wide" hidden>सुट्टीचे दिवस <input id="wk-holidays" class="admin-input" placeholder="उदा. 2026-12-25, 2027-01-26" /></label>
+                <div class="wka-mode wk-only-mode" role="radiogroup" aria-label="Test चा प्रकार">Test चा प्रकार:
                   <label><input type="radio" name="wk-mode" value="subject" checked /> 🔁 एक विषय दर आठवड्याला</label>
                   <label><input type="radio" name="wk-mode" value="papers" /> 🧩 Mixed पेपर (आलटून-पालटून)</label>
                 </div>
@@ -976,7 +986,15 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                   <label><input type="checkbox" class="wk-type" value="fib" /> रिकाम्या जागा</label>
                 </div>
                 <div id="wk-subjects" class="wka-subjects wk-only-subject"></div>
+                <div class="wk-only-daily wka-wide" hidden>
+                  <div class="admin-toolbar"><b>Pattern:</b>
+                    <select id="wk-pattern" class="admin-input" aria-label="परीक्षेचा pattern"></select>
+                    <button id="btn-wk-pattern" class="admin-btn-secondary" type="button">📋 हा pattern भरा</button>
+                  </div>
+                </div>
+                <label class="wk-only-sameday wka-wide"><input type="checkbox" id="wk-sameday" /> सगळे पेपर एकाच दिवशी, एकामागून एक (उदा. MAT, मग SAT) — मध्ये gap <input id="wk-gap" class="admin-input" type="number" min="0" max="240" value="60" style="width:70px" /> मिनिटं</label>
                 <div id="wk-papers" class="wka-papers wk-only-papers" hidden></div>
+                <div id="wk-slots" class="wka-slots wk-only-daily wka-wide" hidden></div>
               </div>
               <div class="admin-toolbar">
                 <button id="btn-wk-save" class="admin-btn-primary" type="button">💾 Save — automation सुरू</button>

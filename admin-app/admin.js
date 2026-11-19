@@ -2174,12 +2174,91 @@ const ADMIN = (() => {
   let _wkPool = [];          // [{ subject, questions, chapters:[{chapter, questions}] }] for the chosen class / types / source
   let _wkPapers = [];        // the papers being edited
   const _wkMode = () => document.querySelector('input[name="wk-mode"]:checked')?.value || 'subject';
+  const _wkKind = () => document.querySelector('input[name="wk-kind"]:checked')?.value || 'weekly';
   function _wkShowMode() {
+    const daily = _wkKind() === 'daily';
+    // the daily practice is always made of whole papers
+    if (daily) document.querySelectorAll('input[name="wk-mode"]').forEach(r => { r.checked = r.value === 'papers'; });
     const papers = _wkMode() === 'papers';
     document.querySelectorAll('.wk-only-subject').forEach(e => { e.hidden = papers; });
     document.querySelectorAll('.wk-only-papers').forEach(e => { e.hidden = !papers; });
+    document.querySelectorAll('.wk-only-daily').forEach(e => { e.hidden = !daily; });
+    document.querySelectorAll('.wk-only-weekly, .wk-only-mode').forEach(e => { e.hidden = daily; });
+    document.querySelectorAll('.wk-only-sameday').forEach(e => { e.hidden = daily || !papers; });
     if (papers && !_wkPapers.length) _wkPapers = [_wkNewPaper()];
     if (papers) _wkPaintPapers();
+    if (daily) _wkPaintSlots();
+  }
+
+  // ── Daily practice timetable: for each paper, a time on each day (empty = no paper that day) ──
+  const _WK_ORDER = [1, 2, 3, 4, 5, 6, 0];   // सोमवार … रविवार
+  let _wkGrid = [];                          // _wkGrid[paperIndex][dow] = 'HH:MM'
+  function _wkPaintSlots() {
+    const box = $('wk-slots');
+    if (!box) return;
+    while (_wkGrid.length < _wkPapers.length) _wkGrid.push({});
+    box.innerHTML = `<b>⏰ वेळापत्रक</b> <small>(प्रत्येक पेपरची वेळ, दिवसानुसार — रिकामं = त्या दिवशी नाही)</small>
+      <table class="wka-parts"><thead><tr><th>पेपर</th>${_WK_ORDER.map(d => `<th>${_WK_DAYS[d].slice(0, 3)}</th>`).join('')}</tr></thead><tbody>
+      ${_wkPapers.map((p, pi) => `<tr data-pi="${pi}"><td><b>${_esc(p.name || 'पेपर ' + (pi + 1))}</b></td>${_WK_ORDER.map(d => `<td><input type="time" class="admin-input wk-slot" data-pi="${pi}" data-dow="${d}" value="${_esc(_wkGrid[pi]?.[d] || '')}" aria-label="${_esc(p.name)} ${_WK_DAYS[d]}" /></td>`).join('')}</tr>`).join('')}
+      </tbody></table>
+      <div class="admin-toolbar"><button type="button" class="admin-btn-secondary" data-a="copy">↔ सोमवारची वेळ सोम–शुक्र ला लावा</button></div>`;
+  }
+  function _wkSlotEvent(e) {
+    const t = e.target;
+    if (t.classList?.contains('wk-slot')) { const pi = Number(t.dataset.pi); (_wkGrid[pi] ||= {})[Number(t.dataset.dow)] = t.value; return; }
+    if (t.dataset?.a === 'copy') { _wkGrid.forEach(g => { if (g[1]) [2, 3, 4, 5].forEach(d => { g[d] = g[1]; }); }); _wkPaintSlots(); }
+  }
+  const _wkSlotsOut = () => _wkPapers.flatMap((p, pi) => Object.entries(_wkGrid[pi] || {}).filter(([, t]) => /^\d{2}:\d{2}$/.test(t)).map(([d, time]) => ({ paper: String(p.name || '').trim(), dow: Number(d), time })));
+  const _wkSlotsIn = s => { _wkGrid = (s?.papers || []).map(p => Object.fromEntries((s.slots || []).filter(x => x.paper === p.name).map(x => [x.dow, x.time]))); };
+
+  // ── Exam patterns: one click fills the papers + timetable. Each new exam's pattern is added here
+  // (owner 2026-11-19: "जो नवीन paper देईन त्याचा pattern अभ्यासून इथे जोडा"). Subjects are found in the
+  // class by name; `count` is shared among the matching subjects.
+  const _WK_PATTERNS = [
+    {
+      id: 'nmms8', name: '8th NMMS — MAT 90 + SAT 90 (Sci 35 · Social 35 · Maths 20)',
+      title: 'NMMS Paper Practice', duration: 90, join: 15, top: 3, open_to: 'paid',
+      papers: [
+        { name: 'MAT', parts: [{ label: 'MAT (बौद्धिक क्षमता)', match: ['mat', 'बौद्धिक', 'mental', 'reasoning'], count: 90 }] },
+        { name: 'SAT', parts: [
+          { label: 'Science', match: ['science', 'विज्ञान'], not: ['social', 'सामाजिक'], count: 35 },
+          { label: 'Social Science', match: ['social', 'सामाजिक', 'इतिहास', 'भूगोल', 'नागरिक', 'history', 'geography', 'civics'], count: 35 },
+          { label: 'Maths', match: ['math', 'गणित'], count: 20 },
+        ] },
+      ],
+      // MAT: सोम–शुक्र सकाळी 7, शनिवारी दुपारी 4; SAT: सोम–शनि संध्याकाळी 7; रविवारी नाही (महा-Test)
+      slots: { MAT: { 1: '07:00', 2: '07:00', 3: '07:00', 4: '07:00', 5: '07:00', 6: '16:00' }, SAT: { 1: '19:00', 2: '19:00', 3: '19:00', 4: '19:00', 5: '19:00', 6: '19:00' } },
+    },
+  ];
+  function _wkFillPatternList() {
+    const sel = $('wk-pattern');
+    if (sel && !sel.options.length) sel.innerHTML = _WK_PATTERNS.map(x => `<option value="${x.id}">${_esc(x.name)}</option>`).join('');
+  }
+  function _wkApplyPattern() {
+    const pt = _WK_PATTERNS.find(x => x.id === $('wk-pattern')?.value);
+    if (!pt) return;
+    const subjects = _wkPool.map(x => x.subject);
+    const missing = [];
+    const find = part => subjects.filter(n => { const l = n.toLowerCase(); return part.match.some(m => l.includes(m)) && !(part.not || []).some(m => l.includes(m)); })
+      // "MAT" must not catch "Maths"
+      .filter(n => !(part.match.includes('mat') && /math|गणित/i.test(n)));
+    _wkPapers = pt.papers.map(pp => {
+      const parts = [];
+      for (const part of pp.parts) {
+        const hit = find(part);
+        if (!hit.length) { missing.push(part.label); continue; }
+        hit.forEach((subject, i) => parts.push({ subject, chapters: [], count: Math.floor(part.count / hit.length) + (i < part.count % hit.length ? 1 : 0), marks: 1 }));
+      }
+      return { name: pp.name, order: 'sections', negative: 0, parts };
+    });
+    _wkGrid = pt.papers.map(pp => ({ ...(pt.slots[pp.name] || {}) }));
+    $('wk-title').value = pt.title;
+    $('wk-dur').value = pt.duration;
+    $('wk-join').value = pt.join;
+    $('wk-top').value = String(pt.top);
+    $('wk-open').value = pt.open_to;
+    _wkPaintPapers(); _wkPaintSlots();
+    APP.toast(missing.length ? `⚠️ या class मध्ये हे विषय सापडले नाहीत: ${missing.join(', ')} — खालच्या पेपरमध्ये हाताने निवडा` : '✅ Pattern भरला — तपासा आणि Save करा', missing.length ? 'info' : 'success');
   }
   const _wkNewPaper = () => ({ name: '', order: 'sections', negative: 0, parts: [] });
   // questions a part can get: its chosen chapters (or the whole subject)
@@ -2226,15 +2305,15 @@ const ADMIN = (() => {
         </tbody></table>
         <div class="wka-sum">एकूण ${total} प्रश्न · ${marks} गुण${Number(p.negative) ? ` · चुकीला −${Number(p.negative)}` : ''}${p.parts.some(x => (Number(x.count) || 0) > _wkAvail(x)) ? ' · <span class="wka-warn">⚠️ काही विषयांत प्रश्न कमी — जितके आहेत तितके येतील</span>' : ''}</div>
       </div>`;
-    }).join('') + `<div><button type="button" class="admin-btn-secondary" data-a="addp">➕ आणखी पेपर (आलटून-पालटून येतील)</button></div>`;
+    }).join('') + `<div><button type="button" class="admin-btn-secondary" data-a="addp">➕ आणखी पेपर${_wkKind() === 'daily' ? '' : ' (आलटून-पालटून येतील)'}</button></div>`;
   }
   function _wkPaperEvent(e) {
     const t = e.target, pBox = t.closest('.wka-paper');
-    if (t.dataset.a === 'addp') { _wkPapers.push(_wkNewPaper()); _wkPaintPapers(); return; }
+    if (t.dataset.a === 'addp') { _wkPapers.push(_wkNewPaper()); _wkGrid.push({}); _wkPaintPapers(); if (_wkKind() === 'daily') _wkPaintSlots(); return; }
     if (!pBox) return;
     const p = _wkPapers[Number(pBox.dataset.p)];
-    if (t.dataset.a === 'delp') { _wkPapers.splice(Number(pBox.dataset.p), 1); _wkPaintPapers(); return; }
-    if (t.dataset.f === 'name') { p.name = t.value; return; }
+    if (t.dataset.a === 'delp') { _wkPapers.splice(Number(pBox.dataset.p), 1); _wkGrid.splice(Number(pBox.dataset.p), 1); _wkPaintPapers(); if (_wkKind() === 'daily') _wkPaintSlots(); return; }
+    if (t.dataset.f === 'name') { p.name = t.value; if (e.type === 'change' && _wkKind() === 'daily') _wkPaintSlots(); return; }
     if (t.dataset.f === 'order') { p.order = t.value; _wkPaintPapers(); return; }
     if (t.dataset.f === 'negative') { p.negative = Number(t.value) || 0; if (e.type === 'change') _wkPaintPapers(); return; }
     const row = t.closest('tr[data-s]'); if (!row) return;
@@ -2294,6 +2373,17 @@ const ADMIN = (() => {
     _wkPapers = (s?.papers || []).map(p => ({ ...p, parts: (p.parts || []).map(x => ({ ...x, chapters: [...(x.chapters || [])] })) }));
     const mode = s?.mode === 'papers' ? 'papers' : 'subject';
     document.querySelectorAll('input[name="wk-mode"]').forEach(r => { r.checked = r.value === mode; });
+    const kind = s?.kind === 'daily' ? 'daily' : (s ? 'weekly' : _wkKind());
+    document.querySelectorAll('input[name="wk-kind"]').forEach(r => { r.checked = r.value === kind; });
+    $('wk-join').value = s?.join_minutes ?? 15;
+    $('wk-from').value = s?.start_date || '';
+    $('wk-to').value = s?.end_date || '';
+    $('wk-holidays').value = (s?.skip_dates || []).join(', ');
+    $('wk-top').value = String([3, 5, 10].includes(s?.banner_top) ? s.banner_top : (kind === 'daily' ? 3 : 10));
+    $('wk-sameday').checked = !!s?.papers_same_day;
+    $('wk-gap').value = s?.gap_minutes ?? 60;
+    _wkSlotsIn(s);
+    _wkFillPatternList();
     _wkShowMode();
     _loadWeeklySubjects(s?.subjects || null);
   }
@@ -2308,6 +2398,25 @@ const ADMIN = (() => {
       mode: _wkMode(),
     };
     if (body.mode === 'papers') body.papers = _wkPapers;
+    body.kind = _wkKind();
+    if (body.kind === 'daily') {
+      body.mode = 'papers'; body.papers = _wkPapers;
+      body.slots = _wkSlotsOut();
+      body.window_minutes = body.duration_minutes;   // one fixed end for the whole class
+      body.result_time = '';
+      body.join_minutes = Number($('wk-join').value) || 0;
+      body.start_date = $('wk-from').value || '';
+      body.end_date = $('wk-to').value || '';
+      body.skip_dates = String($('wk-holidays').value || '').split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+      body.banner_top = Number($('wk-top').value) || 3;
+      body.papers_same_day = false;
+      if (body.skip_dates.some(d => !/^\d{4}-\d{2}-\d{2}$/.test(d))) { APP.toast('सुट्टीच्या तारखा 2026-12-25 अशा लिहा', 'error'); return; }
+      if (!body.slots.length) { APP.toast('वेळापत्रकात किमान एका पेपरची वेळ द्या', 'error'); return; }
+      if (body.end_date && body.start_date && body.end_date < body.start_date) { APP.toast('"कधीपर्यंत" ही तारीख "कधीपासून" नंतरची हवी', 'error'); return; }
+    } else if (body.mode === 'papers') {
+      body.papers_same_day = $('wk-sameday').checked;
+      body.gap_minutes = Number($('wk-gap').value) || 0;
+    }
     if (!body.batch) { APP.toast('Class निवडा', 'error'); return; }
     if (!body.question_types.length) { APP.toast('किमान एक प्रश्न प्रकार निवडा', 'error'); return; }
     if (body.mode === 'papers') {
@@ -2316,13 +2425,14 @@ const ADMIN = (() => {
       if (_wkPapers.some(p => !p.parts.length)) { APP.toast('प्रत्येक पेपरमध्ये किमान एक विषय निवडा', 'error'); return; }
       if (!body.subjects.length) body.subjects = [...new Set(_wkPapers.flatMap(p => p.parts.map(x => x.subject)))];
     } else if (!body.subjects.length) { APP.toast('किमान एक विषय निवडा (ज्यात प्रश्न आहेत)', 'error'); return; }
-    if (body.window_minutes < body.duration_minutes) { APP.toast('खिडकी test च्या वेळेइतकी किंवा जास्त हवी', 'error'); return; }
+    if (body.kind !== 'daily' && body.window_minutes < body.duration_minutes) { APP.toast('खिडकी test च्या वेळेइतकी किंवा जास्त हवी', 'error'); return; }
     const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
-    if (body.result_time && toMin(body.result_time) < toMin(body.start_time) + body.window_minutes) { APP.toast('Result ची वेळ test संपल्यानंतरची हवी', 'error'); return; }
+    const lastEnd = toMin(body.start_time) + (body.papers_same_day ? (_wkPapers.length - 1) * (Math.max(body.window_minutes, body.duration_minutes) + body.gap_minutes) : 0) + body.window_minutes;
+    if (body.kind !== 'daily' && body.result_time && toMin(body.result_time) < lastEnd) { APP.toast(body.papers_same_day ? 'Result ची वेळ शेवटचा पेपर संपल्यानंतरची हवी' : 'Result ची वेळ test संपल्यानंतरची हवी', 'error'); return; }
     try {
       if (_wkEditing) await API.adminWeekly('PUT', `/schedules/${_wkEditing}`, body);
       else await API.adminWeekly('POST', '/schedules', body);
-      APP.toast('✅ Save झालं — पुढचा महा-Test तयार', 'success');
+      APP.toast(body.kind === 'daily' ? '✅ Save झालं — पुढचा practice पेपर तयार' : '✅ Save झालं — पुढचा महा-Test तयार', 'success');
       _fillWeeklyForm(null);
       _loadWeekly();
     } catch (err) { APP.toast(err?.message || 'Save झालं नाही', 'error'); }
@@ -2346,36 +2456,42 @@ const ADMIN = (() => {
         item.className = 'batch-admin-item';
         const short = (s.next?.shortages || []).map(x => `${_esc(x.subject)}: ${x.want} मागितले, ${x.got} मिळाले`).join(' · ');
         const next = s.next ? (s.next.status === 'skipped' ? '⚠️ पुढचा test बनला नाही (प्रश्न नाहीत)' : `पुढचा: <b>${_esc(s.next.subject)}</b> · ${_esc(new Date(s.next.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · ${s.next.questions} प्रश्न${short ? ` <span class="wka-warn">⚠️ प्रश्न कमी — ${short}</span>` : ''}`) : '—';
-        const what = s.mode === 'papers' ? `पेपर आलटून-पालटून: ${(s.papers || []).map(p => _esc(p.name)).join(' → ')}` : `${s.question_count} प्रश्न`;
+        const what = s.mode === 'papers' ? (s.kind === 'daily' ? `पेपर: ${(s.papers || []).map(p => `${_esc(p.name)} (${(p.parts || []).reduce((n, x) => n + (Number(x.count) || 0), 0)} प्रश्न)`).join(', ')}` : s.papers_same_day ? `सगळे पेपर एकाच दिवशी: ${(s.papers || []).map(p => _esc(p.name)).join(` → ${s.gap_minutes} मि gap → `)}` : `पेपर आलटून-पालटून: ${(s.papers || []).map(p => _esc(p.name)).join(' → ')}`) : `${s.question_count} प्रश्न`;
+        const daily = s.kind === 'daily';
+        const when = daily
+          ? `📝 रोज: ${(s.papers || []).map(p => `<b>${_esc(p.name)}</b> ${_WK_ORDER.filter(d => (s.slots || []).some(x => x.paper === p.name && x.dow === d)).map(d => `${_WK_DAYS[d].slice(0, 3)} ${_esc((s.slots || []).find(x => x.paper === p.name && x.dow === d).time)}`).join(', ')}`).join(' · ')} · ${s.duration_minutes} मि · सुरू करायची मुदत ${s.join_minutes} मि${s.end_date ? ` · ${_esc(s.end_date)} पर्यंत` : ''}${(s.skip_dates || []).length ? ` · सुट्टी ${s.skip_dates.length}` : ''}`
+          : `दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} ते ${_esc(_wkEnd(s))} · Result ${_esc(s.result_time || _wkEnd(s))} · ${s.duration_minutes} मि test`;
         item.innerHTML = `
           <div>
             <div class="batch-admin-name">${s.enabled ? '🟢' : '⏸️'} ${_esc(s.title)} · ${_esc(s.batch)}</div>
-            <div class="batch-admin-meta">दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} ते ${_esc(_wkEnd(s))} · Result ${_esc(s.result_time || _wkEnd(s))} · ${s.duration_minutes} मि test · ${what} · ${_esc((s.question_types || []).join(', '))} · ${s.open_to === 'paid' ? 'फक्त paid' : 'सगळे'}</div>
+            <div class="batch-admin-meta">${when} · ${what} · ${_esc((s.question_types || []).join(', '))} · ${s.open_to === 'paid' ? 'फक्त paid' : 'सगळे'}</div>
             <div class="batch-admin-meta">${next}</div>
           </div>
           <div class="batch-admin-actions">
             <button class="admin-btn-secondary" data-a="edit" type="button">✏️ बदला</button>
-            <button class="admin-btn-secondary" data-a="trial" type="button">▶ Trial आत्ता</button>
+            ${s.mode === 'papers' ? '<button class="admin-btn-secondary" data-a="preview" type="button">👁 Preview</button>' : ''}
+            ${daily ? (s.papers || []).map((p, i) => `<button class="admin-btn-secondary" data-a="trial" data-paper="${i}" type="button">▶ Trial ${_esc(p.name)}</button>`).join('') : '<button class="admin-btn-secondary" data-a="trial" type="button">▶ Trial आत्ता</button>'}
             <button class="admin-btn-secondary" data-a="toggle" type="button">${s.enabled ? '⏸️ थांबवा' : '▶️ चालू करा'}</button>
             <button class="admin-btn-secondary" data-a="del" type="button">🗑️</button>
           </div>`;
         item.querySelector('[data-a="edit"]').onclick = () => { _fillWeeklyForm(s); $('wk-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
-        item.querySelector('[data-a="trial"]').onclick = async e => {
-          const btn = e.currentTarget;
+        item.querySelector('[data-a="preview"]')?.addEventListener('click', () => _showWeeklyPreview(s, 0));
+        item.querySelectorAll('[data-a="trial"]').forEach(b => b.onclick = async e => {
+          const btn = e.currentTarget, label = btn.textContent;
           if (btn.disabled) return;
           btn.disabled = true; btn.textContent = '⏳ बनत आहे…';   // one click = one trial (server also allows only one at a time)
           try {
-            const r = await API.adminWeekly('POST', `/schedules/${s._id}/trial`, { start_in_minutes: 1, window_minutes: 30 });
+            const r = await API.adminWeekly('POST', `/schedules/${s._id}/trial`, { start_in_minutes: 1, window_minutes: daily ? s.duration_minutes : 30, ...(btn.dataset.paper !== undefined ? { paper: Number(btn.dataset.paper) } : {}) });
             const short = (r.data.shortages || []).map(x => `${x.subject} ${x.got}/${x.want}`).join(', ');
             APP.toast((r.existing
               ? `ℹ️ Trial आधीच चालू आहे: ${r.data.subject}, ${r.data.questions} प्रश्न. Student app मध्ये बघा.`
-              : `✅ Trial: ${r.data.subject}, ${r.data.questions} प्रश्न — 1 मिनिटात सुरू (30 मि खिडकी). Student app मध्ये बघा.`) + (short ? ` ⚠️ प्रश्न कमी: ${short}` : ''), short ? 'info' : 'success');
+              : `✅ Trial: ${r.data.subject}, ${r.data.questions} प्रश्न — 1 मिनिटात सुरू (${daily ? s.duration_minutes : 30} मि). Student app मध्ये बघा.`) + (short ? ` ⚠️ प्रश्न कमी: ${short}` : ''), short ? 'info' : 'success');
             _loadWeekly();
           } catch (err) {
             APP.toast(err?.message || 'Trial बनला नाही', 'error');
-            btn.disabled = false; btn.textContent = '▶ Trial आत्ता';
+            btn.disabled = false; btn.textContent = label;
           }
-        };
+        });
         item.querySelector('[data-a="toggle"]').onclick = async () => {
           try { await API.adminWeekly('PUT', `/schedules/${s._id}`, { enabled: !s.enabled }); _loadWeekly(); } catch (err) { APP.toast(err?.message || 'जमलं नाही', 'error'); }
         };
@@ -2414,6 +2530,23 @@ const ADMIN = (() => {
     }
   }
 
+  // 👁 the next days' papers + a sample paper made now (least-used questions; nothing is saved)
+  async function _showWeeklyPreview(s, pi) {
+    const box = $('wk-results');
+    box.innerHTML = '<p class="import-hint">⏳ Preview बनत आहे…</p>';
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try {
+      const d = (await API.adminWeekly('GET', `/schedules/${s._id}/preview?paper=${pi}`))?.data;
+      const fmt = t => new Date(t).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      box.innerHTML = `<h4 class="admin-section-title">👁 Preview · ${_esc(s.title)} · ${_esc(s.batch)}</h4>
+        ${d.upcoming?.length ? `<p class="import-hint"><b>पुढचे पेपर:</b> ${d.upcoming.map(x => `${_esc(fmt(x.starts_at))} ${_esc(x.paper)}${x.final ? ' 🏆' : ''}`).join(' · ')}</p>` : ''}
+        <div class="admin-toolbar">${(s.papers || []).map((p, i) => `<button type="button" class="${i === pi ? 'admin-btn-primary' : 'admin-btn-secondary'}" data-pv="${i}">${_esc(p.name)}</button>`).join('')}</div>
+        <p class="import-hint"><b>${_esc(d.paper)}</b>: ${d.total} प्रश्न · ${d.sections.map(x => `${_esc(x.subject)} ${x.count}`).join(' · ')} · आत्तापर्यंत एकदाही न आलेले ${d.fresh}${d.shortages.length ? ` · <span class="wka-warn">⚠️ प्रश्न कमी: ${d.shortages.map(x => `${_esc(x.subject)} ${x.got}/${x.want}`).join(', ')}</span>` : ''}<br><small>हा फक्त नमुना आहे — खरा पेपर वेळेवर याच नियमाने बनेल (कमी वेळा आलेले प्रश्न आधी).</small></p>
+        <ol class="wka-preview">${d.questions.map(q => `<li><small>${_esc(q.subject)} · ${_esc(q.chapter || '')}</small><br>${_esc(q.question)}${q.image ? ' 🖼' : ''}<br><small>✅ ${_esc((q.options || {})[q.answer] ?? q.answer)}</small></li>`).join('')}</ol>`;
+      box.querySelectorAll('[data-pv]').forEach(b => b.addEventListener('click', () => _showWeeklyPreview(s, Number(b.dataset.pv))));
+    } catch (err) { box.innerHTML = `<p class="import-hint">${_esc(err?.message || 'Preview बनला नाही')}</p>`; }
+  }
+
   async function _showWeeklyResults(id) {
     const box = $('wk-results');
     box.innerHTML = '<p class="import-hint">⏳ …</p>';
@@ -2422,7 +2555,7 @@ const ADMIN = (() => {
       const rows = (r.entries || []).filter(x => x.submitted_at);
       box.innerHTML = `<h4 class="admin-section-title">🏆 ${_esc(r.event.subject)} · ${_esc(r.event.batch)} — ${rows.length} जणांनी दिला</h4>
         <table class="wka-table"><thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>Mobile</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead><tbody>
-        ${rows.map(x => `<tr><td>${x.rank ?? '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${x.score}/${x.total}</td><td>${Math.round(x.time_taken / 60)} मि</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`).join('')}
+        ${rows.map(x => `<tr><td>${x.rank ?? '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${x.score}/${x.total}${(x.by_subject || []).length > 1 ? `<br><small>${x.by_subject.map(b => `${_esc(b.subject)} ${b.score}/${b.total}`).join(' · ')}</small>` : ''}</td><td>${Math.round(x.time_taken / 60)} मि</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`).join('')}
         </tbody></table>`;
       box.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { box.innerHTML = `<p class="import-hint">${_esc(err?.message || '')}</p>`; }
@@ -4446,6 +4579,14 @@ const ADMIN = (() => {
     $('btn-wk-new')?.addEventListener('click', () => _fillWeeklyForm(null));
     $('wk-batch')?.addEventListener('change', () => { _wkPapers = _wkPapers.map(p => ({ ...p, parts: [] })); _loadWeeklySubjects(); });
     document.querySelectorAll('input[name="wk-mode"]').forEach(r => r.addEventListener('change', _wkShowMode));
+    document.querySelectorAll('input[name="wk-kind"]').forEach(r => r.addEventListener('change', () => {
+      if (_wkKind() === 'daily' && $('wk-title').value === 'महा-Test') { $('wk-title').value = 'Paper Practice'; $('wk-open').value = 'paid'; $('wk-top').value = '3'; }
+      _wkShowMode();
+    }));
+    $('wk-slots')?.addEventListener('input', _wkSlotEvent);
+    $('wk-slots')?.addEventListener('click', e => { if (e.target.closest('button')) _wkSlotEvent({ target: e.target.closest('button') }); });
+    $('btn-wk-pattern')?.addEventListener('click', _wkApplyPattern);
+    _wkFillPatternList();
     $('wk-papers')?.addEventListener('input', _wkPaperEvent);
     $('wk-papers')?.addEventListener('change', _wkPaperEvent);
     $('wk-papers')?.addEventListener('click', e => { if (e.target.closest('button')) _wkPaperEvent({ target: e.target.closest('button'), type: 'click' }); });

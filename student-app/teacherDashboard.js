@@ -553,6 +553,11 @@ const TEACHER_DASHBOARD = (() => {
       ]);
       _analyticsLoaded = true;
       _renderAnalytics(container, { weekly, monthly, weak, strong, ranking });
+      // 📝 Paper Pattern Practice: the students' daily marks (MAT / SAT / total / rank)
+      _cacheFirst('analytics:practice', () => API.fetchTeacherPractice(7)).then(data => {
+        const html = window.WEEKLY?.practiceReportHtml?.(data);
+        if (html && container.isConnected) container.insertAdjacentHTML('afterbegin', html);
+      }).catch(() => {});
     } catch (err) {
       container.innerHTML = `<p class="td-hint">${_esc(err.message || 'Analytics load failed')}</p>`;
     }

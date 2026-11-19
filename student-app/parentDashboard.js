@@ -56,6 +56,11 @@ const PARENT_DASHBOARD = (() => {
     }
 
     _renderChildList();
+    // 📝 Paper Pattern Practice: the child's daily marks (MAT / SAT / total / rank)
+    _cacheFirst('practice', () => API.fetchParentPractice(14)).then(data => {
+      const html = window.WEEKLY?.practiceReportHtml?.(data, { parent: true });
+      if (html && listEl?.isConnected) { listEl.querySelector('.wk-report')?.remove(); listEl.insertAdjacentHTML('beforeend', html); }
+    }).catch(() => {});
   }
 
   // ── Child List ───────────────────────────────────────────────────────────────

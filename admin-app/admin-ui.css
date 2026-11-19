@@ -2981,3 +2981,12 @@ body.crm-lead-open { overflow: hidden; }
 .crm-meta.crm-new { color: #047857; font-weight: 600; }
 
 .crm-meta.crm-why { color: #b91c1c; }
+
+/* Paper Pattern Practice (रोज) — timetable, preview */
+.wka-form > .wka-wide, .wka-slots { grid-column: 1 / -1; }
+.wka-form > label.wka-wide { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.wka-slots { overflow-x: auto; }
+.wka-slots input[type=time] { min-width: 92px; padding: 4px; }
+.wka-preview { max-height: 420px; overflow: auto; font-size: .88rem; padding-left: 22px; }
+.wka-preview li { margin: 0 0 8px; }
+.wka-form [hidden] { display: none !important; }

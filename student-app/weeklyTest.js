@@ -6,6 +6,10 @@
    every week. Low server load by design: the encrypted paper is downloaded on
    the phone ahead of time, the test runs on the phone, and only three tiny
    calls happen — the key at start time, the submit, and the result.
+
+   📝 Paper Pattern Practice (kind 'daily', 9.0.1): the class's exam pattern every day (8th NMMS:
+   MAT 7 am, SAT 7 pm), the whole class at one time, start only in the first minutes, marks at
+   submit, the day total (MAT + SAT = 180) + toppers banner after the day's last paper.
 ════════════════════════════════════════ */
 
 const WEEKLY = (() => {
@@ -89,7 +93,9 @@ const WEEKLY = (() => {
     DB.setSetting?.(EVENTS_CACHE, _events).catch(() => {});
     window.dispatchEvent(new Event('weekly-toppers'));
     home.querySelector('.wk-card')?.remove();
+    home.querySelector('.wk-lock')?.remove();
     clearInterval(_tick);
+    _lockedCard(home);
     // the most relevant one: live > upcoming > a closed one with my result
     const pick = _events.find(e => e.state === 'live')
       || _events.filter(e => e.state === 'upcoming').sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0]
@@ -112,7 +118,82 @@ const WEEKLY = (() => {
     _retryPendingSubmit().catch(() => {});
   }
 
+  // a free student: "🔒 रोजचा Paper Practice फक्त paid विद्यार्थ्यांसाठी"
+  function _lockedCard(home) {
+    const l = (_events.locked || [])[0];
+    if (!l) return;
+    const el = document.createElement('div');
+    el.className = 'wk-card wk-lock';
+    el.innerHTML = `<div class="wk-tag">🔒 ${_esc(l.title || 'Paper Practice')}</div>
+      <div class="wk-sub">रोज परीक्षेसारखा पूर्ण पेपर · ${l.question_count} प्रश्न · ${l.duration_minutes} मिनिटं · गुण, rank आणि उकल</div>
+      <div class="wk-ok">फक्त paid विद्यार्थ्यांसाठी — subscribe करा आणि उद्यापासून रोज सराव करा</div>
+      <button type="button" class="gx-btn gx-shine wk-btn" data-act="sub">⭐ Subscribe करा</button>`;
+    home.insertBefore(el, home.querySelector('.gx-guide')?.nextSibling || home.firstElementChild);
+    el.querySelector('[data-act="sub"]').addEventListener('click', () => window.dispatchEvent(new CustomEvent('teachingboard:locked', { detail: { code: 'CHAPTER_LOCKED', from: 'practice' } })));
+  }
+
+  const _isPractice = ev => ev?.kind === 'daily';
+  const _clock = d => new Date(d).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+  // "आजचे: MAT 68/90 · SAT — · एकूण 68/180"
+  function _dayLine(day) {
+    if (!day?.papers?.length) return '';
+    return `<div class="wk-meta">📅 आजचे: ${day.papers.map(x => `${_esc(x.subject)} ${x.score ?? '—'}/${x.total}`).join(' · ')} · <b>एकूण ${day.score}/${day.total}</b>${day.rank ? ` · #${day.rank}` : ''}</div>`;
+  }
+  async function _startedHere(ev) { return !!(await DB.getSetting(_stateKey(ev.event_id), null).catch(() => null))?.startedAt; }
+
+  function _paintPractice(card, ev) {
+    const head = `<div class="wk-tag">📝 ${_esc(ev.title || 'Paper Practice')} · ${_esc(ev.subject)}</div>
+      <div class="wk-sub">${ev.question_count} प्रश्न · ${ev.duration_minutes} मिनिटं${(ev.sections || []).length > 1 ? ' · ' + ev.sections.map(x => `${_esc(x.subject)} ${x.count}`).join(' · ') : ''}${ev.negative ? ` · चुकीला −${ev.negative}` : ' · negative marking नाही'}</div>`;
+    const join = ev.join_until ? ` · ${_esc(_clock(ev.join_until))} पर्यंत सुरू करा` : '';
+    const mine = `<button type="button" class="gx-btn gx-ghost wk-btn" data-act="mine">📊 माझे सगळे गुण · 🔥 streak</button>`;
+    if (ev.state === 'upcoming') {
+      card.innerHTML = `${head}<div class="wk-when">⏰ ${_esc(_when(ev.starts_at))} · सुरू व्हायला <b class="wk-count">${_left(new Date(ev.starts_at) - Date.now())}</b></div>
+        <div class="wk-meta">संपूर्ण class एकाच वेळी${join}</div>${_dayLine(ev.day)}${mine}`;
+    } else if (ev.state === 'live') {
+      if (ev.me.submitted) card.innerHTML = `${head}<div class="wk-ok">✅ जमा झालं! गुण ${ev.me.score}/${ev.me.total} · 🏆 Rank आणि उत्तरं ${_esc(_when(ev.reveal_at))} ला</div>${_dayLine(ev.day)}${mine}`;
+      else {
+        const late = ev.join_until && Date.now() > new Date(ev.join_until).getTime();
+        card.innerHTML = `${head}<div class="wk-live">🔴 LIVE · संपायला <b class="wk-count">${_left(new Date(ev.ends_at) - Date.now())}</b>${join}</div>
+          <div data-slot="go"></div>${_dayLine(ev.day)}${mine}`;
+        const go = card.querySelector('[data-slot="go"]');
+        const startBtn = '<button type="button" class="gx-btn gx-big gx-shine wk-btn" data-act="start">▶ आत्ता सुरू करा</button>';
+        if (!late) go.innerHTML = startBtn;
+        else _startedHere(ev).then(started => {
+          go.innerHTML = started ? startBtn.replace('आत्ता सुरू करा', 'पेपर पुढे सोडवा') : `<div class="wk-ok">⌛ सुरू करायची वेळ (${_esc(_clock(ev.join_until))}) संपली — पुढचा paper वेळेवर द्या</div>`;
+          go.querySelector('[data-act="start"]')?.addEventListener('click', () => start(ev));
+        });
+      }
+    } else if (!ev.results) {
+      card.innerHTML = `${head}<div class="wk-ok">${ev.me.submitted ? `✅ गुण ${ev.me.score}/${ev.me.total}. ` : ''}🏆 Rank आणि उत्तरं ${_esc(_when(ev.reveal_at))} ला · <b class="wk-count">${_left(new Date(ev.reveal_at) - Date.now())}</b></div>${_dayLine(ev.day)}${mine}`;
+    } else {
+      card.innerHTML = `${head}<div class="wk-ok">🎉 निकाल आला!${ev.me.submitted ? '' : ' (तुम्ही हा पेपर दिला नाही)'}</div>${_dayLine(ev.day)}
+        <button type="button" class="gx-btn gx-shine wk-btn" data-act="result">🏆 निकाल आणि rank बघा</button>${mine}`;
+    }
+    card.querySelector('[data-act="start"]')?.addEventListener('click', () => start(ev));
+    card.querySelector('[data-act="result"]')?.addEventListener('click', () => showResult(ev));
+    card.querySelector('[data-act="mine"]')?.addEventListener('click', () => showPracticeHistory());
+  }
+
+  // 📊 every practice day: MAT / SAT / total / rank, and the streak
+  async function showPracticeHistory() {
+    let d;
+    try { d = await API.weeklyPracticeMe(); } catch (err) { _toast(err?.message || 'गुण आणता आले नाहीत', 'error'); return; }
+    const el = document.createElement('div');
+    el.className = 'gx-layer gx-dim';
+    const date = k => new Date(k + 'T12:00:00').toLocaleDateString('mr-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    el.innerHTML = `
+      <div class="gx-card wk-res">
+        <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
+        <div class="wk-tag" style="margin:0 auto 6px">📊 माझा Paper Practice</div>
+        <div class="gx-stats"><div class="gx-stat">🔥 ${d.streak || 0}<small>सलग दिवस</small></div><div class="gx-stat">📝 ${d.given || 0}/${d.held || 0}<small>दिवस दिले</small></div></div>
+        ${(d.days || []).length ? `<table class="wk-bysub"><tbody>${d.days.map(x => `<tr><td>${_esc(date(x.day_key))}</td><td>${x.papers.map(p => `${_esc(p.subject)} <b>${p.score}/${p.total}</b>`).join('<br>')}</td><td><b>${x.score}/${x.total}</b>${x.rank ? `<br>#${x.rank}/${x.participants}` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="gx-sub">अजून एकही पेपर दिला नाही. पुढचा पेपर वेळेवर द्या!</p>'}
+      </div>`;
+    document.body.appendChild(el);
+    el.querySelector('.gx-close').onclick = () => el.remove();
+  }
+
   function _paintCard(card, ev) {
+    if (_isPractice(ev)) { _paintPractice(card, ev); return; }
     const parts = (ev.sections || []).length
       ? `<div class="wk-meta">${ev.sections.map(s => `${_esc(s.subject)} ${s.count}`).join(' · ')}${ev.negative ? ` · चुकीला −${ev.negative}` : ''}</div>` : '';
     const head = `<div class="wk-tag">🏆 ${_esc(ev.title || 'महा-Test')}</div>
@@ -235,6 +316,7 @@ const WEEKLY = (() => {
     } catch (err) {
       if (err?.code === 'APP_ONLY') { _appOnlySheet(err.message); return; }
       _toast(err?.code === 'NOT_YET' ? 'Test अजून सुरू झाला नाही' : (err?.message || 'Test उघडता आला नाही'), 'error');
+      if (err?.code === 'JOIN_CLOSED') renderHomeCard();
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '▶ आत्ता सुरू करा'; }
     }
@@ -341,7 +423,7 @@ const WEEKLY = (() => {
       <div class="gx-card">
         <div class="gx-logo">✅</div>
         <h2 class="gx-title">Test जमा झालं!</h2>
-        ${res ? `<p class="gx-sub">तुमचे गुण: <b class="gx-grad-text" style="font-size:1.6rem">${res.score} / ${res.total}</b></p>${_bySubject(res.by_subject)}` : '<p class="gx-sub">Internet आल्यावर आपोआप जमा होईल.</p>'}
+        ${res ? `<p class="gx-sub">${_isPractice(ev) ? _esc(ev.subject) + ' चे ' : 'तुमचे '}गुण: <b class="gx-grad-text" style="font-size:1.6rem">${res.score} / ${res.total}</b></p>${_bySubject(res.by_subject)}${res.day?.papers?.length > 1 ? `<p class="gx-sub">📅 आजचे: ${res.day.papers.map(x => `${_esc(x.subject)} ${x.score ?? '—'}/${x.total}`).join(' + ')} = <b>${res.day.score}/${res.day.total}</b></p>` : ''}` : '<p class="gx-sub">Internet आल्यावर आपोआप जमा होईल.</p>'}
         <p class="gx-sub">🏆 Rank list आणि बरोबर उत्तरं <b>${_esc(_when(ev.reveal_at || ev.ends_at))}</b> ला</p>
         <button type="button" class="gx-btn gx-big gx-wa" id="wk-wa" style="display:none">📩 क्रमांक आणि पूर्ण result WhatsApp वर</button>
         <button type="button" class="gx-btn gx-big" id="wk-done">🏠 Home</button>
@@ -387,15 +469,17 @@ const WEEKLY = (() => {
     el.innerHTML = `
       <div class="gx-card wk-res">
         <button type="button" class="gx-close" aria-label="बंद करा">✕</button>
-        <div class="wk-tag" style="margin:0 auto 6px">🏆 महा-Test · ${_esc(d.subject)}</div>
+        <div class="wk-tag" style="margin:0 auto 6px">${d.kind === 'daily' ? '📝 ' + _esc(d.title || 'Paper Practice') : '🏆 महा-Test'} · ${_esc(d.subject)}</div>
+        ${d.day ? `<div class="wk-first">📅 दिवसाचे एकूण: ${d.day.papers.map(x => `${_esc(x.subject)} ${x.score}/${x.total}`).join(' + ')} = <b>${d.day.score}/${d.day.total}</b>${d.day.rank ? ` · एकूण rank <b>#${d.day.rank}</b> / ${d.day.participants}` : (d.day_final ? '' : ' · एकूण rank दिवसाच्या शेवटच्या पेपरनंतर')}</div>` : ''}
+        ${(d.day_top || []).length ? `<h3 class="wk-h">🏆 दिवसाचा Rank Board (एकूण)</h3><ol class="wk-top10 wk-board">${d.day_top.map(t => `<li class="${t.me ? 'me' : ''}${t.rank <= 3 ? ' podium' : ''}"><span>${medal(t.rank)}</span><span>${_esc(t.name)}${t.me ? ' (तुम्ही)' : ''}<br><small>${t.papers.map(x => `${_esc(x.subject)} ${x.score}`).join(' · ')}</small></span><b>${t.score}/${t.total}</b></li>`).join('')}</ol>` : ''}
         ${me ? `
           <div class="wk-rank-big">${me.rank ? medal(me.rank) : '—'}</div>
           <div class="gx-sub">${d.participants} students पैकी तुमचा क्रमांक</div>
           <div class="gx-stats"><div class="gx-stat">🎯 ${me.score}/${me.total}<small>गुण</small></div><div class="gx-stat">✅ ${me.correct}<small>बरोबर</small></div><div class="gx-stat">⏱ ${me.time_taken < 60 ? me.time_taken + ' से' : Math.round(me.time_taken / 60) + ' मि'}<small>वेळ</small></div></div>
           ${_bySubject(me.by_subject)}`
-          : '<p class="gx-sub">तुम्ही हा test दिला नाही. पुढच्या आठवड्यात नक्की द्या!</p>'}
+          : `<p class="gx-sub">तुम्ही हा ${d.kind === 'daily' ? 'पेपर दिला नाही. पुढचा पेपर' : 'test दिला नाही. पुढच्या आठवड्यात'} नक्की द्या!</p>`}
         ${d.first_free ? '<div class="wk-first">🎁 पहिला महा-Test — सगळी बरोबर उत्तरं आणि उकल मोफत!</div>' : ''}
-        <h3 class="wk-h">🏆 Rank Board · ${d.participants} students</h3>
+        <h3 class="wk-h">🏆 ${(d.day_top || []).length ? _esc(d.subject) + ' चा ' : ''}Rank Board · ${d.participants} students</h3>
         <ol class="wk-top10 wk-board">${d.top.map(t => `<li class="${t.me ? 'me' : ''}${t.rank <= 3 ? ' podium' : ''}"><span>${medal(t.rank)}</span><span>${_esc(t.name)}${t.me ? ' (तुम्ही)' : ''}</span><b>${t.score}/${t.total}</b></li>`).join('')}
           ${me?.rank && !d.top.some(t => t.me) ? `<li class="wk-gap">⋯</li><li class="me"><span>#${me.rank}</span><span>तुम्ही</span><b>${me.score}/${me.total}</b></li>` : ''}</ol>
         <div class="gx-row">
@@ -504,14 +588,17 @@ const WEEKLY = (() => {
 
   function topperSlideHtml(b) {
     const ev = b.ev, t = ev.toppers;
-    const head = `<div class="wkb-head">🏆 महा-Test Toppers · ${_esc(ev.batch)} · ${_esc(ev.subject)}</div>`;
+    const daily = _isPractice(ev), dayTotal = ev.day?.total || ev.toppers?.[0]?.total;
+    const head = daily
+      ? `<div class="wkb-head">🏆 ${_esc(ev.title || 'Paper Practice')} Toppers · ${_esc(ev.batch)} · एकूण /${dayTotal}</div>`
+      : `<div class="wkb-head">🏆 महा-Test Toppers · ${_esc(ev.batch)} · ${_esc(ev.subject)}</div>`;
     const mine = ev.me?.rank
       ? (ev.me.rank <= 10 ? `🎉 तुम्ही #${ev.me.rank}!` : `तुमचा क्रमांक #${ev.me.rank} · पुढच्या वेळी top 10 💪`)
       : '👆 Rank board बघा';
     if (b.part === 'mine') {
       const m = ev.me || {}, pct = m.total ? Math.round((m.score / m.total) * 100) : 0;
       const medal = m.rank === 1 ? '🥇' : m.rank === 2 ? '🥈' : m.rank === 3 ? '🥉' : m.rank && m.rank <= 10 ? '🏅' : '🎯';
-      return `<div class="wkb-head">🏆 माझा महा-Test Result · ${_esc(ev.subject)}</div>
+      return `<div class="wkb-head">🏆 ${daily ? 'माझा आजचा निकाल · ' + _esc(ev.title || 'Paper Practice') : 'माझा महा-Test Result · ' + _esc(ev.subject)}</div>
         <div class="wkb-mine"><span class="wkb-mine-rank">${medal} ${m.rank ? '#' + m.rank : '—'}</span>
           <span class="wkb-mine-of">${ev.participants ? `${ev.participants} पैकी` : ''}</span>
           <span class="wkb-mine-score"><b>${m.score ?? '—'}/${m.total ?? '—'}</b><small>${pct}%</small></span></div>
@@ -525,7 +612,28 @@ const WEEKLY = (() => {
     return `${head}<ol class="wkb-list">${rows}</ol><div class="wkb-me">${ev.participants ? `${ev.participants} students · ` : ''}${mine}</div>`;
   }
 
-  return { renderHomeCard, start, showResult, bannerSlides, topperSlideHtml, __photoCanvas: _photoCanvas };
+  // Teacher (his students) / parent (the children): each practice day — every paper's marks
+  // (MAT, SAT with its subjects), the day total, rank, 🔥 streak, and who did not give it.
+  function practiceReportHtml(data, { parent = false } = {}) {
+    const days = (data?.days || []).slice(0, 7);
+    if (!days.length) return '';
+    const date = k => new Date(k + 'T12:00:00').toLocaleDateString('mr-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    const cell = p => p.score === null || p.score === undefined ? '—'
+      : `<b>${p.score}/${p.total}</b>${(p.by_subject || []).length > 1 ? `<br><small>${p.by_subject.map(b => `${_esc(String(b.subject).split(' ')[0])} ${b.score}`).join(' · ')}</small>` : ''}`;
+    return `<div class="td-analytics-section wk-report">
+      <div class="td-analytics-header"><span class="td-analytics-icon">📝</span><h3 class="td-analytics-title">${_esc(days[0].title || 'Paper Practice')}</h3><span class="td-analytics-sub">${parent ? 'रोजचे गुण' : 'students चे रोजचे गुण'}</span></div>
+      ${days.map(g => {
+        const gave = g.students.filter(x => x.given).length;
+        return `<details class="wk-rep-day"${g === days[0] ? ' open' : ''}><summary><b>${_esc(date(g.day_key))}</b> · ${_esc(g.batch)} · ${parent ? '' : `दिला ${gave}/${g.students.length}`}${g.final ? '' : ' · ⏳ निकाल बाकी'}</summary>
+          <div style="overflow-x:auto"><table class="wk-bysub"><thead><tr><th>नाव</th>${g.papers.map(p => `<th>${_esc(p.subject)} /${p.total}</th>`).join('')}<th>एकूण /${g.total}</th><th>Rank</th><th>🔥</th></tr></thead><tbody>
+          ${g.students.map(x => `<tr><td>${_esc(x.name || x.code)}</td>${x.given ? x.papers.map(p => `<td>${cell(p)}</td>`).join('') + `<td><b>${x.score}/${x.total}</b></td><td>${x.rank ? '#' + x.rank + (x.participants ? '/' + x.participants : '') : '—'}</td>`
+            : `<td colspan="${g.papers.length + 2}">${x.paid === false ? '🔒 subscription नाही' : '❌ पेपर दिला नाही'}</td>`}<td>${x.streak || 0}</td></tr>`).join('')}
+          </tbody></table></div></details>`;
+      }).join('')}
+    </div>`;
+  }
+
+  return { renderHomeCard, start, showResult, showPracticeHistory, practiceReportHtml, bannerSlides, topperSlideHtml, __photoCanvas: _photoCanvas };
 })();
 
 window.WEEKLY = WEEKLY;

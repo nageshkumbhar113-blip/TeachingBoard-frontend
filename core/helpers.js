@@ -2271,7 +2271,22 @@ const API = (() => {
     // website: after the family's first महा-Test the next ones are in the app only
     list.app_only = payload?.app_only === true;
     list.app_only_msg = payload?.app_only_msg || '';
+    // a free student: the class's paid daily practice papers, shown locked
+    list.locked = Array.isArray(payload?.locked) ? payload.locked : [];
     return list;
+  }
+  // 📝 Paper Pattern Practice: my days (MAT / SAT / day total / rank) + streak
+  async function weeklyPracticeMe() {
+    return (await request('/weekly/practice/me', { headers: await _studentAuth() }))?.data || { days: [], streak: 0 };
+  }
+  // the teacher's students / the parent's children, day by day
+  async function fetchTeacherPractice(days = 7) {
+    const token = await ensureTeacherSession();
+    return (await request(`/weekly/practice/teacher?days=${days}`, { headers: { Authorization: `Bearer ${token}` } }))?.data || { days: [] };
+  }
+  async function fetchParentPractice(days = 14) {
+    const token = await ensureParentSession();
+    return (await request(`/weekly/practice/parent?days=${days}`, { headers: { Authorization: `Bearer ${token}` } }))?.data || { days: [] };
   }
   // Me › Analytics "🏆 महा-Test": every महा-Test this child gave
   async function weeklyHistory() {
@@ -3190,7 +3205,7 @@ const API = (() => {
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
     fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
-    fetchWeeklyTests, weeklyHistory, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
+    fetchWeeklyTests, weeklyHistory, weeklyPracticeMe, fetchTeacherPractice, fetchParentPractice, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
