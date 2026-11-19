@@ -3655,13 +3655,23 @@ const ADMIN = (() => {
           ${t.institute_name ? `<span class="student-meta-row"><span>${_escHtml(t.institute_name)}</span></span>` : ''}
           <span class="student-status-badge active">${stuCount} students</span>
           ${statusBadge}${validityBadge}
+          ${t.request_source === 'demo' ? `<span class="student-status-badge" title="Teacher ad मधून demo">🎯 Ad demo${t.demo_booked_at ? ' · ' + _escHtml(new Date(t.demo_booked_at).toLocaleDateString('en-IN')) : ''}</span>` : ''}
+          ${t.demo_student ? `<span class="student-meta-row"><span>🎓 School demo विद्यार्थी ${_escHtml(t.demo_student.code)}: <b>${t.demo_student.status === 'active' ? '✅ चालू' + (t.demo_student.why === '10' ? ' (10 विद्यार्थी)' : t.demo_student.why === 'admin' ? ' (admin)' : ' (demo)') + (t.demo_student.until ? ' · ' + _escHtml(String(t.demo_student.until).slice(0, 10)) + ' पर्यंत' : '') : '⏸️ बंद'}</b></span></span>` : ''}
         </div>
         <div class="student-row-actions">
+          ${t.demo_student ? `<button class="admin-btn-secondary" data-demo-student="${_escHtml(t.teacher_code)}" data-on="${t.demo_student.status === 'active' && t.demo_student.why === 'admin' ? '' : '1'}">${t.demo_student.status === 'active' && t.demo_student.why === 'admin' ? '🎓 Demo विद्यार्थी बंद' : '🎓 Demo विद्यार्थी चालू (30 एप्रिल)'}</button>` : ''}
           <button class="admin-btn-secondary" data-teacher-edit="${_escHtml(t.id)}">Edit</button>
           <button class="admin-btn-danger" data-teacher-delete="${_escHtml(t.id)}">Delete</button>
         </div>
       </div>`;
     }).join('');
+
+    // 🎯 the school demo student: on till 30 April / off (the 10-paid-students rule still applies by itself)
+    list.querySelectorAll('[data-demo-student]').forEach(btn => btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try { await API.adminTeacherDemo('POST', '/admin/student/' + encodeURIComponent(btn.dataset.demoStudent), { on: !!btn.dataset.on }); APP.toast('✅ झालं', 'success'); await _loadTeachersAdmin(); }
+      catch (err) { APP.toast(err.message || 'झालं नाही', 'error'); btn.disabled = false; }
+    }));
 
     list.querySelectorAll('[data-teacher-edit]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -3702,7 +3712,26 @@ const ADMIN = (() => {
     });
   }
 
+  // 🎯 Teacher ad demo settings (Teachers tab)
+  async function _loadTeacherDemoCfg() {
+    const box = document.getElementById('tdemo-cfg');
+    if (!box || box.dataset.ready) return;
+    box.dataset.ready = '1';
+    try {
+      const [c, batches] = await Promise.all([API.adminTeacherDemo('GET', '/admin/config'), API.syncServerBatches().catch(() => [])]);
+      const d = c?.data || {};
+      $('tdemo-on').checked = d.on !== false;
+      $('tdemo-hours').value = d.hours || 48;
+      $('tdemo-course').innerHTML = '<option value="">(पहिला NMMS course)</option>' + (batches || []).map(b => `<option ${b.name === d.course ? 'selected' : ''}>${_escHtml(b.name)}</option>`).join('');
+    } catch { /* not yet */ }
+    $('tdemo-save').onclick = async () => {
+      try { await API.adminTeacherDemo('PUT', '/admin/config', { on: $('tdemo-on').checked, hours: Number($('tdemo-hours').value), course: $('tdemo-course').value }); $('tdemo-msg').textContent = '✅ Save झालं'; }
+      catch (err) { $('tdemo-msg').textContent = '⚠️ ' + (err.message || 'झालं नाही'); }
+    };
+  }
+
   async function _loadTeachersAdmin() {
+    _loadTeacherDemoCfg().catch(() => {});
     const list = $('teacher-admin-list');
     if (!list) return;
     list.innerHTML = '<p class="empty-hint">Loading...</p>';

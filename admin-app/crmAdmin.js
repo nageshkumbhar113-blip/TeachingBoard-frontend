@@ -243,6 +243,7 @@ const CRM_ADMIN = (() => {
           <div class="crm-meta">📝 ${L.testsDone || 0}/${L.freeTotal || 0} tests · ${L.paid ? '✅ Paid' : 'pay नाही'} · ${d.open ? '🟢 खिडकी उघडी (मोफत)' : '⚪ खिडकी बंद'}${L.daily && L.daily !== 'no' ? ` · रोज ${Number(L.daily) - 12} वाजता` : ''}${L.teamSent ? ` · 💬 टीमचे ${L.teamSent} message` : ''}</div></div>
         <button type="button" class="admin-btn-secondary" id="crm-close" aria-label="बंद करा">✕</button>
       </div>
+      ${L.tdemo ? _tdemoBox(L) : ''}
       <div class="crm-lbls" aria-label="Labels">🏷️ ${_labels.length ? _labels.map(l => `<button type="button" class="crm-lbl${(L.labels || []).includes(l.id) ? ' on' : ''}" style="--c:${esc(l.color)}" data-lbl="${esc(l.id)}">${esc(l.name)}</button>`).join('') : '<small>"🏷️ Labels" मधून label बनवा</small>'}</div>
       ${d.fu ? `<div class="crm-fu-now" style="--c:${esc((d.fu_steps[d.fu.step - 1] || {}).color || '#64748b')}">📋 <b>Step ${d.fu.step} · ${esc((d.fu_steps[d.fu.step - 1] || {}).name || '')}</b> · पुढचा message: ${_dueText(d.fu.due)}
         <select class="admin-input" id="crm-fu-set" aria-label="Step बदला">${d.fu_steps.map((st, i) => `<option value="${i + 1}"${i + 1 === d.fu.step ? ' selected' : ''}>Step ${i + 1} · ${esc(st.name)}</option>`).join('')}</select>
@@ -317,6 +318,20 @@ const CRM_ADMIN = (() => {
   }
 
   // 👉 what to do next with this family (and which message fits)
+  // 🎯 a teacher from a teacher ad: the demo's details and how far they got
+  function _tdemoBox(L) {
+    const d = L.tdemo, when = x => (x ? new Date(x).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
+    const step = (ok, text) => `<span style="opacity:${ok ? 1 : .45}">${ok ? '✅' : '⬜'} ${text}${ok && typeof ok === 'string' ? ' <small>' + when(ok) + '</small>' : ''}</span>`;
+    return `<div class="crm-qbox" style="border-color:#6d3cf0">
+      <b>👩‍🏫 Teacher (Ad)</b> · 🏫 ${esc(d.school || '—')} · 📚 ${esc(d.course || '')}${d.ad ? ' · 📣 ad ' + esc(d.ad) : ''} · बुक: ${when(d.bookedAt)}<br>
+      👩‍🏫 शिक्षक code <b>${esc(d.tCode || '')}</b> · 🎓 school demo विद्यार्थी <b>${esc(d.sCode || '')}</b>${d.until ? ' · demo ' + when(d.until) + ' पर्यंत' : ''}
+      <div class="crm-meta" style="display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px">
+        ${step(d.bookedAt, 'बुक')} ${step(d.welcomedAt, 'WhatsApp')} ${step(d.tLogin, 'शिक्षक login')} ${step(d.sLogin, 'demo विद्यार्थी login')}
+        ${step(d.paperAt, 'पेपर' + (d.papers ? ' ' + d.papers : ''))} ${step(d.sTestAt, 'demo test' + (d.sTests ? ' ' + d.sTests : ''))}
+        ${step(d.orderAt, 'विद्यार्थी जोडले' + (d.added ? ' ' + d.added + ' · ₹' + d.paidRs : ''))}
+      </div></div>`;
+  }
+
   function _next(L) {
     const acct = _acct[L.gid] || L.acct;
     if (L.paid) return '✅ Paid — काही करायचं नाही. App मध्ये अडचण असेल तरच मदत.';

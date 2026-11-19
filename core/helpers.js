@@ -2316,6 +2316,10 @@ const API = (() => {
   }
   // CRM "🛑 सूट थांबवा": this family's running offer stops now
   // 🔔 Admin › Notifications: GET → { jobs, custom, wake } · PUT { jobs: { key: { on, time } }, custom: [ … ] }
+  // 🎯 teacher demo: ('GET'|'PUT', '/admin/config', body) · ('POST', '/admin/student/<teacher code>', { on })
+  async function adminTeacherDemo(method, path, body) {
+    return request('/teacher-demo' + path, { method, headers: await _adminAuth(), body: body ? JSON.stringify(body) : undefined });
+  }
   async function adminNotifySchedule(method = 'GET', body) {
     return request('/notify-schedule', { method, headers: await _adminAuth(), body: body ? JSON.stringify(body) : undefined });
   }
@@ -3256,7 +3260,7 @@ const API = (() => {
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
     fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adVoice, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
-    adminOfferConfig, adminStopOffer, adminNotifySchedule, fetchOfferConfig, fetchWeeklyTests, weeklyHistory, weeklyPracticeMe, fetchTeacherPractice, fetchParentPractice, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
+    adminOfferConfig, adminStopOffer, adminNotifySchedule, adminTeacherDemo, fetchOfferConfig, fetchWeeklyTests, weeklyHistory, weeklyPracticeMe, fetchTeacherPractice, fetchParentPractice, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,

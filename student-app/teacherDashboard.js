@@ -110,6 +110,7 @@ const TEACHER_DASHBOARD = (() => {
     $('td-tab-papers')?.classList.toggle('hidden', tab !== 'papers');
     $('td-tab-videos')?.classList.toggle('hidden', tab !== 'videos');
     $('td-tab-create')?.classList.toggle('hidden', tab !== 'create');
+    $('td-tab-books')?.classList.toggle('hidden', tab !== 'books');
     $('td-tab-share')?.classList.toggle('hidden', tab !== 'share');
     $('td-tab-earnings')?.classList.toggle('hidden', tab !== 'earnings');
 
@@ -123,6 +124,20 @@ const TEACHER_DASHBOARD = (() => {
       $('td-back-btn')?.classList.add('hidden');
       $('td-detail-name').textContent = 'Share the app';
       _initShareTab();
+    }
+
+    if (tab === 'books') {
+      $('td-back-btn')?.classList.add('hidden');
+      $('td-detail-name').textContent = '📚 Books';
+      const b = $('td-books-open');
+      if (b && !b.dataset.bound) {
+        b.dataset.bound = '1';
+        b.addEventListener('click', () => {
+          const url = 'https://www.localbooksmart.in/';
+          const Browser = window.Capacitor?.Plugins?.Browser;
+          if (Browser) Browser.open({ url }); else window.open(url, '_blank', 'noopener');
+        });
+      }
     }
 
     if (tab === 'create') {

@@ -1117,10 +1117,10 @@ const AD_STUDIO = (() => {
   const _vkey = v => (String(v).startsWith('s:') ? `v${AUD_LETTER[_audOf(v)] || 'p'}-${String(v).slice(2)}` : v);
   const adId = (v = st.v) => (st.plat === 'yt' ? 'yt-' : '') + (isTeacher(_audOf(v)) ? `t-${_vkey(v)}` : `${_slug(st.batch)}-${_vkey(v)}`);
   const _src = () => (st.plat === 'yt' ? 'yt' : 'meta');
-  const adLink = (v = st.v) => isTeacher(_audOf(v)) && _variants(_facts())[v]?.link === 'demo'
-    ? `${SITE}/demo?src=${_src()}&ad=${encodeURIComponent(adId(v))}`
-    : isTeacher(_audOf(v))
-    ? `${SITE}/student-app/?treg=${_audOf(v)}&src=${_src()}&ad=${encodeURIComponent(adId(v))}`
+  // 🎯 every teacher ad → the demo booking page (owner 2026-11-20): a teacher account + a school demo student at once,
+  //    for the class chosen here (the ad's course)
+  const adLink = (v = st.v) => isTeacher(_audOf(v))
+    ? `${SITE}/book-demo?src=${_src()}&ad=${encodeURIComponent(adId(v))}${st.batch ? '&course=' + encodeURIComponent(st.batch) : ''}`
     : `${SITE}/student-app/?free=1&batch=${encodeURIComponent(st.batch)}${_variants(_facts())[v]?.kind === 'reg' ? '&k=r' : ''}&src=${_src()}&ad=${encodeURIComponent(adId(v))}`;
   // the ad's parts (also what goes to Meta)
   function adParts(v = st.v) {
