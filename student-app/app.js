@@ -1303,7 +1303,7 @@ const APP = (() => {
     });
     // School teacher <-> YouTube partner: different fields and different terms
     const _setTregType = type => {
-      _tregType = type === 'youtube' ? 'youtube' : 'school';
+      _tregType = 'school';   // owner 2026-11-19: the YouTube-partner sign-up is closed (was: type === 'youtube' ? …)
       const yt = _tregType === 'youtube';
       document.querySelectorAll('[data-treg-type]').forEach(b => {
         const on = b.dataset.tregType === _tregType;
@@ -2987,6 +2987,8 @@ const APP = (() => {
     _renderContinueCard().catch(err => console.warn('continue card failed', err));
     _fillOfflineImagesSoon();
     window.WEEKLY?.renderHomeCard?.().catch?.(err => console.warn('weekly card failed', err));   // महा-Test, everyone
+    // 🎬 my own teachers' videos (a student only; another teacher's videos never come)
+    if (!guest && !_isTeacherOrParentMode) window.TEACHER_VIDEOS?.renderHomeCard?.().catch?.(() => {});
     if (guest) {
       window.GUEST.renderHomeGuide().catch(err => console.warn('guest guide failed', err));
       return;

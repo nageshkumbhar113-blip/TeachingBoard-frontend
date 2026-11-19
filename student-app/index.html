@@ -280,7 +280,8 @@
       <div class="admit-body">
         <div class="treg-type" role="radiogroup" aria-label="Registration type">
           <button type="button" class="treg-type-btn active" data-treg-type="school" role="radio" aria-checked="true">🏫 School / Class शिक्षक</button>
-          <button type="button" class="treg-type-btn" data-treg-type="youtube" role="radio" aria-checked="false">🎬 YouTube शिक्षक</button>
+          <!-- owner 2026-11-19: the YouTube-partner sign-up is closed (school / class teachers only) -->
+          <button type="button" class="treg-type-btn hidden" data-treg-type="youtube" role="radio" aria-checked="false" disabled>🎬 YouTube शिक्षक</button>
         </div>
         <p id="treg-type-note" class="onboarding-sub" style="margin:6px 0 10px"></p>
         <div class="onboarding-field">
@@ -949,6 +950,7 @@
             <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
             <button class="td-tab" data-tdtab="fee" role="tab" aria-selected="false">💰 Fee</button>
             <button class="td-tab" data-tdtab="papers" role="tab" aria-selected="false">📄 Paper</button>
+            <button class="td-tab" data-tdtab="videos" role="tab" aria-selected="false">🎬 Videos</button>
             <button class="td-tab" data-tdtab="share" role="tab" aria-selected="false">📤 Share</button>
             <button class="td-tab hidden" data-tdtab="earnings" role="tab" aria-selected="false">💸 Refer &amp; Earn</button>
           </div>
@@ -1058,6 +1060,9 @@
         </div>
 
         <!-- Paper Builder tab -->
+        <!-- 🎬 Videos tab — the teacher's own YouTube videos for their own students (teacherVideos.js) -->
+        <div id="td-tab-videos" class="td-tab-pane hidden"></div>
+
         <div id="td-tab-papers" class="td-tab-pane hidden">
           <div class="tpb-container">
             <div class="tpb-form-section">
@@ -1591,6 +1596,7 @@
   <script src="digitalTeacher.js" defer></script>
   <script src="exerciseViewer.js" defer></script>
   <script src="videoTeacherSelect.js" defer></script>
+  <script src="teacherVideos.js" defer></script>
   <script src="parentDashboard.js" defer></script>
   <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>

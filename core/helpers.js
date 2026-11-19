@@ -3163,6 +3163,25 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // 🎬 a school teacher's own videos for their own students (/api/teacher-videos)
+  // teacher: teacherVideos('GET', '/mine') · ('POST', '/mine', body) · ('PUT', '/mine/<id>', body) · ('DELETE', '/mine/<id>') · ('GET', '/pick/tree') …
+  async function teacherVideos(method, path, body) {
+    const token = await ensureTeacherSession();
+    return request(`/teacher-videos${path}`, { method, headers: { Authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined });
+  }
+  // student: my teachers' videos (Home list)
+  async function fetchMyTeacherVideos() {
+    const token = await ensureStudentSession();
+    return (await request('/teacher-videos/for-me', { headers: { Authorization: `Bearer ${token}` } }))?.data || [];
+  }
+  // admin: every teacher's videos · take one off the students' side (or put it back)
+  async function adminTeacherVideos(q = '') {
+    return (await request(`/teacher-videos/admin${q ? '?q=' + encodeURIComponent(q) : ''}`, { headers: await _adminAuth() }))?.data || [];
+  }
+  async function adminRemoveTeacherVideo(id, removed = true) {
+    return request(`/teacher-videos/admin/${encodeURIComponent(id)}/remove`, { method: 'POST', headers: await _adminAuth(), body: JSON.stringify({ removed }) });
+  }
+
   // "Video Opens" counter — best-effort, never blocks playback if it fails.
   async function recordYoutubeVideoOpen(videoId) {
     const token = await ensureStudentSession();
@@ -3301,6 +3320,7 @@ const API = (() => {
     fetchTeacherSlsQuestions, createTeacherSlsPaperManual, fetchMcqBankAdmin, fetchMcqBankTeacher, fetchQuizzesTeacher,
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
     fetchStudentExerciseQuestions,
+    teacherVideos, fetchMyTeacherVideos, adminTeacherVideos, adminRemoveTeacherVideo,
     fetchYoutubeVideosForExercise, recordYoutubeVideoOpen,
   };
 })();

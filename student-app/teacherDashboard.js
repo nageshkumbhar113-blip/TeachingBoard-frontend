@@ -108,6 +108,7 @@ const TEACHER_DASHBOARD = (() => {
     $('td-tab-vocab')?.classList.toggle('hidden', tab !== 'vocab');
     $('td-tab-fee')?.classList.toggle('hidden', tab !== 'fee');
     $('td-tab-papers')?.classList.toggle('hidden', tab !== 'papers');
+    $('td-tab-videos')?.classList.toggle('hidden', tab !== 'videos');
     $('td-tab-share')?.classList.toggle('hidden', tab !== 'share');
     $('td-tab-earnings')?.classList.toggle('hidden', tab !== 'earnings');
 
@@ -121,6 +122,12 @@ const TEACHER_DASHBOARD = (() => {
       $('td-back-btn')?.classList.add('hidden');
       $('td-detail-name').textContent = 'Share the app';
       _initShareTab();
+    }
+
+    if (tab === 'videos') {
+      $('td-back-btn')?.classList.add('hidden');
+      $('td-detail-name').textContent = '🎬 माझे Videos';
+      window.TEACHER_VIDEOS?.initTeacher();
     }
 
     if (tab === 'papers') {

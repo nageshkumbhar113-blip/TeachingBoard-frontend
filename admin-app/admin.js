@@ -255,7 +255,12 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'settlement')  window.SETTLEMENT_ADMIN?.init();
         if (tab.dataset.tab === 'usage')       window.USAGE_ADMIN?.init();
         if (tab.dataset.tab === 'help')        window.HELP_ADMIN?.init();
-        if (tab.dataset.tab === 'youtube-teachers') window.YOUTUBE_TEACHER_ADMIN?.init();
+        if (tab.dataset.tab === 'youtube-teachers') {
+          window.TEACHER_VIDEOS_ADMIN?.init();
+          // the old (closed) YouTube-partner screens load only when that fold is opened
+          const old = document.getElementById('ytt-old');
+          if (old && !old.dataset.bound) { old.dataset.bound = '1'; old.addEventListener('toggle', () => { if (old.open) window.YOUTUBE_TEACHER_ADMIN?.init(); }); }
+        }
         if (tab.dataset.tab === 'banners')     window.BANNER_ADMIN?.init();
         if (tab.dataset.tab === 'dashboard')   _loadDashboard();
       });
@@ -2839,7 +2844,6 @@ const ADMIN = (() => {
       { icon: '🖥️', label: 'Web Admin',                   url: `${SITE}/admin` },
       { icon: '🎓', label: 'Web Student',                  url: `${SITE}/student` },
       { icon: '🎬', label: 'Teacher Demo (Student + Teacher app)', url: `${SITE}/demo` },
-      { icon: '▶️', label: 'YouTube Partner Portal',       url: `${SITE}/teachers` },
       { icon: '📲', label: 'App Download',                 url: `${SITE}/get-app` },
       { icon: '🏠', label: 'Website / Home',                url: `${SITE}/` },
       { icon: '📞', label: 'Contact Us',                    url: `${SITE}/contact-us.html` },

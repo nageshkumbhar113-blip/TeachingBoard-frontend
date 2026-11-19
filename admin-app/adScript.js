@@ -27,7 +27,7 @@
     pen:        { need: ['q', 'lines'], text: { q: 90, caption: 45 }, list: { lines: [1, 5, 32] }, ms: s => 700 + 750 * (s.lines?.length || 0) + 1500 },
   };
   const SCREENS = ['notes', 'exercise', 'test', 'rank', 'subjects', 'smartboard', 'offline'];
-  const AUDIENCES = ['parent', 'student', 'school', 'youtube'];
+  const AUDIENCES = ['parent', 'student', 'school'];   // 'youtube' closed 2026-11-19
   const THEMES = ['violet', 'orange', 'green', 'dark'];
   const PACES = { fast: 0.85, normal: 1, calm: 1.15 };
   const MUSIC = ['energetic', 'light'];

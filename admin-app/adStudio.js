@@ -31,8 +31,8 @@ const AD_STUDIO = (() => {
   const AUD = {
     parent:  { name: '👨‍👩‍👧 पालक', share: 70, ages: [28, 50] },
     student: { name: '🎓 विद्यार्थी', share: 15, ages: [13, 17] },
-    school:  { name: '🏫 School teacher / Tutor', share: 10, ages: [22, 55] },
-    youtube: { name: '▶️ YouTube teacher', share: 5, ages: [20, 50] },
+    school:  { name: '🏫 School teacher / Tutor', share: 15, ages: [22, 55] },
+    // owner 2026-11-19: the YouTube-partner programme is closed — no YouTube-teacher ads (their 5 % went to school teachers)
   };
   const isTeacher = a => a === 'school' || a === 'youtube';
   // 11वी–12वी (JEE / NEET / CET / CUET / NDA): the student chooses as much as the parent
