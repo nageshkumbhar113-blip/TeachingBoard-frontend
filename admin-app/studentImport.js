@@ -168,26 +168,26 @@ const STUDENT_IMPORT = (() => {
   const ACTION = { create: '🆕 नवीन', update: '🔄 Update', error: '❌ चूक', created: '✅ बनला', updated: '🔄 Update झाला' };
 
   function renderTable(rows, done = false) {
-    const head = '<tr><th>#</th><th>स्थिती</th><th>नाव</th><th>Mobile</th><th>Code</th><th>PIN</th><th>Course</th><th>Expiry</th><th>रक्कम</th><th>Commission</th><th>सूचना</th></tr>';
+    const head = '<tr><th>#</th><th>स्थिती</th><th>नाव</th><th>Mobile</th><th>Code</th><th>PIN</th><th>Course</th><th>Expiry</th><th>रक्कम</th><th>सूचना</th></tr>';
     const body = rows.map(r => {
       const status = done ? (r.status || r.action) : r.action;
       const bg = status === 'error' ? '#fef2f2' : status.startsWith('update') ? '#eff6ff' : '#f0fdf4';
-      const notes = [...(r.errors || []), ...(r.warnings || []), r.commission_note].filter(Boolean).join(' · ');
+      const notes = [...(r.errors || []), ...(r.warnings || [])].filter(Boolean).join(' · ');
       return `<tr style="background:${bg}"><td>${r.line}</td><td>${ACTION[status] || esc(status)}</td><td>${esc(r.name)}</td><td>${esc(r.mobile)}</td>
         <td><b>${esc(r.student_code)}</b></td><td>${r.pin ? `<b>${esc(r.pin)}</b>` : (status !== 'error' ? 'जुना' : '')}</td>
         <td>${esc((r.courses || []).join(', '))}</td><td>${showDay(r.expiry)}</td>
         <td>${status === 'error' ? '' : `${money(r.amount)}${r.discount_percent ? ` <small>(−${r.discount_percent}%)</small>` : ''}`}</td>
-        <td>${status === 'error' ? '' : money(r.commission)}</td><td style="color:${status === 'error' ? '#b91c1c' : '#92400e'}">${esc(notes)}</td></tr>`;
+        <td style="color:${status === 'error' ? '#b91c1c' : '#92400e'}">${esc(notes)}</td></tr>`;
     }).join('');
     $('simp-table').innerHTML = `<table class="admin-table" style="width:100%;font-size:0.8rem;border-collapse:collapse"><thead>${head}</thead><tbody>${body}</tbody></table>`;
   }
 
   function renderSummary(data, done = false) {
     const s = data.summary;
-    const t = (data.teachers || []).map(x => `👨‍🏫 <b>${esc(x.name)}</b> (${esc(x.teacher_code)}) — ${x.students} विद्यार्थी${x.commission_enabled === false ? ' · commission बंद' : x.commission_mode ? ` · commission ${x.commission_mode === 'percent' ? `${x.commission_value}%` : `₹${x.commission_value}`}` : ''}${x.bulk_discount_percent !== undefined ? ` · discount ${x.bulk_discount_percent}%` : ''}`).join('<br>');
+    const t = (data.teachers || []).map(x => `👨‍🏫 <b>${esc(x.name)}</b> (${esc(x.teacher_code)}) — ${x.students} विद्यार्थी`).join('<br>');
     $('simp-summary').innerHTML = `<div style="display:block;padding:10px 12px;margin:8px 0;border:1px solid #e5e7eb;border-radius:12px;background:#fff;line-height:1.7">
       ${done ? `<b>✅ झालं:</b> ${s.created} नवीन · ${s.updated} update · ${s.failed} चूक` : `<b>Preview:</b> ${s.create} नवीन · ${s.update} update · <span style="color:#b91c1c">${s.errors} चूक</span>`}
-      <br>एकूण रक्कम <b>${money(s.amount)}</b> (सूट ${money(s.discount)}) · एकूण commission <b>${money(s.commission)}</b>
+      <br>एकूण रक्कम <b>${money(s.amount)}</b> (सूट ${money(s.discount)})
       ${t ? `<br>${t}` : ''}</div>`;
   }
 
@@ -206,7 +206,7 @@ const STUDENT_IMPORT = (() => {
       $('simp-run-btn').disabled = okCount === 0;
       $('simp-run-btn').textContent = `✅ ${okCount} accounts बनवा / update करा`;
       const t = _preview.teachers?.[0];
-      $('simp-teacher-info').textContent = t ? `${t.name} · discount ${t.bulk_discount_percent}% · ${t.commission_enabled ? `commission ${t.commission_mode === 'percent' ? `${t.commission_value}%` : `₹${t.commission_value}`}` : 'commission बंद'}${t.rules_pending ? ' · 📜 नियम अजून मान्य केलेले नाहीत' : ''}` : '';
+      $('simp-teacher-info').textContent = t ? `${t.name}${t.rules_pending ? ' · 📜 नियम अजून मान्य केलेले नाहीत' : ''}` : '';
     } catch (err) {
       APP.toast(err.message || 'Preview झाला नाही', 'error');
     } finally {

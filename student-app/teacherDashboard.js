@@ -109,6 +109,7 @@ const TEACHER_DASHBOARD = (() => {
     $('td-tab-fee')?.classList.toggle('hidden', tab !== 'fee');
     $('td-tab-papers')?.classList.toggle('hidden', tab !== 'papers');
     $('td-tab-videos')?.classList.toggle('hidden', tab !== 'videos');
+    $('td-tab-create')?.classList.toggle('hidden', tab !== 'create');
     $('td-tab-share')?.classList.toggle('hidden', tab !== 'share');
     $('td-tab-earnings')?.classList.toggle('hidden', tab !== 'earnings');
 
@@ -122,6 +123,12 @@ const TEACHER_DASHBOARD = (() => {
       $('td-back-btn')?.classList.add('hidden');
       $('td-detail-name').textContent = 'Share the app';
       _initShareTab();
+    }
+
+    if (tab === 'create') {
+      $('td-back-btn')?.classList.add('hidden');
+      $('td-detail-name').textContent = '➕ विद्यार्थी बनवा';
+      window.TEACHER_CREATE_STUDENTS?.init();
     }
 
     if (tab === 'videos') {
@@ -1320,7 +1327,12 @@ const TEACHER_DASHBOARD = (() => {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  return { init, loadDashboard, openStudent: _openStudentDetail };
+  // new students were just made (➕ Students tab): the list from the server, not the cached one
+  async function refreshStudents() {
+    try { const fresh = await API.fetchTeacherStudents(); await DB.putGenericCache('teacher_dashboard_cache', 'students', fresh).catch(() => {}); _students = fresh; _renderStudentList(); } catch { /* offline: the next open refreshes */ }
+  }
+
+  return { init, loadDashboard, refreshStudents, openStudent: _openStudentDetail };
 })();
 
 window.TEACHER_DASHBOARD = TEACHER_DASHBOARD;

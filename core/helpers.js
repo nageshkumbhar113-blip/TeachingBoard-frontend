@@ -3169,6 +3169,11 @@ const API = (() => {
 
   // 🎬 a school teacher's own videos for their own students (/api/teacher-videos)
   // teacher: teacherVideos('GET', '/mine') · ('POST', '/mine', body) · ('PUT', '/mine/<id>', body) · ('DELETE', '/mine/<id>') · ('GET', '/pick/tree') …
+  // ➕ the teacher makes + pays for student accounts: teacherOrders('GET', '/setup') · ('POST', '/preview', b) · ('POST', '', b) · ('GET', '/<no>')
+  async function teacherOrders(method, path, body) {
+    const token = await ensureTeacherSession();
+    return request(`/teacher-orders${path}`, { method, headers: { Authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined });
+  }
   async function teacherVideos(method, path, body) {
     const token = await ensureTeacherSession();
     return request(`/teacher-videos${path}`, { method, headers: { Authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined });
@@ -3324,7 +3329,7 @@ const API = (() => {
     fetchTeacherSlsQuestions, createTeacherSlsPaperManual, fetchMcqBankAdmin, fetchMcqBankTeacher, fetchQuizzesTeacher,
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
     fetchStudentExerciseQuestions,
-    teacherVideos, fetchMyTeacherVideos, adminTeacherVideos, adminRemoveTeacherVideo,
+    teacherVideos, teacherOrders, fetchMyTeacherVideos, adminTeacherVideos, adminRemoveTeacherVideo,
     fetchYoutubeVideosForExercise, recordYoutubeVideoOpen,
   };
 })();

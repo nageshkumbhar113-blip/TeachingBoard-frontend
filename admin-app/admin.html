@@ -778,14 +778,18 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                 <input id="teacher-institute" class="admin-input" placeholder="Institute / coaching name" aria-label="Institute name" />
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem"><input id="teacher-board-papers" type="checkbox" /> Allow board-style papers (exam look-alike) for this teacher</label>
                 <div class="admin-card" style="padding:10px;margin:6px 0">
-                  <strong style="font-size:0.85rem">Partner commission</strong>
-                  <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:6px"><input id="teacher-comm-on" type="checkbox" /> Pay commission on students linked to this teacher</label>
-                  <select id="teacher-partner-type" class="admin-input" aria-label="Partner type"><option value="">Partner type</option><option value="school">School / institute teacher</option></select>
-                  <select id="teacher-comm-mode" class="admin-input" aria-label="Commission type"><option value="flat">Flat amount per paid student (₹)</option><option value="percent">Percent of the payment (%)</option></select>
-                  <input id="teacher-comm-value" class="admin-input" type="number" min="0" step="0.5" placeholder="Amount or percent, e.g. 30" aria-label="Commission value" />
-                  <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem"><input id="teacher-comm-first" type="checkbox" checked /> First payment of a student only (no renewal commission)</label>
+                  <!-- owner 2026-11-19: the teacher's सूट (discount) — only when the teacher makes students in the app and pays
+                       (stored in the old commission_* fields; the word "commission" is not shown anywhere) -->
+                  <strong style="font-size:0.85rem">🎁 सूट (Discount)</strong>
+                  <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-top:6px"><input id="teacher-comm-on" type="checkbox" /> या शिक्षकाला सूट द्या — तो Teacher app मधून विद्यार्थी बनवून पैसे भरतो तेव्हा</label>
+                  <select id="teacher-partner-type" class="admin-input" aria-label="Teacher type" hidden><option value="">—</option><option value="school">School / institute teacher</option><option value="shop">Shop</option></select>
+                  <select id="teacher-comm-mode" class="admin-input" aria-label="सूट प्रकार"><option value="percent">% — course च्या किमतीवर</option><option value="flat">₹ — प्रत्येक विद्यार्थ्यामागे</option></select>
+                  <input id="teacher-comm-value" class="admin-input" type="number" min="0" step="0.5" placeholder="किती, उदा. 15 (%) किंवा 200 (₹)" aria-label="सूट किती" />
+                  <p class="import-hint" style="margin:2px 0">उदा. 15% → ₹1500 च्या course साठी शिक्षक ₹1275 भरतो. विद्यार्थी / पालक स्वतः पैसे भरतात तेव्हा शिक्षकाला काहीच मिळत नाही.</p>
+                  <label hidden style="display:flex;align-items:center;gap:8px;font-size:0.8rem"><input id="teacher-comm-first" type="checkbox" checked /> first payment only</label>
                 </div>
-                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Bulk import discount % (या teacher च्या विद्यार्थ्यांना)
+                <!-- owner 2026-11-19: no "bulk discount" any more — only the commission above (it is taken off when the teacher pays) -->
+                <label hidden style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Bulk import discount % (या teacher च्या विद्यार्थ्यांना)
                   <input id="teacher-bulk-discount" class="admin-input" type="number" min="0" max="100" step="0.5" placeholder="उदा. 10" aria-label="Bulk import discount percent" />
                 </label>
                 <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Valid until (optional)
@@ -1948,8 +1952,8 @@ Marks: 1"></textarea>
           <!-- ── Pricing Panel (Batch Pricing) ───────── -->
           <div class="atab-content hidden" id="atab-partners" role="tabpanel" aria-labelledby="atab-btn-partners">
             <div class="pa-wrap">
-              <h2>🤝 Partners - commission and monthly payouts</h2>
-              <p class="import-hint">Each month is closed on the 1st and paid between the 2nd and the 5th. A closed month never changes: later refunds are deducted in the next statement. Turn commission on for a teacher in the Teachers tab.</p>
+              <h2>🤝 Partners — दुकानं (shops) आणि महिन्याचे payouts</h2>
+              <p class="import-hint">फक्त दुकानांसाठी (शिक्षकांना आता काही मिळत नाही; त्यांची "सूट" Teachers tab मध्ये). Each month is closed on the 1st and paid between the 2nd and the 5th. A closed month never changes: later refunds are deducted in the next statement.</p>
               <p class="import-hint"><b>💸 पैसे देणं, महिन्याचा आणि वर्षाचा हिशोब, आले-गेले: Settlement tab मध्ये.</b> इथे फक्त settings, shops, बक्षीस requests आणि commission lines.</p>
 
               <div class="pa-cards">
@@ -1987,7 +1991,7 @@ Marks: 1"></textarea>
                   <label>Hold days after payment<input id="pa-hold" class="admin-input" type="number" min="0" max="90" /></label>
                   <label>Minimum payout (₹)<input id="pa-min" class="admin-input" type="number" min="0" /></label>
                   <label hidden>YouTube partner, flat (₹)<input id="pa-yt" class="admin-input" type="number" min="0" /></label>
-                  <label>School teacher (%)<input id="pa-school" class="admin-input" type="number" min="0" max="100" /></label>
+                  <label hidden>School teacher (%)<input id="pa-school" class="admin-input" type="number" min="0" max="100" /></label>
                   <label>Prize delivery (days)<input id="pa-delivery" class="admin-input" type="number" min="1" max="90" /></label>
                 </div>
                 <h4 style="margin:12px 0 4px">Student prizes (friends who have paid)</h4>

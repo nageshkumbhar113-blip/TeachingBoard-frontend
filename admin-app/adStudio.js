@@ -138,7 +138,6 @@ const AD_STUDIO = (() => {
   // the app's real numbers for the { } placeholders
   function _phValues(f) {
     return {
-      youtube_commission: f.flat, school_commission: f.pct, student_discount: Number(_cfg.student_discount_percent ?? 50),
       free_tests: f.freeTests || null, days_left: f.days || null, offer_percent: 50,
       exam_name: f.site?.name || f.examTitle || null, class_name: f.label || null,
     };
@@ -317,32 +316,33 @@ const AD_STUDIO = (() => {
         copy: [`🌙 परीक्षेआधी झटपट revision: ${L} चे धड्यानुसार Notes, Internet शिवाय पण.\n${regLine[0]}.`, `🌙 Quick revision before the exam: ${L} chapter notes, even without internet.\n${regLine[1]}.`],
         headline: ['झटपट revision 🌙', 'Quick revision 🌙'],
       },
-      // ── school teachers / tutors (registration; commission from Admin › Partners) ──
+      // ── school teachers / tutors (registration). owner 2026-11-19: no earnings / commission in teacher ads —
+      //    their benefit is a सूट when they make their students' accounts themselves ──
       'sc-tools': {
         aud: 'school', name: '📄 पेपर 2 मिनिटात', ok: true,
         hook: ['उद्याचा पेपर 2 मिनिटात तयार', 'Tomorrow’s paper ready in 2 minutes'],
         hook2: ['प्रश्न निवडा · PDF · Answer key', 'Pick questions · PDF · Answer key'],
-        scenes: ['hook', 'paper', 'tools', 'earn', 'toffer'],
-        copy: [`📄 Class / Tuition साठी: तयार प्रश्नांमधून पेपर 2 मिनिटात, PDF आणि Answer key.\nमुलांचे tests, गुण एका ठिकाणी, Board pen.\n💰 तुमच्या मुलांनी app घेतलं तर ${f.pct}% तुम्हाला.\n✅ नोंदणी Free`,
-          `📄 For your class / tuition: a paper in 2 minutes from ready questions, PDF and answer key.\nStudents' tests and marks in one place, a board pen.\n💰 Earn ${f.pct}% when your students subscribe.\n✅ Free registration`],
+        scenes: ['hook', 'paper', 'tools', 'toffer'],
+        copy: [`📄 Class / Tuition साठी: तयार प्रश्नांमधून पेपर 2 मिनिटात, PDF आणि Answer key.\nमुलांचे tests, गुण एका ठिकाणी, Board pen.\n🎁 तुमच्या विद्यार्थ्यांची accounts तुम्हीच बनवा — खास सुटीत.\n✅ नोंदणी Free`,
+          `📄 For your class / tuition: a paper in 2 minutes from ready questions, PDF and answer key.\nStudents' tests and marks in one place, a board pen.\n🎁 Make your students' accounts yourself — at a special discount.\n✅ Free registration`],
         headline: ['पेपर 2 मिनिटात · Free', 'Papers in 2 minutes · Free'],
       },
       'sc-earn': {
-        aud: 'school', name: `💰 ${f.pct}% कमाई`, ok: true,
-        hook: [`तुमच्या मुलांच्या app मधून तुम्हाला ${f.pct}%`, `Earn ${f.pct}% from your students' app`],
-        hook2: ['काम नाही · फक्त तुमची link', 'No extra work · just your link'],
-        scenes: ['hook', 'earn', 'tools', 'toffer'],
-        copy: [`💰 तुमच्या class link मधून मुलांनी app घेतलं की प्रत्येक पहिल्या payment वर ${f.pct}% तुम्हाला, दर महिन्याला UPI वर.\nसोबत Free: पेपर, tests, गुण.\n✅ आजच नोंदणी करा`,
-          `💰 When students join through your class link, you get ${f.pct}% of each first payment, monthly by UPI.\nFree tools too: papers, tests, marks.\n✅ Register today`],
-        headline: [`${f.pct}% कमाई + Free tools`, `${f.pct}% earnings + free tools`],
+        aud: 'school', name: '🎁 विद्यार्थ्यांसाठी खास सूट', ok: true,
+        hook: ['तुमच्या वर्गासाठी app — खास सुटीत', 'The app for your class — at a special discount'],
+        hook2: ['Accounts तुम्हीच बनवा · PDF लगेच', 'Make the accounts yourself · PDF at once'],
+        scenes: ['hook', 'paper', 'tools', 'toffer'],
+        copy: [`🎁 तुमच्या विद्यार्थ्यांची accounts तुम्हीच बनवा — खास सुटीत. Code आणि PIN चा PDF लगेच.\nसोबत Free: पेपर, tests, गुण, तुमचे videos.\n✅ आजच नोंदणी करा`,
+          `🎁 Make your students' accounts yourself — at a special discount. Codes and PINs as a PDF at once.\nFree tools too: papers, tests, marks, your own videos.\n✅ Register today`],
+        headline: ['विद्यार्थ्यांसाठी खास सूट', 'A special discount for your class'],
       },
       'sc-board': {
         aud: 'school', name: '🏫 Smart board वर शिकवा', ok: true,
         hook: ['वर्गात smart board वर थेट solution', 'Solve it live on the class smart board'],
         hook2: ['तयार प्रश्न · pen · laser', 'Ready questions · pen · laser'],
-        scenes: ['hook', 'penboard', 'tools', 'earn', 'toffer'],
-        copy: [`🏫 वर्गात smart board वर थेट शिकवा: तयार प्रश्न उघडा, pen ने solution लिहा, laser ने दाखवा, पुसा.\nपेपर, tests आणि गुण पण Free.\n💰 तुमच्या मुलांनी app घेतलं तर ${f.pct}% तुम्हाला.\n✅ नोंदणी Free`,
-          `🏫 Teach live on the class smart board: open a ready question, write the solution with a pen, point with the laser, erase.\nPapers, tests and marks free too.\n💰 Earn ${f.pct}% when your students subscribe.\n✅ Free registration`],
+        scenes: ['hook', 'penboard', 'tools', 'toffer'],
+        copy: [`🏫 वर्गात smart board वर थेट शिकवा: तयार प्रश्न उघडा, pen ने solution लिहा, laser ने दाखवा, पुसा.\nपेपर, tests आणि गुण पण Free.\n✅ नोंदणी Free`,
+          `🏫 Teach live on the class smart board: open a ready question, write the solution with a pen, point with the laser, erase.\nPapers, tests and marks free too.\n✅ Free registration`],
         headline: ['Smart board वर शिकवा · Free', 'Teach on a smart board · free'],
       },
       // ── YouTube teachers ──
@@ -1020,10 +1020,10 @@ const AD_STUDIO = (() => {
       x.save(); x.translate(W / 2, cy - (tall ? 290 : 190)); x.scale(lg, lg); logo(0, 0, tall ? 240 : 150); x.restore();
       x.save(); x.translate(W / 2, cy); x.scale(a, a);
       both(['नोंदणी Free', 'Free registration'], 0, 0, tall ? 96 : 76, tall ? 90 : 72);
-      text(st.lang === 'en' ? 'Commission rules: in the app' : 'Commission चे नियम app मध्ये', 0, tall ? 170 : 135, 38, C.white, 700, 'center', W - 100);
+      text(st.lang === 'en' ? 'Paper, tests, marks — free' : 'पेपर, tests, गुण — Free', 0, tall ? 170 : 135, 38, C.white, 700, 'center', W - 100);
       x.restore();
       x.save(); x.translate(W / 2, cy + (tall ? 520 : 360)); const pulse = 1 + Math.sin(lt / 180) * .03; x.scale(c * pulse, c * pulse);
-      x.fillStyle = C.white; rr(-400, -75, 800, 150, 75); x.fill(); text(st.lang === 'en' ? '▶ Become a partner' : '▶ Partner व्हा', 0, 2, 58, C.violet, 800, 'center', 740);
+      x.fillStyle = C.white; rr(-400, -75, 800, 150, 75); x.fill(); text(st.lang === 'en' ? '▶ Register free' : '▶ नोंदणी करा', 0, 2, 58, C.violet, 800, 'center', 740);
       x.restore();
     },
     offer(W, H, lt, v) {
@@ -1943,7 +1943,7 @@ const AD_STUDIO = (() => {
     if ($('ads-kind')) $('ads-kind').value = st.kind;
     const R = f.reg;
     if ($('ads-nextq')) $('ads-nextq').hidden = teach || st.kind !== 'comp' || (f.mcqs || []).length < 2;
-    $('ads-facts').textContent = teach ? `Commission (Admin › Partners): School ${f.pct}% · YouTube ₹${f.flat} प्रति paid student`
+    $('ads-facts').textContent = teach ? `शिक्षकांसाठी: कमाईचा उल्लेख नाही — फायदा म्हणजे विद्यार्थ्यांसाठी सूट (Admin › Teachers) आणि Free tools`
       : st.kind === 'reg' ? (_content[st.batch] ? (R.has ? `${R.subs.length} विषय (${R.subs.map(s => s.subject).join(', ')}) · ${R.notes} Notes · ${R.answers} स्वाध्याय उत्तरं${R.note ? ' · Notes demo: ' + R.note.chapter : ''}${R.ex ? ' · स्वाध्याय demo: ' + R.ex.chapter : ''}` : 'या class मध्ये अजून Notes / स्वाध्याय उत्तरं नाहीत') : '⏳ उघडत आहे…')
       : [`Free tests: ${f.freeTests}`, f.days !== null ? `परीक्षा: ${f.days} दिवस` : 'परीक्षेची तारीख नाही',
         !f.loaded ? '⏳ उघडत आहे…' : f.trio ? `3 प्रश्न: ${f.trio.map(m => m.subject || '—').join(' → ')} (free test मधले खरे)` : f.mcq ? `प्रश्न ${((st.qi || 0) % f.mcqs.length) + 1}/${f.mcqs.length} (free test मधला खरा)` : f.matType ? 'प्रश्न: आकृतीचा नमुना (free test मध्ये योग्य प्रश्न नाही)' : 'ad साठी योग्य प्रश्न नाही',
@@ -2273,7 +2273,7 @@ const AD_STUDIO = (() => {
         <div class="ads-auds" role="group" aria-label="कोणासाठी">${Object.entries(AUD).map(([k, a]) => `<button type="button" class="ads-aud" data-aud="${k}" aria-pressed="${k === st.aud}">${a.name}<small>बजेट ${a.share}%</small></button>`).join('')}</div>
         <div class="ads-budget">रोजचं एकूण बजेट ₹ <input id="ads-budget" type="number" min="0" step="50" class="admin-input" placeholder="उदा. 500" aria-label="रोजचं बजेट" /> <span id="ads-split"></span>
           <p class="import-hint">पैसे मुख्यतः पालकांच्या ads वर: पैसे पालक भरतात, आणि 13–17 वयाच्या मुलांना Meta फक्त वय / ठिकाणावरून ad दाखवू देतं.</p></div>
-        <p class="ads-warn" id="ads-teacher-warn" hidden>ℹ️ Teacher ads मध्ये कमाईचा उल्लेख आहे — नियम: <a href="../partner-terms.html?type=${st.aud === 'youtube' ? 'youtube' : 'school'}" target="_blank" rel="noopener">Partner terms</a>. Commission चे आकडे बदलले तर ads आपोआप बदलतात.</p>
+        <p class="ads-warn" id="ads-teacher-warn" hidden>ℹ️ शिक्षकांच्या ads मध्ये कमाई / पैसे मिळतील असं लिहायचं नाही — फायदा म्हणजे विद्यार्थ्यांसाठी सूट आणि Free tools. नियम: <a href="../partner-terms.html?type=school" target="_blank" rel="noopener">Teacher terms</a>.</p>
         <div class="ads-row">
           <span class="ads-row" id="ads-class-row" style="margin:0">
           <label>Class <select id="ads-batch" class="admin-input"></select></label>
@@ -2291,7 +2291,7 @@ const AD_STUDIO = (() => {
             <li>AI चं पूर्ण उत्तर खालच्या box मध्ये paste करा → <b>✅ तपासा आणि पाहा</b>. चुका असतील तर app सांगतो.</li>
             <li>आवडला तर <b>💾 Save</b> — मग तो ads च्या यादीत येतो: Download, Meta ला पाठवा, YouTube kit, leaderboard सगळं तसंच.</li>
           </ol>
-          <p class="import-hint">आकडे (commission, सूट, free tests, दिवस) AI लिहीत नाही — <code>{ }</code> खुणा app स्वतः खऱ्या आकड्यांनी भरतो.</p>
+          <p class="import-hint">आकडे (सूट, free tests, दिवस) AI लिहीत नाही — <code>{ }</code> खुणा app स्वतः खऱ्या आकड्यांनी भरतो.</p>
           <textarea id="vid-want" class="admin-input" rows="2" placeholder="उदा. YouTube शिक्षकांसाठी 20 सेकंदांचा video: स्वतःचं panel, subscribers ना सूट, प्रत्येक paid मागे कमाई"></textarea>
           <div class="site-btns"><label class="ads-target">किती videos <select id="vid-count" class="admin-input"><option value="1">1</option><option value="3" selected>3 (A/B साठी)</option></select></label>
             <button type="button" class="admin-btn-secondary" id="vid-prompt">📋 Prompt copy करा</button><span id="vid-copied" class="import-hint"></span></div>

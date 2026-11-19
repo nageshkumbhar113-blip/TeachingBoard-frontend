@@ -3751,7 +3751,7 @@ const ADMIN = (() => {
             ${t.partner_type === 'youtube'
               ? `<span>${_escHtml(t.channel_name || '')} - <a href="${_escHtml(t.channel_url || '#')}" target="_blank" rel="noopener">open channel</a></span>`
               : `<span>${_escHtml(t.institute_name || 'No institute given')}</span>`}
-            <span>${t.commission_enabled ? (t.commission_mode === 'percent' ? `${t.commission_value}% commission` : `Rs ${t.commission_value} commission`) : 'No commission'}</span>
+            <span>${t.commission_enabled && t.commission_value ? `🎁 सूट ${t.commission_mode === 'percent' ? `${t.commission_value}%` : `₹${t.commission_value}`}` : 'सूट नाही'}</span>
             <span>${t.created_at ? _escHtml(new Date(t.created_at).toLocaleDateString()) : ''}</span>
             <span>${t.terms_accepted_at ? 'Terms accepted' : 'Terms not recorded'}</span>
             ${t.contact_pref ? `<span><b>${t.contact_pref === 'call' ? '📞 Call करा असं सांगितलं' : '💬 WhatsApp करा असं सांगितलं'}</b></span>` : ''}

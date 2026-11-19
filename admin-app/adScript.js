@@ -32,15 +32,12 @@
   const PACES = { fast: 0.85, normal: 1, calm: 1.15 };
   const MUSIC = ['energetic', 'light'];
   const RECIPES = {
-    1: { name: 'कमाई / फायदा', order: ['hook', 'points', 'number', 'app', 'steps', 'cta'] },
+    1: { name: 'फायदे', order: ['hook', 'points', 'number', 'app', 'steps', 'cta'] },
     2: { name: 'प्रश्न-आव्हान', order: ['hook', 'question', 'app', 'number', 'cta'] },
     3: { name: 'आधी / आता', order: ['hook', 'compare', 'points', 'app', 'cta'] },
   };
   // the placeholders the app fills from its own settings / data
   const PLACEHOLDERS = {
-    youtube_commission: 'YouTube शिक्षकाला प्रत्येक paid student मागे ₹ (Admin › Partners)',
-    school_commission: 'School शिक्षकाला commission % (Admin › Partners)',
-    student_discount: 'YouTube subscriber students ना पहिल्या payment वर सूट % (Admin › Partners)',
     free_tests: 'निवडलेल्या class चे free tests',
     days_left: 'परीक्षेला दिवस बाकी (Sync / Site › Exams मधली तारीख)',
     offer_percent: 'Free test नंतर पहिल्या महिन्यावर सूट %',
@@ -121,7 +118,7 @@
         const n = Number(String(filled).replace(/[,₹%\s]/g, ''));
         if (!Number.isFinite(n)) errors.push(`${where} (number): "value" आकडा हवा (किंवा {खूण})`);
         // money / discount numbers only through a placeholder — never a figure the AI made up
-        if (!/\{[a-z_]+\}/.test(raw0) && MONEY_WORDS.test(`${s.prefix || ''}${s.suffix || ''}${s.label || ''}`)) errors.push(`${where} (number): पैसे / सूट / commission चा आकडा AI ने लिहायचा नाही — {youtube_commission}, {student_discount} अशी खूण वापरा`);
+        if (!/\{[a-z_]+\}/.test(raw0) && MONEY_WORDS.test(`${s.prefix || ''}${s.suffix || ''}${s.label || ''}`)) errors.push(`${where} (number): पैसे / सूट चा आकडा AI ने लिहायचा नाही — {offer_percent} अशी खूण वापरा`);
         else if (!/{[a-z_]+}/.test(raw0)) warnings.push(`${where} (number): ${raw0} हा आकडा AI ने लिहिला आहे — app तो तपासत नाही, खरा आहे ना ते पाहा`);
         sc.value = n;
       }
@@ -149,6 +146,7 @@
         if (s.board !== undefined && !['phone', 'class'].includes(s.board)) errors.push(`${where} (pen): "board" हवा: "phone" (विद्यार्थ्याचा mobile) किंवा "class" (वर्गातला smart board)`);
         else if (s.board) sc.board = s.board;
       }
+      if (teacher && /commission|कमिशन|कमाई|earn/i.test([s.text, s.sub, s.title, s.label, s.caption, ...(s.items || [])].map(str).join(' '))) errors.push(`${where}: शिक्षकांच्या ad मध्ये कमाई / commission चा उल्लेख नको — फायदा म्हणजे विद्यार्थ्यांसाठी सूट आणि Free tools`);
       if (s.type === 'quote' && s.by) warnings.push(`${where} (quote): "by" काढला — quote आपलाच संदेश असतो, कोणाच्या नावाने नाही`);
       // a made-up money figure inside ordinary text
       for (const k of ['text', 'sub', 'label', 'title', 'before', 'after', 'caption']) {
@@ -190,15 +188,15 @@
   function prompt({ want = '', audience = '', className = '', values = {}, count = 1 } = {}) {
     const known = Object.entries(PLACEHOLDERS).map(([k, d]) => `  {${k}} — ${d}${values[k] !== undefined && values[k] !== null && values[k] !== '' ? ` (सध्या: ${values[k]})` : ''}`).join('\n');
     const example = {
-      title: 'YouTube teachers – स्वतःचं पॅनल + कमाई', audience: 'youtube', link: 'teacher', recipe: '1',
+      title: 'शिक्षकांसाठी — पेपर 1 मिनिटात', audience: 'school', link: 'teacher', recipe: '1',
       style: { theme: 'violet', pace: 'normal', music: 'energetic' },
-      copy: { text: 'YouTube वर शिकवता? तुमच्या subscribers ना free tests, महा-Test आणि रँक — आणि तुम्हाला प्रत्येक paid student मागे ₹{youtube_commission}. नोंदणी Free.', headline: 'YouTube शिक्षकांसाठी कमाई' },
+      copy: { text: 'शिक्षक आहात? तुमच्या वर्गासाठी पेपर आणि answer sheet 1 मिनिटात, रोजचा NMMS सराव, प्रत्येकाचे गुण तुमच्या phone वर. नोंदणी Free.', headline: 'शिक्षकांसाठी Free Edu Platform' },
       scenes: [
-        { type: 'hook', text: 'YouTube वर शिकवता?', sub: 'आता कमाई पण!' },
-        { type: 'points', title: 'तुम्हाला काय मिळतं?', items: ['स्वतःचं Teacher Panel', 'Subscribers ना सूट', 'प्रत्येक paid मागे कमाई'] },
-        { type: 'number', value: '{youtube_commission}', prefix: '₹', label: 'प्रत्येक paid student मागे' },
+        { type: 'hook', text: 'शिक्षक आहात?', sub: 'तुमच्यासाठी Free Edu Platform' },
+        { type: 'points', title: 'तुम्हाला काय मिळतं?', items: ['पेपर 1 मिनिटात', 'रोज NMMS सराव + गुण', 'तुमचे videos तुमच्या मुलांना'] },
+        { type: 'number', value: '{free_tests}', label: 'Free tests' },
         { type: 'app', screen: 'smartboard', caption: 'Smart Board + Pen Tools' },
-        { type: 'steps', items: ['नोंदणी करा', 'Link share करा', 'कमाई पाहा'] },
+        { type: 'steps', items: ['नोंदणी करा', 'विद्यार्थी जोडा', 'पेपर बनवा'] },
         { type: 'cta', text: 'आजच नोंदणी Free', button: '▶ नोंदणी करा' },
       ],
     };
@@ -222,12 +220,12 @@
       '   app.screen यापैकी: ' + SCREENS.join(', '),
       '4. एका scene मध्ये थोडे शब्द: hook 40 अक्षरं, points ची प्रत्येक ओळ 30 अक्षरं (4 ओळी पर्यंत), cta 32.',
       '5. एकूण 15–30 सेकंद: 5 ते 7 scenes.',
-      '6. पैसे / commission / सूट / free tests / दिवस यांचे आकडे कधीच स्वतः लिहू नकोस — फक्त या खुणा वापर (app खरे आकडे भरतो):',
+      '6. पैसे / सूट / free tests / दिवस यांचे आकडे कधीच स्वतः लिहू नकोस — फक्त या खुणा वापर (app खरे आकडे भरतो). शिक्षकांच्या ads मध्ये "कमाई / पैसे मिळतील" असं कधीच लिहू नकोस:',
       known,
       '7. खोटे दावे नकोत: "100% निवड", "सर्वोत्तम", खोटे topper, खोटे पालक / शिक्षक यांचे शब्द नकोत.',
       '8. "style": theme (violet / orange / green / dark), pace (fast / normal / calm), music (energetic / light).',
       '9. "copy": Facebook / Instagram ad चा मजकूर (text, 2-3 ओळी) आणि headline (6 शब्द) — त्यातही आकड्यांसाठी खुणा.',
-      '10. audience: parent / student / school / youtube. link: शिक्षकांसाठी "teacher", पालक / विद्यार्थ्यांसाठी "free".',
+      '10. audience: parent / student / school. link: शिक्षकांसाठी "teacher", पालक / विद्यार्थ्यांसाठी "free".',
       '',
       count > 1 ? `11. एकाच विषयावर ${count} वेगळे videos दे (A/B testing साठी): प्रत्येकाची recipe, सुरुवात (hook), शब्द आणि theme वेगळी. उत्तर असं: { "videos": [ {…video 1…}, {…video 2…}${count > 2 ? ', {…video 3…}' : ''} ] }` : '',
       '',

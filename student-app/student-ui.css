@@ -5451,3 +5451,19 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .tv-home-v small { font-size: .7rem; color: var(--text2, #8b949e); }
 .vts-thumb.tv-wide { width: 96px; border-radius: 8px; }
 .vts-thumb.tv-wide img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── ➕ teacher makes student accounts (teacherCreateStudents.js) ── */
+.tcs-rules { max-height: 46vh; overflow-y: auto; border: 1px solid var(--border, #30363d); border-radius: 10px; padding: 8px 12px; font-size: .84rem; }
+.tcs-rules h5 { margin: 10px 0 4px; font-size: .9rem; }
+.tcs-rules ul { margin: 0; padding-left: 18px; }
+.tcs-discount { margin-top: 6px; font-size: .95rem; }
+.tcs-plans { display: grid; gap: 8px; margin-top: 8px; }
+.tcs-plan { border: 1px solid var(--border, #30363d); border-radius: 10px; padding: 8px 10px; font-size: .88rem; cursor: pointer; }
+.tcs-one { display: grid; gap: 6px; }
+.tcs-bulk { margin: 10px 0; }
+.tcs-bulk summary { cursor: pointer; font-weight: 700; font-size: .88rem; }
+.tcs-file { display: inline-flex; align-items: center; cursor: pointer; }
+.tcs-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--border, #30363d); font-size: .86rem; }
+.tcs-new { color: #16a34a; font-size: .78rem; } .tcs-upd { color: #2563eb; font-size: .78rem; } .tcs-join { color: #9333ea; font-size: .78rem; }
+.tcs-bad { color: #e5534b; font-size: .8rem; }
+.tcs-total { font-size: 1.15rem; }

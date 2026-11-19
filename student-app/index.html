@@ -945,6 +945,7 @@
           </button>
           <div class="td-tab-row hidden" role="tablist" aria-label="Dashboard sections" id="td-tab-row">
             <button class="td-tab active" data-tdtab="students" role="tab" aria-selected="true">👨‍🎓 Students</button>
+            <button class="td-tab" data-tdtab="create" role="tab" aria-selected="false">➕ Students बनवा</button>
             <button class="td-tab" data-tdtab="analytics" role="tab" aria-selected="false">📊 Analytics</button>
             <button class="td-tab" data-tdtab="notifications" role="tab" aria-selected="false">🔔 Notify</button>
             <button class="td-tab" data-tdtab="vocab" role="tab" aria-selected="false">📚 Vocab</button>
@@ -1060,6 +1061,9 @@
         </div>
 
         <!-- Paper Builder tab -->
+        <!-- ➕ the teacher makes + pays for student accounts (teacherCreateStudents.js) -->
+        <div id="td-tab-create" class="td-tab-pane hidden"></div>
+
         <!-- 🎬 Videos tab — the teacher's own YouTube videos for their own students (teacherVideos.js) -->
         <div id="td-tab-videos" class="td-tab-pane hidden"></div>
 
@@ -1597,6 +1601,7 @@
   <script src="exerciseViewer.js" defer></script>
   <script src="videoTeacherSelect.js" defer></script>
   <script src="teacherVideos.js" defer></script>
+  <script src="teacherCreateStudents.js" defer></script>
   <script src="parentDashboard.js" defer></script>
   <script src="dictionary.js" defer></script>
   <script src="vocabPlayer.js" defer></script>
