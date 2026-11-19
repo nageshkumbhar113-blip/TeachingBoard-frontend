@@ -93,9 +93,9 @@
 
     const scenes = Array.isArray(j.scenes) ? j.scenes : [];
     if (scenes.length < 3) errors.push('किमान 3 scenes हवेत (hook … cta)');
-    if (scenes.length > 12) errors.push('जास्तीत जास्त 12 scenes');
+    if (scenes.length > 14) errors.push('जास्तीत जास्त 14 scenes');
     const pace = PACES[out.style.pace];
-    scenes.slice(0, 12).forEach((s0, i) => {
+    scenes.slice(0, 14).forEach((s0, i) => {
       const where = `Scene ${i + 1}`;
       const s = s0 && typeof s0 === 'object' ? s0 : {};
       const T = TYPES[s.type];
