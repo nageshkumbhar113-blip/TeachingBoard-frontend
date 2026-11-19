@@ -606,14 +606,15 @@ const AD_STUDIO = (() => {
       if (lt > 1600) confetti(lt - 1600, 40, 200, 520);
     });
   }
-  function placePhone(W, H, lt, slideIn, draw, caption) {
+  // big: a real app screenshot — the phone is drawn larger so its words can be read on a phone
+  function placePhone(W, H, lt, slideIn, draw, caption, big = false) {
     const tall = st.fmt === '916', sq = st.fmt === '11';
-    const ph = tall ? 1250 : sq ? 760 : 900, sc = ph / 1200, pw = 600 * sc, topY = tall ? 250 : 130;
+    const ph = tall ? (big ? 1470 : 1250) : sq ? (big ? 880 : 760) : (big ? 1000 : 900), sc = ph / 1200, pw = 600 * sc, topY = tall ? (big ? 280 : 250) : sq ? (big ? 120 : 130) : (big ? 220 : 130);
     if (caption && !sq) {
       text(LL(caption), W / 2, topY - (tall ? 110 : 70), tall ? 58 : 46, C.white, 800, 'center', W - 100);
       if (st.lang === 'both') text(caption[1], W / 2, topY - (tall ? 45 : 22), tall ? 36 : 30, '#ffd6e7', 700, 'center', W - 100);
     }
-    const slide = slideIn ? outCubic(p(lt, 0, 700)) : 1;
+    const slide = slideIn ? outCubic(p(lt, 0, 450)) : 1;
     x.save(); x.translate((W - pw) / 2, topY + (tall ? 40 : sq ? -20 : 40) + (1 - slide) * H * .7); x.scale(sc, sc); draw(); x.restore();
   }
   // the smart board (pen tools) inside the phone, for the app scene "smartboard"
@@ -640,12 +641,21 @@ const AD_STUDIO = (() => {
     }, '🖊️ Smart Board');
   }
   // the admin's own screenshot inside the phone (slow zoom); a placeholder until one is added
-  function shotScreen(f, lt, img) {
+  // zoom [x, y, k]: the whole screen first, then it moves in on that point (k times), so small words can be read
+  function shotScreen(f, lt, img, zoom) {
     phoneShell(f, () => {
       if (img && img.naturalWidth) {
-        const z = 1 + .06 * p(lt, 0, 3800), w0 = 564, h0 = 1014, r = Math.max(w0 / img.naturalWidth, h0 / img.naturalHeight) * z;
-        const dw = img.naturalWidth * r, dh = img.naturalHeight * r;
-        x.save(); x.beginPath(); x.rect(18, 168, w0, h0); x.clip(); x.drawImage(img, 18 + (w0 - dw) / 2, 168 + (h0 - dh) / 2 * .4, dw, dh); x.restore();
+        const w0 = 564, h0 = 1164, iw = img.naturalWidth, ih = img.naturalHeight, r0 = Math.max(w0 / iw, h0 / ih);
+        const zk = zoom ? outCubic(p(lt, 1000, 2000)) : 0;
+        const r = r0 * (zoom ? 1 + (zoom[2] - 1) * zk : 1 + .03 * p(lt, 0, 3800)), dw = iw * r, dh = ih * r;
+        // start: centred across, top aligned; zoomed: the chosen point in the middle (never past the edges)
+        const ox0 = 18 + (w0 - iw * r0) / 2, oy0 = 18 + Math.min(0, (h0 - ih * r0) * .15);
+        const clampX = v => Math.min(18, Math.max(18 + w0 - dw, v)), clampY = v => Math.min(18, Math.max(18 + h0 - dh, v));
+        const ox = zoom ? clampX(ox0 + (18 + w0 / 2 - zoom[0] * iw * r - ox0) * zk) : 18 + (w0 - dw) / 2;
+        const oy = zoom ? clampY(oy0 + (18 + h0 * .45 - zoom[1] * ih * r - oy0) * zk) : oy0;
+        x.save(); rr(18, 18, w0, h0, 54); x.clip(); x.fillStyle = '#fff'; x.fillRect(18, 18, w0, h0);
+        x.drawImage(img, ox, oy, dw, dh); x.restore();
+        x.fillStyle = '#0d0b18'; rr(230, 34, 140, 30, 15); x.fill();
       } else {
         x.save(); x.strokeStyle = '#c9bdf5'; x.setLineDash([16, 12]); x.lineWidth = 5; rr(70, 300, 460, 620, 30); x.stroke(); x.restore();
         text('🖼️', 300, 540, 120, C.violet, 800); text(st.lang === 'en' ? 'Add a screenshot' : 'Screenshot जोडा', 300, 680, 36, C.violet, 800);
@@ -840,7 +850,7 @@ const AD_STUDIO = (() => {
       placePhone(W, H, lt, true, draw || (() => boardScreen(f, lt)), cap);
     },
     x_screenshot(W, H, lt, v, f, after, d) {
-      placePhone(W, H, lt, true, () => shotScreen(f, lt, _shotImg(v, d)), capOf(d.caption));
+      placePhone(W, H, lt, true, () => shotScreen(f, lt, _shotImg(v, d), d.zoom), capOf(d.caption), true);
     },
     x_cta(W, H, lt, v, f, after, d) {
       const tall = st.fmt === '916', a = outBack(p(lt, 100, 700)), c = outBack(p(lt, 900, 1500)), cy = tall ? H * .3 : H * .24 + 40;
@@ -1942,7 +1952,7 @@ const AD_STUDIO = (() => {
   // the 🎤 line: this ad's voice (if any) and whether it fits the video
   // ── 🗣️ script videos: each scene's "vo" line in a Marathi voice (मनोहर / आरोही), speed of the admin's choice ──
   const TTS_KEY = 'ad_tts';   // { voice, rate } on this device
-  let _tts = { voice: 'manohar', rate: 12 };
+  let _tts = { voice: 'manohar', rate: 20 };
   const _ttsScript = () => { const v = _variants(_facts())[st.v]; if (!v?.custom) return null; const r = _scriptOf(v.sid, _facts()); return r?.script?.scenes?.some(s => s.vo) ? { v, r } : null; };
   function _paintTts() {
     const box = $('ads-tts'); if (!box) return;
@@ -1991,7 +2001,7 @@ const AD_STUDIO = (() => {
       const sc = _scripts.find(x => x.sid === on.v.sid);
       const j = AD_SCRIPT.extract ? AD_SCRIPT.extract(sc.raw) : JSON.parse(sc.raw);
       const last = scenes.length - 1;
-      j.scenes.forEach((s, i) => { const c = clips[i]; if (c) s.secs = Math.min(15, Math.max(s.type === 'question' ? 8 : 3, +(c.secs + (i === last ? 1.4 : .6)).toFixed(2))); });
+      j.scenes.forEach((s, i) => { const c = clips[i]; if (c) s.secs = Math.min(15, Math.max(s.type === 'question' ? 6.5 : 2.5, +(c.secs + (i === last ? 1.2 : .3)).toFixed(2))); });
       sc.raw = JSON.stringify(j, null, 2);
       _parsed.clear();
       const r = _scriptOf(sc.sid, _facts());
@@ -2011,12 +2021,12 @@ const AD_STUDIO = (() => {
           const comp = off.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = .005; comp.release.value = .2;
           const g = off.createGain(); g.gain.value = 1.25;
           src.connect(eq).connect(comp).connect(g).connect(off.destination);
-          src.start(t + (i === 0 ? .35 : .2));
+          src.start(t + (i === 0 ? .3 : .12));
         }
         t += s.ms / 1000;
       });
       const voice = await off.startRendering();
-      _voice[adId()] = { decoded: voice, name: `🗣️ ${_tts.voice === 'aarohi' ? 'आरोही' : 'मनोहर'} · वेग ${_tts.rate >= 0 ? '+' : ''}${_tts.rate}%`, secs: voice.duration };
+      _voice[adId()] = { fit: true, decoded: voice, name: `🗣️ ${_tts.voice === 'aarohi' ? 'आरोही' : 'मनोहर'} · वेग ${_tts.rate >= 0 ? '+' : ''}${_tts.rate}%`, secs: voice.duration };
       _paintVoice();
       msg.textContent = `✅ आवाज लावला — video ≈ ${Math.round(total)} सेकंद. "▶ आवाजासह पाहा" दाबून ऐका; आवडला नाही तर आवाज / वेग बदलून परत "लावा".`;
       st.t0 = performance.now(); st.paused = false;
@@ -2030,7 +2040,7 @@ const AD_STUDIO = (() => {
     const vo = _voice[adId()], len = lengthOf(_variants(_facts())[st.v]) / 1000;
     del.hidden = !vo;
     m.textContent = !vo ? 'आवाज phone वर रेकॉर्ड करा (उदा. "NMMS ला फक्त 45 दिवस बाकी…") — असेल तर music आपोआप हळू होतं.'
-      : `🎤 ${vo.name} · ${vo.secs.toFixed(1)} सेकंद${vo.secs > len - .4 ? ` ⚠️ video ${len.toFixed(0)} सेकंदांचा आहे — शेवटचा भाग कापला जाईल` : ' ✅'}`;
+      : `🎤 ${vo.name} · ${vo.secs.toFixed(1)} सेकंद${vo.secs > len - .4 && !vo.fit ? ` ⚠️ video ${len.toFixed(0)} सेकंदांचा आहे — शेवटचा भाग कापला जाईल` : ' ✅'}`;
   }
   function _paintBudget() {
     const total = Math.max(0, Number($('ads-budget')?.value) || 0);
@@ -2122,7 +2132,7 @@ const AD_STUDIO = (() => {
     return new Promise((resolve, reject) => {
       const img = new Image(), url = URL.createObjectURL(file);
       img.onload = () => {
-        const r = Math.min(1, 720 / img.naturalWidth), c = document.createElement('canvas');
+        const r = Math.min(1, 1200 / img.naturalWidth), c = document.createElement('canvas');
         c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
         resolve(c.toDataURL('image/jpeg', .85));
@@ -2326,7 +2336,7 @@ const AD_STUDIO = (() => {
               <div id="ads-tts" class="ads-tts" hidden>
                 <b>🗣️ Script चा मराठी आवाज</b>
                 <label>आवाज <select id="ads-tts-voice" class="admin-input"><option value="manohar">👨 मनोहर (पुरुष)</option><option value="aarohi">👩 आरोही (स्त्री)</option></select></label>
-                <label>वेग <input type="range" id="ads-tts-rate" min="-30" max="40" step="2" value="12" /> <output id="ads-tts-rate-out">+12%</output></label>
+                <label>वेग <input type="range" id="ads-tts-rate" min="-30" max="40" step="2" value="20" /> <output id="ads-tts-rate-out">+20%</output></label>
                 <div class="admin-toolbar">
                   <button type="button" class="admin-btn-secondary" id="ads-tts-try">▶ पहिली ओळ ऐका</button>
                   <button type="button" class="admin-btn-primary" id="ads-tts-set">🎙️ हा आवाज video ला लावा</button>

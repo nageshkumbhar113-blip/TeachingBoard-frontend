@@ -13,16 +13,16 @@
 (function (root) {
   // scene types → fields (max letters), and the base length in ms
   const TYPES = {
-    hook:       { need: ['text'], text: { text: 40, sub: 45 }, ms: () => 3000 },
+    hook:       { need: ['text'], text: { text: 40, sub: 45 }, ms: () => 3000, min: 2200 },
     points:     { need: ['title', 'items'], text: { title: 32 }, list: { items: [1, 4, 30] }, ms: s => Math.min(5000, 1300 + 750 * (s.items?.length || 0)) },
-    number:     { need: ['value', 'label'], text: { label: 45, prefix: 4, suffix: 6 }, ms: () => 3200 },
-    question:   { need: [], text: { q: 110, why: 120 }, list: { options: [4, 4, 26] }, ms: () => 8000 },
+    number:     { need: ['value', 'label'], text: { label: 45, prefix: 4, suffix: 6 }, ms: () => 3200, min: 2000 },
+    question:   { need: [], text: { q: 110, why: 120 }, list: { options: [4, 4, 26] }, ms: () => 8000, min: 6000 },
     steps:      { need: ['items'], list: { items: [2, 4, 24] }, ms: s => 1000 + 800 * (s.items?.length || 0) },
-    compare:    { need: ['before', 'after'], text: { before: 45, after: 45, title: 32 }, ms: () => 3800 },
-    quote:      { need: ['text'], text: { text: 90 }, ms: () => 3600 },
-    app:        { need: ['screen'], text: { caption: 45 }, ms: () => 3800 },
-    screenshot: { need: [], text: { caption: 45, note: 60 }, ms: () => 3800 },
-    cta:        { need: ['text'], text: { text: 32, button: 22 }, ms: () => 4000 },
+    compare:    { need: ['before', 'after'], text: { before: 45, after: 45, title: 32 }, ms: () => 3800, min: 2600 },
+    quote:      { need: ['text'], text: { text: 90 }, ms: () => 3600, min: 2200 },
+    app:        { need: ['screen'], text: { caption: 45 }, ms: () => 3800, min: 3000 },
+    screenshot: { need: [], text: { caption: 45, note: 60 }, ms: () => 3800, min: 2200 },
+    cta:        { need: ['text'], text: { text: 32, button: 22 }, ms: () => 4000, min: 2500 },
     // ✍️ the pen writes a short solution fast (phone board mode / class smart board); timing = Ad Studio's PEN
     pen:        { need: ['q', 'lines'], text: { q: 90, caption: 45 }, list: { lines: [1, 5, 32] }, ms: s => 700 + 750 * (s.lines?.length || 0) + 1500 },
   };
@@ -138,6 +138,13 @@
         if (!SCREENS.includes(s.screen)) errors.push(`${where} (app): "screen" यापैकी हवी: ${SCREENS.join(', ')}`);
         sc.screen = s.screen;
       }
+      // a screenshot may zoom in on one part (e.g. the paper's questions) so it can be read on a phone:
+      // "zoom": [x, y, times] — x, y = where (0–1 across / down the picture), times = 1.2 – 3
+      if (s.type === 'screenshot' && s.zoom !== undefined) {
+        const z = Array.isArray(s.zoom) ? s.zoom.map(Number) : [];
+        if (z.length !== 3 || !z.every(Number.isFinite) || z[0] < 0 || z[0] > 1 || z[1] < 0 || z[1] > 1 || z[2] < 1.2 || z[2] > 3) errors.push(`${where} (screenshot): "zoom" असा हवा: [x 0–1, y 0–1, किती पट 1.2–3], उदा. [0.5, 0.3, 2]`);
+        else sc.zoom = z;
+      }
       if (s.type === 'pen') {
         if (s.board !== undefined && !['phone', 'class'].includes(s.board)) errors.push(`${where} (pen): "board" हवा: "phone" (विद्यार्थ्याचा mobile) किंवा "class" (वर्गातला smart board)`);
         else if (s.board) sc.board = s.board;
@@ -157,7 +164,8 @@
       // a voice-over video: the scene may say how long it stays (2–15 s), so the picture waits for the voice
       const secs = Number(s.secs);
       if (s.secs !== undefined && (!Number.isFinite(secs) || secs < 2 || secs > 15)) errors.push(`${where} (${s.type}): "secs" 2 ते 15 सेकंद हवे`);
-      else if (s.secs !== undefined) sc.ms = Math.max(sc.ms, Math.round(secs * 1000));
+      // a voiced scene may be shorter than usual, down to "min" (what its animation needs), so a quick line is not followed by a wait
+      else if (s.secs !== undefined) sc.ms = Math.max(T.min || sc.ms, Math.round(secs * 1000));
       out.scenes.push(sc);
     });
     if (out.scenes.length) {

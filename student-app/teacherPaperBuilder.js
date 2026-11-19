@@ -594,6 +594,7 @@ const TEACHER_PAPER_BUILDER = (() => {
       document.querySelectorAll('.tpb-preview-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'question'));
       await _renderPreviewMode('question');
       $('tpb-preview-modal')?.classList.remove('hidden');
+      _fitPreview();
     } catch (err) {
       console.error('Preview failed:', err);
       APP?.toast?.('Preview तयार करताना error आला', 'error');
@@ -609,7 +610,20 @@ const TEACHER_PAPER_BUILDER = (() => {
     const body = $('tpb-preview-body');
     if (body) body.innerHTML = '<p class="td-hint td-hint-sm">Loading…</p>';
     const html = await window.PAPER_PDF.previewHtml(_draftPaperForPreview(), mode === 'answer', {});
-    if (body) body.innerHTML = html;
+    if (body) body.innerHTML = `<div class="tpb-prev-page">${html}</div>`;
+    _fitPreview();
+  }
+
+  // the preview is the PDF's A4 page (≈ 800 px wide): on a phone it is shown whole, made smaller to fit
+  // the window (it used to run off the right edge)
+  function _fitPreview() {
+    requestAnimationFrame(() => {
+      const body = $('tpb-preview-body'), page = body?.querySelector('.tpb-prev-page');
+      if (!page || !body.clientWidth) return;
+      page.style.zoom = '';
+      const room = body.clientWidth - 24, w = page.scrollWidth;
+      if (w > room) page.style.zoom = String(Math.max(.3, room / w));
+    });
   }
 
   function _closePreview() {
@@ -724,11 +738,13 @@ const TEACHER_PAPER_BUILDER = (() => {
     if (!full) { APP?.toast?.('Paper उघडता आला नाही', 'error'); return; }
     const show = async withAns => {
       document.querySelectorAll('.tpb-preview-mode-btn').forEach(b => b.classList.toggle('active', (b.dataset.mode === 'answer') === withAns));
-      if (body) body.innerHTML = await QUIZ_PDF.previewHtml(await _localPics(_quizFromPaper(full)), withAns, { institutionName, language });
+      if (body) body.innerHTML = `<div class="tpb-prev-page">${await QUIZ_PDF.previewHtml(await _localPics(_quizFromPaper(full)), withAns, { institutionName, language })}</div>`;
+      _fitPreview();
     };
     document.querySelectorAll('.tpb-preview-mode-btn').forEach(b => { b.onclick = () => show(b.dataset.mode === 'answer'); });
     await show(false);
     $('tpb-preview-modal')?.classList.remove('hidden');
+    _fitPreview();
   }
 
   async function _exportPdf(paper, withAnswers, btn) {

@@ -3166,6 +3166,27 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   justify-content: center;
 }
 .td-modal-backdrop.hidden { display: none; }
+/* Teacher → Paper → "👁 Preview": the paper preview opens as a popup over the page (its styles were only in
+   the admin app, so in this app it showed at the very bottom of the page) */
+.creds-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+.creds-modal-overlay.hidden { display: none; }
+.creds-modal-card {
+  background: var(--card, #fff);
+  color: var(--text, #111);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+}
+.creds-modal-title { margin: 0; font-size: 1.1rem; }
 .td-modal {
   background: var(--bg, #0d1117);
   border-radius: 18px 18px 0 0;
