@@ -255,6 +255,7 @@ const ADMIN = (() => {
         if (tab.dataset.tab === 'settlement')  window.SETTLEMENT_ADMIN?.init();
         if (tab.dataset.tab === 'usage')       window.USAGE_ADMIN?.init();
         if (tab.dataset.tab === 'help')        window.HELP_ADMIN?.init();
+        if (tab.dataset.tab === 'notify')      window.NOTIFY_ADMIN?.init();
         if (tab.dataset.tab === 'youtube-teachers') {
           window.TEACHER_VIDEOS_ADMIN?.init();
           // the old (closed) YouTube-partner screens load only when that fold is opened

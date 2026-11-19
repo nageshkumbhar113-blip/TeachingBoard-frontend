@@ -226,6 +226,10 @@
               <span class="atab-icon" aria-hidden="true">🤖</span>
               <span class="atab-label">Help</span>
             </button>
+            <button class="atab" role="tab" data-tab="notify" aria-controls="atab-notify" aria-selected="false">
+              <span class="atab-icon" aria-hidden="true">🔔</span>
+              <span class="atab-label">Notifications</span>
+            </button>
             <button class="atab" role="tab" data-tab="youtube-teachers" aria-controls="atab-youtube-teachers" aria-selected="false">
               <span class="atab-icon" aria-hidden="true">🎬</span>
               <span class="atab-label">Teacher Videos</span>
@@ -2086,6 +2090,11 @@ Marks: 1"></textarea>
             </div>
           </div>
 
+          <!-- 🔔 Notifications: the automatic ones' times / on-off + the admin's own (notifyAdmin.js) -->
+          <div class="atab-content hidden" id="atab-notify" role="tabpanel" aria-labelledby="atab-btn-notify">
+            <div class="pa-wrap" id="notify-admin"></div>
+          </div>
+
           <div class="atab-content hidden" id="atab-help" role="tabpanel" aria-labelledby="atab-btn-help">
             <div class="pa-wrap">
               <h2>🤖 Help — login मदत bot</h2>
@@ -2686,6 +2695,7 @@ Marks: 1"></textarea>
   <script src="batchPricingManager.js" defer></script>
   <script src="youtubeTeacherAdmin.js" defer></script>
   <script src="teacherVideosAdmin.js" defer></script>
+  <script src="notifyAdmin.js" defer></script>
   <script src="bannerAdmin.js" defer></script>
   <script src="mp4fix.js" defer></script>
   <script src="adScript.js" defer></script>
