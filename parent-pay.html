@@ -125,7 +125,7 @@
     <div class="card">
       <div id="offer" class="offer hidden">
         <span class="tag">🎁 Test पूर्ण केल्याबद्दल</span>
-        <div class="offer-head" id="offer-head">पहिल्या payment वर 50% सवलत!</div>
+        <div class="offer-head" id="offer-head">पहिल्या payment वर सवलत!</div>
         <div>⏳ फक्त <span class="timer" id="timer"></span> बाकी</div>
       </div>
       <div class="plans">
@@ -265,13 +265,13 @@
       var t = setInterval(function () { k = Math.min(pct, k + Math.max(1, Math.round(pct / 25))); ring.style.setProperty('--p', k); $('c-pct').textContent = k + '%'; if (k >= pct) clearInterval(t); }, 30);
       if (info.offer && info.offer.active) {
         // the team's own offer (NKs Team app, 3 hours) reads as a special one
-        $('offer-head').textContent = info.offer.stage === 'team' ? '🎁 खास सवलत: पहिल्या payment वर ' + info.offer.percent + '%!' : 'पहिल्या payment वर ' + info.offer.percent + '% सवलत!';
+        $('offer-head').textContent = info.offer.stage === 'team' ? '🎁 खास सवलत: पहिल्या payment वर ' + info.offer.percent + '%!' : (info.offer.name ? '🎁 ' + info.offer.name + ': ' : '') + 'पहिल्या payment वर ' + info.offer.percent + '% सवलत!';
         // the whole rule, so nobody is surprised: 50 % for 24 hours, then 30 % for 2 days, then the full price
         var st = info.offer.steps || [];
-        if (st.length === 2 && !$('offer-rule')) {
+        if (st.length >= 1 && info.offer.stage !== 'team' && !$('offer-rule')) {
           var f = function (d) { return new Date(d).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); };
           var p = document.createElement('p'); p.id = 'offer-rule'; p.className = 'offer-rule';
-          p.textContent = 'सूट: ' + st[0].percent + '% — ' + f(st[0].ends) + ' पर्यंत · नंतर ' + st[1].percent + '% — ' + f(st[1].ends) + ' पर्यंत · नंतर पूर्ण किंमत.';
+          p.textContent = 'सूट: ' + st[0].percent + '% — ' + f(st[0].ends) + ' पर्यंत' + (st[1] ? ' · नंतर ' + st[1].percent + '% — ' + f(st[1].ends) + ' पर्यंत' : '') + ' · नंतर पूर्ण किंमत.';
           $('offer-head').parentNode.appendChild(p);
         }
         $('offer').classList.remove('hidden');

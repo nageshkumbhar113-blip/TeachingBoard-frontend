@@ -42,6 +42,13 @@
     if (!r.ok || j.success === false) throw new Error(j.message || 'काहीतरी चूक झाली');
     return j.data;
   }
+  // 🎁 the admin's offer settings (team on/off, its percents and hours) — Admin › Sync › 🎁 सूट settings
+  let offerCfg = null;
+  async function loadOfferCfg() {
+    if (offerCfg && Date.now() - offerCfg.at < 5 * 60e3) return offerCfg.data;
+    try { offerCfg = { at: Date.now(), data: (await rq('/guest/offer-config')).data }; } catch { /* keep the old one */ }
+    return offerCfg?.data || null;
+  }
   function logout(why) { tok = null; me = null; bot = null; ls.set('nks_team_token', null); ls.set('nks_team_me', null); ls.set('nks_team_bot', null); ls.set('nks_team_home', null); showLogin(why); }
 
   // ── ready messages (the admin's own from the bot, else these) ──
@@ -163,6 +170,7 @@
     let d; try { d = await (pre && Date.now() - pre.at < 120e3 ? pre.p : crm('/crm/lead/' + gid)); } catch (e) { toast(e.message, true); return queue ? nextInQueue() : route(); }
     if (queue && queue.rows[queue.i + 1]) fetchCard(queue.rows[queue.i + 1].gid);
     const L = d.lead, offer = d.offer, st = d.fu ? (d.fu_steps || [])[d.fu.step - 1] : null;
+    const oc = await loadOfferCfg();
     steps = d.fu_steps || steps;
     const qr = queue && queue.rows[queue.i] && queue.rows[queue.i].gid === gid ? queue.rows[queue.i] : null;   // 🎯 why / when / which message
     const pick = qr && qr.tpl && tplById(qr.tpl) ? qr.tpl : st && tplById(st.tpl) ? st.tpl : suggest(L, offer);
@@ -195,9 +203,10 @@
         ${d.open ? '<button type="button" class="btn pri" id="c-bot" style="width:100%;margin-top:8px">🤖 Bot च्या WhatsApp मधून पाठवा (मोफत)</button><p class="mt">पालकांना हा message NKs च्या bot नंबरवरून जातो — त्यांनी उत्तर दिलं की ते इथे 💬 Chat मध्ये दिसतं.</p>' : ''}
         <button type="button" class="btn ghost hidden" id="c-pin" style="width:100%;margin-top:8px">🔑 Code + PIN बनवा / मिळवा</button>
       </div>` : '<p class="empty">या पालकांचा नंबर नाही.</p>'}
-      ${!L.paid && L.mobile && !offer ? `<div class="box" id="c-offer"><h3>🎁 सूट द्या — फक्त 3 तास</h3>
+      ${!L.paid && L.mobile && !offer && oc?.team_on !== false && (oc?.team_percents || [30, 50]).length ? `<div class="box" id="c-offer"><h3>🎁 सूट द्या — फक्त ${oc?.team_hours || 3} तास</h3>
         <p class="mt">पालक pay करायला तयार असतील तरच. पहिल्या payment वर; pay link आणि app — दोन्हीकडे लागू.</p>
-        <div class="outs"><button type="button" class="btn pri" data-offer="30">🎁 30% सूट</button><button type="button" class="btn ok" data-offer="50">🎁 50% सूट</button></div></div>` : ''}
+        <div class="outs">${(oc?.team_percents || [30, 50]).map((p, i) => `<button type="button" class="btn ${i % 2 ? 'ok' : 'pri'}" data-offer="${p}">🎁 ${p}% सूट</button>`).join('')}</div></div>` : ''}
+      ${!L.paid && offer ? `<div class="box"><h3>🎁 ${offer.pct}% सूट चालू · ${left(offer.end)}</h3><button type="button" class="btn ghost" id="c-stop-offer" style="width:100%;color:#b91c1c">🛑 या कुटुंबाची सूट थांबवा</button></div>` : ''}
       ${!L.paid && !L.closed ? `<div class="box"><h3>📞 Call / message नंतर — निकाल निवडा</h3>
         <div class="outs">
           <button type="button" class="btn ok wide" data-out="next">✅ बोललो → पुढची Step</button>
@@ -243,21 +252,27 @@
     $('q-send')?.addEventListener('click', async () => { const t = $('q-ans').value.trim(); if (!t) return toast('उत्तर लिहा', true); try { await crm(`/crm/lead/${gid}/reply`, { text: t }); toast('📤 उत्तर गेलं'); openCard(gid); } catch (e) { toast(e.message, true); } });
     $('q-done')?.addEventListener('click', async () => { try { await crm(`/crm/lead/${gid}/answered`, {}); toast('✅ प्रश्न सुटला'); openCard(gid); } catch (e) { toast(e.message, true); } });
     $('c-skip')?.addEventListener('click', () => { queue.i++; if (queue.i >= queue.rows.length) { queue = null; return route(); } openCard(queue.rows[queue.i].gid); });
-    // 🎁 the team's own discount: 30 % / 50 % for 3 hours, then the ready message with the pay link
+    $('c-stop-offer')?.addEventListener('click', async e => {
+      if (!confirm('या कुटुंबाची चालू सूट आत्ताच थांबवायची?')) return;
+      e.target.disabled = true;
+      try { await rq('/guest/admin/stop-offer', { body: { gid } }); crm(`/crm/lead/${gid}/act`, { action: 'offer', detail: '🛑 सूट थांबवली' }).catch(() => {}); toast('🛑 सूट थांबवली'); setTimeout(() => openCard(gid), 1500); }
+      catch (err) { toast(err.message, true); e.target.disabled = false; }
+    });
+    // 🎁 the team's own discount (the admin's percents / hours), then the ready message with the pay link
     app.querySelectorAll('[data-offer]').forEach(b => b.onclick = async () => {
       const pct = Number(b.dataset.offer);
       app.querySelectorAll('[data-offer]').forEach(x => { x.disabled = true; });
       try {
         const r = (await rq('/guest/admin/team-offer', { body: { gid, percent: pct } })).data;
         crm(`/crm/lead/${gid}/act`, { action: 'offer', detail: `${pct}% · 3 तास` }).catch(() => {});
-        const until = new Date(r.expires_at).toLocaleTimeString('mr-IN-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
+        const until = new Date(r.expires_at).toLocaleTimeString('mr-IN-u-nu-latn', { hour: 'numeric', minute: '2-digit' }), hrs = r.hours || 3;
         $('c-offer').innerHTML = `<h3>🎁 ${pct}% सूट चालू — ${esc(until)} पर्यंत</h3><p class="mt">खालचा message पालकांना पाठवा (💬 WhatsApp / ✉️ SMS).</p>`;
         if (ta) {
-          ta.value = `नमस्कार 🙏 ${L.name || 'तुमच्या पाल्या'} साठी खास सूट: पहिल्या payment वर *${pct}%* — फक्त 3 तास (आज ${until} पर्यंत).\nसगळे tests, notes, स्वाध्याय उत्तरं आणि दर रविवारी महा-Test 👇\n${r.pay_url}\nApp मधून pay केलं तरी हीच सूट मिळेल.`;
+          ta.value = `नमस्कार 🙏 ${L.name || 'तुमच्या पाल्या'} साठी खास सूट: पहिल्या payment वर *${pct}%* — फक्त ${hrs} तास (आज ${until} पर्यंत).\nसगळे tests, notes, स्वाध्याय उत्तरं आणि दर रविवारी महा-Test 👇\n${r.pay_url}\nApp मधून pay केलं तरी हीच सूट मिळेल.`;
           ta.disabled = false; wa?.classList.remove('hidden'); links();
           ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        toast(`🎁 ${pct}% सूट — 3 तास`);
+        toast(`🎁 ${pct}% सूट — ${hrs} तास`);
       } catch (e) { toast(e.message, true); app.querySelectorAll('[data-offer]').forEach(x => { x.disabled = false; }); }
     });
     // the result, with a reason

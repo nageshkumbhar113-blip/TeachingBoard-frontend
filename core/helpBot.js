@@ -65,8 +65,19 @@ const HELP_DEFAULTS = [
       q: 'Refund मिळेल का?', a: 'Refund चे नियम Refund Policy पानावर आहेत.',
       q_en: 'Can I get a refund?', a_en: 'The refund rules are on the Refund Policy page.' },
     { id: 'offer',
-      q: '50% offer कोणाला मिळतो?', a: 'Free test पूर्ण केल्यावर पहिल्या payment वर 24 तासांसाठी 50%, त्यानंतर 2 दिवस 30%. नंतरचे payments पूर्ण किमतीत.',
-      q_en: 'Who gets the 50% offer?', a_en: 'After finishing a free test — on the first payment: 50% for 24 hours, then 30% for 2 days. Later payments are at the full price.' },
+      q: 'सूट (offer) कोणाला मिळते?', a: 'Free test पूर्ण केल्यावर पहिल्या payment वर सूट मिळते. नंतरचे payments पूर्ण किमतीत.',
+      q_en: 'Who gets the offer?', a_en: 'After finishing a free test — a discount on the first payment. Later payments are at the full price.',
+      // the real rule: _offerLive below (Admin's offer settings)
+      _live: async en => {
+        const c = await window.API?.fetchOfferConfig?.().catch(() => null);
+        if (!c) return null;
+        const h = x => (x % 24 === 0 ? (x / 24 === 1 ? (en ? '24 hours' : '24 तास') : x / 24 + (en ? ' days' : ' दिवस')) : x + (en ? ' hours' : ' तास'));
+        if (!c.on) return en ? 'There is no offer running right now. Later payments are at the full price.' : 'सध्या कोणतीही सूट चालू नाही.';
+        const two = c.p2 && c.h2;
+        return en
+          ? `${c.name ? c.name + ': ' : ''}after finishing a free test — on the first payment: ${c.p1}% for ${h(c.h1)}${two ? `, then ${c.p2}% for ${h(c.h2)}` : ''}. Later payments are at the full price.`
+          : `${c.name ? c.name + ': ' : ''}Free test पूर्ण केल्यावर पहिल्या payment वर ${h(c.h1)} ${c.p1}%${two ? `, त्यानंतर ${h(c.h2)} ${c.p2}%` : ''}. नंतरचे payments पूर्ण किमतीत.`;
+      } },
   ] },
   { id: 'app', icon: '📱', title: 'App वापर', title_en: 'Using the app', items: [
     { id: 'offline',
@@ -310,9 +321,12 @@ const HELP_BOT = (() => {
     _options([...s.items.map((it, i) => [`${i + 1}. ${L(it, 'q')}`, () => _answer(s, it)]), [t('menu'), _menu]]);
   }
 
-  function _answer(s, it) {
+  // the offer question: the rule from Admin › 🎁 सूट settings (the fixed answer only when offline)
+  const _offerLive = en => (HELP_DEFAULTS.flatMap(x => x.items || []).find(x => x.id === 'offer' && x._live)?._live(en) || Promise.resolve(null));
+  async function _answer(s, it) {
     _hit(`${s.id}_${it.id}`);
-    _say(esc(L(it, 'a')));
+    const live = it.id === 'offer' ? await _offerLive(_lang === 'en').catch(() => null) : null;
+    _say(esc(live || L(it, 'a')));
     const after = () => _options([
       [t('ok'), () => { _say(t('okReply')); _options([[t('menu'), _menu]]); }],
       [t('stuck'), () => { _hit(`${s.id}_${it.id}`, true); _toAdmin(L(it, 'q')); }, 'hb-wa'],

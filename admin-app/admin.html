@@ -950,6 +950,32 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
               <div id="free-link-box"></div>
             </section>
 
+            <section class="sync-section admin-card gxa-card" aria-label="Offer settings" id="offer-settings">
+              <h3 class="admin-section-title">🎁 सूट (Offer) Settings</h3>
+              <p class="import-hint">पहिल्या payment वरची सूट इथून चालू / बंद करा, % आणि वेळ बदला, नाव द्या (उदा. "दिवाळी offer"). <b>आधी दिलेली सूट</b> त्या कुटुंबाला सांगितलेल्या वेळेपर्यंत तशीच राहते — फक्त "🛑 सगळ्या चालू सूट आत्ताच थांबवा" किंवा "कधीपर्यंत" तारीख ती लगेच थांबवते. एका कुटुंबाची सूट CRM / NKs Team मधून "🛑 सूट थांबवा".</p>
+              <div class="wka-form">
+                <div class="wka-mode wka-wide"><label><input type="checkbox" id="of-test-on" /> <b>📝 Free test नंतरची सूट चालू</b></label></div>
+                <label>सूटचं नाव (ऐच्छिक) <input id="of-name" class="admin-input" maxlength="40" placeholder="उदा. दिवाळी offer" /></label>
+                <label>पहिली पायरी: सूट % <input id="of-p1" class="admin-input" type="number" min="1" max="90" /></label>
+                <label>पहिली पायरी: किती तास <input id="of-h1" class="admin-input" type="number" min="1" max="1440" /></label>
+                <label>दुसरी पायरी: सूट % (0 = नाही) <input id="of-p2" class="admin-input" type="number" min="0" max="90" /></label>
+                <label>दुसरी पायरी: किती तास <input id="of-h2" class="admin-input" type="number" min="0" max="1440" /></label>
+                <label>एका कुटुंबाला परत केव्हा <select id="of-repeat" class="admin-input"><option value="month">दर महिन्याला एकदा</option><option value="days">ठरावीक दिवसांनी</option><option value="once">एकदाच (परत कधीच नाही)</option></select></label>
+                <label id="of-days-wrap">किती दिवसांनी <input id="of-days" class="admin-input" type="number" min="1" max="365" /></label>
+                <label>कधीपासून (ऐच्छिक) <input id="of-from" class="admin-input" type="date" /></label>
+                <label>कधीपर्यंत (ऐच्छिक) <input id="of-until" class="admin-input" type="date" /></label>
+                <div class="wka-mode wka-wide"><label><input type="checkbox" id="of-campaign" /> हे <b>नवीन offer</b> आहे — आधी सूट मिळालेल्यांनाही पुढच्या test नंतर परत मिळेल (उदा. दिवाळी offer)</label></div>
+                <div class="wka-mode wka-wide"><label><input type="checkbox" id="of-team-on" /> <b>🎁 Team ची सूट (NKs Team app) चालू</b></label></div>
+                <label>Team सूट % (स्वल्पविरामाने) <input id="of-team-p" class="admin-input" placeholder="30, 50" /></label>
+                <label>Team सूट किती तास <input id="of-team-h" class="admin-input" type="number" min="1" max="72" /></label>
+              </div>
+              <p class="import-hint" id="of-preview"></p>
+              <div class="admin-toolbar">
+                <button id="btn-of-save" class="admin-btn-primary" type="button">💾 Save</button>
+                <button id="btn-of-stop" class="admin-btn-secondary" type="button" style="color:#b91c1c">🛑 सगळ्या चालू सूट आत्ताच थांबवा</button>
+              </div>
+            </section>
+
             <section class="sync-section admin-card gxa-card" aria-label="Weekly test">
               <h3 class="admin-section-title">🏆 Weekly महा-Test आणि 📝 रोज Paper Pattern Practice (आपोआप)</h3>
               <p class="import-hint">एकदाच set करा: दर आठवड्याला ठरलेल्या दिवशी आणि वेळी app स्वतः test बनवतं — प्रत्येक आठवड्याला पुढचा विषय, पूर्ण विषयातून random प्रश्न. Server वर भार नाही: प्रश्न आधीच phone वर येतात, test phone वर चालतो. Student ला गुण test जमा करताच दिसतात; rank board आणि उत्तरं "Result वेळ" ला. Result लगेच हवा असेल तर Result वेळ = test संपण्याची वेळ (उदा. 18:30) ठेवा.</p>

@@ -255,6 +255,7 @@ const CRM_ADMIN = (() => {
       ${_msgBox(L, nextRow, (idx >= 0 && _list === 'today' && _rowsCache[idx].tpl) || (d.fu ? (d.fu_steps[d.fu.step - 1] || {}).tpl : ''))}
       <div class="crm-acts">
         <button type="button" class="admin-btn-secondary" id="crm-team">📱 टीमच्या WhatsApp वरून: bot ची link (₹0)</button>
+        ${L._offer && !L.paid ? `<button type="button" class="admin-btn-secondary" id="crm-stop-offer" style="color:#b91c1c">🛑 सूट थांबवा (${L._offer.pct}%)</button>` : ''}
         ${L.paid ? '' : `<span class="crm-paidbox"><select class="admin-input" id="crm-paid-period" aria-label="Plan"><option value="monthly">महिना</option><option value="yearly">वर्ष</option></select><input class="admin-input crm-days" id="crm-paid-amt" type="number" min="0" placeholder="₹" aria-label="किती भरले"><button type="button" class="admin-btn-primary" id="crm-paid">✅ Paid (हाताने)</button></span>`}
         ${L.closed ? '' : `<button type="button" class="admin-btn-secondary" id="crm-pay">✅ Call: pay करणार</button>
         <span class="crm-later"><input type="date" class="admin-input" id="crm-later-at" aria-label="पुढचा call"><button type="button" class="admin-btn-secondary" id="crm-later">⏰ नंतर</button></span>
@@ -292,6 +293,12 @@ const CRM_ADMIN = (() => {
     $('crm-fu-done')?.addEventListener('click', () => fuAct({ action: 'done' }));
     $('crm-fu-restart')?.addEventListener('click', () => fuAct({ action: 'restart' }));
     $('crm-team').onclick = act($('crm-team'), async () => openTeam(await _call(`/crm/lead/${gid}/team`, {})));
+    $('crm-stop-offer')?.addEventListener('click', async e => {
+      if (window.UI?.confirmAsync && !(await UI.confirmAsync('या कुटुंबाची चालू सूट आत्ताच थांबवायची?'))) return;
+      e.target.disabled = true;
+      try { await API.adminStopOffer(gid); APP.toast('🛑 सूट थांबवली', 'success'); setTimeout(() => _lead(gid), 1500); }
+      catch (err) { APP.toast(err?.message || 'जमलं नाही', 'error'); e.target.disabled = false; }
+    });
     if ($('crm-pay')) {
       $('crm-pay').onclick = act($('crm-pay'), async () => openTeam(await _call(`/crm/lead/${gid}/call`, { result: 'will_pay' })));
       $('crm-later').onclick = act($('crm-later'), async () => { await _call(`/crm/lead/${gid}/call`, { result: 'later', at: $('crm-later-at').value || 'लवकरच' }); APP.toast('⏰ नंतरच्या call ची नोंद', 'success'); });

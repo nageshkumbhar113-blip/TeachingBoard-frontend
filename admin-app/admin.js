@@ -239,7 +239,7 @@ const ADMIN = (() => {
         const content = $('atab-' + tab.dataset.tab);
         if (content) { content.classList.remove('hidden'); content.classList.add('active'); }
         if (tab.dataset.tab === 'words')       _loadWordBank();
-        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); _loadFreeLinkClasses(); }
+        if (tab.dataset.tab === 'sync')        { _loadGuestFunnel(); _loadExamDates(); _loadWeekly(); _loadFreeLinkClasses(); _loadOfferSettings(); }
         if (tab.dataset.tab === 'ads')         window.AD_STUDIO?.init();
         if (tab.dataset.tab === 'site')        window.SITE_ADMIN?.init();
         if (tab.dataset.tab === 'crm')         window.CRM_ADMIN?.init();
@@ -2155,6 +2155,63 @@ const ADMIN = (() => {
         `आणखी सराव केला तर गुण नक्की वाढतील.\n${APP_LINE}\nपूर्ण अभ्यासक्रम (सगळे tests + notes): ${pay}`;
     }
     return `${name}ने आत्तापर्यंत ${l.tests} free tests दिले 👏\n${APP_LINE}\nसगळ्या chapters साठी इथे पाहा: ${pay}\nकाही प्रश्न असल्यास app मधला ❓ मदत bot लगेच उत्तर देतो.`;
+  }
+
+  // ── 🎁 सूट (Offer) settings — on/off, %, hours, name, repeat, dates, team offer, stop all ──
+  async function _loadOfferSettings() {
+    if (!$('of-p1')) return;
+    try {
+      const c = (await API.adminOfferConfig('GET'))?.data;
+      if (!c) return;
+      $('of-test-on').checked = !!c.test_enabled;
+      $('of-name').value = c.name || '';
+      $('of-p1').value = c.step1_percent; $('of-h1').value = c.step1_hours;
+      $('of-p2').value = c.step2_percent; $('of-h2').value = c.step2_hours;
+      $('of-repeat').value = c.repeat || 'month'; $('of-days').value = c.repeat_days || 30;
+      $('of-from').value = c.start_date || ''; $('of-until').value = c.until || '';
+      $('of-campaign').checked = false;
+      $('of-team-on').checked = !!c.team_enabled;
+      $('of-team-p').value = (c.team_percents || []).join(', ');
+      $('of-team-h').value = c.team_hours;
+      _offerPreview(c.stop_all_at);
+    } catch (err) { $('of-preview').textContent = 'आणता आलं नाही: ' + (err?.message || ''); }
+  }
+  function _offerBody() {
+    return {
+      test_enabled: $('of-test-on').checked, name: $('of-name').value.trim(),
+      step1_percent: Number($('of-p1').value), step1_hours: Number($('of-h1').value),
+      step2_percent: Number($('of-p2').value) || 0, step2_hours: Number($('of-h2').value) || 0,
+      repeat: $('of-repeat').value, repeat_days: Number($('of-days').value) || 30,
+      start_date: $('of-from').value || '', until: $('of-until').value || '',
+      new_campaign: $('of-campaign').checked,
+      team_enabled: $('of-team-on').checked,
+      team_percents: String($('of-team-p').value || '').split(/[\s,]+/).map(Number).filter(x => x > 0),
+      team_hours: Number($('of-team-h').value) || 3,
+    };
+  }
+  // what parents will see, in one line
+  function _offerPreview(stopAllAt) {
+    const b = _offerBody();
+    $('of-days-wrap').hidden = b.repeat !== 'days';
+    const hrs = h => (h % 24 === 0 ? (h / 24 === 1 ? '24 तास' : h / 24 + ' दिवस') : h + ' तास');
+    const rep = { month: 'दर महिन्याला एकदा', days: `${b.repeat_days} दिवसांनी परत`, once: 'एका कुटुंबाला एकदाच' }[b.repeat];
+    const test = b.test_enabled
+      ? `📝 ${b.name ? '<b>' + _esc(b.name) + '</b>: ' : ''}free test नंतर <b>${b.step1_percent}%</b> (${hrs(b.step1_hours)})${b.step2_percent && b.step2_hours ? `, मग <b>${b.step2_percent}%</b> (${hrs(b.step2_hours)})` : ''}, नंतर पूर्ण किंमत · ${rep}${b.start_date ? ' · ' + _esc(b.start_date) + ' पासून' : ''}${b.until ? ' · ' + _esc(b.until) + ' पर्यंत' : ''}`
+      : '📝 Free test नंतरची सूट <b>बंद</b> — नवीन कुटुंबांना सूट मिळणार नाही';
+    const team = b.team_enabled ? `🎁 Team: ${b.team_percents.map(x => x + '%').join(' / ')} · ${b.team_hours} तास` : '🎁 Team सूट <b>बंद</b>';
+    $('of-preview').innerHTML = `${test}<br>${team}${stopAllAt ? `<br><small>🛑 शेवटचं "सगळ्या थांबवा": ${_esc(new Date(stopAllAt).toLocaleString('en-IN'))}</small>` : ''}`;
+  }
+  async function _saveOfferSettings(extra = {}) {
+    const body = { ..._offerBody(), ...extra };
+    if (body.test_enabled && (!(body.step1_percent >= 1 && body.step1_percent <= 90) || !(body.step1_hours >= 1))) { APP.toast('पहिल्या पायरीचे % (1–90) आणि तास द्या', 'error'); return; }
+    if (body.team_enabled && !body.team_percents.length) { APP.toast('Team सूटचे % द्या (उदा. 30, 50)', 'error'); return; }
+    if (body.start_date && body.until && body.until < body.start_date) { APP.toast('"कधीपर्यंत" ही तारीख "कधीपासून" नंतरची हवी', 'error'); return; }
+    if (body.new_campaign && window.UI?.confirmAsync && !(await UI.confirmAsync('नवीन offer: आधी सूट मिळालेल्या सगळ्या कुटुंबांना पुढच्या test नंतर परत सूट मिळेल. चालेल?'))) return;
+    try {
+      await API.adminOfferConfig('PUT', body);
+      APP.toast(extra.stop_all ? '🛑 सगळ्या चालू सूट थांबल्या' : '✅ सूट settings save झाल्या', 'success');
+      _loadOfferSettings();
+    } catch (err) { APP.toast(err?.message || 'Save झालं नाही', 'error'); }
   }
 
   // ── Weekly महा-Test (automatic) ──
@@ -4575,6 +4632,13 @@ const ADMIN = (() => {
     _renderFreeLink();
     $('btn-gl-refresh')?.addEventListener('click', _loadGuestFunnel);
     $('btn-ex-add')?.addEventListener('click', _addExamDate);
+    $('btn-of-save')?.addEventListener('click', () => _saveOfferSettings());
+    $('btn-of-stop')?.addEventListener('click', async () => {
+      if (window.UI?.confirmAsync && !(await UI.confirmAsync('सगळ्या कुटुंबांच्या चालू सूट (free test नंतरच्या आणि Team च्या) आत्ताच थांबवायच्या? हे परत करता येणार नाही.'))) return;
+      _saveOfferSettings({ stop_all: true });
+    });
+    $('offer-settings')?.addEventListener('input', () => _offerPreview());
+    $('offer-settings')?.addEventListener('change', () => _offerPreview());
     $('btn-wk-save')?.addEventListener('click', _saveWeekly);
     $('btn-wk-new')?.addEventListener('click', () => _fillWeeklyForm(null));
     $('wk-batch')?.addEventListener('change', () => { _wkPapers = _wkPapers.map(p => ({ ...p, parts: [] })); _loadWeeklySubjects(); });

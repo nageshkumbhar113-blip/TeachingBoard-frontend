@@ -2310,6 +2310,22 @@ const API = (() => {
   async function _adminAuth() {
     return { Authorization: `Bearer ${await ensureAdminSession()}` };
   }
+  // 🎁 Admin › Sync › सूट settings: GET = read, PUT = save ({ stop_all, new_campaign } = the buttons)
+  async function adminOfferConfig(method = 'GET', body) {
+    return request('/guest/admin/offer-config', { method, headers: await _adminAuth(), body: body ? JSON.stringify(body) : undefined });
+  }
+  // CRM "🛑 सूट थांबवा": this family's running offer stops now
+  async function adminStopOffer(gid) {
+    return request('/guest/admin/stop-offer', { method: 'POST', headers: await _adminAuth(), body: JSON.stringify({ gid }) });
+  }
+  // the rule as the pages show it (no login): { on, name, p1, h1, p2, h2, team_on, team_percents, team_hours }
+  let _offerCfgCache = null;
+  async function fetchOfferConfig() {
+    if (_offerCfgCache && Date.now() - _offerCfgCache.at < 5 * 60e3) return _offerCfgCache.data;
+    const data = (await request('/guest/offer-config'))?.data || null;
+    if (data) _offerCfgCache = { at: Date.now(), data };
+    return data;
+  }
   async function adminWeekly(method, path, body) {
     return request(`/weekly/admin${path}`, { method, headers: await _adminAuth(), body: body ? JSON.stringify(body) : undefined });
   }
@@ -3205,7 +3221,7 @@ const API = (() => {
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
     fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
-    fetchWeeklyTests, weeklyHistory, weeklyPracticeMe, fetchTeacherPractice, fetchParentPractice, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
+    adminOfferConfig, adminStopOffer, fetchOfferConfig, fetchWeeklyTests, weeklyHistory, weeklyPracticeMe, fetchTeacherPractice, fetchParentPractice, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
