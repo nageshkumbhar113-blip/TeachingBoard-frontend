@@ -22,6 +22,8 @@ const WEEKLY = (() => {
   let _consent = true;     // "माझं नाव दाखवा" already answered? (asked once, at the first registration)
   let _tick = null;
   const EVENTS_CACHE = 'weekly_events_cache';
+  // who is logged in on this phone (student code, or the guest's id)
+  const _owner = async () => String(await DB.getSetting?.('student_code', '').catch(() => '') || '') || (window.GUEST?.isActive?.() ? 'guest' : '');
 
   function _when(d) {
     const x = new Date(d);
@@ -90,7 +92,7 @@ const WEEKLY = (() => {
     if (!home || !window.API?.fetchWeeklyTests || !navigator.onLine) return;
     try { _events = await API.fetchWeeklyTests(); } catch { return; }
     _consent = _events.consent !== false;
-    DB.setSetting?.(EVENTS_CACHE, _events).catch(() => {});
+    _owner().then(code => DB.setSetting?.(EVENTS_CACHE, { code, events: _events, consent: _events.consent, locked: _events.locked || [] })).catch(() => {});
     window.dispatchEvent(new Event('weekly-toppers'));
     home.querySelector('.wk-strip-wrap')?.remove();
     home.querySelector('.wk-card')?.remove();
@@ -153,17 +155,24 @@ const WEEKLY = (() => {
   }
 
   // a free student: "🔒 रोजचा Paper Practice फक्त paid विद्यार्थ्यांसाठी"
+  // free students and guests (owner 2026-11-21): the class's practice paper is shown, locked; a tap
+  // anywhere on the card opens the subscription
   function _lockedCard(box) {
-    const l = (_events.locked || [])[0];
-    if (!l) return;
-    const el = document.createElement('div');
-    el.className = 'wk-card wk-lock';
-    el.innerHTML = `<div class="wk-tag">🔒 ${_esc(l.title || 'Paper Practice')}</div>
-      <div class="wk-sub">रोज परीक्षेसारखा पूर्ण पेपर · ${l.question_count} प्रश्न · ${l.duration_minutes} मिनिटं · गुण, rank आणि उकल</div>
-      <div class="wk-ok">फक्त paid विद्यार्थ्यांसाठी — subscribe करा आणि उद्यापासून रोज सराव करा</div>
-      <button type="button" class="gx-btn gx-shine wk-btn" data-act="sub">⭐ Subscribe करा</button>`;
-    box.appendChild(el);
-    el.querySelector('[data-act="sub"]').addEventListener('click', () => window.dispatchEvent(new CustomEvent('teachingboard:locked', { detail: { code: 'CHAPTER_LOCKED', from: 'practice' } })));
+    for (const l of (_events.locked || [])) {
+      const el = document.createElement('div');
+      el.className = 'wk-card wk-prac wk-lock';
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.innerHTML = `<div class="wk-tag">🔒 ${_esc(l.title || 'Paper Practice')}</div>
+        <div class="wk-sub">रोज परीक्षेसारखा पूर्ण पेपर · ${l.question_count} प्रश्न · ${l.duration_minutes} मिनिटं</div>
+        ${l.starts_at ? `<div class="wk-when">⏰ पुढचा पेपर: ${_esc(l.subject || '')} · ${_esc(_when(l.starts_at))}</div>` : ''}
+        <div class="wk-ok">गुण, rank आणि प्रत्येक प्रश्नाची उकल — subscribe करा आणि रोज सराव करा</div>
+        <button type="button" class="gx-btn gx-shine wk-btn" data-act="sub">⭐ Subscribe करा</button>`;
+      box.appendChild(el);
+      const open = () => window.dispatchEvent(new CustomEvent('teachingboard:locked', { detail: { code: 'CHAPTER_LOCKED', from: 'practice' } }));
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    }
   }
 
   const _isPractice = ev => ev?.kind === 'daily';
@@ -603,8 +612,10 @@ const WEEKLY = (() => {
   // ── Toppers banner (Home carousel): this class's top 10 until its next महा-Test ──
   async function bannerSlides() {
     if (!_events.length) {
-      const cached = await DB.getSetting?.(EVENTS_CACHE, []).catch(() => []);
-      if (Array.isArray(cached) && cached.length) _events = cached;
+      // only this student's own cache (an old plain-array cache has no owner: not used)
+      const cached = await DB.getSetting?.(EVENTS_CACHE, null).catch(() => null);
+      const me = await _owner();
+      if (cached && !Array.isArray(cached) && cached.code && cached.code === me && Array.isArray(cached.events)) _events = cached.events;
     }
     const now = Date.now();
     const live = _events.filter(e => e.results && (e.toppers || []).length && e.banner_until && new Date(e.banner_until) > now)
