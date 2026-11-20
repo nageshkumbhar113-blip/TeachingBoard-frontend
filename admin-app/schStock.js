@@ -272,19 +272,19 @@ const SCHSTOCK = (() => {
     const s = document.createElement('style'); s.id = 'schstock-css';
     s.textContent = `.ss-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
 .ss-box{background:var(--bg2,#fff);color:var(--text,#111);border:1px solid var(--border,#ccc);border-radius:14px;width:min(980px,100%);padding:14px;display:flex;flex-direction:column;gap:10px}
-.ss-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ss-top h3{margin:0;font-size:1.05rem;flex:1}
-.ss-tabs{display:flex;gap:6px;flex-wrap:wrap}.ss-tab{border:1px solid var(--border,#ccc);background:var(--bg3,#f4f4f4);color:inherit;border-radius:18px;padding:5px 12px;font:inherit;font-weight:700;font-size:.82rem;cursor:pointer}
+.ss-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ss-top h3{margin:0;font-size:1.2rem;font-weight:800;flex:1}
+.ss-tabs{display:flex;gap:6px;flex-wrap:wrap}.ss-tab{border:1.5px solid var(--border,#ccc);background:var(--bg3,#f4f4f4);color:inherit;border-radius:18px;padding:7px 15px;font:inherit;font-weight:800;font-size:.95rem;cursor:pointer}
 .ss-tab[aria-selected="true"]{background:var(--accent,#6d3cf0);border-color:var(--accent,#6d3cf0);color:#fff}
-.ss-ta{width:100%;min-height:260px;font:13px/1.5 Consolas,'Nirmala UI',monospace;border:1px solid var(--border,#ccc);border-radius:10px;padding:8px;background:var(--bg3,#fafafa);color:inherit;box-sizing:border-box}
+.ss-ta{width:100%;min-height:260px;font:15px/1.6 Consolas,'Nirmala UI',monospace;border:1px solid var(--border,#ccc);border-radius:10px;padding:8px;background:var(--bg3,#fafafa);color:inherit;box-sizing:border-box}
 .ss-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.ss-row input[type=text]{flex:1;min-width:180px}
-.ss-sum{font-size:.85rem;font-weight:700}.ss-list{display:flex;flex-direction:column;gap:4px;max-height:420px;overflow-y:auto}
-.ss-r{display:grid;grid-template-columns:22px 26px 150px 1fr;gap:6px;align-items:start;font-size:.8rem;border-bottom:1px solid var(--border,#eee);padding:4px 2px}
-.ss-r .k{font-weight:700;color:var(--text2,#555)}.ss-r .m{display:block;color:var(--text2,#666);font-size:.74rem}.ss-r.bad .m{color:#d14343}.ss-r.sus .m{color:#b7791f}.ss-r.dup{opacity:.6}
-.ss-chips{display:flex;flex-wrap:wrap;gap:5px}.ss-chip{border:1px solid var(--border,#ccc);background:var(--bg3,#f4f4f4);color:inherit;border-radius:16px;padding:3px 9px;font:inherit;font-size:.74rem;cursor:pointer}
+.ss-sum{font-size:1rem;font-weight:800}.ss-list{display:flex;flex-direction:column;gap:4px;max-height:420px;overflow-y:auto}
+.ss-r{display:grid;grid-template-columns:22px 26px 170px 1fr;gap:6px;align-items:start;font-size:.95rem;border-bottom:1px solid var(--border,#eee);padding:4px 2px}
+.ss-r .k{font-weight:800;color:var(--text2,#555)}.ss-r .m{display:block;color:var(--text2,#666);font-size:.85rem;font-weight:600}.ss-r.bad .m{color:#d14343}.ss-r.sus .m{color:#b7791f}.ss-r.dup{opacity:.6}
+.ss-chips{display:flex;flex-wrap:wrap;gap:7px}.ss-chip{border:1.5px solid var(--border,#ccc);background:var(--bg3,#f4f4f4);color:inherit;border-radius:18px;padding:6px 13px;font:inherit;font-size:.95rem;font-weight:700;cursor:pointer;line-height:1.3}.ss-chip small{font-size:.8rem;font-weight:600;opacity:.8}
 .ss-chip[aria-pressed="true"]{background:var(--accent,#6d3cf0);border-color:var(--accent,#6d3cf0);color:#fff}
-.ss-b{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--border,#ddd);border-radius:10px;padding:8px;font-size:.84rem}.ss-b b{flex:1;min-width:160px}
+.ss-b{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--border,#ddd);border-radius:10px;padding:10px;font-size:.95rem}.ss-b b{flex:1;min-width:160px}
 .ss-pill{font-size:.7rem;font-weight:700;border-radius:10px;padding:1px 8px;background:#e3f5e8;color:#15803d}.ss-pill.rv{background:#fff4d6;color:#a16207}
-.ss-cnt{font-size:.74rem;color:var(--text2,#666)}`;
+.ss-cnt{font-size:.9rem;font-weight:600;color:var(--text2,#666)}`;
     document.head.appendChild(s);
   }
   const ICON = { new: '✅', part: '➕', dup: '⏭️', bad: '⚠️', sus: '🔍' };
