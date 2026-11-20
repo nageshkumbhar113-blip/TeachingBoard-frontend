@@ -972,6 +972,7 @@ select {
   margin-bottom: 20px;
   overflow-wrap: break-word;
   word-break: break-word;
+  white-space: pre-line; /* passage / poem questions keep their lines */
 }
 
 /* ── MCQ options ─────────────────────── */

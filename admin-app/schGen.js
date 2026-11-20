@@ -1514,7 +1514,7 @@ const SCHGEN = (() => {
           <label class="sg-lab">पातळी<br><select class="admin-select" id="sg-level">${[...LVN, 'मिश्र (paper सारखी)'].map((x, i) => `<option value="${i}"${i === st.level ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
           <label class="sg-lab">प्रश्न<br><select class="admin-select" id="sg-count">${[5, 10, 20, 25, 50].map(x => `<option${x === st.count ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
           <button type="button" class="admin-btn-primary" id="sg-go">🎲 तयार करा</button>
-          <button type="button" class="admin-btn-secondary" id="sg-paper" title="निवडलेल्या प्रकारांतून, 2020–2024 च्या papers मध्ये जितक्या वेळा आले त्या प्रमाणात">📄 Paper सारखे 50</button>
+          <button type="button" class="admin-btn-secondary" id="sg-paper" title="निवडलेल्या प्रकारांतून, 2020–2024 च्या papers मध्ये जितक्या वेळा आले त्या प्रमाणात">📄 Paper सारखे ${S.PAPER_N?.[st.sub] || 50}</button>
           ${nQ() ? `<button type="button" class="admin-btn-secondary" id="sg-addall">+ सगळे जोडा (${nQ()})</button>` : ''}
         </div>
         <p class="sg-status" id="sg-status">${status || (nQ() ? 'बरोबर उत्तर हिरव्या चौकटीत, खाली उकल. "+ जोडा" केल्यावर प्रश्न चालू Section मध्ये आणि प्रश्न-बँकेत जातात; उकल student ला 💡 मध्ये दिसते.' : 'प्रकरणे, पातळी आणि संख्या निवडून "🎲 तयार करा". उत्तर code मोजतं (AI नाही), दर वेळी नवे आकडे.')}</p>
@@ -1554,7 +1554,7 @@ const SCHGEN = (() => {
       }
       if (d.sgType) { const k = d.sgType; if (st.types.has(k)) { if (selKeys().length > 1) st.types.delete(k); } else st.types.add(k); t.setAttribute('aria-pressed', st.types.has(k)); return; }
       if (t.id === 'sg-go') { readSel(); run(st.count, false); return; }
-      if (t.id === 'sg-paper') { readSel(); run(50, true); return; }
+      if (t.id === 'sg-paper') { readSel(); run(S.PAPER_N?.[st.sub] || 50, true); return; }
       if (t.id === 'sg-addall') { add(st.items.slice()); return; }
       if (d.sgAdd) { add([st.items[+d.sgAdd]]); return; }
       if (d.sgRe) {

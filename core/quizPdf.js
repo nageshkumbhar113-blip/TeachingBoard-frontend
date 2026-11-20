@@ -277,7 +277,7 @@ const QUIZ_PDF = (() => {
       : '';
     return `
       <div style="margin-bottom:14px;break-inside:avoid;page-break-inside:avoid">
-        <div style="font-size:14px;line-height:1.5"><b>${qNum}.</b> ${_esc(question.question)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(section.marks)}]</span></div>
+        <div style="font-size:14px;line-height:1.5;white-space:pre-line"><b>${qNum}.</b> ${_esc(question.question)} <span style="color:#e16b13;font-weight:600;font-size:12px">[${_formatMarks(section.marks)}]</span></div>
         ${questionImageHtml}
         ${optionsHtml}
         ${answerHtml}

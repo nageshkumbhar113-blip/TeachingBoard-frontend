@@ -489,6 +489,9 @@ body.student-app.mode-board.theme-board-light::before {
   margin-bottom: 22px;
 }
 
+/* passage / poem / conversation questions (4th scholarship मराठी, English) keep their lines */
+#tp-q-text { white-space: pre-line; }
+
 .mode-board .q-text,
 .mode-board #q-text,
 .mode-board #tp-q-text {

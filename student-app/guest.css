@@ -310,7 +310,7 @@
 .wk-bysub td { padding: 4px 6px; border-bottom: 1px solid #ece8ff; }
 .wk-q { animation: none; margin: 0 auto; }
 .wk-qn { font-weight: 800; color: var(--gx-muted); font-size: .9rem; }
-.wk-qt { font-size: 1.2rem; font-weight: 700; margin: 6px 0 12px; line-height: 1.45; }
+.wk-qt { font-size: 1.2rem; font-weight: 700; margin: 6px 0 12px; line-height: 1.45; white-space: pre-line; }
 .wk-img { max-width: 100%; border-radius: 12px; margin-bottom: 10px; }
 .wk-opt { display: block; width: 100%; text-align: left; margin: 8px 0 0; padding: 12px 14px; border-radius: 14px; border: 2px solid #e7e1ff; background: #fff; font: 600 1.05rem var(--gx-font); color: var(--gx-ink); cursor: pointer; }
 .wk-opt b { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 8px; border-radius: 8px; background: #f3efff; color: var(--gx-violet); }
