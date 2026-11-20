@@ -120,6 +120,7 @@
     const sat = [0, 6].includes(new Date().getDay());
     shell(`
       <button type="button" class="big wide today" style="--c:#b91c1c" data-go="today"><span class="n">${sum.counts.today || 0}</span><span class="t">🎯 आजचं काम</span><span class="s">${sum.counts.today_now ? `<b>${sum.counts.today_now} लगेच</b> (💳 pay / 📞 call / ❓) · ` : ''}एकामागून एक — कारण, वेळ आणि message तयार</span></button>
+      <button type="button" class="big wide" style="--c:#6d3cf0" data-go="teacher"><span class="n">${sum.counts.teachers || 0}</span><span class="t">👩‍🏫 शिक्षक (Ad)</span><span class="s">${sum.counts.teachers_now ? `<b>${sum.counts.teachers_now} ना आत्ता call</b> · ` : ''}Teacher ad मधून demo बुक केलेले — codes, प्रगती, message तयार</span></button>
       <details class="more"${ls.get('nks_team_more') === '1' ? ' open' : ''}><summary>अधिक याद्या</summary>
       <div class="grid">
         <button type="button" class="big wide" style="--c:#059669" data-go="new"><span class="n">${sum.counts.new || 0}</span><span class="t">🆕 नवीन पालक (48 तास)</span><span class="s">${sum.counts.new_untouched ? `<b>${sum.counts.new_untouched} ना अजून संपर्क नाही</b> — लगेच call` : 'सगळ्यांना संपर्क झाला ✅'}</span></button>
@@ -144,7 +145,7 @@
       }
       if (g === 'q') { tab = 'q'; return route(); }
       if (g === 'mt') return mtQueue();
-      return startQueue({ today: '🎯 आजचं काम', new: '🆕 नवीन पालक', first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free' }[g], `/crm/list?list=${g}`, 0);
+      return startQueue({ today: '🎯 आजचं काम', new: '🆕 नवीन पालक', first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free', teacher: '👩‍🏫 शिक्षक (Ad)' }[g], `/crm/list?list=${g}`, 0);
     });
   }
 
@@ -169,6 +170,7 @@
     if (!pre) shell('<p class="empty">⏳</p>', queue ? `${queue.title} · ${queue.i + 1}/${queue.rows.length}` : 'पालक');
     let d; try { d = await (pre && Date.now() - pre.at < 120e3 ? pre.p : crm('/crm/lead/' + gid)); } catch (e) { toast(e.message, true); return queue ? nextInQueue() : route(); }
     if (queue && queue.rows[queue.i + 1]) fetchCard(queue.rows[queue.i + 1].gid);
+    if (d.lead && d.lead.tdemo) return teacherCard(gid, d);   // 👩‍🏫 a teacher from a teacher ad: its own card
     const L = d.lead, offer = d.offer, st = d.fu ? (d.fu_steps || [])[d.fu.step - 1] : null;
     const oc = await loadOfferCfg();
     steps = d.fu_steps || steps;
@@ -279,6 +281,72 @@
     app.querySelectorAll('[data-out]').forEach(b => b.onclick = () => outcomeSheet(b.dataset.out, L));
   }
 
+  // ── 👩‍🏫 a teacher who booked a demo from a teacher ad (owner 2026-11-20) ──
+  // the codes (to read out on the call), how far they got, teacher messages, and the call result
+  const TEACHER_TPLS = [
+    { id: 't-login', title: '🔑 Login मदत (codes)', text: 'नमस्कार {नाव} 🙏 NKs EduOrbit कडून.\nApp 👇 {app}\nApp उघडा › 👩‍🏫 Teacher › Code *{tcode}*{tpin}\nSchool demo विद्यार्थी: Code *{scode}*{spin}\nकाही अडचण आली तर याच नंबरवर कळवा.' },
+    { id: 't-paper', title: '📄 पेपर 1 मिनिटात', text: 'नमस्कार {नाव} 🙏 तुमच्या वर्गाचा पेपर 1 मिनिटात बनवा: Teacher › Paper › विषय आणि धडे निवडा › पेपर + Answer sheet. Print करून विद्यार्थ्यांना द्या.' },
+    { id: 't-demo', title: '📝 Demo विद्यार्थ्याचा test', text: 'नमस्कार {नाव} 🙏 School demo विद्यार्थी (Code *{scode}*) ने एका धड्याचा test द्या — त्याचे गुण आणि कमकुवत धडे Teacher › Analytics मध्ये दिसतील. तुमच्या प्रत्येक विद्यार्थ्याचे असेच दिसतील.' },
+    { id: 't-add', title: '👩‍🎓 विद्यार्थी जोडा', text: 'नमस्कार {नाव} 🙏 तुमच्या विद्यार्थ्यांची accounts: Teacher › ➕ Students बनवा — नावं आणि नंबर टाका, पैसे भरले की codes चा PDF लगेच. सूट साठी आमच्याशी बोला.' },
+    { id: 't-link', title: '🔗 वर्गाची link / QR', text: 'नमस्कार {नाव} 🙏 Teacher › Share मधली तुमच्या वर्गाची link / QR विद्यार्थ्यांना पाठवा — ते थेट तुमच्याशी जोडले जातात.' },
+  ];
+  function teacherCard(gid, d) {
+    const L = d.lead, t = L.tdemo || {};
+    const when = x => (x ? new Date(x).toLocaleString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '');
+    const step = (ok, text) => `<span class="pill" style="opacity:${ok ? 1 : .45}">${ok ? '✅' : '⬜'} ${esc(text)}</span>`;
+    const qr = queue && queue.rows[queue.i] && queue.rows[queue.i].gid === gid ? queue.rows[queue.i] : null;
+    const pick = t.orderAt ? 't-link' : t.paperAt ? 't-add' : t.tLogin ? 't-paper' : 't-login';
+    shell(`
+      <div class="fam-h">
+        <div class="nm">👩‍🏫 ${esc(L.name || '—')}</div>
+        <div class="mt">🏫 ${esc(t.school || '—')} · 📱 ${esc(L.mobile || '—')}</div>
+        <div class="mt">📚 ${esc(t.course || '')}${t.ad ? ' · 📣 ad ' + esc(t.ad) : ''} · बुक: ${esc(when(t.bookedAt))}</div>
+        <div class="mt">👩‍🏫 शिक्षक code <b>${esc(t.tCode || '')}</b>${t.tPin ? ' · PIN <b>' + esc(t.tPin) + '</b>' : ''} · 🎓 demo विद्यार्थी <b>${esc(t.sCode || '')}</b>${t.sPin ? ' · PIN <b>' + esc(t.sPin) + '</b>' : ''}</div>
+        <div class="mt" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${step(t.welcomedAt, 'WhatsApp')} ${step(t.tLogin, 'शिक्षक login')} ${step(t.sLogin, 'demo विद्यार्थी login')} ${step(t.paperAt, 'पेपर' + (t.papers ? ' ' + t.papers : ''))} ${step(t.sTestAt, 'demo test')} ${step(t.orderAt, 'विद्यार्थी जोडले' + (t.added ? ' ' + t.added : ''))}</div>
+        ${L.lastTeam ? `<div class="mt">शेवटचं: ${esc(L.lastTeam.by)} — ${esc(L.lastTeam.reason || L.lastTeam.result)} (${ago(Date.parse(L.lastTeam.at))})</div>` : ''}
+        ${qr && qr.why ? `<div class="why"><b>${esc(qr.why)}</b><span>⏰ ${esc(qr.when || '')}</span></div>` : ''}
+        ${d.open ? '<div class="mt"><span class="pill open">🟢 Bot chat उघडी — bot मधून मोफत message पाठवता येतो</span></div>' : ''}
+      </div>
+      <div class="acts3">
+        <a class="btn call" href="tel:+91${esc(L.mobile)}">📞 Call</a>
+        <a class="btn wa" id="t-wa" target="_blank" rel="noopener">💬 WhatsApp</a>
+        <a class="btn sms" id="t-sms">✉️ SMS</a>
+      </div>
+      <div class="box"><h3>💬 Message</h3>
+        <select class="in" id="t-tpl" aria-label="Message">${TEACHER_TPLS.map(x => `<option value="${x.id}"${x.id === pick ? ' selected' : ''}>${esc(x.title)}</option>`).join('')}</select>
+        <textarea class="in" id="t-text" style="margin-top:8px" aria-label="मजकूर"></textarea>
+        ${d.open ? '<button type="button" class="btn pri" id="t-bot" style="width:100%;margin-top:8px">🤖 Bot च्या WhatsApp मधून पाठवा (मोफत)</button>' : ''}
+      </div>
+      ${L.closed ? '' : `<div class="box"><h3>📞 Call नंतर — निकाल</h3>
+        <div class="outs">
+          <button type="button" class="btn ok wide" data-tout="next">✅ बोललो</button>
+          <button type="button" class="btn warn" data-tout="later">⏰ नंतर</button>
+          <button type="button" class="btn ghost" data-tout="noanswer">📵 उचलला नाही</button>
+          <button type="button" class="btn bad" data-tout="close">❌ नको</button>
+        </div></div>`}
+      ${queue ? '<button type="button" class="btn ghost" id="t-skip" style="width:100%">⏭ हा नंतर — पुढचा शिक्षक</button>' : ''}
+      <details class="box"><summary><b>💬 Chat / नोंदी</b></summary>
+        <div class="chat">${(d.msgs || []).slice(-60).map(m => { let b = m.body || ''; if (m.dir === 'out' && b.startsWith('{')) { try { b = JSON.parse(b).body?.text || b; } catch {} } const c = { in: 'in', out: 'out', team: 'team' }[m.dir] || 'log'; return `<div class="cm ${c}">${esc(b)}<small>${esc(when(m.at))}</small></div>`; }).join('') || '<p class="mt">अजून नाही</p>'}</div>
+      </details>`, queue ? `${queue.title} · ${queue.i + 1}/${queue.rows.length}` : 'शिक्षक', L.name || '');
+    $('fab')?.classList.add('hidden');
+    const sel = $('t-tpl'), ta = $('t-text'), wa = $('t-wa'), sms = $('t-sms');
+    const fillT = x => x.replace(/\{नाव\}/g, L.name || 'सर / मॅडम').replace(/\{app\}/g, 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student')
+      .replace(/\{tcode\}/g, t.tCode || '').replace(/\{scode\}/g, t.sCode || '')
+      .replace(/\{tpin\}/g, t.tPin ? ' · PIN *' + t.tPin + '*' : ' · PIN: तुम्ही ठेवलेला').replace(/\{spin\}/g, t.sPin ? ' · PIN *' + t.sPin + '*' : '');
+    const links = () => { wa.href = `https://wa.me/91${L.mobile}?text=${encodeURIComponent(ta.value)}`; sms.href = `sms:+91${L.mobile}?body=${encodeURIComponent(ta.value)}`; };
+    const showT = () => { ta.value = fillT((TEACHER_TPLS.find(x => x.id === sel.value) || TEACHER_TPLS[0]).text); links(); };
+    sel.onchange = showT; ta.oninput = links; showT();
+    const sentT = via => () => { crm(`/crm/lead/${gid}/sent`, { via, tpl: sel.selectedOptions[0]?.textContent || '', tpl_id: sel.value, text: ta.value }).catch(() => {}); };
+    wa.addEventListener('click', sentT('wa')); sms.addEventListener('click', sentT('sms'));
+    $('t-bot')?.addEventListener('click', async () => { const b = $('t-bot'); b.disabled = true; try { await crm(`/crm/lead/${gid}/reply`, { text: ta.value.trim() }); toast('📤 Bot मधून गेलं'); teacherCard(gid, await crm('/crm/lead/' + gid)); } catch (e) { toast(e.message, true); b.disabled = false; } });
+    $('t-skip')?.addEventListener('click', () => { queue.i++; if (queue.i >= queue.rows.length) { queue = null; return route(); } openCard(queue.rows[queue.i].gid); });
+    app.querySelectorAll('[data-tout]').forEach(b => b.onclick = () => outcomeSheet(b.dataset.tout, L));
+  }
+
+  const REASONS_T = {
+    next: ['App मध्ये login करून दाखवलं', 'पेपर बनवून दाखवला', 'विद्यार्थी जोडणार', 'नंतर विचार करणार'],
+    close: ['गरज नाही', 'दुसरं app वापरतात', 'शिकवत नाहीत', 'नंबर चुकीचा', 'इतर'],
+  };
   const REASONS = {
     next: ['पालक बोलले — test देणार', 'Code + PIN दिला', 'माहिती पाठवली', 'नंतर विचार करणार'],
     close: ['फी जास्त', 'दुसरा क्लास', 'पाल्याला वेळ नाही', 'Phone नाही', 'नंबर चुकीचा', 'इतर'],
@@ -288,7 +356,7 @@
     const bg = document.createElement('div'); bg.className = 'sheet-bg';
     bg.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(titles[res])}">
       <h3>${titles[res]} — ${esc(L.name || '')}</h3>
-      ${REASONS[res] ? `<div class="reasons">${REASONS[res].map(r => `<button type="button">${esc(r)}</button>`).join('')}</div>` : ''}
+      ${(L.tdemo ? REASONS_T : REASONS)[res] ? `<div class="reasons">${(L.tdemo ? REASONS_T : REASONS)[res].map(r => `<button type="button">${esc(r)}</button>`).join('')}</div>` : ''}
       ${res === 'later' ? '<label class="f">कधी call करायचा?<input type="date" class="in" id="o-at"></label>' : ''}
       <label class="f">${res === 'next' || res === 'close' ? 'कारण / काय बोललो *' : 'Note (हवं तर)'}<textarea class="in" id="o-reason" rows="3" maxlength="200"></textarea></label>
       <p class="msg" id="o-msg"></p>
