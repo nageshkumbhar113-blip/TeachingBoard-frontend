@@ -1491,6 +1491,7 @@ const SCHGEN = (() => {
   // host: element to fill. opts.onAdd(items, meta, progress) → Promise (saves them and puts them in the quiz)
   function mountPanel(host, opts = {}) {
     _css();
+    window.SCHSTOCK?.load();   // 📚 the admin's saved stock joins the built-in banks
     const subjects = ex => Object.keys(S.GROUPS[ex]);
     const st = { exam: EXAMS[0].id, sub: subjects(EXAMS[0].id)[0], lessons: new Set(), types: new Set(), level: 3, count: 20, items: [], busy: false };
     const okKey = k => !isFig(k) || !!figType(k)?.fn;
@@ -1515,6 +1516,7 @@ const SCHGEN = (() => {
           <label class="sg-lab">प्रश्न<br><select class="admin-select" id="sg-count">${[5, 10, 20, 25, 50].map(x => `<option${x === st.count ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
           <button type="button" class="admin-btn-primary" id="sg-go">🎲 तयार करा</button>
           <button type="button" class="admin-btn-secondary" id="sg-paper" title="निवडलेल्या प्रकारांतून, 2020–2024 च्या papers मध्ये जितक्या वेळा आले त्या प्रमाणात">📄 Paper सारखे ${S.PAPER_N?.[st.sub] || 50}</button>
+          ${window.SCHSTOCK && /^(मराठी|English)$/.test(st.sub) ? '<button type="button" class="admin-btn-secondary" id="sg-stock" title="AI कडून किंवा स्वतः शब्द / उतारे आणून साठा वाढवा — आधीचे आपोआप वगळले जातात">📚 साठा वाढवा</button>' : ''}
           ${nQ() ? `<button type="button" class="admin-btn-secondary" id="sg-addall">+ सगळे जोडा (${nQ()})</button>` : ''}
         </div>
         <p class="sg-status" id="sg-status">${status || (nQ() ? 'बरोबर उत्तर हिरव्या चौकटीत, खाली उकल. "+ जोडा" केल्यावर प्रश्न चालू Section मध्ये आणि प्रश्न-बँकेत जातात; उकल student ला 💡 मध्ये दिसते.' : 'प्रकरणे, पातळी आणि संख्या निवडून "🎲 तयार करा". उत्तर code मोजतं (AI नाही), दर वेळी नवे आकडे.')}</p>
@@ -1554,6 +1556,7 @@ const SCHGEN = (() => {
       }
       if (d.sgType) { const k = d.sgType; if (st.types.has(k)) { if (selKeys().length > 1) st.types.delete(k); } else st.types.add(k); t.setAttribute('aria-pressed', st.types.has(k)); return; }
       if (t.id === 'sg-go') { readSel(); run(st.count, false); return; }
+      if (t.id === 'sg-stock') { window.SCHSTOCK.open({ sub: st.sub }); return; }
       if (t.id === 'sg-paper') { readSel(); run(S.PAPER_N?.[st.sub] || 50, true); return; }
       if (t.id === 'sg-addall') { add(st.items.slice()); return; }
       if (d.sgAdd) { add([st.items[+d.sgAdd]]); return; }

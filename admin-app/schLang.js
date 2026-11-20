@@ -217,7 +217,7 @@
     'मी, तू आणि तो उद्या सहलीला जाणार आहोत.', 'तुम्ही मला आणि त्याला मदत केली.', 'आम्ही तिला सांगितले की तू लवकर ये.', 'मी तिला गाणे शिकवले.', 'तिला आणि मला बक्षीस मिळाले.', 'राजू शाळेत गेला आणि तो खूप शिकला.', 'आईने सांगितले की आपण लवकर झोपावे.'];
   const pronIn = s => s.replace(/[".,!?“”]/g, ' ').split(/\s+/).filter(t => PRON_SET.includes(t));
   def('mrPron', 'सर्वनामे', (R) => {
-    const s = R.pick(PRON_S), p = pronIn(s), n = p.length, NW = ['शून्य', 'एक', 'दोन', 'तीन', 'चार', 'पाच', 'सहा', 'सात', 'आठ'];
+    const e = R.pick(PRON_S), s = Array.isArray(e) ? e[0] : e, p = Array.isArray(e) ? e[1] : pronIn(s), n = p.length, NW = ['शून्य', 'एक', 'दोन', 'तीन', 'चार', 'पाच', 'सहा', 'सात', 'आठ'];
     return mk(R, { q: `खालील वाक्यामध्ये एकूण किती सर्वनामे आली आहेत?\n${s}`, a: NW[n], w: [NW[n + 1], NW[n - 1], NW[n + 2], NW[Math.max(0, n - 2)]].filter(Boolean), steps: [`सर्वनामे: ${p.join(', ')}`, `एकूण ${n}`] });
   });
   const ADJ_S = [ // [वाक्य, विशेषण, विशेष्य, इतर शब्द]
@@ -680,5 +680,8 @@
     enPassage: 4, enPoem: 1, enDialog: 2, enAd: 2, enOpp: 1, enRhyme: 1, enHidden: 1, enGroup: 1, enAnalogy: 1, enRiddle: 1, enJumble: 1, enSpell: 1, enPunct: 3,
     enPrep: 1, enArticle: 1, enTense: 1, enPlural: 1, enGender: 1, enOrdinal: 2, enClock: 1, enExpr: 2 });
   S.PAPER_N = { 'मराठी': 25, 'English': 25 };
+  // every bank, so 📚 साठा (schStock.js) can add the admin's entries
+  S.LANG_B = { SYN, ANT, ONEWORD, MULTI, LOAN, JOD, SPELL_MR, ORDER_MR, JUMBLE_MR, JUMBLE3, GEN, NEUT, NUM, TENSE, PRON_S, ADJ_S, PUNCT_S, IDIOM, IDIOM_FILL, PROV, PROV_MEAN, ALANK, PILU, VOICE, HOME, DINA,
+    MR_PASS, MR_POEM, MR_DIALOG, MR_AD, OPP, RHY, SPELL_EN, HIDDEN, CAT_EN, REL_EN, RIDDLE, JUMBLE_EN, PREP, AN, A_, VERBS, PLU, GEN_EN, ENDS, CAPS, EXPR, GREET, EN_PASS, EN_POEM, EN_DIALOG, EN_AD };
   S.LANG = { sortKey, cmpKey, aksharas, ORDER_MR, misspell, misEn, pronIn, PRON_S, SPELL_MR, SWAP_MR, SPELL_EN };
 })(this);

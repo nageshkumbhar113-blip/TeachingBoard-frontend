@@ -3191,6 +3191,11 @@ const API = (() => {
   async function adminTeacherVideos(q = '') {
     return (await request(`/teacher-videos/admin${q ? '?q=' + encodeURIComponent(q) : ''}`, { headers: await _adminAuth() }))?.data || [];
   }
+  // 📚 scholarship generator stock (Admin › Create Quiz › 🎓 शिष्यवृत्ती › साठा वाढवा)
+  async function schStockGet(exam = '4') { return (await request(`/sch-stock?exam=${encodeURIComponent(exam)}`, { headers: await _adminAuth() }))?.data || null; }
+  async function schStockSave(payload) { return request('/sch-stock/batch', { method: 'POST', headers: await _adminAuth(), body: JSON.stringify(payload) }); }
+  async function schStockBatch(id, status) { return request(`/sch-stock/batch/${encodeURIComponent(id)}`, { method: 'PATCH', headers: await _adminAuth(), body: JSON.stringify({ status }) }); }
+  async function schStockDeleteBatch(id) { return request(`/sch-stock/batch/${encodeURIComponent(id)}`, { method: 'DELETE', headers: await _adminAuth() }); }
   async function adminRemoveTeacherVideo(id, removed = true) {
     return request(`/teacher-videos/admin/${encodeURIComponent(id)}/remove`, { method: 'POST', headers: await _adminAuth(), body: JSON.stringify({ removed }) });
   }
@@ -3334,6 +3339,7 @@ const API = (() => {
     fetchTeacherSlsPapers, fetchTeacherSlsPaper,
     fetchStudentExerciseQuestions,
     teacherVideos, teacherOrders, fetchMyTeacherVideos, adminTeacherVideos, adminRemoveTeacherVideo,
+    schStockGet, schStockSave, schStockBatch, schStockDeleteBatch,
     fetchYoutubeVideosForExercise, recordYoutubeVideoOpen,
   };
 })();
