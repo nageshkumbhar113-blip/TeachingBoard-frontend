@@ -2292,6 +2292,25 @@ const ADMIN = (() => {
       // MAT: सोम–शुक्र सकाळी 7, शनिवारी दुपारी 4; SAT: सोम–शनि संध्याकाळी 7; रविवारी नाही (महा-Test)
       slots: { MAT: { 1: '07:00', 2: '07:00', 3: '07:00', 4: '07:00', 5: '07:00', 6: '16:00' }, SAT: { 1: '19:00', 2: '19:00', 3: '19:00', 4: '19:00', 5: '19:00', 6: '19:00' } },
     },
+    {
+      // 4थी शिष्यवृत्ती (पूर्वीची 5वी), 2020–2024 papers: पेपर 1 = मराठी 1–25 + गणित 26–75, पेपर 2 = इंग्रजी 1–25 + बुद्धिमत्ता 26–75;
+      // every question 2 marks (150), 90 minutes, no negative marking. `gen` = the subject in Create Quiz › 🎓 शिष्यवृत्ती
+      // that can fill this part's bank (📦 सराव बँक).
+      id: 'sch4', name: '4थी शिष्यवृत्ती — पेपर 1 (मराठी 25 + गणित 50) · पेपर 2 (इंग्रजी 25 + बुद्धिमत्ता 50)',
+      title: 'शिष्यवृत्ती Paper Practice', duration: 90, join: 15, top: 3, open_to: 'paid',
+      papers: [
+        { name: 'पेपर 1', parts: [
+          { label: 'मराठी', match: ['मराठी', 'marathi'], count: 25, marks: 2, gen: 'मराठी' },
+          { label: 'गणित', match: ['गणित', 'math'], count: 50, marks: 2, gen: 'गणित' },
+        ] },
+        { name: 'पेपर 2', parts: [
+          { label: 'इंग्रजी', match: ['english', 'इंग्रजी', 'इंग्लिश'], count: 25, marks: 2, gen: 'English' },
+          { label: 'बुद्धिमत्ता', match: ['बुद्धिमत्ता', 'intelligence', 'reasoning', 'बौद्धिक'], count: 50, marks: 2, gen: 'बुद्धिमत्ता' },
+        ] },
+      ],
+      // 9-10 वर्षांची मुलं: रोज एक पेपर, आलटून पालटून — सोम/बुध/शुक्र पेपर 1, मंगळ/गुरु/शनि पेपर 2, संध्याकाळी 6; रविवारी महा-Test
+      slots: { 'पेपर 1': { 1: '18:00', 3: '18:00', 5: '18:00' }, 'पेपर 2': { 2: '18:00', 4: '18:00', 6: '18:00' } },
+    },
   ];
   function _wkFillPatternList() {
     const sel = $('wk-pattern');
@@ -2301,7 +2320,7 @@ const ADMIN = (() => {
     const pt = _WK_PATTERNS.find(x => x.id === $('wk-pattern')?.value);
     if (!pt) return;
     const subjects = _wkPool.map(x => x.subject);
-    const missing = [];
+    const missing = [], gens = [];
     const find = part => subjects.filter(n => { const l = n.toLowerCase(); return part.match.some(m => l.includes(m)) && !(part.not || []).some(m => l.includes(m)); })
       // "MAT" must not catch "Maths"
       .filter(n => !(part.match.includes('mat') && /math|गणित/i.test(n)));
@@ -2310,7 +2329,8 @@ const ADMIN = (() => {
       for (const part of pp.parts) {
         const hit = find(part);
         if (!hit.length) { missing.push(part.label); continue; }
-        hit.forEach((subject, i) => parts.push({ subject, chapters: [], count: Math.floor(part.count / hit.length) + (i < part.count % hit.length ? 1 : 0), marks: 1 }));
+        hit.forEach((subject, i) => parts.push({ subject, chapters: [], count: Math.floor(part.count / hit.length) + (i < part.count % hit.length ? 1 : 0), marks: part.marks || 1 }));
+        if (part.gen) gens.push({ label: part.label, subject: hit[0], gen: part.gen });
       }
       return { name: pp.name, order: 'sections', negative: 0, parts };
     });
@@ -2320,10 +2340,62 @@ const ADMIN = (() => {
     $('wk-join').value = pt.join;
     $('wk-top').value = String(pt.top);
     $('wk-open').value = pt.open_to;
-    _wkPaintPapers(); _wkPaintSlots();
+    _wkGenParts = gens; _wkGenExam = pt.id === 'sch4' ? '4' : ''; _wkGenBatch = $('wk-batch')?.value || '';
+    _wkPaintPapers(); _wkPaintSlots(); _wkPaintBank();
     APP.toast(missing.length ? `⚠️ या class मध्ये हे विषय सापडले नाहीत: ${missing.join(', ')} — खालच्या पेपरमध्ये हाताने निवडा` : '✅ Pattern भरला — तपासा आणि Save करा', missing.length ? 'info' : 'success');
   }
   const _wkNewPaper = () => ({ name: '', order: 'sections', negative: 0, parts: [] });
+
+  // ── 📦 सराव बँक (owner 2026-11-20): the daily papers draw from the class's question bank, least-used first.
+  // For an exam the scholarship generator knows (4थी), one click makes N paper-like questions of a subject
+  // (types in the same proportion as the 2020–2024 papers, easy / medium / hard mixed) and saves them in that
+  // subject of the class. q_id comes from the question's own text, so the same question is never saved twice.
+  let _wkGenParts = [], _wkGenExam = '', _wkGenBusy = false, _wkGenBatch = '', _wkGenMsg = {}, _wkGenN = {};
+  const _wkHash = s => { let h1 = 0xdeadbeef, h2 = 0x41c6ce57; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36); };
+  function _wkPaintBank() {
+    const box = $('wk-bank');
+    if (!box) return;
+    if (_wkGenBatch !== ($('wk-batch')?.value || '')) { _wkGenParts = []; _wkGenExam = ''; _wkGenMsg = {}; _wkGenBatch = $('wk-batch')?.value || ''; }
+    // a saved 4थी schedule opened again: find the bank subjects without pressing the pattern button
+    if (!_wkGenParts.length && /(4\s*थी|चौथी|4th)/i.test($('wk-batch')?.value || '') && /(शिष्यवृत्ती|scholar)/i.test($('wk-batch')?.value || '')) {
+      const pt = _WK_PATTERNS.find(x => x.id === 'sch4'), subs = _wkPool.map(x => x.subject);
+      _wkGenParts = pt.papers.flatMap(p => p.parts).map(part => ({ label: part.label, gen: part.gen, subject: subs.find(n => part.match.some(m => n.toLowerCase().includes(m))) })).filter(g => g.subject);
+      _wkGenExam = _wkGenParts.length ? '4' : '';
+    }
+    if (!_wkGenParts.length || !_wkGenExam || !window.SCHGEN) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    const cnt = s => _wkPool.find(x => x.subject === s)?.questions ?? 0;
+    box.innerHTML = `<div class="wka-bank-head"><b>📦 सराव बँक</b> <span class="import-hint">रोजचे पेपर याच प्रश्नांतून बनतात (आधी न आलेले आधी). प्रत्येक विषयात किमान 300–500 प्रश्न ठेवा; कमी पडले की इथूनच आणखी बनवा. एकच प्रश्न दोनदा save होत नाही.</span></div>
+      <table class="wka-bank"><tbody>${_wkGenParts.map((g, i) => `<tr><td><b>${_esc(g.label)}</b> → ${_esc(g.subject)}</td><td>${cnt(g.subject)} प्रश्न</td>
+        <td><select class="admin-input wk-gen-n" data-i="${i}" aria-label="किती प्रश्न">${[100, 200, 300, 500].map(n => `<option${n === (_wkGenN[i] || 200) ? ' selected' : ''}>${n}</option>`).join('')}</select></td>
+        <td><button type="button" class="admin-btn-secondary" data-a="genfill" data-i="${i}"${_wkGenBusy ? ' disabled' : ''}>➕ प्रश्न बनवा</button></td><td class="import-hint" id="wk-gen-st-${i}">${_esc(_wkGenMsg[i] || '')}</td></tr>`).join('')}</tbody></table>`;
+  }
+  async function _wkGenFill(i) {
+    const g = _wkGenParts[i], batch = $('wk-batch')?.value, n = Number($('wk-bank').querySelector(`.wk-gen-n[data-i="${i}"]`)?.value || 200);
+    if (!g || !batch || _wkGenBusy) return;
+    const st = m => { _wkGenMsg[i] = m; const el = $('wk-gen-st-' + i); if (el) el.textContent = m; };
+    _wkGenBusy = true; _wkPaintBank();
+    try {
+      if (/^(मराठी|English)$/.test(g.gen)) await window.SCHSTOCK?.load();
+      const keys = (SCHGEN.GROUPS[_wkGenExam]?.[g.gen] || []).flatMap(([, ks]) => ks).filter(k => !k.startsWith('f:') || window.FIGGEN?.TYPES.find(t => t.id === k.slice(2))?.fn);
+      if (!keys.length) throw new Error('या विषयाचे प्रकार सापडले नाहीत');
+      let saved = 0;
+      for (let done = 0; done < n; done += 50) {
+        const want = Math.min(50, n - done);
+        st(`⏳ ${done + 1}–${done + want} / ${n}: प्रश्न बनत आहेत…`);
+        const items = SCHGEN.generate(_wkGenExam, g.gen, keys, want, 3, true);
+        const recs = await SCHGEN.toBankQuestions(items, { exam: _wkGenExam, batch, subject: g.subject }, (stage, a, b) => st(`⏳ ${done + 1}–${done + want} / ${n}: ${stage === 'draw' ? 'आकृत्या' : stage === 'upload' ? 'चित्रं upload' : 'save'} ${a || ''}${b ? '/' + b : ''}`));
+        const out = recs.map(r => ({ ...r, batch, subject: g.subject, q_id: 'sch' + _wkGenExam + '_' + _wkHash([batch, g.subject, r.question, JSON.stringify(r.options), /* a figure-reasoning picture is the question itself; a scholarship picture (clock, chart) is redrawn each time */ (r.tags || []).includes('reasoning') ? JSON.stringify(r.option_images || {}) + (r.image || '') : ''].join('|')) }));
+        await API.bulkSaveQuestions(out);
+        saved += out.length;
+      }
+      st('⏳ प्रश्न मोजत आहे…');
+      await _loadWeeklySubjects();
+      st(`✅ ${saved} प्रश्न save झाले`);
+      APP.toast(`✅ ${g.subject}: ${saved} प्रश्न सराव बँकेत गेले`, 'success');
+    } catch (err) { st('⚠️ ' + (err?.message || 'झालं नाही')); APP.toast(err?.message || 'प्रश्न save झाले नाहीत', 'error'); }
+    _wkGenBusy = false; _wkPaintBank();
+  }
   // questions a part can get: its chosen chapters (or the whole subject)
   function _wkAvail(part) {
     const s = _wkPool.find(x => x.subject === part.subject);
@@ -2410,6 +2482,7 @@ const ADMIN = (() => {
       const r = await API.adminWeekly('GET', `/pool?batch=${encodeURIComponent(batch)}&types=${_wkTypes().join(',')}&source=${$('wk-source').value}`);
       _wkPool = r.data || [];
       if (_wkMode() === 'papers') _wkPaintPapers();
+      _wkPaintBank();
       const keep = Array.isArray(preselect) ? new Set(preselect) : null;
       box.innerHTML = 'विषय (क्रमाने दर आठवड्याला एक): ' + (r.data || []).map(s => `
         <label class="wka-subj${s.questions ? '' : ' empty'}"><input type="checkbox" class="wk-subj" value="${_esc(s.subject)}" ${(!keep || keep.has(s.subject) || (keep.size === 0)) && s.questions ? 'checked' : ''} ${s.questions ? '' : 'disabled'} />
@@ -4684,6 +4757,8 @@ const ADMIN = (() => {
     $('wk-slots')?.addEventListener('input', _wkSlotEvent);
     $('wk-slots')?.addEventListener('click', e => { if (e.target.closest('button')) _wkSlotEvent({ target: e.target.closest('button') }); });
     $('btn-wk-pattern')?.addEventListener('click', _wkApplyPattern);
+    $('wk-bank')?.addEventListener('change', e => { if (e.target.classList.contains('wk-gen-n')) _wkGenN[e.target.dataset.i] = Number(e.target.value); });
+    $('wk-bank')?.addEventListener('click', e => { const b = e.target.closest('[data-a="genfill"]'); if (b) _wkGenFill(Number(b.dataset.i)); });
     _wkFillPatternList();
     $('wk-papers')?.addEventListener('input', _wkPaperEvent);
     $('wk-papers')?.addEventListener('change', _wkPaperEvent);

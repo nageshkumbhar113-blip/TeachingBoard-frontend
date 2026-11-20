@@ -395,7 +395,7 @@ const APP = (() => {
       if (!home || home.classList.contains('hidden') || !home.contains(e.target)) return;
       const t = e.target.closest('button, a, input, [role="button"], [role="listitem"], [data-quiz-id], .batch-card, .subject-card, .chapter-item');
       if (!t || !home.contains(t)) return;
-      if (t.closest('.wk-card, #fw-banner, #home-share-app-btn, #home-refer-card, #home-banners')) return;
+      if (t.closest('.wk-strip-wrap, .wk-card, #fw-banner, #home-share-app-btn, #home-refer-card, #home-banners')) return;
       e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       _offerSubscribe().catch(() => {});
     }, true);

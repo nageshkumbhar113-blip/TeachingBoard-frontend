@@ -2995,3 +2995,9 @@ body.crm-lead-open { overflow: hidden; }
 .ads-tts { display: grid; gap: 6px; margin-top: 8px; padding: 8px; border: 1px dashed rgba(124, 58, 237, .45); border-radius: 10px; }
 .ads-tts[hidden] { display: none; }
 .ads-tts input[type=range] { flex: 1; min-width: 120px; }
+
+/* 📦 सराव बँक (daily Paper Practice) */
+.wka-bankbox { grid-column: 1 / -1; border: 1px dashed #c9b8ff; border-radius: 12px; padding: 10px 12px; background: #faf8ff; }
+.wka-bank-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.wka-bank { border-collapse: collapse; width: 100%; }
+.wka-bank td { padding: 4px 6px; vertical-align: middle; }

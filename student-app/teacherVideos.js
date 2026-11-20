@@ -257,7 +257,7 @@ const TEACHER_VIDEOS = (() => {
       <div class="tv-home-row">${_mine.slice(0, 3).map(v => `<button type="button" class="tv-home-v" data-id="${esc(v.id)}"><img src="${thumb(v.video_id)}" alt="" loading="lazy" /><span>${esc(v.title)}</span><small>${esc(v.teacher_name || '')}</small></button>`).join('')}</div>`;
     card.querySelectorAll('.tv-home-v').forEach(b => b.addEventListener('click', () => play(_mine.find(v => v.id === b.dataset.id), true)));
     card.querySelector('[data-all]')?.addEventListener('click', openList);
-    const wk = home.querySelector('.wk-card, .wk-lock');
+    const wk = home.querySelector('.wk-strip-wrap, .wk-card, .wk-lock');   // after the महा-Test / practice row
     if (wk) wk.after(card); else home.insertBefore(card, home.firstElementChild);
   }
 

@@ -92,34 +92,68 @@ const WEEKLY = (() => {
     _consent = _events.consent !== false;
     DB.setSetting?.(EVENTS_CACHE, _events).catch(() => {});
     window.dispatchEvent(new Event('weekly-toppers'));
+    home.querySelector('.wk-strip-wrap')?.remove();
     home.querySelector('.wk-card')?.remove();
     home.querySelector('.wk-lock')?.remove();
     clearInterval(_tick);
-    _lockedCard(home);
-    // the most relevant one: live > upcoming > a closed one with my result
-    const pick = _events.find(e => e.state === 'live')
-      || _events.filter(e => e.state === 'upcoming').sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0]
-      || _events.filter(e => e.state === 'closed' && (e.me.submitted || e.results)).sort((a, b) => new Date(b.ends_at) - new Date(a.ends_at))[0];
-    if (!pick) return;
-    const card = document.createElement('div');
-    card.className = 'wk-card';
-    home.insertBefore(card, home.querySelector('.gx-guide')?.nextSibling || home.firstElementChild);
-    _paintCard(card, pick);
+    // 🗂️ one swipeable row (owner 2026-11-20): the महा-Test card AND every practice paper (MAT / SAT,
+    // पेपर 1 / पेपर 2) side by side — before, only the single "most relevant" one was shown, so the
+    // practice paper hid behind the महा-Test (or the other way round).
+    const byStart = (x, y) => new Date(x.starts_at) - new Date(y.starts_at);
+    const best = list => list.find(e => e.state === 'live' && !e.me.submitted) || list.find(e => e.state === 'live')
+      || list.filter(e => e.state === 'upcoming').sort(byStart)[0]
+      || list.filter(e => e.state === 'closed' && (e.me.submitted || e.results)).sort((x, y) => new Date(y.ends_at) - new Date(x.ends_at))[0];
+    const picks = [];
+    const maha = best(_events.filter(e => !_isPractice(e)));
+    if (maha) picks.push(maha);
+    const prac = _events.filter(_isPractice);
+    [...new Set(prac.map(e => e.subject))].forEach(name => { const e = best(prac.filter(x => x.subject === name)); if (e) picks.push(e); });
+    // live first, then the next to start, then the closed ones
+    const rankOf = e => e.state === 'live' && !e.me.submitted ? 0 : e.state === 'live' ? 1 : e.state === 'upcoming' ? 2 : 3;
+    picks.sort((x, y) => rankOf(x) - rankOf(y) || byStart(x, y));
+    const wrap = document.createElement('div');
+    wrap.className = 'wk-strip-wrap';
+    wrap.innerHTML = '<div class="wk-strip" role="region" aria-label="महा-Test आणि Paper Practice"></div><div class="wk-dots" aria-hidden="true"></div>';
+    const strip = wrap.firstElementChild;
+    const cards = picks.map(ev => {
+      const card = document.createElement('div');
+      card.className = 'wk-card' + (_isPractice(ev) ? ' wk-prac' : '');
+      strip.appendChild(card);
+      _paintCard(card, ev);
+      return [card, ev];
+    });
+    _lockedCard(strip);
+    const n = strip.children.length;
+    if (!n) return;
+    wrap.classList.toggle('wk-one', n === 1);
+    const dots = wrap.lastElementChild;
+    if (n > 1) {
+      dots.innerHTML = Array.from({ length: n }, (_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('') + '<span>⇠ बाजूला सरकवा ⇢</span>';
+      strip.addEventListener('scroll', () => {
+        const i = Math.round(strip.scrollLeft / Math.max(1, strip.firstElementChild.offsetWidth + 10));
+        dots.querySelectorAll('i').forEach((d, j) => d.classList.toggle('on', j === Math.abs(i)));
+      }, { passive: true });
+    }
+    home.insertBefore(wrap, home.querySelector('.gx-guide')?.nextSibling || home.firstElementChild);
     _tick = setInterval(() => {
-      if (!card.isConnected) return clearInterval(_tick);
-      const target = pick.state === 'upcoming' ? pick.starts_at : pick.state === 'live' ? pick.ends_at : pick.reveal_at;
-      const ms = new Date(target) - Date.now();
-      const t = card.querySelector('.wk-count');
-      if (t) t.textContent = _left(ms);
-      if (ms <= 0) { clearInterval(_tick); renderHomeCard(); }
+      if (!wrap.isConnected) return clearInterval(_tick);
+      for (const [card, ev] of cards) {
+        const target = ev.state === 'upcoming' ? ev.starts_at : ev.state === 'live' ? ev.ends_at : ev.reveal_at;
+        const ms = new Date(target) - Date.now();
+        const t = card.querySelector('.wk-count');
+        if (t) t.textContent = _left(ms);
+        if (ms <= 0 && !(ev.state === 'closed' && ev.results)) { clearInterval(_tick); renderHomeCard(); return; }
+      }
     }, 1000);
-    // download the paper quietly so the test needs no big call at start time
-    if (pick.state !== 'closed' && !pick.me.submitted) _ensurePaper(pick).catch(() => {});
+    // every paper still to come is downloaded now, quietly (encrypted): at start time only the
+    // ~50-byte key is fetched, so a whole class starting together puts no load on the server
+    _events.filter(e => e.state !== 'closed' && !e.me.submitted && (_isPractice(e) || e.me.registered))
+      .forEach(e => _ensurePaper(e).catch(() => {}));
     _retryPendingSubmit().catch(() => {});
   }
 
   // a free student: "🔒 रोजचा Paper Practice फक्त paid विद्यार्थ्यांसाठी"
-  function _lockedCard(home) {
+  function _lockedCard(box) {
     const l = (_events.locked || [])[0];
     if (!l) return;
     const el = document.createElement('div');
@@ -128,7 +162,7 @@ const WEEKLY = (() => {
       <div class="wk-sub">रोज परीक्षेसारखा पूर्ण पेपर · ${l.question_count} प्रश्न · ${l.duration_minutes} मिनिटं · गुण, rank आणि उकल</div>
       <div class="wk-ok">फक्त paid विद्यार्थ्यांसाठी — subscribe करा आणि उद्यापासून रोज सराव करा</div>
       <button type="button" class="gx-btn gx-shine wk-btn" data-act="sub">⭐ Subscribe करा</button>`;
-    home.insertBefore(el, home.querySelector('.gx-guide')?.nextSibling || home.firstElementChild);
+    box.appendChild(el);
     el.querySelector('[data-act="sub"]').addEventListener('click', () => window.dispatchEvent(new CustomEvent('teachingboard:locked', { detail: { code: 'CHAPTER_LOCKED', from: 'practice' } })));
   }
 
