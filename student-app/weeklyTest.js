@@ -20,8 +20,29 @@ const WEEKLY = (() => {
   const _stateKey = id => `weekly_state_${id}`;
   let _events = [];
   let _consent = true;     // "माझं नाव दाखवा" already answered? (asked once, at the first registration)
-  let _autoAt = 0;   // last time the countdown itself asked the server again
+  let _autoAt = 0;
+  let _homeTries = 0;   // Home card load retries after a failure   // last time the countdown itself asked the server again
   let _tick = null;
+
+  // ── a paper handed in without internet (network audit 2026-11-21) ──
+  // Its answers wait on the phone and are sent as soon as the internet is back: on 'online', when the app is
+  // opened again, every 30 s, from Home and from the "🏠 Home" button. Before, they went only when Home was
+  // built again on the next app start — and after the paper's last minute the server refused them, silently.
+  const PENDING_IDS = 'weekly_pending_ids';
+  let _pendingSet = new Set(), _retrying = false;
+  async function _pendingIds() { return (await DB.getSetting(PENDING_IDS, []).catch(() => [])) || []; }
+  async function _savePending(ev, body) {
+    await DB.setSetting(`weekly_pending_${ev.event_id}`, body).catch(() => {});
+    const ids = (await _pendingIds()).filter(x => x.id !== ev.event_id);
+    ids.push({ id: ev.event_id, subject: ev.subject || '', title: ev.title || '' });
+    await DB.setSetting(PENDING_IDS, ids).catch(() => {});
+    _pendingSet.add(ev.event_id);
+  }
+  async function _clearPending(id) {
+    await DB.setSetting(`weekly_pending_${id}`, null).catch(() => {});
+    await DB.setSetting(PENDING_IDS, (await _pendingIds()).filter(x => x.id !== id)).catch(() => {});
+    _pendingSet.delete(id);
+  }
   const EVENTS_CACHE = 'weekly_events_cache';
   // who is logged in on this phone (student code, or the guest's id)
   const _owner = async () => String(await DB.getSetting?.('student_code', '').catch(() => '') || '') || (window.GUEST?.isActive?.() ? 'guest' : '');
@@ -91,7 +112,12 @@ const WEEKLY = (() => {
   async function renderHomeCard() {
     const home = document.getElementById('screen-home');
     if (!home || !window.API?.fetchWeeklyTests || !navigator.onLine) return;
-    try { _events = await API.fetchWeeklyTests(); } catch { return; }
+    try { _events = await API.fetchWeeklyTests(); _homeTries = 0; }
+    catch {   // slow / sleeping server: try the card again a little later (3 times)
+      if (_homeTries++ < 3) setTimeout(() => { if (document.getElementById('screen-home')?.offsetParent) renderHomeCard().catch(() => {}); }, 20000);
+      return;
+    }
+    _pendingSet = new Set((await _pendingIds()).map(x => x.id));
     _consent = _events.consent !== false;
     _owner().then(code => DB.setSetting?.(EVENTS_CACHE, { code, events: _events, consent: _events.consent, locked: _events.locked || [] })).catch(() => {});
     window.dispatchEvent(new Event('weekly-toppers'));
@@ -123,6 +149,7 @@ const WEEKLY = (() => {
       card.className = 'wk-card' + (_isPractice(ev) ? ' wk-prac' : '');
       strip.appendChild(card);
       _paintCard(card, ev);
+      if (_pendingSet.has(ev.event_id) && !ev.me?.submitted) _markPending(card, ev);
       return [card, ev];
     });
     _lockedCard(strip);
@@ -449,10 +476,14 @@ const WEEKLY = (() => {
         time_taken: Math.round((Math.min(Date.now(), deadline) - st.startedAt) / 1000),
         leave_count: st.leave,
       };
-      await DB.setSetting(`weekly_pending_${ev.event_id}`, body).catch(() => {});
+      await _savePending(ev, body);
       el.innerHTML = '<div class="gx-card" style="text-align:center"><div class="gx-logo">⏳</div><h2 class="gx-title">जमा होत आहे…</h2></div>';
       let res = null;
-      try { res = (await API.weeklySubmit(ev.event_id, body))?.data; await DB.setSetting(`weekly_pending_${ev.event_id}`, null).catch(() => {}); } catch { /* retried from Home */ }
+      try { res = (await API.weeklySubmit(ev.event_id, body))?.data; await _clearPending(ev.event_id); }
+      catch (err) {
+        // refused by the server (time over …): say so; no answer (no internet): sent when it is back
+        if (err?.status >= 400 && err?.status < 500) { await _clearPending(ev.event_id); _toast('⚠️ पेपर जमा होऊ शकला नाही: ' + (err.status === 404 ? 'हा पेपर आता उपलब्ध नाही' : (err.message || '')), 'error'); }
+      }
       _submitted(el, ev, res);
     };
     el.querySelector('#wk-submit').onclick = () => finish(false);
@@ -480,7 +511,7 @@ const WEEKLY = (() => {
         <button type="button" class="gx-btn gx-big" id="wk-done">🏠 Home</button>
       </div>`;
     window.GUEST?.fireworks?.(.8);
-    el.querySelector('#wk-done').onclick = () => { el.remove(); window.APP?.loadHome?.(); };
+    el.querySelector('#wk-done').onclick = () => { el.remove(); window.APP?.loadHome?.(); _retryPendingSubmit().catch(() => {}); };
     // a free visitor on the website: one tap opens our WhatsApp bot with "MAHA <id>" — the rank comes there (free)
     if (window.GUEST?.isActive?.() && !window.Capacitor?.isNativePlatform?.()) {
       window.GUEST.botNumber?.().then(n => {
@@ -499,12 +530,44 @@ const WEEKLY = (() => {
   }
 
   async function _retryPendingSubmit() {
-    for (const ev of _events) {
-      const body = await DB.getSetting(`weekly_pending_${ev.event_id}`, null).catch(() => null);
-      if (!body) continue;
-      try { await API.weeklySubmit(ev.event_id, body); await DB.setSetting(`weekly_pending_${ev.event_id}`, null); } catch { /* next time */ }
-    }
+    if (_retrying || !navigator.onLine) return;
+    const ids = await _pendingIds(); if (!ids.length) return;
+    _retrying = true;
+    let sent = 0;
+    try {
+      for (const p of ids) {
+        const body = await DB.getSetting(`weekly_pending_${p.id}`, null).catch(() => null);
+        if (!body) { await _clearPending(p.id); continue; }
+        try {
+          await API.weeklySubmit(p.id, body); await _clearPending(p.id); sent++;
+          _toast(`✅ ${p.subject || p.title || 'पेपर'} — उत्तरे जमा झाली`, 'success');
+        } catch (err) {
+          // the server refused it (time over, paper removed …): tell the child, do not try for ever
+          if (err?.status >= 400 && err?.status < 500) { await _clearPending(p.id); _toast(`⚠️ ${p.subject || 'पेपर'} जमा होऊ शकला नाही: ${err.status === 404 ? 'हा पेपर आता उपलब्ध नाही' : (err.message || '')}`, 'error'); }
+        }
+      }
+    } finally { _retrying = false; }
+    if (sent && document.getElementById('screen-home')?.offsetParent) renderHomeCard().catch(() => {});
   }
+  window.addEventListener('online', () => setTimeout(() => _retryPendingSubmit().catch(() => {}), 1500));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) _retryPendingSubmit().catch(() => {}); });
+  setInterval(() => { if (_pendingSet.size) _retryPendingSubmit().catch(() => {}); }, 30000);
+  setTimeout(() => _pendingIds().then(ids => ids.forEach(x => _pendingSet.add(x.id))).catch(() => {}), 0);
+
+  // the Home card of a paper whose answers wait on the phone
+  function _markPending(card, ev) {
+    card.dataset.pending = '1';
+    const box = document.createElement('div');
+    box.className = 'wk-ok wk-pending';
+    box.innerHTML = '⏳ तुमची उत्तरे phone वर सुरक्षित आहेत — internet आल्यावर आपोआप जमा होतील. <button type="button" class="gx-btn gx-ghost wk-btn" data-act="send">🔄 आत्ता पाठवा</button>';
+    (card.querySelector('.wk-sub') || card.firstElementChild)?.after(box);
+    box.querySelector('[data-act="send"]').onclick = async e => {
+      e.target.disabled = true; e.target.textContent = '⏳ …';
+      await _retryPendingSubmit().catch(() => {});
+      if (_pendingSet.has(ev.event_id)) { e.target.disabled = false; e.target.textContent = '🔄 आत्ता पाठवा'; _toast('Internet मिळालं की आपोआप जाईल', 'info'); }
+    };
+  }
+
 
   // ── Result reveal ───────────────────────────────────────────────
   async function showResult(ev) {

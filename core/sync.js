@@ -116,6 +116,7 @@ const SYNC = (() => {
   /** True when an error looks like a network/connection failure. */
   function _isNetworkError(err) {
     if (!_isOnline()) return true;
+    if (err?.code === 'OFFLINE' || err?.code === 'TIMEOUT') return true;   // helpers.js safeFetch (Marathi messages)
     return /failed to fetch|network|connection|timeout/i.test(err?.message || '');
   }
 

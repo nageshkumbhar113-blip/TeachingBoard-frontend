@@ -261,19 +261,29 @@ const API = (() => {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  // A request the network never answers used to wait for ever (a button stayed on "⏳ …"). Each request now
+  // has a time limit (options.timeoutMs; 0 = none); a timed-out request is not repeated (network audit 2026-11-21).
   async function safeFetch(url, options = {}, retries = 3) {
+    const limit = options.signal ? 0 : Number(options.timeoutMs) || 0;
+    const ac = limit ? new AbortController() : null;
+    const timer = ac ? setTimeout(() => ac.abort(), limit) : null;
     try {
-      const response = await fetch(url, options);
+      const response = await fetch(url, ac ? { ...options, signal: ac.signal } : options);
+      if (timer) clearTimeout(timer);
       if (retries > 0 && [408, 429, 500, 502, 503, 504].includes(response.status)) {
         await _sleep((4 - retries) * 250);
         return safeFetch(url, options, retries - 1);
       }
       return response;
     } catch (err) {
+      if (timer) clearTimeout(timer);
+      if (ac?.signal.aborted) { const e = new Error('Internet हळू आहे — थोड्या वेळाने पुन्हा प्रयत्न करा'); e.code = 'TIMEOUT'; throw e; }
       if (retries > 0) {
         await _sleep((4 - retries) * 250);
         return safeFetch(url, options, retries - 1);
       }
+      // no connection: a sentence the child understands instead of "Failed to fetch"
+      if (err instanceof TypeError || !navigator.onLine) { const e = new Error('📶 Internet नाही — internet चालू करून पुन्हा प्रयत्न करा'); e.code = 'OFFLINE'; e.cause = err; throw e; }
       throw err;
     }
   }
@@ -343,6 +353,15 @@ const API = (() => {
     if (options.method && String(options.method).toUpperCase() !== 'GET') _shared.clear();
     const url     = `${getApiUrl()}${path}`;
     const headers = { ...(options.headers || {}) };
+    // big downloads (the whole bank) may take long on 2G: no limit; login waits for a sleeping server
+    // only in the student / teacher / parent app; the admin and team apps keep waiting (long imports, uploads)
+    const staffApp = typeof location !== 'undefined' && /\/(admin-app|team-app)\//.test(location.pathname || '');
+    if (options.timeoutMs === undefined && staffApp) options = { ...options, timeoutMs: 0 };
+    if (options.timeoutMs === undefined) {
+      const big = /^\/(questions|quizzes|sls\/full-sync)(\?|$)/.test(path) || /import|bulk|upload|generate|pdf/i.test(path);
+      const get = !options.method || String(options.method).toUpperCase() === 'GET';
+      options = { ...options, timeoutMs: big ? 0 : path === '/auth/login' ? 120000 : get ? 60000 : 90000 };
+    }
     if (!headers['Content-Type'] && options.body !== undefined) {
       headers['Content-Type'] = 'application/json';
     }
@@ -388,6 +407,7 @@ const API = (() => {
       }
       const err = new Error(payload?.message || `Request failed: ${response.status}`);
       if (payload?.code) err.code = payload.code;
+      err.status = response.status;
       throw err;
     }
     return payload;
@@ -2315,7 +2335,8 @@ const API = (() => {
     return (await request(`/weekly/${encodeURIComponent(id)}/paper`, { headers: await _studentAuth() }))?.data || null;
   }
   async function weeklyKey(id) {
-    return (await request(`/weekly/${encodeURIComponent(id)}/key`, { headers: await _studentAuth() }))?.key || '';
+    // the child is waiting on "⏳ उघडत आहे…": give up sooner (the paper itself is already on the phone)
+    return (await request(`/weekly/${encodeURIComponent(id)}/key`, { headers: await _studentAuth(), timeoutMs: 30000 }))?.key || '';
   }
   async function weeklySubmit(id, body) {
     return request(`/weekly/${encodeURIComponent(id)}/submit`, { method: 'POST', headers: await _studentAuth(), body: JSON.stringify(body) });

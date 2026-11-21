@@ -1736,6 +1736,15 @@ const APP = (() => {
       }
 
       continueBtn.disabled = true;
+      // login taking long (slow internet, the server waking up): a small animation so the child waits
+      // instead of closing the app (owner 2026-11-21: no technical message, an animation)
+      const waitTimer = setTimeout(() => {
+        if (document.getElementById('ob-wait')) return;
+        const w = document.createElement('div');
+        w.id = 'ob-wait'; w.className = 'ob-wait'; w.setAttribute('role', 'status'); w.setAttribute('aria-label', 'उघडत आहे, थोडं थांबा');
+        w.innerHTML = '<div class="ob-wait-books" aria-hidden="true"><span>📘</span><span>📗</span><span>📙</span></div><div class="ob-wait-bar" aria-hidden="true"><i></i></div>';
+        continueBtn.after(w);
+      }, 2500);
       try {
         if (server) {
           await DB.setSetting('api_url', server).catch(() => {});
@@ -1803,6 +1812,8 @@ const APP = (() => {
           errorEl.classList.remove('hidden');
         }
       } finally {
+        clearTimeout(waitTimer);
+        document.getElementById('ob-wait')?.remove();
         continueBtn.disabled = false;
       }
     }
@@ -3365,6 +3376,10 @@ const APP = (() => {
     },
   };
 })();
+
+// The other files call window.APP (toasts, Home, share …). A top-level const is not a window property, so
+// all of those were silently doing nothing (network audit 2026-11-21).
+window.APP = APP;
 
 // ── Auto-start ──────────────────────────
 document.addEventListener('DOMContentLoaded', APP.init);
