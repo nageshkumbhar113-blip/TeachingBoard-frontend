@@ -400,6 +400,8 @@ const SCHSTOCK = (() => {
   }
   const ICON = { new: '✅', part: '➕', dup: '⏭️', bad: '⚠️', sus: '🔍' };
   let ui = null;
+  // the last exam / subject used opens next time (only a convenience; storage may be blocked)
+  const mem = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch { return ''; } };
   async function open(opts = {}) {
     _css(); await load();
     ui?.ov.remove();
@@ -408,7 +410,7 @@ const SCHSTOCK = (() => {
       <div class="ss-tabs" role="tablist"><button type="button" class="ss-tab" role="tab" data-ss-tab="paste">📥 पेस्ट करा</button><button type="button" class="ss-tab" role="tab" data-ss-tab="prompt">📋 AI साठी prompt</button><button type="button" class="ss-tab" role="tab" data-ss-tab="batches">📦 Batches</button></div>
       <div id="ss-body"></div></div>`;
     document.body.appendChild(ov);
-    ui = { ov, tab: 'paste', rows: [], text: '', sub: opts.sub === EN ? EN : MR, exam: opts.exam === '7' ? '7' : '4', pick: null, n: 20, avoid: true };
+    ui = { ov, tab: 'paste', rows: [], text: '', sub: (opts.sub || mem('ssSub')) === EN ? EN : MR, exam: (opts.exam || mem('ssExam') || '7') === '7' ? '7' : '4', pick: null, n: 20, avoid: true };
     ov.addEventListener('click', onClick); ov.addEventListener('change', onChange); ov.addEventListener('input', e => { if (e.target.id === 'ss-text') ui.text = e.target.value; });
     render();
   }
@@ -455,7 +457,7 @@ const SCHSTOCK = (() => {
     const t = e.target.closest('button'); if (!t) return;
     const d = t.dataset;
     if (d.ssClose !== undefined) { ui.ov.remove(); ui = null; return; }
-    if (d.ssExam) { if (d.ssExam !== ui.exam) { ui.exam = d.ssExam; ui.pick = null; ui.rows = []; await load(false, ui.exam); render(); } return; }
+    if (d.ssExam) { if (d.ssExam !== ui.exam) { ui.exam = d.ssExam; mem('ssExam', ui.exam); ui.pick = null; ui.rows = []; await load(false, ui.exam); render(); } return; }
     if (d.ssTab) { ui.tab = d.ssTab; if (ui.tab === 'batches') await load(true, ui.exam); render(); return; }
     if (d.ssCheck !== undefined) { ui.text = ui.ov.querySelector('#ss-text').value; if (!ui.text.trim()) return toast('आधी मजकूर पेस्ट करा', 'error'); await load(true, ui.exam); ui.rows = check(ui.text, ui.exam); render(); return; }
     if (d.ssSave !== undefined) {
@@ -472,7 +474,7 @@ const SCHSTOCK = (() => {
       } catch (err) { t.disabled = false; if (msg) msg.textContent = '⚠️ ' + (err.message || 'Save झालं नाही'); }
       return;
     }
-    if (d.ssSub) { ui.sub = d.ssSub; ui.pick = null; render(); return; }
+    if (d.ssSub) { ui.sub = d.ssSub; mem('ssSub', ui.sub); ui.pick = null; render(); return; }
     if (d.ssPick) { ui.pick.has(d.ssPick) ? ui.pick.delete(d.ssPick) : ui.pick.add(d.ssPick); if (!ui.pick.size) ui.pick.add(d.ssPick); render(); return; }
     if (d.ssCopy !== undefined) { const p = ui.ov.querySelector('#ss-prompt'); try { await navigator.clipboard.writeText(p.value); } catch { p.select(); document.execCommand('copy'); } ui.ov.querySelector('#ss-copied').textContent = '✅ कॉपी झाला — ChatGPT / Claude मध्ये पेस्ट करा'; return; }
     if (d.ssStatus) { const b = cur().batches.find(x => x.id === d.ssStatus); try { await API.schStockBatch(b.id, b.status === 'live' ? 'review' : 'live'); } catch (err) { return toast(err.message || 'झालं नाही', 'error'); } await load(true, ui.exam); render(); return; }

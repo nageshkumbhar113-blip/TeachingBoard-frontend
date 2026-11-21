@@ -113,7 +113,8 @@ const TEST_BUILDER = (() => {
 
     $('tb-body').innerHTML = `
       <div class="tb-form">
-        <p class="tb-step-label">📋 Quiz Details</p>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><p class="tb-step-label" style="flex:1;margin:0">📋 Quiz Details</p>
+          ${window.SCHSTOCK ? '<button type="button" class="admin-btn-secondary" id="tb-open-stock" title="शिष्यवृत्ती मराठी / English चा साठा (4थी / 7वी) — थेट उघडा">📚 शिष्यवृत्ती साठा</button>' : ''}</div>
         <div class="tb-form-grid">
           <div class="tb-field">
             <label>Quiz Title *</label>
@@ -240,6 +241,7 @@ const TEST_BUILDER = (() => {
 
     $('tb-add-section').addEventListener('click', _addSection);
     $('tb-save-draft').addEventListener('click', () => _saveQuiz('draft'));
+    $('tb-open-stock')?.addEventListener('click', () => window.SCHSTOCK.open({}));
     $('tb-batch')?.addEventListener('change', () => _refreshQuizTopicSelectors());
     $('tb-subject')?.addEventListener('change', () => _refreshQuizTopicSelectors({
       subjectValue: $('tb-subject')?.value || '',
