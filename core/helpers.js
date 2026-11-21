@@ -1911,6 +1911,21 @@ const API = (() => {
     return cacheQuizQuestions(questions);
   }
 
+  // ── the question bank one chapter at a time (core/qbank.js; backend qbankController) ──
+  // A 404 means an older server: the caller then keeps the old whole-bank sync.
+  async function fetchQBankIndex() {
+    const token = await ensureStudentSession().catch(() => '');
+    if (!token) return null;
+    return request('/student/qbank/index', { headers: { Authorization: `Bearer ${token}` } });
+  }
+  async function fetchQBankChapter(batch, subject, chapter, { timeoutMs } = {}) {
+    const token = await ensureStudentSession().catch(() => '');
+    if (!token) return null;
+    const qs = `batch=${encodeURIComponent(batch)}&subject=${encodeURIComponent(subject || '')}&chapter=${encodeURIComponent(chapter)}`;
+    const payload = await request(`/student/qbank/chapter?${qs}`, { headers: { Authorization: `Bearer ${token}` }, ...(timeoutMs ? { timeoutMs } : {}) });
+    return { v: payload?.v || '', rows: (payload?.data || []).map(q => toFrontendQuestion(q)) };
+  }
+
   async function syncStudentQuestions() {
     const profile = await getStudentProfile();
     if (!profile?.student_code) return [];
@@ -3399,7 +3414,7 @@ const API = (() => {
     safeFetch,
     toFrontendQuestion, toBackendQuestion,
     cacheQuizQuestions, cacheLessons,
-    syncServerQuestions, syncStudentQuestions, fetchSyncState, syncServerLessons, syncServerBatches,
+    syncServerQuestions, syncStudentQuestions, fetchQBankIndex, fetchQBankChapter, fetchSyncState, syncServerLessons, syncServerBatches,
     syncServerBatchesForStudent,
     fetchMyAttempts, syncMyAttempts, forgetAttempt,
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,

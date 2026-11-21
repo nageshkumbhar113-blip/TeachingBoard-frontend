@@ -337,17 +337,18 @@ const UI = (() => {
 
   async function renderHomeStats() {
     try {
-      const [questions, batches, attempts, allowedBatches, profile] = await Promise.all([
-        DB.getAllQuestions(),
+      const [batches, attempts, allowedBatches, profile] = await Promise.all([
         DB.getAllBatches(),
         DB.getAllAttempts(),
         _getAllowedBatches(),
         _getCurrentStudentProfile(),
       ]);
-      const filteredQuestions = _filterByAllowedBatches(questions, allowedBatches);
+      // the bank's size from its index (chapter-wise bank), else counted on the phone — never read whole
+      let totalQ = window.QBANK?.ready?.() ? QBANK.total(allowedBatches) : null;
+      if (totalQ == null) totalQ = (await Promise.all(allowedBatches.map(b => DB.countQuestionsByBatch(b)))).reduce((a, n) => a + n, 0);
       const filteredBatches = batches.filter(batch => allowedBatches.includes(String(batch?.name || '').trim()));
       const filteredAttempts = _filterAttemptsForCurrentStudent(attempts, profile);
-      if ($('home-total-q'))     $('home-total-q').textContent     = filteredQuestions.length;
+      if ($('home-total-q'))     $('home-total-q').textContent     = totalQ;
       if ($('home-total-batch')) $('home-total-batch').textContent = filteredBatches.length;
       if ($('home-total-tests')) $('home-total-tests').textContent = filteredAttempts.length;
     } catch (e) {
@@ -642,17 +643,26 @@ const UI = (() => {
     const grid    = $('subject-grid');
     if (!section || !grid) return;
 
-    const questions = await DB.getQuestionsByBatch(batchName);
     const storedSubjects = await DB.getSubjectsByBatch(batchName);
+    // the class's questions are read only when no subject list is kept (it can be 20,000+)
+    const questions = storedSubjects.length ? [] : await DB.getQuestionsByBatch(batchName);
     const fallbackSubjects = [...new Set(
       questions.map(q => q.subject).filter(Boolean)
     )].sort((a, b) => a.localeCompare(b));
-    const subjects = storedSubjects.length
-      ? storedSubjects.map(item => item.name)
-      : fallbackSubjects;
+    // + the subjects in the bank's index (core/qbank.js) whose chapters are not downloaded yet
+    const subjects = [...new Set([
+      ...(storedSubjects.length ? storedSubjects.map(item => item.name) : fallbackSubjects),
+      ...(window.QBANK?.subjectsOf?.(batchName) || []),
+    ])];
 
     grid.innerHTML = '';
-    if (!subjects.length) { section.classList.add('hidden'); return; }
+    if (!subjects.length) {
+      // a course with nothing yet: no chapters of the previous course may stay on screen
+      section.classList.add('hidden');
+      $('chapter-section')?.classList.add('hidden');
+      if ($('chapter-list')) $('chapter-list').innerHTML = '';
+      return;
+    }
 
     const fragment = document.createDocumentFragment();
     for (const sub of subjects) {
@@ -765,14 +775,21 @@ const UI = (() => {
     const list    = $('chapter-list');
     if (!section || !list) return;
 
-    const questions = await DB.getQuestionsByChapter(batchName, subjectName, '');
+    // Chapter-wise bank (core/qbank.js): the counts come from its index, so the class's
+    // questions (20,000+) are not read just to count them; the old way reads them as before.
+    const idxCounts = window.QBANK?.ready?.() ? QBANK.counts(batchName, subjectName) : null;
     const storedChapters = await API.getOrderedChapters(batchName, subjectName);
-    const fallbackChapters = [...new Set(
-      questions.map(q => q.chapter).filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b));
+    const questions = idxCounts && storedChapters.length ? [] : await DB.getQuestionsByChapter(batchName, subjectName, '');
+    const fallbackChapters = [...new Set([
+      ...questions.map(q => q.chapter).filter(Boolean),
+      ...(idxCounts ? idxCounts.keys() : []),
+    ])].sort((a, b) => a.localeCompare(b));
     const chapters = storedChapters.length
       ? storedChapters.map(item => item.name)
       : fallbackChapters;
+    const weakQs = idxCounts
+      ? (await DB.getWeakByIndex?.().catch(() => []) || []).filter(q => q.batch === batchName && q.subject === subjectName)
+      : questions;
     const [publishedRaw, allowedBatches] = await Promise.all([
       DB.getQuizzesByStatus('published'),
       _getAllowedBatches(),
@@ -798,9 +815,12 @@ const UI = (() => {
     const fragment = document.createDocumentFragment();
     chapters.forEach((ch, chIdx) => {
       const isLocked = !!lockedFlags[chIdx];
-      const chQs = questions.filter(q => q.chapter === ch);
-      const totalQuestions = chQs.length;
-      const weak = chQs.filter(q => (q.weak_count || 0) >= 2 || q.flagged).length;
+      const totalQuestions = idxCounts ? (idxCounts.get(ch) || 0) : questions.filter(q => q.chapter === ch).length;
+      const weak = weakQs.filter(q => q.chapter === ch && ((q.weak_count || 0) >= 2 || q.flagged)).length;
+      // 📥 this chapter's questions are on the phone (work without internet) / ☁️ not yet
+      const offline = idxCounts && totalQuestions && !isLocked
+        ? (QBANK.isReady(batchName, subjectName, ch) ? '<span class="ch-pill">📥 offline तयार</span>' : '<span class="ch-pill">☁️ internet वर उघडा</span>')
+        : '';
       const tests = published.filter(quiz =>
         quiz.batch === batchName &&
         quiz.subject === subjectName &&
@@ -813,6 +833,7 @@ const UI = (() => {
         freePlan ? '<span class="ch-pill ch-pill-free">🔓 Free</span>' : '',
         given ? `<span class="ch-pill ch-pill-ok">✅ ${given}/${testCount} tests</span>` : '',
         weak ? `<span class="ch-pill ch-pill-weak">⚠️ ${weak} कमकुवत</span>` : '',
+        offline,
       ].join('');
       const item = document.createElement('div');
       item.className = 'chapter-item';
@@ -915,8 +936,12 @@ const UI = (() => {
     ]);
     if ($('chapter-hub-title')?.textContent !== chapter) return;   // student moved on
     const practice = document.querySelector('#chapter-hub-grid .chapter-hub-btn[aria-label="सराव करा"]');
-    if (practice && bank.length) {
-      practice.querySelector('small').textContent = `${bank.length} प्रश्न · लगेच सराव`;
+    // the count from the bank's index (all of the chapter, on the phone or not), else the phone's
+    const idxN = window.QBANK?.ready?.() ? QBANK.count(batch, subject, chapter) : null;
+    const n = idxN ?? bank.length;
+    if (practice && n) {
+      const onPhone = idxN == null || QBANK.isReady(batch, subject, chapter);
+      practice.querySelector('small').textContent = `${n} प्रश्न · ${onPhone || navigator.onLine ? 'लगेच सराव' : '📶 internet लागेल'}`;
       practice.classList.remove('hidden');
     }
     const tests = published.filter(q => q.batch === batch && q.subject === subject && q.chapter === chapter);
@@ -960,6 +985,8 @@ const UI = (() => {
       (!subject || quiz.subject === subject) &&
       (!chapter || quiz.chapter === chapter)
     );
+    // chapter-wise bank: this chapter's questions come now if they are not on the phone yet
+    if (batch && subject && chapter) await window.QBANK?.ensureChapter?.(batch, subject, chapter, { timeoutMs: 10000 });
     const chapterQuestions = (batch && subject && chapter)
       ? await DB.getQuestionsByChapter(batch, subject, chapter)
       : [];

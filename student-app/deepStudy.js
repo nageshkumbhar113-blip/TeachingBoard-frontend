@@ -28,7 +28,11 @@ const DEEP_STUDY = (() => {
     APP.showScreen('deep-study');
     _showLoading(true);
 
-    const allQ = await DB.getAllQuestions().catch(() => []);
+    // one chapter: only its questions are read (the whole bank can be 20,000+)
+    if (_batch && _chapter) await window.QBANK?.ensureChapter?.(_batch, _subject, _chapter);
+    const allQ = _batch && _chapter
+      ? await DB.getQuestionsByChapter(_batch, _subject, _chapter).catch(() => [])
+      : await DB.getAllQuestions().catch(() => []);
     let pool = allQ.filter(q =>
       (!_batch   || q.batch   === _batch) &&
       (!_subject || q.subject === _subject) &&

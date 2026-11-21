@@ -1010,7 +1010,11 @@ const SYNC = (() => {
     // Use admin question sync when admin token is present; fall back to student sync
     const questionSync = API.getAdminToken()
       ? API.syncServerQuestions().catch(err => { console.warn('SYNC questions:', err.message); return []; })
-      : API.syncStudentQuestions().catch(err => { console.warn('SYNC questions (student):', err.message); return []; });
+      // student: the bank's index (core/qbank.js) where the server has it; else the old whole-bank download
+      : (typeof QBANK !== 'undefined'
+        ? QBANK.refresh().then(ok => (ok ? [] : API.syncStudentQuestions()))
+        : API.syncStudentQuestions()
+      ).catch(err => { console.warn('SYNC questions (student):', err.message); return []; });
 
     const [syncedQ, syncedL, { fetched: syncedQz }] = await Promise.all([
       questionSync,
@@ -1143,13 +1147,15 @@ const SYNC = (() => {
 
   // Which part of the phone's copy is short: fewer published quizzes / questions of the student's classes than
   // the server counts (each fingerprint starts with that count). Unsure → both short (downloaded, as before).
-  async function _localGaps(state) {
+  async function _localGaps(state, qbankMode = false) {
     try {
       const want = f => Number(String(f || '').split(':')[0]) || 0;
       const prof = await API.getStudentProfile?.();
       const mine = new Set((prof?.assigned_batches || []).map(b => String(b || '').trim()).filter(Boolean));
-      if (!mine.size) return { quizzes: true, questions: true };
+      if (!mine.size) return { quizzes: true, questions: !qbankMode };
       const qz = (await DB.getQuizzesByStatus('published')).filter(q => mine.has(String(q.batch || '').trim())).length;
+      // chapter-wise bank: core/qbank.js knows what is missing; the whole bank is not read for a count
+      if (qbankMode) return { quizzes: qz < want(state.quizzes), questions: false };
       const qs = (await DB.getAllQuestions()).filter(q => mine.has(String(q.batch || '').trim())).length;
       return { quizzes: qz < want(state.quizzes), questions: qs < want(state.questions) };
     } catch { return { quizzes: true, questions: true }; }
@@ -1169,9 +1175,14 @@ const SYNC = (() => {
 
     const fullEveryMs = (_studentHints?.fullEverySec || 3600) * 1000;
     const full = force || !smart || !fp.fullAt || (Date.now() - fp.fullAt) >= fullEveryMs || state.access !== fp.access;
-    const gap = !full && launch ? await _localGaps(state) : { quizzes: false, questions: false };
+    // The question bank one chapter at a time (core/qbank.js, 2026-11-22) when the server sends
+    // its index fingerprint: only the index is fetched, and only when it changed; the chapters
+    // themselves come on opening / quietly in the background. No more whole bank every hour.
+    const qbankMode = smart && typeof state.qbank === 'string' && typeof QBANK !== 'undefined' && QBANK.usable() !== false;
+    const gap = !full && launch ? await _localGaps(state, qbankMode) : { quizzes: false, questions: false };
     const doQuizzes   = full || state.quizzes !== fp.quizzes || gap.quizzes;
-    const doQuestions = full || state.questions !== fp.questions || gap.questions;
+    const doQuestions = !qbankMode && (full || state.questions !== fp.questions || gap.questions);
+    const doQbank     = qbankMode && state.qbank !== (await QBANK.fp());
 
     let okQuizzes = false, okQuestions = false, okMe = false;
     const tasks = [];
@@ -1181,6 +1192,10 @@ const SYNC = (() => {
     if (doQuestions) tasks.push(API.syncStudentQuestions()
       .then(() => { okQuestions = true; })
       .catch(err => console.warn('SYNC questions (student cycle):', err.message)));
+    if (doQbank) tasks.push(QBANK.refresh(state.qbank)
+      .then(async ok => { if (!ok) await API.syncStudentQuestions(); okQuestions = true; })   // not offered here → the old way
+      .catch(err => console.warn('SYNC question index (student cycle):', err.message)));
+    else if (qbankMode) { okQuestions = true; QBANK.kick(); }
     if (full) tasks.push(API.fetchStudentMe()
       .then(() => { okMe = true; })
       .catch(err => console.warn('SYNC profile (student cycle):', err.message)));

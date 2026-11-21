@@ -2795,6 +2795,8 @@ const APP = (() => {
       if (window.GUEST?.isActive?.() && GUEST.mayOpenLesson && !(await GUEST.mayOpenLesson(batchName, subject, chapter))) return;
       _homeChapter = chapter;
       _rememberChapter(batchName, subject, chapter).catch(() => {});
+      // chapter-wise bank: its questions start coming now, so practice is ready by the time it is tapped
+      window.QBANK?.ensureChapter?.(batchName, subject, chapter);
 
       // Show Deep Study launch button for this chapter
       const dsBtn = $('btn-deep-study');
@@ -2945,12 +2947,22 @@ const APP = (() => {
     }
     const keepChapter = keepSubject && pick === _homeSubject ? _homeChapter : null;
     _activateHomeChoice('.subject-card', pick, '.subject-name');
-    await _bindSubjectFlow(batchName)(pick, { remember: false });
+    await _bindSubjectFlow(batchName)(pick, { remember: !keepSubject });
     if (stale() || !keepChapter) return;
     // a background refresh (e.g. after a test) only re-highlights the chapter; it never navigates
     _homeChapter = keepChapter;
     _activateHomeChoice('.chapter-item', keepChapter, '.chapter-name');
   }
+
+  // the bank's index arrived / changed (core/qbank.js): the open Course page shows the new counts and chapters
+  let _qbankRedrawT = null;
+  window.addEventListener('qbank-index', () => {
+    clearTimeout(_qbankRedrawT);
+    _qbankRedrawT = setTimeout(() => {
+      if (_currentScreen === 'course' && _homeBatch?.name) _renderCourse({ keepSubject: true }).catch(() => {});
+      else if (_currentScreen === 'home') UI.renderHomeStats().catch?.(() => {});
+    }, 600);
+  });
 
   async function _renderHomeHierarchy({ preserveSelection = false } = {}) {
     await UI.renderBatchGrid(batch => _openCourse(batch).catch(err => console.warn('course failed', err)));

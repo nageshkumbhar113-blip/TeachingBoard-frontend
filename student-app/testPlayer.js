@@ -379,6 +379,8 @@ const TEST_PLAYER = (() => {
       return quiz.shuffle ? _shuffle(uniqueFlat) : uniqueFlat;
     }
 
+    // an old-style test that only lists bank question ids: its chapter's bank must be on the phone
+    if (quiz.batch && quiz.chapter) await window.QBANK?.ensureChapter?.(quiz.batch, quiz.subject || '', quiz.chapter);
     const batchQs = await DB.getQuestionsByBatch(quiz.batch || '');
     const allQs   = batchQs.length ? batchQs : await DB.getAllQuestions();
     const qMap    = Object.fromEntries(allQs.map(q => [q.q_id, q]));

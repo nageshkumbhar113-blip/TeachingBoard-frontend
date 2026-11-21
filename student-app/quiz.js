@@ -159,7 +159,13 @@ const QUIZ = (() => {
       return;
     }
 
+    // chapter-wise bank (core/qbank.js): bring this chapter's questions if they are not on the phone yet
+    const bank = await window.QBANK?.ensureChapter?.(batch, subject, chapter);
     let qs = await DB.getQuestionsByChapter(batch, subject, chapter);
+    if (!qs.length && bank === 'offline') {
+      APP.toast('📶 हा धडा एकदा internet वर उघडा — नंतर internet शिवाय चालेल', 'info');
+      return;
+    }
 
     if (qs.length === 0 && navigator.onLine && batch === API.REMOTE_BATCH) {
       await loadRemoteQuiz();

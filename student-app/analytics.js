@@ -79,13 +79,16 @@ const ANALYTICS = (() => {
       await API.syncMyAttempts().catch(() => {});
     }
 
-    const [attempts, weakQs, allQs, profile] = await Promise.all([
+    const [attempts, weakQs, profile] = await Promise.all([
       DB.getAllAttempts(),
       DB.getWeakQuestions(),
-      DB.getAllQuestions(),
       DB.getSetting('student_profile', null).catch(() => null),
     ]);
     const visibleAttempts = _filterAttemptsForProfile(attempts, profile);
+    // only the questions the student met (the whole bank can be 20,000+)
+    const allQs = DB.getQuestionsByIds
+      ? await DB.getQuestionsByIds([...weakQs.map(q => q.q_id), ...visibleAttempts.flatMap(a => (a.answers || []).map(x => x.q_id))])
+      : await DB.getAllQuestions();
     _data = { attempts: visibleAttempts, stats: _buildAttemptStats(visibleAttempts), weakQs, allQs, me: await _meInfo() };
   }
 

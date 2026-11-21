@@ -166,15 +166,16 @@ const IMAGE_CACHE = (() => {
   // Every picture link in this student's stored content.
   async function _contentLinks() {
     const links = new Set();
-    const [quizzes, questions, study, banners, covers] = await Promise.all([
+    const [quizzes, study, banners, covers] = await Promise.all([
       DB.getAllQuizzes().catch(() => []),
-      DB.getAllQuestions().catch(() => []),
       DB.getAllOfflineStudyContent().catch(() => ({ concepts: [], exercises: [] })),
       DB.getSetting('home_banners_cache', []).catch(() => []),
       DB.getSetting('batch_covers_cache', {}).catch(() => ({})),
     ]);
     _linksIn(quizzes.filter(q => q.source === 'api' && !q.locked), links);
-    _linksIn(questions, links);
+    // the bank question by question (it can be 20,000+; never all in memory at once)
+    if (DB.forEachQuestion) await DB.forEachQuestion(q => _linksIn(q, links)).catch(() => {});
+    else _linksIn(await DB.getAllQuestions().catch(() => []), links);
     _linksIn(study.concepts, links);
     _linksIn(study.exercises, links);
     _linksIn(banners, links);

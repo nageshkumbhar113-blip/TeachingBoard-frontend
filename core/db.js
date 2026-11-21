@@ -306,6 +306,7 @@ const DB = (() => {
     try {
       await _put('questions', normalized);
       await _ensureHierarchyEntry(normalized.batch, normalized.subject, normalized.chapter);
+      await _noteFlag(normalized.q_id, normalized.flagged).catch(() => {});
       return normalized;
     } catch (err) {
       if (queueOnFailure) _queuePendingWrite('saveQuestion', normalized, err);
@@ -344,6 +345,12 @@ const DB = (() => {
   }
 
   async function getQuestionsByChapter(batch, subject, chapter) {
+    // one chapter: read it through the chapter index, not the whole class (a class can
+    // have 20,000+ bank questions — reading all of them took seconds on a cheap phone)
+    if (batch && chapter) {
+      return (await _getAll('questions', 'chapter', chapter)).filter(q =>
+        q.batch === batch && (!subject || q.subject === subject));
+    }
     const all = batch ? await getQuestionsByBatch(batch) : await getAllQuestions();
     return all.filter(q =>
       (!subject || q.subject === subject) &&
@@ -356,11 +363,86 @@ const DB = (() => {
     _questionCache = null;
   }
 
+  // ── The bank one chapter at a time (core/qbank.js, 2026-11-22) ──
+  // Puts a chapter's questions as the server sent them, in one transaction: questions the
+  // server no longer has in that chapter are removed, and the child's own counters on a
+  // question (wrong / correct / weak, flagged) are kept.
+  const _KEEP_FIELDS = ['wrong_count', 'correct_count', 'weak_count', 'flagged'];
+  async function replaceChapterQuestions(batch, subject, chapter, rows = []) {
+    const db = await open();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('questions', 'readwrite');
+      const st = tx.objectStore('questions');
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('aborted'));
+      const req = st.index('chapter').getAll(IDBKeyRange.only(chapter));
+      req.onsuccess = () => {
+        const old = new Map(req.result.filter(q => q.batch === batch && (q.subject || '') === (subject || '')).map(q => [q.q_id, q]));
+        const keep = new Set();
+        for (const r of rows) {
+          const prev = old.get(r.q_id) || {};
+          const q = _normalizeQuestion({ ...r });
+          for (const f of _KEEP_FIELDS) if (prev[f] !== undefined) q[f] = prev[f];
+          keep.add(q.q_id);
+          st.put(q);
+        }
+        for (const id of old.keys()) if (!keep.has(id)) st.delete(id);
+      };
+    });
+    _questionCache = null;
+    if (rows.length) await _ensureHierarchyEntry(batch, subject, chapter).catch(() => {});
+    return rows.length;
+  }
+
+  // Many class / subject / chapter entries at once (the bank's index, 500+ chapters): the
+  // existing lists are read once and only the missing entries are written.
+  async function ensureHierarchyMany(list = []) {
+    const low = v => _cleanText(v).toLowerCase();
+    const [batches, subjects, chapters] = await Promise.all([getAllBatches(), getAllBatchSubjects(), getAllSubjectChapters()]);
+    const hb = new Set(batches.map(x => low(x.name)));
+    const hs = new Set(subjects.map(x => `${low(x.batch)}|${low(x.name)}`));
+    const hc = new Set(chapters.map(x => `${low(x.batch)}|${low(x.subject)}|${low(x.name)}`));
+    let added = 0;
+    for (const { b, s, c } of list) {
+      const B = _cleanText(b), S = _cleanText(s), C = _cleanText(c);
+      if (!B) continue;
+      if (!hb.has(low(B))) { await _put('batches', { name: B, icon: '📚' }); hb.add(low(B)); added++; }
+      if (S && !hs.has(`${low(B)}|${low(S)}`)) { await _put('batch_subjects', { batch: B, name: S, updated_at: Date.now() }); hs.add(`${low(B)}|${low(S)}`); added++; }
+      if (S && C && !hc.has(`${low(B)}|${low(S)}|${low(C)}`)) { await _put('subject_chapters', { batch: B, subject: S, name: C, updated_at: Date.now() }); hc.add(`${low(B)}|${low(S)}|${low(C)}`); added++; }
+    }
+    return added;
+  }
+
+  // removes one chapter's bank questions (the chapter left the student's index)
+  async function deleteChapterQuestions(batch, subject, chapter) {
+    return replaceChapterQuestions(batch, subject, chapter, []);
+  }
+
+  // how many questions of a class are on the phone (without reading them)
+  async function countQuestionsByBatch(batch) {
+    try {
+      const s = await _store('questions');
+      return await _p(s.index('batch').count(IDBKeyRange.only(batch)));
+    } catch { return 0; }
+  }
+
+  // walks every stored question without keeping them all in memory at once
+  async function forEachQuestion(fn) {
+    const db = await open();
+    await new Promise((resolve, reject) => {
+      const req = db.transaction('questions', 'readonly').objectStore('questions').openCursor();
+      req.onsuccess = () => { const c = req.result; if (!c) return resolve(); try { fn(c.value); } catch { /* */ } c.continue(); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   async function toggleFlag(q_id) {
     const q = await _get('questions', q_id);
     if (!q) return false;
     q.flagged = !q.flagged;
     await _put('questions', q);
+    await _noteFlag(q_id, q.flagged).catch(() => {});
     return q.flagged;
   }
 
@@ -383,9 +465,56 @@ const DB = (() => {
     await _put('questions', q);
   }
 
+  // Weak (wrong twice or more) + flagged questions, without reading the whole bank (20,000+
+  // took 15 s on a cheap phone): weak ones from the 'weak' index, flagged ones from a small
+  // list of ids kept beside them (made once from the stored questions, then kept by saves).
+  const FLAGGED_KEY = 'flagged_qids';
+  async function _flaggedIds() {
+    let ids = await getSetting(FLAGGED_KEY, null).catch(() => null);
+    if (!Array.isArray(ids)) {
+      ids = (await _getAll('questions')).filter(q => q.flagged).map(q => q.q_id);
+      await setSetting(FLAGGED_KEY, ids).catch(() => {});
+    }
+    return ids;
+  }
+  async function _noteFlag(q_id, flagged) {
+    const ids = await _flaggedIds();
+    const has = ids.includes(q_id);
+    if (flagged && !has) await setSetting(FLAGGED_KEY, [...ids, q_id]).catch(() => {});
+    if (!flagged && has) await setSetting(FLAGGED_KEY, ids.filter(x => x !== q_id)).catch(() => {});
+  }
   async function getWeakQuestions() {
-    const all = await getAllQuestions();
-    return all.filter(q => (q.weak_count || 0) >= 2 || q.flagged);
+    const [weak, flagged] = await Promise.all([getWeakByIndex(2), _flaggedIds().then(getQuestionsByIds).catch(() => [])]);
+    const seen = new Set(), out = [];
+    for (const q of [...weak, ...flagged]) {
+      if (seen.has(q.q_id) || !((q.weak_count || 0) >= 2 || q.flagged)) continue;
+      seen.add(q.q_id); out.push(q);
+    }
+    return out;
+  }
+
+  // questions answered wrong at least twice, straight from the 'weak' index (fast, any bank size)
+  async function getWeakByIndex(min = 2) {
+    try {
+      const s = await _store('questions');
+      return await _p(s.index('weak').getAll(IDBKeyRange.lowerBound(min)));
+    } catch { return []; }
+  }
+
+  // the questions with these ids (e.g. the ones in the student's attempts)
+  async function getQuestionsByIds(ids = []) {
+    const want = [...new Set(ids.filter(Boolean))];
+    if (!want.length) return [];
+    const db = await open();
+    return new Promise(resolve => {
+      const st = db.transaction('questions', 'readonly').objectStore('questions');
+      const out = []; let left = want.length;
+      for (const id of want) {
+        const r = st.get(id);
+        r.onsuccess = () => { if (r.result) out.push(r.result); if (!--left) resolve(out); };
+        r.onerror = () => { if (!--left) resolve(out); };
+      }
+    });
   }
 
   // ════════════════════════
@@ -1292,6 +1421,14 @@ const DB = (() => {
     getAllQuestions,
     getQuestionsByBatch,
     getQuestionsByChapter,
+    replaceChapterQuestions,
+    deleteChapterQuestions,
+    getQuestionsByIds,
+    getWeakByIndex,
+    ensureHierarchyEntry: (b, s, c) => _ensureHierarchyEntry(b, s, c),
+    ensureHierarchyMany,
+    countQuestionsByBatch,
+    forEachQuestion,
     deleteQuestion,
     toggleFlag,
     incrementWrong,
