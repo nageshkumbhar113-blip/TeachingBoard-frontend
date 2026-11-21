@@ -2608,6 +2608,7 @@ const ADMIN = (() => {
       _wkSchedules.forEach(s => {
         const item = document.createElement('div');
         item.className = 'batch-admin-item';
+        item.dataset.kind = s.kind === 'daily' ? 'daily' : 'weekly';   // the Sync sub-tabs show one kind
         const short = (s.next?.shortages || []).map(x => `${_esc(x.subject)}: ${x.want} मागितले, ${x.got} मिळाले`).join(' · ');
         const next = s.next ? (s.next.status === 'skipped' ? '⚠️ पुढचा test बनला नाही (प्रश्न नाहीत)' : `पुढचा: <b>${_esc(s.next.subject)}</b> · ${_esc(new Date(s.next.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · ${s.next.questions} प्रश्न${short ? ` <span class="wka-warn">⚠️ प्रश्न कमी — ${short}</span>` : ''}`) : '—';
         const what = s.mode === 'papers' ? (s.kind === 'daily' ? `पेपर: ${(s.papers || []).map(p => `${_esc(p.name)} (${(p.parts || []).reduce((n, x) => n + (Number(x.count) || 0), 0)} प्रश्न)`).join(', ')}` : s.papers_same_day ? `सगळे पेपर एकाच दिवशी: ${(s.papers || []).map(p => _esc(p.name)).join(` → ${s.gap_minutes} मि gap → `)}` : `पेपर आलटून-पालटून: ${(s.papers || []).map(p => _esc(p.name)).join(' → ')}`) : `${s.question_count} प्रश्न`;
@@ -2662,6 +2663,7 @@ const ADMIN = (() => {
         const st = e.status === 'skipped' ? '⚠️ बनला नाही' : now < new Date(e.starts_at) ? '⏳ येणारा' : now < new Date(e.ends_at) ? '🔴 LIVE' : '✅ झाला';
         const item = document.createElement('div');
         item.className = 'batch-admin-item';
+        item.dataset.kind = e.kind === 'daily' ? 'daily' : 'weekly';
         item.innerHTML = `
           <div>
             <div class="batch-admin-name">${st} · ${_esc(e.batch)} · ${_esc(e.subject)}${e.is_trial ? ' (trial)' : ''}</div>
