@@ -3,7 +3,8 @@
    and a moving hand 👆 shows where to tap, with one short Marathi line.
    • the first time Home opens: course → (scroll) subject → lesson → its screen
    • the first time each page opens: Notes, Exercise, Test — once each
-   Seen tours are remembered on this phone; Profile › "🎓 Tour पुन्हा पाहा" shows them again.
+   A tour is remembered as seen the moment it starts (owner 2026-11-21: once only, even if the app is closed
+   half-way or the page is left); Skip always clears it. Profile › "🎓 Tour पुन्हा पाहा" shows them again.
    Every step has "Skip"; nothing blocks the app (the lit button works as usual).
 ═══════════════════════════════════════════════════════════════ */
 (function () {
@@ -35,7 +36,9 @@
     ],
   };
 
-  let _running = null;   // { key, i, cleanup }
+  let _running = null;   // { key, i, gen, cleanup }
+  // every tour node on the page — also any left behind by an older step
+  const removeAll = () => document.querySelectorAll('.tour-spot, .tour-hand, .tour-bubble').forEach(n => n.remove());
 
   const CSS = `
 .tour-spot { position: fixed; z-index: 100000; border-radius: 14px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(10, 12, 24, .58);
@@ -78,11 +81,8 @@ body:has(.gx-layer:not(.gx-leaving)) .tour-spot, body:has(.gx-layer:not(.gx-leav
   const busy = () => !!document.querySelector('.gx-layer:not(.gx-leaving), .td-dialog, #profile-settings-overlay, .update-sheet:not(.hidden), #dt-sheet');
 
   function stop(finished) {
-    if (!_running) return;
-    const { key, cleanup } = _running;
-    cleanup();
-    _running = null;
-    if (finished !== false) mark(key);
+    if (_running) { const { key, cleanup } = _running; try { cleanup(); } catch { /* */ } _running = null; if (finished !== false) mark(key); }
+    removeAll();
   }
 
   async function show(key, i) {
@@ -91,14 +91,16 @@ body:has(.gx-layer:not(.gx-leaving)) .tour-spot, body:has(.gx-layer:not(.gx-leav
     if (i >= steps.length) { stop(true); return; }
     const step = steps[i];
     _running.i = i;
-    _running.cleanup();
+    _running.cleanup(); removeAll();
+    const gen = (_running.gen = (_running.gen || 0) + 1), stale = () => !_running || _running.key !== key || _running.gen !== gen;
     let el = null;
     if (step.sel) {
       el = await waitFor(step.sel, step.wait === 'tap' && i > 0 ? 12000 : 8000);
-      if (!_running || _running.key !== key) return;
+      if (stale()) return;
       if (!el) { stop(true); return; }          // the screen is not as expected: end quietly
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       await new Promise(r => setTimeout(r, 380));
+      if (stale()) return;
     }
     const nodes = [];
     const add = (cls, html = '') => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; document.body.appendChild(d); nodes.push(d); return d; };
@@ -121,7 +123,7 @@ body:has(.gx-layer:not(.gx-leaving)) .tour-spot, body:has(.gx-layer:not(.gx-leav
     const next = () => show(key, i + 1);
     const onTap = () => setTimeout(next, 350);
     if (step.wait === 'tap' && el) el.addEventListener('click', onTap, { once: true });
-    bubble.querySelector('.tour-skip').onclick = () => stop(true);
+    bubble.querySelector('.tour-skip').onclick = e => { e.stopPropagation(); stop(true); };
     bubble.querySelector('.tour-next')?.addEventListener('click', next);
     bubble.querySelector('.tour-next')?.focus?.({ preventScroll: true });
     _running.cleanup = () => {
@@ -137,7 +139,8 @@ body:has(.gx-layer:not(.gx-leaving)) .tour-spot, body:has(.gx-layer:not(.gx-leav
     // wait (up to ~20 s) for other popups to close and the first step's button to be there
     for (let t = 0; t < 40 && busy(); t++) await new Promise(r => setTimeout(r, 500));
     if (busy() || _running || (!force && seen(key))) return;   // (marked done while it waited, e.g. by the free part)
-    _running = { key, i: 0, cleanup: () => {} };
+    _running = { key, i: 0, gen: 0, cleanup: () => {} };
+    if (!force) mark(key);   // once only on this phone
     show(key, 0);
   }
 
