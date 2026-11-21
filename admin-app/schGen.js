@@ -1556,7 +1556,7 @@ const SCHGEN = (() => {
       }
       if (d.sgType) { const k = d.sgType; if (st.types.has(k)) { if (selKeys().length > 1) st.types.delete(k); } else st.types.add(k); t.setAttribute('aria-pressed', st.types.has(k)); return; }
       if (t.id === 'sg-go') { readSel(); run(st.count, false); return; }
-      if (t.id === 'sg-stock') { window.SCHSTOCK.open({ sub: st.sub }); return; }
+      if (t.id === 'sg-stock') { window.SCHSTOCK.open({ sub: st.sub, exam: st.exam }); return; }
       if (t.id === 'sg-paper') { readSel(); run(S.PAPER_N?.[st.sub] || 50, true); return; }
       if (t.id === 'sg-addall') { add(st.items.slice()); return; }
       if (d.sgAdd) { add([st.items[+d.sgAdd]]); return; }

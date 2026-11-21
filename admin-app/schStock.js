@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════
-   schStock.js — 📚 साठा वाढवा: the admin grows the 4थी शिष्यवृत्ती मराठी / English banks (owner 2026-11-20).
+   schStock.js — 📚 साठा वाढवा: the admin grows the 4थी and 7वी शिष्यवृत्ती मराठी / English banks (owner 2026-11-20; 7वी 2026-11-21).
    Flow: "📋 AI साठी prompt" (copy, give to ChatGPT / Claude outside the app) → paste the whole answer in ONE box →
    "तपासा": every line is parsed by its [section], compared with what is already there (built-in banks of
    schLang.js + saved stock) → ✅ new / ➕ partly new / ⏭️ already there / ⚠️ wrong / 🔍 doubtful (needs a tick) →
@@ -9,9 +9,9 @@
 ════════════════════════════════════════ */
 const SCHSTOCK = (() => {
   'use strict';
-  const EXAM = '4';
   const S = window.SCH;
   const B = () => S.LANG_B, LG = () => S.LANG;
+  const BK = o => (o.exam === '7' ? S.LANG7_B : S.LANG_B);   // 4थी banks (schLang.js) or 7वी banks (sch7Mr.js / sch7En.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // duplicate key: same word whatever the spaces, quotes, full stops, zero-width marks or capitals
   const NORM = s => String(s ?? '').normalize('NFC').replace(/[​-‍﻿]/g, '').replace(/[\s"'“”‘’`.,!?।:;()[\]{}\-–—_*]+/g, ' ').trim().toLowerCase();
@@ -29,14 +29,14 @@ const SCHSTOCK = (() => {
     K.push({ type: 'line', ...o,
       parse: line => { const [a, b] = eq(line); if (nk(a) === nk(b)) throw 'दोन्ही बाजू सारख्याच आहेत'; o.valid?.(a, b); return [a, b]; },
       keys: e => o.both ? [nk(e[0]), nk(e[1])] : [nk(e[0])],
-      have: () => { const s = new Set(); B()[o.bank].forEach(x => { s.add(nk(x[0])); if (o.both) s.add(nk(x[1])); }); return s; },
-      show: e => `${e[0]} = ${e[1]}`, apply: e => B()[o.bank].push([e[0], e[1]]), count: () => B()[o.bank].length,
-      list: () => B()[o.bank].map(x => x[0]) });
+      have: () => { const s = new Set(); BK(o)[o.bank].forEach(x => { s.add(nk(x[0])); if (o.both) s.add(nk(x[1])); }); return s; },
+      show: e => `${e[0]} = ${e[1]}`, apply: e => BK(o)[o.bank].push([e[0], e[1]]), count: () => BK(o)[o.bank].length,
+      list: () => BK(o)[o.bank].map(x => x[0]) });
   }
   function word(o) {
     K.push({ type: 'line', ...o,
       parse: line => { const w = line.trim(); if (/[=|]/.test(w) || w.split(/\s+/).length > (o.maxWords || 2)) throw 'एका ओळीत एकच शब्द'; o.valid?.(w); return o.upper ? w.toUpperCase() : w; },
-      keys: e => [nk(e)], have: () => new Set(B()[o.bank].map(nk)), show: e => e, apply: e => B()[o.bank].push(e), count: () => B()[o.bank].length, list: () => B()[o.bank].slice() });
+      keys: e => [nk(e)], have: () => new Set(BK(o)[o.bank].map(nk)), show: e => e, apply: e => BK(o)[o.bank].push(e), count: () => BK(o)[o.bank].length, list: () => BK(o)[o.bank].slice() });
   }
   // passage / poem / conversation / advertisement: text, then "? question | answer | wrong | wrong | wrong | उकल"
   function block(o) {
@@ -62,11 +62,11 @@ const SCHSTOCK = (() => {
         return [t, qs];
       },
       keys: e => [nk(e[0]).slice(0, 300)],
-      dupOf: e => { const all = ['MR_PASS', 'MR_POEM', 'MR_DIALOG', 'MR_AD', 'EN_PASS', 'EN_POEM', 'EN_DIALOG', 'EN_AD'].flatMap(b => B()[b]); return all.some(x => jacc(x[0], e[0]) >= 0.8); },
+      dupOf: e => { const all = [...['MR_PASS', 'MR_POEM', 'MR_DIALOG', 'MR_AD', 'EN_PASS', 'EN_POEM', 'EN_DIALOG', 'EN_AD'].flatMap(b => B()[b]), ...['MR7_POEM', 'MR7_PASS', 'MR7_CLOZE', 'EN7_PASS', 'EN7_AD', 'EN7_DIALOG'].flatMap(b => S.LANG7_B?.[b] || [])]; return all.some(x => jacc(x[0], e[0]) >= 0.8); },
       note: e => { const miss = e[1].filter(([q, a]) => !NORM(e[0]).includes(NORM(a)) && !/शीर्षक|title|अर्थ|meaning|opposite|विरुद्धार्थी|समानार्थी|how many|किती|गुण|odd|rhym|यमक|म्हण/i.test(q)); return miss.length ? `${miss.length} प्रश्नांचे उत्तर उताऱ्यात शब्दशः नाही — एकदा तपासा` : ''; },
-      have: () => new Set(B()[o.bank].map(x => nk(x[0]).slice(0, 300))),
-      show: e => `${e[0].split('\n')[0].slice(0, 70)}… (${e[1].length} प्रश्न)`, apply: e => B()[o.bank].push(e), count: () => B()[o.bank].length,
-      list: () => B()[o.bank].map(x => x[0].split('\n')[0].slice(0, 40) + '…') });
+      have: () => new Set(BK(o)[o.bank].map(x => nk(x[0]).slice(0, 300))),
+      show: e => `${e[0].split('\n')[0].slice(0, 70)}… (${e[1].length} प्रश्न)`, apply: e => BK(o)[o.bank].push(e), count: () => BK(o)[o.bank].length,
+      list: () => BK(o)[o.bank].map(x => x[0].split('\n')[0].slice(0, 40) + '…') });
   }
   const MR = 'मराठी', EN = 'English';
 
@@ -189,24 +189,133 @@ const SCHSTOCK = (() => {
   block({ id: 'enDialog', sub: EN, h: ['Conversation', 'Dialogue'], bank: 'EN_DIALOG', fmt: 'conversation, each line "Name : words", then questions starting with "?"', ex: ['Ira : Hello, Neha.', 'Neha : Hello!', '……', '? Which game will they play? | Badminton | Cricket | Football | Kabaddi'], ask: '6-8 lines; 4 questions; --- between conversations' });
   block({ id: 'enAd', sub: EN, h: ['Notice', 'Advertisement'], bank: 'EN_AD', fmt: 'notice or advertisement, then questions starting with "?"', ex: ['SUMMER ART CAMP', 'For children aged 6 to 12 years', '……', '? How many seats are there? | 40 | 300 | 15 | 12'], ask: 'made-up notices for children; 4 questions; --- between notices' });
 
-  const byHead = new Map(); K.forEach(k => [k.id, ...k.h].forEach(h => byHead.set(nk(h), k)));
+
+  /* ───────────── 7वी शिष्यवृत्ती (sch7Mr.js / sch7En.js → S.LANG7_B) ───────────── */
+  const E7 = '7';
+  const B7 = () => S.LANG7_B;
+  // fields separated by "|"; o.make(parts) checks them and returns the bank entry; o.key(entry) = the duplicate key
+  function tup(o) {
+    const key = o.key || (e => e[0]);
+    K.push({ type: 'line', exam: E7, ...o,
+      parse: line => { const p = bar(line, o.n).slice(0, o.n); return o.make ? o.make(p) : p; },
+      keys: e => [nk(key(e))], have: () => new Set(B7()[o.bank].map(x => nk(key(x)))),
+      show: e => o.show ? o.show(e) : e.join(' | '), apply: e => B7()[o.bank].push(e), count: () => B7()[o.bank].length, list: () => B7()[o.bank].map(key) });
+  }
+  // "sentence with ____ | answer | wrong1, wrong2, wrong3"
+  function fill(o) {
+    K.push({ type: 'line', exam: E7, ...o,
+      parse: line => {
+        const p = line.split('|').map(x => x.trim()); if (p.length < 3) throw '"वाक्य | उत्तर | 3 चुकीचे पर्याय" हवे';
+        let s = p[0].replace(/\s+\/\s+/g, '\n'); const a = p[1], w = (p.length > 3 ? p.slice(2) : list(p[2])).filter(Boolean);
+        if (!o.noBlank && !/_{3,}|\.{4,}/.test(s)) throw 'वाक्यात रिकामी जागा ____ हवी'; s = s.replace(/\.{4,}|_{3,}/, '____');
+        if (w.length < 3 || new Set([a, ...w.slice(0, 3)].map(nk)).size < 4) throw 'उत्तर व 3 वेगळे चुकीचे पर्याय हवेत';
+        return [s, a, w.slice(0, 3)];
+      },
+      keys: e => [nk(e[0])], have: () => new Set(B7()[o.bank].map(x => nk(x[0]))), show: e => `${e[0].replace(/\n/g, ' / ').replace('____', `[${e[1]}]`)} ✘ ${e[2].join(', ')}`,
+      apply: e => B7()[o.bank].push(e), count: () => B7()[o.bank].length, list: () => B7()[o.bank].map(x => x[0].slice(0, 50)) });
+  }
+  // one sentence per line
+  function sent(o) {
+    K.push({ type: 'line', exam: E7, ...o,
+      parse: line => { const s = line.trim(); if (/[|=]/.test(s) || s.split(/\s+/).length < 3) throw 'एका ओळीत एक पूर्ण वाक्य'; o.valid?.(s); return s; },
+      keys: e => [nk(e)], have: () => new Set(B7()[o.bank].map(nk)), show: e => e, apply: e => B7()[o.bank].push(e), count: () => B7()[o.bank].length, list: () => B7()[o.bank].slice(0, 300).map(x => x.slice(0, 40)) });
+  }
+  const oneOf = (v, opts, what) => { const k = opts.find(x => nk(x) === nk(v)); if (!k) throw `${what}: ${opts.join(' / ')}`; return k; };
+  const inS = (w, s) => { if (!NORM(s).includes(NORM(w))) throw `"${w}" वाक्यात नाही`; };
+  const pair7 = o => pair({ exam: E7, ...o });
+  const block7 = o => block({ exam: E7, ...o });
+  const word7 = o => word({ exam: E7, ...o });
+
+  // मराठी 7वी
+  K.push({ id: 's7Syn', exam: E7, sub: MR, type: 'line', h: ['समानार्थी', 'समानार्थी शब्द'], fmt: 'शब्द = समानार्थी1, समानार्थी2, समानार्थी3', ex: ['गरीब = दीन, दरिद्री, निर्धन'], ask: 'इयत्ता 7वीच्या पातळीचे (थोडे कठीण, संस्कृतोद्भव) शब्द; प्रत्येक शब्दाला 2–4 खात्रीचे समानार्थी शब्द',
+    parse: line => { const [w, r] = eq(line), s = list(r).filter(x => nk(x) !== nk(w)); if (!s.length) throw 'समानार्थी शब्द हवा'; return [w, s]; },
+    keys: e => [nk(e[0])], have: () => new Set(B7().SYN7.map(x => nk(x[0]))),
+    merge: e => { const old = B7().SYN7.find(x => nk(x[0]) === nk(e[0])); if (!old) return null; const add = e[1].filter(x => !old[1].some(y => nk(y) === nk(x))); return add.length ? [e[0], add] : 'dup'; },
+    show: e => `${e[0]} = ${e[1].join(', ')}`, apply: e => { const old = B7().SYN7.find(x => nk(x[0]) === nk(e[0])); if (old) e[1].forEach(x => old[1].includes(x) || old[1].push(x)); else B7().SYN7.push([e[0], e[1].slice()]); },
+    count: () => B7().SYN7.length, list: () => B7().SYN7.map(x => x[0]) });
+  pair7({ id: 's7Ant', sub: MR, h: ['विरुद्धार्थी', 'विरुद्धार्थी शब्द'], bank: 'ANT7', both: true, fmt: 'शब्द = विरुद्धार्थी शब्द', ex: ['प्राचीन = अर्वाचीन', 'कृतज्ञ = कृतघ्न'], ask: '7वीच्या पातळीचे; उपसर्गाने बनणारे (अ-, निर्-, दुर्-, अप-) व स्वतंत्र दोन्ही प्रकार' });
+  pair7({ id: 's7Mean', sub: MR, h: ['शब्दाचा अर्थ'], bank: 'MEAN7', fmt: 'कठीण शब्द = त्याचा अर्थ (छोटा वाक्यांश)', ex: ['क्षुधाक्रांत = भुकेने व्याकूळ झालेला', 'मितभाषी = कमी बोलणारा'], ask: 'प्रत्येक अर्थ वेगळा असावा; एकमेकांसारखे अर्थ असलेले शब्द देऊ नको' });
+  pair7({ id: 's7Alank', sub: MR, h: ['आलंकारिक शब्द'], bank: 'ALANK7', fmt: 'आलंकारिक शब्द = अर्थ', ex: ['कळीचा नारद = भांडणे लावणारा', 'पांढरा कावळा = दुर्मीळ वस्तू'], ask: 'प्रचलित आलंकारिक शब्द (शब्दसमूह) व त्यांचे प्रमाण अर्थ' });
+  pair7({ id: 's7Idiom', sub: MR, h: ['वाक्प्रचार'], bank: 'IDIOM7', fmt: 'वाक्प्रचार = अर्थ', ex: ['मूग गिळणे = उत्तर न देता गप्प बसणे'], ask: 'प्रत्येक वाक्प्रचाराचा अर्थ वेगळा असावा (दोन वाक्प्रचारांचा अर्थ "घाबरणे" असे नको)' });
+  pair7({ id: 's7Pen', sub: MR, h: ['टोपणनावे', 'टोपणनाव'], bank: 'PEN', both: true, fmt: 'टोपणनाव = पूर्ण खरे नाव', ex: ['कुसुमाग्रज = विष्णू वामन शिरवाडकर'], ask: 'मराठी कवी / लेखकांची टोपणनावे; १००% खात्री असलेलीच' });
+  pair7({ id: 's7Book', sub: MR, h: ['पुस्तक व लेखक'], bank: 'BOOKS', fmt: 'पुस्तकाचे नाव = लेखकाचे नाव', ex: ['श्यामची आई = साने गुरुजी'], ask: 'प्रसिद्ध मराठी पुस्तके; १००% खात्री असलेलीच' });
+  pair7({ id: 's7Num', sub: MR, h: ['वचन', 'अनेकवचन'], bank: 'NUM7', fmt: 'एकवचन = अनेकवचन', ex: ['भिंत = भिंती', 'देऊळ = देवळे'], ask: 'ज्यांचे अनेकवचन बदलते असे नाम; एकच प्रमाण रूप असलेलेच' });
+  tup({ id: 's7Prov', sub: MR, h: ['म्हणी', 'म्हण'], bank: 'PROV7', n: 2, fmt: 'म्हणीचा पहिला भाग | दुसरा भाग', ex: ['दुरून डोंगर | साजरे'], ask: 'प्रचलित मराठी म्हणी, दोन भागांत', key: e => e[0] + e[1], show: e => `${e[0]} ${e[1]}` });
+  word7({ id: 's7Spell', sub: MR, h: ['शुद्ध शब्द', 'शुद्धलेखन'], bank: 'SPELL7', fmt: 'शुद्ध लिहिलेला शब्द (एका ओळीत एक)', ex: ['सहानुभूती', 'दृष्टिकोन'], ask: '7वीच्या पातळीचे शब्द ज्यांत ि/ी, ु/ू, न/ण, श/ष अशा चुका होतात; फक्त शुद्ध रूप',
+    valid: w => { if (LG().misspell(w, LG().SWAP_MR, S.tools(1)).length < 3) throw 'या शब्दात चुकीची रूपे बनवता येत नाहीत'; } });
+  const SDT = ['स्वरसंधी', 'व्यंजनसंधी', 'विसर्गसंधी'];
+  tup({ id: 's7Sandhi', sub: MR, h: ['संधी'], bank: 'SANDHI', n: 3, fmt: 'शब्द | विग्रह (अ + ब) | स्वरसंधी / व्यंजनसंधी / विसर्गसंधी', ex: ['सूर्योदय | सूर्य + उदय | स्वरसंधी', 'निष्फळ | निः + फळ | विसर्गसंधी'], ask: 'पाठ्यपुस्तकातील नियमांप्रमाणे; विग्रहात " + " हवा',
+    make: ([w, v, t]) => { if (!/ \+ /.test(v)) throw 'विग्रहात " + " हवा'; return [w, v.replace(/\s*\+\s*/, ' + '), oneOf(t, SDT, 'प्रकार')]; } });
+  const SMT = ['अव्ययीभाव', 'विभक्ती तत्पुरुष', 'कर्मधारय', 'द्विगू', 'द्वंद्व', 'बहुव्रीही'];
+  tup({ id: 's7Samas', sub: MR, h: ['समास'], bank: 'SAMAS', n: 3, fmt: `सामासिक शब्द | विग्रह | ${SMT.join(' / ')}`, ex: ['घरोघर | प्रत्येक घरी | अव्ययीभाव', 'नवरात्र | नऊ रात्रींचा समूह | द्विगू'], ask: 'प्रत्येक प्रकाराचे शब्द; प्रकाराचे नाव वरीलपैकीच',
+    make: ([w, v, t]) => [w, v, oneOf(t, SMT, 'प्रकार')] });
+  const VBN = ['प्रथमा', 'द्वितीया', 'तृतीया', 'चतुर्थी', 'पंचमी', 'षष्ठी', 'सप्तमी', 'संबोधन'];
+  tup({ id: 's7Vibh', sub: MR, h: ['विभक्ती'], bank: 'VIBH', n: 3, fmt: 'वाक्य | त्यातील शब्द | विभक्ती', ex: ['मुले घरात खेळतात. | घरात | सप्तमी'], ask: 'द्वितीया / चतुर्थी अशी संदिग्ध उदाहरणे टाळ; प्रत्यय स्पष्ट दिसणारे शब्द',
+    make: ([s, w, v]) => { inS(w, s); return [s, w, oneOf(v, VBN, 'विभक्ती')]; } });
+  const JTN = ['नाम', 'सर्वनाम', 'विशेषण', 'क्रियापद', 'क्रियाविशेषण अव्यय', 'शब्दयोगी अव्यय', 'उभयान्वयी अव्यय', 'केवलप्रयोगी अव्यय'];
+  tup({ id: 's7Jat', sub: MR, h: ['शब्दाची जात', 'शब्दांच्या जाती'], bank: 'JAT', n: 3, fmt: `वाक्य | त्यातील शब्द | ${JTN.join(' / ')}`, ex: ['शाळेसमोर मोठे मैदान आहे. | समोर | शब्दयोगी अव्यय'], ask: 'विशेषतः चारही अव्ययांची उदाहरणे; शब्द वाक्यात जसाच्या तसा (जोडलेला असला तरी चालेल)',
+    make: ([s, w, j]) => { inS(w, s); return [s, w, oneOf(j, JTN, 'जात')]; } });
+  const PRT = ['अकर्मक कर्तरी', 'सकर्मक कर्तरी', 'कर्मणी', 'सकर्मक भावे', 'अकर्मक भावे'];
+  tup({ id: 's7Prayog', sub: MR, h: ['प्रयोग'], bank: 'PRAYOG', n: 2, fmt: `प्रयोग | वाक्य   (${PRT.join(' / ')})`, ex: ['कर्मणी | रामाने आंबा खाल्ला.'], ask: 'प्रत्येक प्रकाराची स्पष्ट उदाहरणे', key: e => e[1],
+    make: ([p, s]) => [oneOf(p, PRT, 'प्रयोग'), s] });
+  tup({ id: 's7Vakya', sub: MR, h: ['वाक्यप्रकार'], bank: 'VAKYA', n: 2, fmt: 'केवल / संयुक्त / मिश्र | वाक्य', ex: ['मिश्र | जो कष्ट करतो तो यशस्वी होतो.'], ask: 'फक्त विधानार्थी वाक्ये (प्रश्न / आज्ञा नको)', key: e => e[1],
+    make: ([t, s]) => { if (/[?!]/.test(s)) throw 'फक्त विधानार्थी वाक्य'; return [oneOf(t, ['केवल', 'संयुक्त', 'मिश्र'], 'प्रकार'), s]; } });
+  const ALT = ['अनुप्रास', 'यमक', 'उपमा', 'उत्प्रेक्षा', 'रूपक', 'अतिशयोक्ती', 'चेतनगुणोक्ती', 'अनन्वय', 'दृष्टांत'];
+  tup({ id: 's7Alankar', sub: MR, h: ['अलंकार'], bank: 'ALANKAR', n: 2, fmt: `अलंकार | ओळ (दोन ओळी असल्यास मध्ये " / ")   (${ALT.join(' / ')})`, ex: ['उपमा | आईचे मन लोण्यासारखे मऊ आहे.'], ask: 'स्वतः लिहिलेल्या ओळी (प्रसिद्ध कवितांच्या ओळी नको)', key: e => e[1],
+    make: ([a, s]) => [oneOf(a, ALT, 'अलंकार'), s] });
+  const LGN = ['स्त्रीलिंगी', 'पुल्लिंगी', 'नपुंसकलिंगी'];
+  K.push({ id: 's7Ling', exam: E7, sub: MR, type: 'line', h: ['लिंग'], fmt: 'नाम | स्त्रीलिंगी / पुल्लिंगी / नपुंसकलिंगी', ex: ['भिंत | स्त्रीलिंगी', 'माप | नपुंसकलिंगी'], ask: 'प्रमाण मराठीत एकच लिंग असलेले नाम (प्रदेशानुसार बदलणारे नको)',
+    parse: line => { const [w, g] = bar(line, 2); return [w, oneOf(g, LGN, 'लिंग')]; }, keys: e => [nk(e[0])], have: () => new Set(Object.values(B7().LING).flat().map(nk)),
+    show: e => `${e[0]} → ${e[1]}`, apply: e => B7().LING[e[1]].push(e[0]), count: () => Object.values(B7().LING).flat().length, list: () => Object.values(B7().LING).flat() });
+  block7({ id: 's7Poem', sub: MR, h: ['कविता'], bank: 'MR7_POEM', fmt: 'कविता (12-16 ओळी), खाली प्रत्येक प्रश्न "?" ने सुरू', ex: ['काळ्या मातीत राबतो, घाम गाळतो शेतकरी,', '……', '? कवितेत ‘बळीराजा’ कोणाला म्हटले आहे? | शेतकऱ्याला | मोराला | ढगाला | वाऱ्याला'], ask: 'स्वतःची नवी कविता; 5 प्रश्न (अर्थ, समानार्थी शब्द, अलंकार, संदेश); कवितांच्या मध्ये ---' });
+  block7({ id: 's7Pass', sub: MR, h: ['उतारा'], bank: 'MR7_PASS', fmt: 'उतारा (8-12 वाक्ये), खाली प्रश्न "?" ने', ex: ['रविवारी आमची सहल … गेली. ……', '? सहल कोणत्या गडावर गेली? | सिंहगड | रायगड | प्रतापगड | शिवनेरी'], ask: '5 प्रश्न (माहिती, शब्दार्थ, समास / जात, शीर्षक); उताऱ्यांच्या मध्ये ---' });
+  block7({ id: 's7Cloze', sub: MR, h: ['परिच्छेद पूर्ण करा', 'परिच्छेद'], bank: 'MR7_CLOZE', fmt: 'परिच्छेद, त्यात (1) .........., (2) .........., (3) .......... अशा 3 रिकाम्या जागा; खाली प्रत्येक जागेसाठी प्रश्न "?" ने', ex: ['गावात यंदा (1) .................... पडला होता. ……', '? रिकामी जागा (1) साठी योग्य पर्याय कोणता? | दुष्काळ | सुकाळ | महापूर | हिमवर्षाव'], ask: 'प्रत्येक जागेचे उत्तर संदर्भावरून एकच ठरावे; परिच्छेदांच्या मध्ये ---' });
+
+  // English 7th
+  pair7({ id: 's7Opp', sub: EN, h: ['Opposites', 'Opposite words'], bank: 'OPP7', both: true, fmt: 'word = opposite', ex: ['ancient = modern', 'accept = refuse'], ask: 'Std 7 level words, lowercase; one clear opposite each' });
+  fill({ id: 's7Phrase', sub: EN, h: ['Phrases', 'Phrasal verbs'], bank: 'PHRASE', fmt: 'sentence with ____ | correct phrase | wrong1, wrong2, wrong3', ex: ['The firemen soon ____ the fire. | put out | put on, put up, put off'], ask: 'phrasal verbs and phrases like "in spite of", "plenty of"; the three wrong options must be clearly wrong in that sentence' });
+  fill({ id: 's7Homo', sub: EN, h: ['Homophones'], bank: 'HOMO', fmt: 'sentence with ____ | correct word | wrong1, wrong2, wrong3', ex: ['The ____ rises in the east. | sun | son, sum, soon'], ask: 'the wrong options are homophones or look-alike words' });
+  fill({ id: 's7Modal', sub: EN, h: ['Modals', 'Modal auxiliaries'], bank: 'MODAL', fmt: 'sentence with ____ | correct modal | wrong1, wrong2, wrong3', ex: ['____ I come in, sir? | May | Must, Should, Would'], ask: 'only one modal can fit the meaning; never put two possible answers' });
+  fill({ id: 's7Slogan', sub: EN, h: ['Slogans'], bank: 'SLOGAN', fmt: 'slogan with ____ | correct word | wrong1, wrong2, wrong3', ex: ['Save water, save ____. | life | money, time, shoes'], ask: 'short slogans on health, environment, safety, education' });
+  fill({ id: 's7Dlg', sub: EN, h: ['Dialogue completion'], bank: 'DLG', fmt: 'line 1 / line 2 with ____ / line 3 | answer | wrong1, wrong2, wrong3', ex: ['“Why are you late?” asked the teacher. / “Sorry, ma’am. I ____ the bus,” said Neha. | missed | caught, drove, bought'], ask: 'put " / " between the lines of the dialogue' });
+  fill({ id: 's7Riddle', sub: EN, h: ['Riddles'], bank: 'RIDDLE7', noBlank: true, fmt: 'riddle | answer | wrong1, wrong2, wrong3', ex: ['I have a neck but no head. What am I? | a bottle | a giraffe, a pencil, a pen'], ask: 'no wrong option may also fit the riddle' });
+  tup({ id: 's7Simile', sub: EN, h: ['Similes'], bank: 'SIMILE', n: 2, fmt: 'as … as a … | a situation sentence with ____', ex: ['as busy as a bee | Mother works from morning till night without rest. She is ____.'], ask: 'the situation must point to only that simile',
+    make: ([s, c]) => { if (!/^as \w+ as /i.test(s)) throw 'first part: as … as …'; if (!/_{3,}/.test(c)) throw 'situation needs ____'; return [s.toLowerCase(), c.replace(/_{3,}/, '____')]; } });
+  const PSN = ['noun', 'pronoun', 'adjective', 'verb', 'adverb', 'preposition', 'conjunction', 'interjection'];
+  tup({ id: 's7POS', sub: EN, h: ['Parts of speech'], bank: 'POS', n: 3, fmt: `sentence | word | ${PSN.join(' / ')}`, ex: ['He runs fast. | fast | adverb', 'This is a fast train. | fast | adjective'], ask: 'words that change their part of speech with use are best', key: e => e[0] + e[1],
+    make: ([s, w, p]) => { if (!new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '')}\\b`, 'i').test(s)) throw `"${w}" is not in the sentence`; return [s, w, oneOf(p, PSN, 'part of speech')]; } });
+  tup({ id: 's7Prefix', sub: EN, h: ['Prefix opposites'], bank: 'PREFIX', n: 2, fmt: 'word | prefix that makes its opposite (un / dis / im / in / ir / il)', ex: ['possible | im', 'honest | dis'], ask: 'one correct prefix only',
+    make: ([w, p]) => [w.toLowerCase(), oneOf(p.replace(/-/g, ''), ['un', 'dis', 'im', 'in', 'ir', 'il'], 'prefix')] });
+  sent({ id: 's7Jumble', sub: EN, h: ['Jumbled sentences'], bank: 'JUMBLE7', fmt: 'a correct sentence of 6–8 words (it will be jumbled by the app)', ex: ['They went to the zoo last Sunday.'], ask: 'one meaningful order only', valid: s => { if (s.split(/\s+/).length > 10) throw '6–8 words'; } });
+  sent({ id: 's7Adj', sub: EN, h: ['Adjectives count'], bank: 'ADJ7', fmt: 'sentence with every adjective in {curly brackets}', ex: ['The {little} girl wore a {lovely} {pink} frock.'], ask: '1 to 4 adjectives; mark ALL of them', valid: s => { if (!/\{.+?\}/.test(s)) throw 'mark adjectives with { }'; } });
+  sent({ id: 's7Punct', sub: EN, h: ['Correct punctuation'], bank: 'PUNCT7', fmt: 'a correctly punctuated sentence (apostrophe, commas, question mark, quotes or capital letters)', ex: ['Ravi’s bag is on the table.', 'We bought apples, bananas and grapes.'], ask: 'each sentence tests one punctuation rule' });
+  word7({ id: 's7SpellEn', sub: EN, h: ['Spelling'], bank: 'SPELL7_EN', fmt: 'correctly spelt word (one per line)', ex: ['necessary', 'environment'], ask: 'Std 7 words that children often misspell; British spelling',
+    valid: w => { if (!/^[A-Za-z]+$/.test(w)) throw 'one English word'; if (LG().misEn(w, S.tools(1)).length < 3) throw 'too short for wrong spellings'; } });
+  block7({ id: 's7EPass', sub: EN, h: ['Passage'], bank: 'EN7_PASS', fmt: 'passage (8–10 sentences), then each question on a line starting with "?"', ex: ['Meera was walking home from school when …', '? Where did Meera find the wallet? | Near the bus stop | In her school | In the market | In her house'], ask: '5 questions incl. one word-meaning and one web-diagram style question; --- between passages' });
+  block7({ id: 's7EAd', sub: EN, h: ['Notice', 'Advertisement'], bank: 'EN7_AD', fmt: 'notice or advertisement, then questions starting with "?"', ex: ['NOTICE', 'SUNRISE HIGH SCHOOL …', '? What should every student bring? | One sapling | A football | A notebook | An umbrella'], ask: 'made-up notices / advertisements; 5 questions; --- between them' });
+  block7({ id: 's7EConv', sub: EN, h: ['Conversation', 'Dialogue'], bank: 'EN7_DIALOG', fmt: 'conversation, each line "Name : words", then questions starting with "?"', ex: ['Rohan : Good morning, sir. May I come in?', '……', '? Why was Rohan late? | His bicycle had a flat tyre | He woke up late | He missed the bus | He was ill'], ask: '6–8 lines; 4 questions; --- between conversations' });
+
+  K.forEach(k => { k.exam = k.exam || '4'; });
+  const byHead = { 4: new Map(), 7: new Map() }; K.forEach(k => [k.id, ...k.h].forEach(h => byHead[k.exam].set(nk(h), k)));
   const kindOf = id => K.find(k => k.id === id);
 
   /* ───────────── server stock → banks ───────────── */
-  const st = { loaded: false, loading: null, batches: [], items: [], pristine: null };
-  const live = () => new Set(st.batches.filter(b => b.status === 'live').map(b => b.id));
-  function rebuild() {
-    const b = B();
+  const ST = { 4: { exam: '4', loaded: false, loading: null, batches: [], items: [], pristine: null }, 7: { exam: '7', loaded: false, loading: null, batches: [], items: [], pristine: null } };
+  function rebuild(ex = '4') {
+    const st = ST[ex], b = ex === '7' ? S.LANG7_B : B(); if (!b) return;
     if (!st.pristine) st.pristine = JSON.parse(JSON.stringify(b));
     else for (const k of Object.keys(st.pristine)) { const src = JSON.parse(JSON.stringify(st.pristine[k])); if (Array.isArray(b[k])) b[k].splice(0, b[k].length, ...src); else for (const t of Object.keys(src)) b[k][t].splice(0, b[k][t].length, ...src[t]); }
-    const on = live();
-    st.items.forEach(it => { const k = kindOf(it.kind); if (k && on.has(it.batch_id)) try { k.apply(it.entry); } catch (e) { console.warn('stock', it.kind, e); } });
+    const on = new Set(st.batches.filter(x => x.status === 'live').map(x => x.id));
+    st.items.forEach(it => { const k = kindOf(it.kind); if (k && k.exam === ex && on.has(it.batch_id)) try { k.apply(it.entry); } catch (e) { console.warn('stock', it.kind, e); } });
   }
-  async function load(force) {
+  // load(force) → both exams; load(force, '7') → one
+  async function load(force, ex) {
+    if (!ex) { await Promise.all(['4', '7'].map(x => load(force, x))); return ST['4']; }
+    const st = ST[ex];
     if (st.loaded && !force) return st;
     if (st.loading && !force) return st.loading;
     st.loading = (async () => {
-      try { const d = await window.API?.schStockGet?.(EXAM); if (d) { st.batches = d.batches || []; st.items = d.items || []; } st.loaded = true; rebuild(); }
+      try { const d = await window.API?.schStockGet?.(ex); if (d) { st.batches = d.batches || []; st.items = d.items || []; } st.loaded = true; rebuild(ex); }
       catch (e) { console.warn('sch-stock load', e); }
       st.loading = null; return st;
     })();
@@ -215,8 +324,8 @@ const SCHSTOCK = (() => {
 
   /* ───────────── paste → rows ───────────── */
   function clean(line) { return line.replace(/\*\*/g, '').replace(/^\s*(?:\d{1,3}[.)]\s+|[-*•]\s+)/, '').trim(); }
-  function check(text) {
-    const rows = [], seen = new Set(), saved = new Set(st.items.map(i => i.kind + '\u0000' + i.norm)), haveCache = new Map();
+  function check(text, exam = '4') {
+    const rows = [], seen = new Set(), saved = new Set(ST[exam].items.map(i => i.kind + '\u0000' + i.norm)), haveCache = new Map();
     const have = k => { if (!haveCache.has(k.id)) haveCache.set(k.id, k.have()); return haveCache.get(k.id); };
     const ctx = { idioms: new Set() };
     let cur = null, chunk = [];
@@ -241,7 +350,7 @@ const SCHSTOCK = (() => {
     for (const raw0 of String(text).replace(/\r/g, '').split('\n')) {
       if (/^\s*```/.test(raw0)) continue;
       const h = raw0.replace(/\*\*/g, '').trim().match(/^#*\s*\[(.+?)\]\s*:?\s*$/);
-      if (h) { flush(); cur = byHead.get(nk(h[1])) || null; if (!cur) rows.push({ st: 'bad', title: h[1], show: raw0.trim(), msg: 'हा प्रकार ओळखला नाही — prompt मधले शीर्षक वापरा', on: false }); continue; }
+      if (h) { flush(); cur = byHead[exam].get(nk(h[1])) || null; if (!cur) rows.push({ st: 'bad', title: h[1], show: raw0.trim(), msg: 'हा प्रकार ओळखला नाही — prompt मधले शीर्षक वापरा', on: false }); continue; }
       if (cur?.type === 'block') { chunk.push(raw0); continue; }
       const line = clean(raw0); if (!line) continue;
       if (!cur) { rows.push({ st: 'bad', title: '', show: line.slice(0, 120), msg: 'या ओळीच्या वर [प्रकार] शीर्षक नाही', on: false }); continue; }
@@ -252,10 +361,12 @@ const SCHSTOCK = (() => {
   }
 
   /* ───────────── AI prompt ───────────── */
-  function prompt(sub, ids, n, avoid) {
-    const ks = K.filter(k => k.sub === sub && ids.includes(k.id));
+  function prompt(sub, ids, n, avoid, exam = '4') {
+    const ks = K.filter(k => k.exam === exam && k.sub === sub && ids.includes(k.id));
     const isMr = sub === MR;
-    const head = isMr
+    const head = exam === '7' ? (isMr
+      ? `तू महाराष्ट्र राज्य शिष्यवृत्ती परीक्षा (इयत्ता 7वी, उच्च प्राथमिक — पूर्वीची 8वी पूर्व माध्यमिक) च्या मराठी विभागासाठी प्रश्नांचा साठा तयार करणारा अनुभवी मराठी शिक्षक आहेस.\n\nनियम:\n1. शुद्ध, प्रमाण मराठी; इयत्ता 7वीच्या पातळीचे. व्याकरणाचे नियम (संधी, समास, विभक्ती, प्रयोग, अलंकार) पाठ्यपुस्तकाप्रमाणे काटेकोर.\n2. कविता, उतारे, परिच्छेद स्वतः नव्याने लिही — पाठ्यपुस्तकातून किंवा इतर कुठूनही कॉपी करू नको.\n3. प्रत्येक प्रकाराच्या ${n} नवीन नोंदी दे (कविता / उतारा / परिच्छेद: प्रत्येकी ${Math.max(2, Math.round(n / 10))}).\n4. ज्याबद्दल 100% खात्री नाही ते देऊ नको; दोन उत्तरे बरोबर ठरतील अशी नोंद देऊ नको. शुद्धलेखन दोनदा तपास.\n5. "आधीच आहेत" यादीतले परत देऊ नको.\n6. उत्तर फक्त खालील format मध्ये, संपूर्ण एकाच code block मध्ये. क्रमांक, bullet, bold, स्पष्टीकरण काहीही नको. प्रत्येक प्रकाराचे शीर्षक [चौकोनी कंसात] जसेच्या तसे ठेव.\n`
+      : `You are an experienced English teacher preparing question material for the Maharashtra State Scholarship Exam, Std 7 (Upper Primary, formerly Std 8 Pre-Secondary), English section. The children study in Marathi-medium schools.\n\nRules:\n1. English for a 12-year-old Marathi-medium child; grammar exactly as in school textbooks.\n2. Write passages, notices and conversations yourself — never copy from textbooks or anywhere else.\n3. Give ${n} new entries for each section (passage / notice / conversation: ${Math.max(2, Math.round(n / 10))} each).\n4. Give only what you are fully sure is correct; never an item where two options could be right. British spelling.\n5. Do not repeat anything from the "already have" lists.\n6. Answer ONLY in the format below, all inside ONE code block. No numbering, bullets, bold or explanations. Keep each section heading in [square brackets] exactly as written.\n`) : isMr
       ? `तू महाराष्ट्र राज्य शिष्यवृत्ती परीक्षा (इयत्ता 4थी, पूर्वीची 5वी) च्या मराठी विभागासाठी प्रश्नांचा साठा तयार करणारा अनुभवी मराठी शिक्षक आहेस.\n\nनियम:\n1. शुद्ध, प्रमाण मराठी; इयत्ता 4थीच्या मुलांना समजेल अशी पातळी.\n2. उतारे, कविता, संवाद, जाहिराती स्वतः नव्याने लिही — पाठ्यपुस्तकातून किंवा इतर कुठूनही कॉपी करू नको.\n3. प्रत्येक प्रकाराच्या ${n} नवीन नोंदी दे (उतारा / कविता / संवाद / जाहिरात: प्रत्येकी ${Math.max(2, Math.round(n / 10))}).\n4. ज्याबद्दल पूर्ण खात्री नाही ते देऊ नको. शुद्धलेखन दोनदा तपास.\n5. "आधीच आहेत" यादीतले शब्द / वाक्ये परत देऊ नको.\n6. उत्तर फक्त खालील format मध्ये, संपूर्ण एकाच code block मध्ये. क्रमांक, bullet, bold, स्पष्टीकरण काहीही नको. प्रत्येक प्रकाराचे शीर्षक [चौकोनी कंसात] जसेच्या तसे ठेव.\n`
       : `You are an experienced English teacher preparing question material for the Maharashtra State Scholarship Exam, Std 4 (formerly Std 5), English section. The children study in Marathi-medium schools.\n\nRules:\n1. Simple English for a 9-year-old Marathi-medium child.\n2. Write passages, poems, conversations and notices yourself — never copy from textbooks or anywhere else.\n3. Give ${n} new entries for each section (passage / poem / conversation / notice: ${Math.max(2, Math.round(n / 10))} each).\n4. Give only what you are fully sure is correct. British spelling.\n5. Do not repeat anything from the "already have" lists.\n6. Answer ONLY in the format below, all inside ONE code block. No numbering, bullets, bold or explanations. Keep each section heading in [square brackets] exactly as written.\n`;
     const body = ks.map(k => {
@@ -293,18 +404,20 @@ const SCHSTOCK = (() => {
     _css(); await load();
     ui?.ov.remove();
     const ov = document.createElement('div'); ov.className = 'ss-ov';
-    ov.innerHTML = `<div class="ss-box" role="dialog" aria-modal="true" aria-label="साठा वाढवा"><div class="ss-top"><h3>📚 शिष्यवृत्ती साठा वाढवा (4थी मराठी / English)</h3><button type="button" class="admin-btn-secondary" data-ss-close aria-label="बंद करा">✕</button></div>
+    ov.innerHTML = `<div class="ss-box" role="dialog" aria-modal="true" aria-label="साठा वाढवा"><div class="ss-top"><h3>📚 शिष्यवृत्ती साठा वाढवा (मराठी / English)</h3><span class="ss-chips" role="group" aria-label="परीक्षा"><button type="button" class="ss-chip" data-ss-exam="4">4थी</button><button type="button" class="ss-chip" data-ss-exam="7">7वी</button></span><button type="button" class="admin-btn-secondary" data-ss-close aria-label="बंद करा">✕</button></div>
       <div class="ss-tabs" role="tablist"><button type="button" class="ss-tab" role="tab" data-ss-tab="paste">📥 पेस्ट करा</button><button type="button" class="ss-tab" role="tab" data-ss-tab="prompt">📋 AI साठी prompt</button><button type="button" class="ss-tab" role="tab" data-ss-tab="batches">📦 Batches</button></div>
       <div id="ss-body"></div></div>`;
     document.body.appendChild(ov);
-    ui = { ov, tab: 'paste', rows: [], text: '', sub: opts.sub === EN ? EN : MR, pick: null, n: 20, avoid: true };
+    ui = { ov, tab: 'paste', rows: [], text: '', sub: opts.sub === EN ? EN : MR, exam: opts.exam === '7' ? '7' : '4', pick: null, n: 20, avoid: true };
     ov.addEventListener('click', onClick); ov.addEventListener('change', onChange); ov.addEventListener('input', e => { if (e.target.id === 'ss-text') ui.text = e.target.value; });
     render();
   }
-  function counts(sub) { return K.filter(k => k.sub === sub).map(k => `${k.h[0]}: ${k.count()}`).join(' · '); }
+  const cur = () => ST[ui?.exam || '4'];
+  function counts(sub) { return K.filter(k => k.exam === ui.exam && k.sub === sub).map(k => `${k.h[0]}: ${k.count()}`).join(' · '); }
   function render() {
     const body = ui.ov.querySelector('#ss-body');
     ui.ov.querySelectorAll('[data-ss-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.ssTab === ui.tab)));
+    ui.ov.querySelectorAll('[data-ss-exam]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ssExam === ui.exam)));
     if (ui.tab === 'paste') {
       const r = ui.rows, c = s => r.filter(x => x.st === s).length, on = r.filter(x => x.on).length;
       body.innerHTML = `<p class="ss-cnt" style="margin:0">AI चं संपूर्ण उत्तर इथे एकदम पेस्ट करा. प्रत्येक भाग [प्रकार] शीर्षकाखाली हवा. "तपासा" दाबल्यावर आधीच असलेले शब्द आपोआप वगळले जातील.</p>
@@ -317,9 +430,9 @@ const SCHSTOCK = (() => {
           <div class="ss-list">${r.map((x, i) => `<div class="ss-r ${x.st}"><input type="checkbox" data-ss-on="${i}"${x.on ? ' checked' : ''}${x.st === 'dup' || x.st === 'bad' ? ' disabled' : ''} aria-label="घ्या"><span>${ICON[x.st]}</span><span class="k">${esc(x.title || '—')}</span><span>${esc(x.show)}${x.msg ? `<span class="m">${esc(x.msg)}</span>` : ''}</span></div>`).join('')}</div>
           <div class="ss-row"><button type="button" class="admin-btn-primary" data-ss-save${on ? '' : ' disabled'}>💾 ${on} नोंदी Save करा</button><span class="ss-cnt" id="ss-msg"></span></div>` : ''}`;
     } else if (ui.tab === 'prompt') {
-      const ks = K.filter(k => k.sub === ui.sub);
+      const ks = K.filter(k => k.exam === ui.exam && k.sub === ui.sub);
       if (!ui.pick || !ks.some(k => ui.pick.has(k.id))) ui.pick = new Set(ks.filter(k => k.type === 'line').slice(0, 6).map(k => k.id));
-      const p = prompt(ui.sub, [...ui.pick], ui.n, ui.avoid);
+      const p = prompt(ui.sub, [...ui.pick], ui.n, ui.avoid, ui.exam);
       body.innerHTML = `<div class="ss-row"><span class="ss-cnt">विषय</span>${[MR, EN].map(s => `<button type="button" class="ss-chip" aria-pressed="${s === ui.sub}" data-ss-sub="${s}">${s}</button>`).join('')}
           <span class="ss-cnt">प्रत्येकी</span><select class="admin-select" id="ss-n">${[10, 20, 30, 50].map(x => `<option${x === ui.n ? ' selected' : ''}>${x}</option>`).join('')}</select>
           <label class="ss-cnt"><input type="checkbox" id="ss-avoid"${ui.avoid ? ' checked' : ''}> आधीचे शब्द prompt मध्ये देऊन "हे परत नको" सांगा</label></div>
@@ -328,7 +441,7 @@ const SCHSTOCK = (() => {
         <div class="ss-row"><button type="button" class="admin-btn-primary" data-ss-copy>📋 Prompt कॉपी करा</button><span class="ss-cnt" id="ss-copied"></span></div>
         <textarea class="ss-ta" id="ss-prompt" readonly style="min-height:220px">${esc(p)}</textarea>`;
     } else {
-      const bs = st.batches;
+      const bs = cur().batches;
       body.innerHTML = `<p class="ss-cnt" style="margin:0">${esc(counts(MR))}<br>${esc(counts(EN))}</p>
         ${bs.length ? bs.map(b => `<div class="ss-b"><b>${esc(b.name)}</b><span class="ss-cnt">${esc(b.source)} · ${new Date(b.created_at).toLocaleDateString('mr-IN')} · ${b.count} नोंदी</span>
           <span class="ss-pill${b.status === 'live' ? '' : ' rv'}">${b.status === 'live' ? 'प्रश्नांत वापरला जातो' : 'तपासणी बाकी'}</span>
@@ -342,17 +455,18 @@ const SCHSTOCK = (() => {
     const t = e.target.closest('button'); if (!t) return;
     const d = t.dataset;
     if (d.ssClose !== undefined) { ui.ov.remove(); ui = null; return; }
-    if (d.ssTab) { ui.tab = d.ssTab; if (ui.tab === 'batches') await load(true); render(); return; }
-    if (d.ssCheck !== undefined) { ui.text = ui.ov.querySelector('#ss-text').value; if (!ui.text.trim()) return toast('आधी मजकूर पेस्ट करा', 'error'); await load(true); ui.rows = check(ui.text); render(); return; }
+    if (d.ssExam) { if (d.ssExam !== ui.exam) { ui.exam = d.ssExam; ui.pick = null; ui.rows = []; await load(false, ui.exam); render(); } return; }
+    if (d.ssTab) { ui.tab = d.ssTab; if (ui.tab === 'batches') await load(true, ui.exam); render(); return; }
+    if (d.ssCheck !== undefined) { ui.text = ui.ov.querySelector('#ss-text').value; if (!ui.text.trim()) return toast('आधी मजकूर पेस्ट करा', 'error'); await load(true, ui.exam); ui.rows = check(ui.text, ui.exam); render(); return; }
     if (d.ssSave !== undefined) {
       const on = ui.rows.filter(x => x.on && x.entry);
       if (!on.length) return;
       t.disabled = true; const msg = ui.ov.querySelector('#ss-msg'); if (msg) msg.textContent = '⏳ Save होत आहे…';
       ui.name = ui.ov.querySelector('#ss-name').value.trim(); ui.src = ui.ov.querySelector('#ss-src').value; ui.review = ui.ov.querySelector('#ss-review').checked;
       try {
-        const r = await API.schStockSave({ exam: EXAM, name: ui.name || `${ui.src} – ${new Date().toLocaleDateString('mr-IN')}`, source: ui.src, status: ui.review ? 'review' : 'live', items: on.map(x => ({ kind: x.kind, entry: x.entry, norm: x.norm })) });
+        const r = await API.schStockSave({ exam: ui.exam, name: ui.name || `${ui.src} – ${new Date().toLocaleDateString('mr-IN')}`, source: ui.src, status: ui.review ? 'review' : 'live', items: on.map(x => ({ kind: x.kind, entry: x.entry, norm: x.norm })) });
         if (!r?.success) throw new Error(r?.message || 'Save झालं नाही');
-        await load(true);
+        await load(true, ui.exam);
         toast(`✅ ${r.data.saved} नोंदी save झाल्या${r.data.skipped ? `, ${r.data.skipped} आधीच होत्या` : ''}${ui.review ? ' (तपासणी बाकी)' : ''}`, 'success');
         ui.rows = []; ui.text = ''; ui.tab = 'batches'; render();
       } catch (err) { t.disabled = false; if (msg) msg.textContent = '⚠️ ' + (err.message || 'Save झालं नाही'); }
@@ -361,8 +475,8 @@ const SCHSTOCK = (() => {
     if (d.ssSub) { ui.sub = d.ssSub; ui.pick = null; render(); return; }
     if (d.ssPick) { ui.pick.has(d.ssPick) ? ui.pick.delete(d.ssPick) : ui.pick.add(d.ssPick); if (!ui.pick.size) ui.pick.add(d.ssPick); render(); return; }
     if (d.ssCopy !== undefined) { const p = ui.ov.querySelector('#ss-prompt'); try { await navigator.clipboard.writeText(p.value); } catch { p.select(); document.execCommand('copy'); } ui.ov.querySelector('#ss-copied').textContent = '✅ कॉपी झाला — ChatGPT / Claude मध्ये पेस्ट करा'; return; }
-    if (d.ssStatus) { const b = st.batches.find(x => x.id === d.ssStatus); try { await API.schStockBatch(b.id, b.status === 'live' ? 'review' : 'live'); } catch (err) { return toast(err.message || 'झालं नाही', 'error'); } await load(true); render(); return; }
-    if (d.ssDel) { const b = st.batches.find(x => x.id === d.ssDel); if (!confirm(`"${b.name}" मधल्या ${b.count} नोंदी कायमच्या काढायच्या?`)) return; let r; try { r = await API.schStockDeleteBatch(b.id); } catch (err) { return toast(err.message || 'झालं नाही', 'error'); } await load(true); toast(`🗑️ ${r.data.removed} नोंदी काढल्या`, 'success'); render(); return; }
+    if (d.ssStatus) { const b = cur().batches.find(x => x.id === d.ssStatus); try { await API.schStockBatch(b.id, b.status === 'live' ? 'review' : 'live'); } catch (err) { return toast(err.message || 'झालं नाही', 'error'); } await load(true, ui.exam); render(); return; }
+    if (d.ssDel) { const b = cur().batches.find(x => x.id === d.ssDel); if (!confirm(`"${b.name}" मधल्या ${b.count} नोंदी कायमच्या काढायच्या?`)) return; let r; try { r = await API.schStockDeleteBatch(b.id); } catch (err) { return toast(err.message || 'झालं नाही', 'error'); } await load(true, ui.exam); toast(`🗑️ ${r.data.removed} नोंदी काढल्या`, 'success'); render(); return; }
     if (d.ssPrint) printBatch(d.ssPrint);
   }
   function onChange(e) {
@@ -371,7 +485,7 @@ const SCHSTOCK = (() => {
     if (t.id === 'ss-n') { ui.n = +t.value; render(); } if (t.id === 'ss-avoid') { ui.avoid = t.checked; render(); }
   }
   async function printBatch(id) {
-    const b = st.batches.find(x => x.id === id), its = st.items.filter(i => i.batch_id === id);
+    const b = cur().batches.find(x => x.id === id), its = cur().items.filter(i => i.batch_id === id);
     const groups = new Map(); its.forEach(i => { const k = kindOf(i.kind); const g = k ? k.h[0] : i.kind; (groups.get(g) || groups.set(g, []).get(g)).push(i); });
     const row = i => { const k = kindOf(i.kind); if (k?.type === 'block') { const [t, qs] = i.entry; return `<div class="p">${esc(t)}</div><ol>${qs.map(([q, a, w]) => `<li>${esc(q)}<br><b>✔ ${esc(a)}</b> · ✘ ${w.map(esc).join(' · ✘ ')}</li>`).join('')}</ol>`; } return `<li>${esc(k ? k.show(i.entry) : JSON.stringify(i.entry))}</li>`; };
     const html = `<!doctype html><html lang="mr"><head><meta charset="utf-8"><title>${esc(b.name)}</title><style>body{font-family:'Nirmala UI','Noto Sans Devanagari',sans-serif;font-size:13px;margin:24px}h1{font-size:18px}h2{font-size:15px;background:#eee;padding:4px 8px}li{margin:3px 0}.p{white-space:pre-line;background:#f6f4ff;padding:6px 9px;border-left:3px solid #6d3cf0;margin-top:10px}</style></head><body>
@@ -382,6 +496,6 @@ const SCHSTOCK = (() => {
     w.document.open(); w.document.write(html); w.document.close(); setTimeout(() => { w.focus(); w.print(); }, 300);
   }
 
-  return { load, open, check, prompt, rebuild, KINDS: K, _st: st, _norm: nk };
+  return { load, open, check, prompt, rebuild, KINDS: K, _st: ST['4'], _ST: ST, _norm: nk };
 })();
 window.SCHSTOCK = SCHSTOCK;
