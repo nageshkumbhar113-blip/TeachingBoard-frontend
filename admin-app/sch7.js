@@ -960,11 +960,149 @@
     return mk(R, { q: `घड्याळात ${a}:30 पासून पुढील ${span} तासांत मिनिट काटा तास काट्याला किती वेळा ओलांडतो?`, a: crosses, w: [span, span - 2, crosses + 1, crosses - 1].filter(v => v > 0), steps: ['12 तासांत काटे 11 वेळा एकत्र येतात (सुमारे दर 65 5/11 मिनिटांनी)', `${span} तासांत ${crosses} वेळा`] });
   });
 
+  /* ───── आकृती: पायथागोरस, कोन (रेषीय जोडी, पूरक/कोटिकोनांच्या जोड्या), संख्यारेषा ───── */
+  const minus = v => String(v).replace(/-/g, '−');
+  const PT = (cx, cy, r, d) => [cx + r * Math.cos((d * Math.PI) / 180), cy - r * Math.sin((d * Math.PI) / 180)];
+  const arc = (cx, cy, r, d1, d2, o = 'fill="none" stroke="#b45309" stroke-width="1.5"') => { const a = PT(cx, cy, r, d1), b = PT(cx, cy, r, d2); return `<path d="M${r2(a[0])} ${r2(a[1])} A${r} ${r} 0 ${d2 - d1 > 180 ? 1 : 0} 0 ${r2(b[0])} ${r2(b[1])}" ${o}/>`; };
+  const B7 = 'font-weight="700"';
+  // काटकोनाची खूण: कोपरा C, दोन्ही दिशांचे एकक सदिश u, v
+  const rightMark = (C, u, v, s = 11) => `<polyline points="${r2(C[0] + u[0] * s)},${r2(C[1] + u[1] * s)} ${r2(C[0] + (u[0] + v[0]) * s)},${r2(C[1] + (u[1] + v[1]) * s)} ${r2(C[0] + v[0] * s)},${r2(C[1] + v[1] * s)}" fill="none" stroke="#222" stroke-width="1.5"/>`;
+  const unit = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[0] - a[0]) / d, (b[1] - a[1]) / d]; };
+
+  // △PQR, ∠Q = 90°: PQ उभी, QR आडवी (आकृती प्रमाणात नसते, पेपरसारखीच)
+  const rtTri = (A, B, o = {}) => {
+    let W = 210, H = (210 * A) / B; if (H > 150) { H = 150; W = (150 * B) / A; } H = Math.max(H, 70); W = Math.max(W, 90);
+    const Q = [55, 175], P = [55, 175 - H], Rr = [55 + W, 175], w = W + 110;
+    let b = pg([P, Q, Rr], 'fill="#fff7ef" ' + INK) + rightMark(Q, [0, -1], [1, 0]) + tx(P[0], P[1] - 7, 'P', B7) + tx(Q[0] - 10, Q[1] + 14, 'Q', B7) + tx(Rr[0] + 10, Rr[1] + 14, 'R', B7);
+    b += tx(Q[0] - 8, (P[1] + Q[1]) / 2 + 4, o.pq, 'text-anchor="end"') + tx((Q[0] + Rr[0]) / 2, Q[1] + 18, o.qr);
+    const n = unit(P, Rr), mid = [(P[0] + Rr[0]) / 2, (P[1] + Rr[1]) / 2];
+    if (o.pr) b += tx(mid[0] + n[1] * 12, mid[1] - n[0] * 12, o.pr, 'text-anchor="start"' + (o.prHL ? ' ' + HL : ''));
+    if (o.alt) {
+      const t = ((Q[0] - P[0]) * n[0] + (Q[1] - P[1]) * n[1]), M = [P[0] + n[0] * t, P[1] + n[1] * t];
+      b += ln(...Q, ...M, 'stroke="#222" stroke-width="1.6"') + rightMark(M, unit(M, Q), unit(M, Rr), 9) + tx(M[0] + 10, M[1] - 6, 'M', B7) + tx((Q[0] + M[0]) / 2 + 4, (Q[1] + M[1]) / 2 + 16, o.alt, HL);
+    }
+    return svg(r2(w), 200, b);
+  };
+
+  def('m7pyth', 'आकृती: पायथागोरसचे प्रमेय', (R, Lv) => {
+    const trip = [[3, 4, 5], [5, 12, 13], [8, 15, 17], [7, 24, 25], [20, 21, 29], [9, 40, 41], [12, 35, 37], [6, 8, 10]];
+    const t = vt(R, Lv, [1, 4, 2, 3]);
+    if (t === 1) {
+      const [a, b, c] = R.pick(Lv === 1 ? trip.slice(0, 3) : trip), k = R.pick([1, 1, 2, 3]), A = a * k, B = b * k, C = c * k;
+      const fig = rtTri(A, B, { pq: `${A} सेमी`, qr: `${B} सेमी` }), sfig = rtTri(A, B, { pq: `${A}`, qr: `${B}`, pr: `PR = ${C}`, prHL: 1 });
+      return mk(R, { fig, sfig, q: `आकृतीत △PQR मध्ये ∠Q = 90°, PQ = ${A} सेमी व QR = ${B} सेमी आहे. तर △PQR ची परिमिती किती?`, a: (A + B + C) + ' सेमी', w: [C + ' सेमी', (A + B) + ' सेमी', (A + B + C + 2 * k) + ' सेमी', (2 * C + A) + ' सेमी'],
+        steps: [`कर्ण PR² = PQ² + QR² = ${A * A} + ${B * B} = ${C * C}`, `PR = ${C} सेमी`, `परिमिती = ${A} + ${B} + ${C} = ${A + B + C} सेमी`] });
+    }
+    if (t === 2) {
+      const ok = R.shuffle(trip).slice(0, 3).map(([a, b, c]) => { const k = R.pick([1, 2, 3]); return `(${a * k}, ${b * k}, ${c * k})`; });
+      const [a, b, c] = R.pick(trip), bad = `(${a}, ${b + 1}, ${c + R.pick([0, 1])})`; if (ok.includes(bad)) return null;
+      return mk(R, { q: 'खालीलपैकी कोणता संख्यासमूह पायथागोरसचे त्रिकूट नाही?', a: bad, w: ok, steps: [`${bad} : ${a}² + ${b + 1}² = ${a * a + (b + 1) ** 2}, हे मोठ्या संख्येच्या वर्गाएवढे नाही`, 'बाकीच्या प्रत्येकात लहान दोन संख्यांच्या वर्गांची बेरीज = मोठ्या संख्येचा वर्ग'] });
+    }
+    if (t === 4) {
+      // शिडी भिंतीला टेकवलेली
+      const [a, b, c] = R.pick([[6, 8, 10], [5, 12, 13], [9, 12, 15], [8, 15, 17], [7, 24, 25], [12, 16, 20]]);
+      const wall = (top, foot, lad, hl) => svg(250, 200, `<rect x="30" y="15" width="22" height="165" fill="#d6d3d1" stroke="#57534e"/>${ln(20, 180, 235, 180)}${ln(52, 35, 200, 180, 'stroke="#b45309" stroke-width="4"')}` +
+        rightMark([52, 180], [0, -1], [1, 0]) + tx(66, 110, top, 'text-anchor="start" ' + (hl === 'h' ? HL : '')) + tx(126, 196, foot) + tx(138, 98, lad, 'text-anchor="start"') + tx(41, 12, 'भिंत', 'font-size="11"'));
+      const fig = wall('? मी', `${a} मी`, `शिडी ${c} मी`), sfig = wall(`${b} मी`, `${a} मी`, `शिडी ${c} मी`, 'h');
+      return mk(R, { fig, sfig, q: `आकृतीत ${c} मीटर लांबीची शिडी उभ्या भिंतीला टेकवली आहे. शिडीचा खालचा टोक भिंतीपासून ${a} मीटर अंतरावर आहे. तर शिडी भिंतीला जमिनीपासून किती उंचीवर टेकली आहे?`, a: b + ' मीटर', w: [c - a + ' मीटर', c + a + ' मीटर', r2(Math.sqrt(c * c + a * a)) + ' मीटर', b + 2 + ' मीटर'],
+        steps: ['भिंत, जमीन व शिडी यांचा काटकोन त्रिकोण होतो; शिडी हा कर्ण', `उंची² = ${c}² − ${a}² = ${c * c} − ${a * a} = ${b * b}`, `उंची = ${b} मीटर`] });
+    }
+    const [a, b, c] = R.pick([[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17]]), k = R.pick([1, 2, 3]), A = a * k, B = b * k, C = c * k, h = r2((A * B) / C);
+    if ((A * B * 100) % C) return null; // उत्तर नेमके (आवर्ती दशांश नको)
+    const fig = rtTri(A, B, { pq: `${A} सेमी`, qr: `${B} सेमी`, alt: '?' }), sfig = rtTri(A, B, { pq: `${A}`, qr: `${B}`, pr: `PR = ${C}`, alt: `${h}` });
+    return mk(R, { fig, sfig, q: `आकृतीत △PQR मध्ये ∠Q = 90°, PQ = ${A} सेमी, QR = ${B} सेमी व QM ⊥ PR आहे. तर QM = किती?`, a: h + ' सेमी', w: [r2(h * 2) + ' सेमी', r2(h / 2) + ' सेमी', C + ' सेमी', r2(h + 1) + ' सेमी'],
+      steps: [`PR² = ${A}² + ${B}² → PR = ${C} सेमी`, '△PQR चे क्षेत्रफळ दोन प्रकारे: ½ × PQ × QR = ½ × PR × QM', `QM = ${A} × ${B} ÷ ${C} = ${h} सेमी`] });
+  });
+
+  // एका रेषेवरील बिंदू O मधून किरण: कोनांची मापे राशींनी
+  const ex = (p, c) => `(${p === 1 ? '' : p}x${c === 0 ? '' : c < 0 ? ` − ${-c}` : ` + ${c}`})°`;
+  const linFig = (angs, labs, hlIdx) => {
+    const O = [170, 160], L = 140; let b = ln(20, 160, 320, 160) + dot(...O) + tx(O[0], O[1] + 18, 'O', B7) + tx(18, 178, 'A', B7) + tx(322, 178, 'B', B7);
+    let s = 0; const names = ['C', 'D', 'E'];
+    angs.forEach((g, i) => {
+      const mid = s + g / 2, rr = g < 45 ? 92 : 66, p = PT(...O, rr, mid);
+      b += arc(...O, 20 + 7 * (i % 2), s, s + g) + tx(p[0], p[1] + 5, labs[i], hlIdx === i || hlIdx === -1 ? HL : '');
+      s += g; if (i < angs.length - 1) { const e = PT(...O, L, s); b += ln(...O, ...e) + tx(...PT(...O, L + 12, s), names[i], B7); }
+    });
+    return svg(340, 190, b);
+  };
+  // वेगवेगळे कोन, खाली नाव व माप
+  const angSet = (ms) => {
+    let b = ''; ms.forEach((m, i) => {
+      const cx = 15 + (i % 3) * 110, cy = 70 + Math.floor(i / 3) * 95, V = [cx + (m > 90 ? 50 : 10), cy];
+      b += ln(...V, V[0] + 48, V[1]) + ln(...V, ...PT(...V, 48, m)) + arc(...V, 13, 0, m) + tx(V[0] + (m > 90 ? 0 : 22), cy + 20, `∠${'ABCDEF'[i]} = ${m}°`);
+    });
+    return svg(345, 190, b);
+  };
+
+  def('m7angles', 'आकृती: कोटिकोन, पूरककोन व रेषीय जोडी', (R, Lv) => {
+    const t = vt(R, Lv, [1, 2, 3, 4]);
+    if (t === 1 || t === 4) {
+      const p = R.ri(3, 16) * 5, c = 90 - p, s = 180 - c;
+      if (t === 1) return mk(R, { q: `m∠P = ${p}° असेल तर ∠P च्या कोटिकोनाच्या पूरककोनाचे माप किती?`, a: deg(s), w: [deg(c), deg(180 - p), deg(s - 10), deg(90 + c)],
+        steps: [`कोटिकोन = 90 − ${p} = ${c}°`, `त्याचा पूरककोन = 180 − ${c} = ${s}°`] });
+      return mk(R, { q: `एका कोनाच्या कोटिकोनाचा पूरककोन ${s}° आहे. तर त्या कोनाचे माप किती?`, a: deg(p), w: [deg(c), deg(s - 90 + 10), deg(180 - p), deg(p + 10)],
+        steps: [`पूरककोन ${s}° → कोटिकोन = 180 − ${s} = ${c}°`, `कोन = 90 − ${c} = ${p}°`] });
+    }
+    if (t === 2) {
+      // रेषा AB वर O; ∠BOC, ∠COD, ∠DOA राशींनी — x किंवा एक कोन
+      const x = R.ri(2, 6) * 5, ps = [R.ri(1, 3), R.ri(1, 4), R.ri(1, 3)], c1 = R.ri(-2, 4) * 5, c2 = R.ri(-2, 4) * 5, c3 = 180 - x * (ps[0] + ps[1] + ps[2]) - c1 - c2;
+      if (Math.abs(c3) > 40 || c3 % 5) return null;
+      const cs = [c1, c2, c3], angs = ps.map((p, i) => p * x + cs[i]); if (angs.some(g => g < 32) || new Set(angs).size < 3) return null;
+      const askAng = Lv > 1 && R.r() < 0.6, j = R.ri(0, 2), nm = ['∠BOC', '∠COD', '∠DOA'][j];
+      const fig = linFig(angs, ps.map((p, i) => ex(p, cs[i]))), sfig = linFig(angs, angs.map(g => g + '°'), askAng ? j : -1);
+      const sum = ps[0] + ps[1] + ps[2], cc = c1 + c2 + c3;
+      const steps = [`A-O-B ही रेषा, म्हणून ${ps.map((p, i) => ex(p, cs[i]).replace(/[()°]/g, '')).join(' + ')} = 180`, `${sum}x ${cc < 0 ? '−' : '+'} ${Math.abs(cc)} = 180 → x = ${x}`];
+      if (!askAng) return mk(R, { fig, sfig, q: 'आकृतीत A-O-B ही रेषा आहे. तर x ची किंमत किती?', a: x, w: [x + 5, x - 5, r2(180 / sum), angs[0]], steps: steps.concat([`तपासा: ${angs.join(' + ')} = 180°`]) });
+      return mk(R, { fig, sfig, q: `आकृतीत A-O-B ही रेषा आहे. तर m${nm} किती?`, a: deg(angs[j]), w: [deg(x), deg(angs[(j + 1) % 3]), deg(180 - angs[j]), deg(angs[j] + 10)], steps: steps.concat([`m${nm} = ${angs[j]}°`]) });
+    }
+    // आकृतीतील कोनांपैकी पूरक / कोटिकोनांच्या जोड्या मोजा
+    const supp = R.r() < 0.55, tot = supp ? 180 : 90, np = R.ri(Lv === 1 ? 1 : 2, Lv === 3 ? 3 : 2), ms = [];
+    const pool = R.shuffle(Array.from({ length: supp ? 27 : 13 }, (_, i) => 25 + 5 * i).filter(m => m !== tot / 2 && m < tot));
+    for (const m of pool) { if (ms.length >= 2 * np) break; if (!ms.includes(m) && !ms.includes(tot - m)) ms.push(m, tot - m); }
+    // उरलेले कोन: दुसऱ्या प्रकारच्या जोडीचा सापळा (उदा. पूरकसाठी 90 बेरीज)
+    for (let g = 0; ms.length < 6 && g < 60; g++) { const m = R.ri(3, supp ? 32 : 16) * 5; if (m !== tot / 2 && !ms.includes(m) && !ms.includes(tot - m)) ms.push(m); }
+    if (ms.length < 6) return null;
+    const show = R.shuffle(ms), pairs = [], other = [];
+    for (let i = 0; i < 6; i++) for (let j = i + 1; j < 6; j++) { if (show[i] + show[j] === tot) pairs.push(`∠${'ABCDEF'[i]} व ∠${'ABCDEF'[j]}`); if (show[i] + show[j] === 270 - tot) other.push(1); }
+    const kind = supp ? 'पूरक कोनांच्या' : 'कोटिकोनांच्या', n = pairs.length;
+    return mk(R, { fig: angSet(show), q: `आकृतीत दिलेल्या कोनांपैकी ${kind} जोड्या किती आहेत?`, a: n, w: [n + 1, n - 1 || n + 2, other.length !== n ? other.length || n + 3 : n + 3, 2 * n],
+      steps: [`${supp ? 'पूरक' : 'कोटि'}कोन: मापांची बेरीज ${tot}°`, ...pairs.map(p => `${p} : बेरीज ${tot}°`), `एकूण जोड्या = ${n}`] });
+  });
+
+  // संख्यारेषा: lo पासून 4 एकके, प्रत्येक एकक d भागांत
+  const numLine = (lo, d, marks) => {
+    const x0 = 35, u = 72, y = 70; let b = ln(10, y, 345, y) + `<polygon points="345,${y} 337,${y - 5} 337,${y + 5}" fill="#222"/><polygon points="10,${y} 18,${y - 5} 18,${y + 5}" fill="#222"/>`;
+    for (let i = 0; i <= 4 * d; i++) { const x = x0 + (i * u) / d, big = i % d === 0; b += ln(x, y - (big ? 9 : 5), x, y + (big ? 9 : 5), `stroke="#222" stroke-width="${big ? 2 : 1.2}"`); if (big) b += tx(x, y + 26, minus(lo + i / d), B7); }
+    marks.forEach(([S, lab, val]) => { const x = x0 + ((S - lo * d) * u) / d; b += `<circle cx="${r2(x)}" cy="${y}" r="4.5" fill="#b45309"/>` + tx(x, y - 16, lab, B7) + (val ? tx(x, y - 33, val, HL) : ''); });
+    return svg(355, 110, b);
+  };
+  def('m7numLine', 'आकृती: संख्यारेषेवरील बिंदू', (R, Lv) => {
+    const t = vt(R, Lv, [1, 2, 3]), d = R.pick(Lv === 1 ? [2, 4] : [3, 4, 5]), lo = R.ri(-4, 0), F = S => minus(fr(S, d));
+    const pickS = () => { let S; do S = lo * d + R.ri(1, 4 * d - 1); while (S % d === 0); return S; };
+    const where = S => { const n = Math.floor(S / d), r = S - n * d; return `${minus(n)} पासून पुढे ${r} भाग → ${minus(n)} + ${r}/${d} = ${F(S)}`; };
+    if (t === 1) {
+      const S = pickS();
+      return mk(R, { fig: numLine(lo, d, [[S, 'P']]), sfig: numLine(lo, d, [[S, 'P', F(S)]]), q: 'आकृतीतील संख्यारेषेवर बिंदू P कोणती संख्या दर्शवतो?', a: F(S), w: [F(S + 1), F(S - 1), F(-S), minus(fr(S, d + 1))],
+        steps: [`एका एककाचे ${d} समान भाग → प्रत्येक भाग 1/${d}`, where(S)] });
+    }
+    if (t === 2) {
+      const Ss = []; while (Ss.length < 4) { const S = pickS(); if (!Ss.some(z => Math.abs(z - S) < 2)) Ss.push(S); }
+      Ss.sort((a, b) => a - b); const j = R.ri(0, 3), L4 = 'ABCD';
+      return mk(R, { fig: numLine(lo, d, Ss.map((S, i) => [S, L4[i]])), sfig: numLine(lo, d, Ss.map((S, i) => [S, L4[i], i === j ? F(S) : ''])), q: `आकृतीतील संख्यारेषेवर ${F(Ss[j])} ही संख्या कोणत्या बिंदूने दर्शवली आहे?`,
+        a: `बिंदू ${L4[j]}`, w: [0, 1, 2, 3].filter(i => i !== j).map(i => `बिंदू ${L4[i]}`), steps: [`प्रत्येक भाग 1/${d}`, where(Ss[j]), `म्हणून बिंदू ${L4[j]}`] });
+    }
+    let S1 = pickS(), S2 = pickS(); if (Math.abs(S1 - S2) < 2) return null; if (S1 > S2) [S1, S2] = [S2, S1];
+    const D = S2 - S1;
+    return mk(R, { fig: numLine(lo, d, [[S1, 'P'], [S2, 'Q']]), sfig: numLine(lo, d, [[S1, 'P', F(S1)], [S2, 'Q', F(S2)]]), q: 'आकृतीतील संख्यारेषेवर बिंदू P व बिंदू Q यांतील अंतर किती एकक आहे?', a: fr(D, d), w: [fr(D + 1, d), fr(D - 1, d), fr(Math.abs(S1 + S2) || D + 2, d), String(D)],
+      steps: [`P = ${F(S1)}, Q = ${F(S2)}`, `अंतर = ${F(S2)} − (${F(S1)}) = ${D}/${d}${fr(D, d) !== `${D}/${d}` ? ` = ${fr(D, d)}` : ''}`] });
+  });
+
   /* ───────────── lessons and paper weights ───────────── */
   const B = S.GROUPS[4]['बुद्धिमत्ता'];
   S.GROUPS[7] = {
     'गणित': [
-      ['संख्याज्ञान व विभाज्यता', ['m7oddSum', 'm7recur', 'm7between', 'm7lcmOdd', 'm7greatest', 'm7divisible', 'm7cycStmt', 'm7stmt', 'm7inverse']],
+      ['संख्याज्ञान व विभाज्यता', ['m7oddSum', 'm7recur', 'm7between', 'm7numLine', 'm7lcmOdd', 'm7greatest', 'm7divisible', 'm7cycStmt', 'm7stmt', 'm7inverse']],
       ['घातांक व वर्गमूळ', ['m7index', 'm7nested', 'm7sqFrac']],
       ['बैजिक राशी', ['m7identity', 'm7factor', 'm7perfect', 'm7polyDeg', 'm7polyAdd', 'm7value']],
       ['समीकरणे व गुणोत्तर', ['m7linear', 'm7ageRatio', 'm7ratioPct', 'm7share', 'm7coins', 'm7birds']],
@@ -981,10 +1119,10 @@
       .concat([['घड्याळ, गुण, डोकी-पाय', ['r7clock', 'r7score', 'r7legs']], ['घन रंगवणे व अक्षरमाला', ['r7cubePaint', 'r7alphaPos', 'r7triNum']], ['विधाने व शब्द मोजणी', ['r7syllog', 'r7words']]]),
   };
   Object.assign(S.WEIGHT, {
-    m7oddSum: 1, m7recur: 1, m7between: 1, m7lcmOdd: 1, m7greatest: 1, m7divisible: 1, m7cycStmt: 1, m7stmt: 1, m7inverse: 1, m7index: 2, m7nested: 1, m7sqFrac: 1,
+    m7oddSum: 1, m7recur: 1, m7between: 1, m7numLine: 1, m7lcmOdd: 1, m7greatest: 1, m7divisible: 1, m7cycStmt: 1, m7stmt: 1, m7inverse: 1, m7index: 2, m7nested: 1, m7sqFrac: 1,
     m7identity: 2, m7factor: 2, m7perfect: 1, m7polyDeg: 1, m7polyAdd: 1, m7value: 1, m7linear: 2, m7ageRatio: 1, m7ratioPct: 1, m7share: 1, m7coins: 1, m7birds: 1,
     m7pctEq: 1, m7priceSale: 1, m7votes: 1, m7mix: 1, m7profit: 3, m7disc: 2, m7comm: 1, m7si: 2, m7ci: 2, m7deprec: 1, m7avg: 2, m7avgTable: 1, m7workers: 2, m7train: 1, m7boat: 1, m7timeAdd: 1, m7unit: 1,
-    m7polygon: 1, m7angles: 1, m7parallel: 1, m7triAngle: 1, m7cyclic: 2, m7pyth: 2, m7lineStmt: 1, m7quad: 1, m7sqArea: 2, m7road: 1, m7circle: 2, m7squareCircle: 1, m7eqTri: 1, m7perimCut: 1,
+    m7polygon: 1, m7angles: 2, m7parallel: 1, m7triAngle: 1, m7cyclic: 2, m7pyth: 2, m7lineStmt: 1, m7quad: 1, m7sqArea: 2, m7road: 1, m7circle: 2, m7squareCircle: 1, m7eqTri: 1, m7perimCut: 1,
     m7solid: 3, m7soil: 1, m7tank: 1, m7euler: 1, m7graph: 2, m7pie: 1,
     r7clock: 2, r7score: 1, r7legs: 1, r7cubePaint: 1, r7alphaPos: 2, r7triNum: 1, r7syllog: 2, r7words: 2 });
 })(this);
