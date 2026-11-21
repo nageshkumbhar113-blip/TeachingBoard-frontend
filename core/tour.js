@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    core/tour.js — the app tour: the screen dims, only the next button is lit,
    and a moving hand 👆 shows where to tap, with one short Marathi line.
-   • the first time Home opens: course → (scroll) subject → lesson → its screen
+   • the first time Home opens: course → its page: subject → lesson → its screen
    • the first time each page opens: Notes, Exercise, Test — once each
    A tour is remembered as seen the moment it starts (owner 2026-11-21: once only, even if the app is closed
    half-way or the page is left); Skip always clears it. Profile › "🎓 Tour पुन्हा पाहा" shows them again.
@@ -18,7 +18,7 @@
   const TOURS = {
     home: [
       { sel: '#batch-grid .batch-card', text: '👋 हा तुमचा course. त्यावर tap करा.', wait: 'tap' },
-      { sel: '#subject-grid .subject-card', text: 'खाली scroll करा 👇 इथे सगळे विषय आहेत. एक विषय निवडा.', wait: 'tap', scroll: true },
+      { sel: '#subject-grid .subject-card', text: 'हे तुमचे विषय. एका विषयावर tap करा.', wait: 'tap' },
       { sel: '#chapter-list .chapter-item', text: 'आता धडा निवडा.', wait: 'tap', scroll: true },
       { sel: '#chapter-hub-grid', text: 'इथून सुरू करा: 📒 Notes, ✍️ स्वाध्याय उत्तरं किंवा 📝 Test.', wait: 'next' },
       { sel: null, text: '🎉 झालं! कधीही अडलं तर ❓ मदत बटण दाबा.', wait: 'next' },
@@ -110,6 +110,8 @@ body:has(.gx-layer:not(.gx-leaving)) .tour-spot, body:has(.gx-layer:not(.gx-leav
       <span class="tour-dots">${i + 1} / ${steps.length}</span>${step.wait === 'next' ? `<button type="button" class="tour-btn tour-next">${i === steps.length - 1 ? 'झालं ✓' : 'पुढे →'}</button>` : '<span></span>'}</div>`);
     bubble.setAttribute('role', 'dialog'); bubble.setAttribute('aria-live', 'polite');
     const place = () => {
+      // the screen was drawn again: follow the new button
+      if (el && !el.isConnected) el = [...document.querySelectorAll(step.sel)].find(visible) || el;
       if (!el) { spot.style.cssText = 'left:50%;top:50%'; bubble.style.top = '40%'; return; }
       const r = el.getBoundingClientRect(), pad = 6;
       Object.assign(spot.style, { left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
@@ -122,14 +124,18 @@ body:has(.gx-layer:not(.gx-leaving)) .tour-spot, body:has(.gx-layer:not(.gx-leav
     window.addEventListener('resize', onMove); window.addEventListener('scroll', onMove, true);
     const next = () => show(key, i + 1);
     const onTap = () => setTimeout(next, 350);
-    if (step.wait === 'tap' && el) el.addEventListener('click', onTap, { once: true });
+    // a tap on any matching button counts, also one drawn again after this step began
+    // (Home is redrawn in the background; the old button the step lit is then gone)
+    let tapped = false;
+    const onDocTap = e => { if (!tapped && e.target.closest?.(step.sel)) { tapped = true; onTap(); } };
+    if (step.wait === 'tap' && el) document.addEventListener('click', onDocTap, true);
     bubble.querySelector('.tour-skip').onclick = e => { e.stopPropagation(); stop(true); };
     bubble.querySelector('.tour-next')?.addEventListener('click', next);
     bubble.querySelector('.tour-next')?.focus?.({ preventScroll: true });
     _running.cleanup = () => {
       nodes.forEach(n => n.remove());
       window.removeEventListener('resize', onMove); window.removeEventListener('scroll', onMove, true);
-      if (el) el.removeEventListener('click', onTap);
+      document.removeEventListener('click', onDocTap, true);
     };
   }
 

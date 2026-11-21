@@ -786,23 +786,45 @@ const UI = (() => {
       chapters.map(ch => Promise.resolve(APP?.isChapterLocked?.(batchName, subjectName, ch)).catch(() => false))
     );
 
+    // Course page (2026-11-22): each chapter also shows 🔓 Free (free plan), how many of its
+    // tests were given (with a bar) and its weak questions — facts already on the phone.
+    const [best, freePlan] = await Promise.all([
+      _bestPercentByQuiz().catch(() => new Map()),
+      Promise.resolve(APP?.isOnFreePlan?.()).catch(() => false),
+    ]);
+    const label = $('chapter-section-label');
+    if (label) label.textContent = `धडे · ${subjectName} (${chapters.length})`;
+
     const fragment = document.createDocumentFragment();
     chapters.forEach((ch, chIdx) => {
       const isLocked = !!lockedFlags[chIdx];
-      const totalQuestions = questions.filter(q => q.chapter === ch).length;
-      const testCount = published.filter(quiz =>
+      const chQs = questions.filter(q => q.chapter === ch);
+      const totalQuestions = chQs.length;
+      const weak = chQs.filter(q => (q.weak_count || 0) >= 2 || q.flagged).length;
+      const tests = published.filter(quiz =>
         quiz.batch === batchName &&
         quiz.subject === subjectName &&
         quiz.chapter === ch
-      ).length;
+      );
+      const testCount = tests.length;
+      const given = tests.filter(q => best.has(q.quiz_id)).length;
+      const pct = testCount ? Math.round(given * 100 / testCount) : 0;
+      const pills = isLocked ? '' : [
+        freePlan ? '<span class="ch-pill ch-pill-free">🔓 Free</span>' : '',
+        given ? `<span class="ch-pill ch-pill-ok">✅ ${given}/${testCount} tests</span>` : '',
+        weak ? `<span class="ch-pill ch-pill-weak">⚠️ ${weak} कमकुवत</span>` : '',
+      ].join('');
       const item = document.createElement('div');
       item.className = 'chapter-item';
       item.setAttribute('role', 'listitem');
       makeFocusable(item);
       item.innerHTML = `
+        <span class="chapter-no" aria-hidden="true">${chIdx + 1}</span>
         <div class="chapter-info">
-          <div class="chapter-name">${isLocked ? '🔒 ' : ''}${ch}</div>
-          <div class="chapter-meta">${isLocked ? 'Subscribe to unlock' : `${testCount} test${testCount === 1 ? '' : 's'}${totalQuestions ? ` · ${totalQuestions} questions` : ''}`}</div>
+          <div class="chapter-name">${isLocked ? '🔒 ' : ''}${_escHtml(ch)}</div>
+          <div class="chapter-meta">${isLocked ? 'Course घेतल्यावर उघडेल' : `${testCount} test${testCount === 1 ? '' : 's'}${totalQuestions ? ` · ${totalQuestions} प्रश्न` : ''}`}</div>
+          ${pills ? `<div class="ch-pills">${pills}</div>` : ''}
+          ${given ? `<div class="ch-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>` : ''}
         </div>
         <div class="chapter-stats"></div>
         <span class="chapter-arrow" aria-hidden="true">›</span>
@@ -829,7 +851,7 @@ const UI = (() => {
   // <button> elements, so keyboard/TV D-pad support (Tab + Enter) works
   // automatically, no extra remote-nav wiring needed here.
 
-  function renderChapterHub({ chapter = '', onTest = null, onNotes = null, onExercise = null } = {}) {
+  function renderChapterHub({ chapter = '', onTest = null, onNotes = null, onExercise = null, onPractice = null } = {}) {
     const grid  = $('chapter-hub-grid');
     const title = $('chapter-hub-title');
     if (!grid) return;
@@ -841,6 +863,8 @@ const UI = (() => {
       { icon: '📝', label: 'Test',     meta: 'चाचणी द्या',        handler: onTest },
       { icon: '📓', label: 'Notes',    meta: 'वाचन साहित्य',       handler: onNotes },
       { icon: '📄', label: 'Exercise', meta: 'सराव प्रश्न',        handler: onExercise },
+      // shown by fillChapterHubFacts once it knows the chapter has bank questions
+      ...(onPractice ? [{ icon: '🎯', label: 'सराव करा', meta: 'धड्याचे प्रश्न सोडवा', handler: onPractice, hidden: true }] : []),
     ];
 
     const fragment = document.createDocumentFragment();
@@ -858,6 +882,7 @@ const UI = (() => {
         <span class="chapter-hub-arrow" aria-hidden="true">›</span>
       `;
       if (opt.handler) btn.addEventListener('click', opt.handler);
+      if (opt.hidden) btn.classList.add('hidden');
       fragment.appendChild(btn);
     });
     grid.appendChild(fragment);
@@ -881,13 +906,19 @@ const UI = (() => {
       const el = document.querySelector(`#chapter-hub-grid .chapter-hub-btn[aria-label="${label}"] small`);
       if (el && text) el.textContent = text;
     };
-    const [published, best, concepts, exercise] = await Promise.all([
+    const [published, best, concepts, exercise, bank] = await Promise.all([
       _getAllowedBatches().then(async allowed => _filterByAllowedBatches(await DB.getQuizzesByStatus('published'), allowed)).catch(() => []),
       _bestPercentByQuiz().catch(() => new Map()),
       DB.getCachedConcepts?.(chapterId).catch(() => null),
       DB.getExerciseQuestionsCache?.(chapterId).catch(() => null),
+      DB.getQuestionsByChapter(batch, subject, chapter).catch(() => []),
     ]);
     if ($('chapter-hub-title')?.textContent !== chapter) return;   // student moved on
+    const practice = document.querySelector('#chapter-hub-grid .chapter-hub-btn[aria-label="सराव करा"]');
+    if (practice && bank.length) {
+      practice.querySelector('small').textContent = `${bank.length} प्रश्न · लगेच सराव`;
+      practice.classList.remove('hidden');
+    }
     const tests = published.filter(q => q.batch === batch && q.subject === subject && q.chapter === chapter);
     if (tests.length) {
       const done = tests.filter(q => best.has(q.quiz_id)).length;
@@ -1097,6 +1128,7 @@ const UI = (() => {
     // Home
     renderHomeStats,
     renderBatchGrid,
+    getAllowedBatches: () => _getAllowedBatches(),
     renderSubjectGrid,
     renderMixedTestsSection,
     renderChapterList,

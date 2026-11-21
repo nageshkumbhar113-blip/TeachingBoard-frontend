@@ -503,33 +503,8 @@
           <div class="batch-grid" id="batch-grid" role="list"></div>
         </section>
 
-        <!-- Mixed / Paper Pattern tests (e.g. NMMS-style: Maths+Science+Mental
-             Ability combined in one paper) — these have no single subject, so
-             they can't live inside the normal Subject → Chapter drill-down.
-             Hidden by default; only shown when the selected batch actually
-             has at least one such test. -->
-        <section class="home-section hidden" id="mixed-tests-section" aria-label="Mixed Tests">
-          <h3 class="section-label">📐 Mixed / Paper Pattern Tests</h3>
-          <div class="mixed-tests-list" id="mixed-tests-list" role="list"></div>
-        </section>
 
-        <section class="home-section hidden" id="subject-section" aria-label="Subjects">
-          <h3 class="section-label" data-i18n="subjects">Subjects</h3>
-          <div class="subject-grid" id="subject-grid" role="list"></div>
-        </section>
 
-        <section class="home-section hidden" id="chapter-section" aria-label="Chapters">
-          <h3 class="section-label" data-i18n="chapters">Chapters</h3>
-          <div class="chapter-list" id="chapter-list" role="list"></div>
-          <button id="btn-deep-study" class="ds-launch-btn hidden" aria-label="Open Deep Study flashcard mode">
-            <span class="ds-launch-icon">🧠</span>
-            <span class="ds-launch-text">
-              <strong>Deep Study Mode</strong>
-              <small>Flashcard practice — swipe to study</small>
-            </span>
-            <span class="ds-launch-arrow">→</span>
-          </button>
-        </section>
 
         <button type="button" id="home-share-app-btn" class="home-share-btn">📤 मित्रांना App Share करा</button>
         <div id="home-refer-card" class="re-card hidden" aria-label="Refer and earn"></div>
@@ -551,6 +526,42 @@
             <button id="btn-analytics" class="home-analytics-btn" aria-label="View Analytics">📈 Analytics</button>
           </div>
           <div id="home-recent"></div>
+        </section>
+      </section>
+
+
+      <!-- ── COURSE (owner 2026-11-22): a course tapped on Home opens here — course dropdown,
+           subject buttons, Paper Pattern tests, the chapter list. (They used to open further down Home.) -->
+      <section id="screen-course" class="screen hidden" aria-label="Course">
+        <div class="course-head">
+          <label for="course-select" class="course-label">Course</label>
+          <select id="course-select" class="course-select" aria-label="Course निवडा"></select>
+          <h2 id="course-title" class="course-title hidden"></h2>
+        </div>
+        <section class="home-section hidden" id="subject-section" aria-label="Subjects">
+          <h3 class="section-label">विषय</h3>
+          <div class="subject-grid" id="subject-grid" role="list"></div>
+        </section>
+        <!-- Mixed / Paper Pattern tests (e.g. NMMS-style: Maths+Science+Mental
+             Ability combined in one paper) — these have no single subject, so
+             they can't live inside the normal Subject → Chapter drill-down.
+             Hidden by default; only shown when the selected batch actually
+             has at least one such test. -->
+        <section class="home-section hidden" id="mixed-tests-section" aria-label="Mixed Tests">
+          <h3 class="section-label">📐 Mixed / Paper Pattern Tests</h3>
+          <div class="mixed-tests-list" id="mixed-tests-list" role="list"></div>
+        </section>
+        <section class="home-section hidden" id="chapter-section" aria-label="Chapters">
+          <h3 class="section-label" id="chapter-section-label">धडे</h3>
+          <div class="chapter-list" id="chapter-list" role="list"></div>
+          <button id="btn-deep-study" class="ds-launch-btn hidden" aria-label="Open Deep Study flashcard mode">
+            <span class="ds-launch-icon">🧠</span>
+            <span class="ds-launch-text">
+              <strong>Deep Study Mode</strong>
+              <small>Flashcard practice — swipe to study</small>
+            </span>
+            <span class="ds-launch-arrow">→</span>
+          </button>
         </section>
       </section>
 
@@ -1520,16 +1531,7 @@
         <span class="bnav-icon">🏠</span>
         <span class="bnav-label">Home</span>
       </button>
-      <!-- Five study destinations. Stats (also Home's "📈 Analytics") and
-           Board Mode (a display setting, not a page) moved into Me. -->
-      <button class="bnav-btn" id="bnav-notes" aria-label="Study Notes">
-        <span class="bnav-icon">📄</span>
-        <span class="bnav-label">Notes</span>
-      </button>
-      <button class="bnav-btn" id="bnav-exercise" aria-label="Exercise">
-        <span class="bnav-icon">📝</span>
-        <span class="bnav-label">Exercise</span>
-      </button>
+      <!-- Home · Words · Me. Notes and Exercise are in every chapter's screen (owner 2026-11-22). -->
       <button class="bnav-btn" id="bnav-vocab" aria-label="Word Learning">
         <span class="bnav-icon">📚</span>
         <span class="bnav-label">Words</span>

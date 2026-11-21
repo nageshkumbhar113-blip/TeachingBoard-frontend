@@ -5483,3 +5483,39 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
 .ob-wait-bar i { display:block; width:40%; height:100%; border-radius:6px; background:var(--accent,#f0883e); animation:ob-slide 1.4s ease-in-out infinite; }
 @keyframes ob-slide { 0% { transform:translateX(-100%); } 100% { transform:translateX(260%); } }
 @media (prefers-reduced-motion: reduce) { .ob-wait-books span, .ob-wait-bar i { animation:none; } }
+
+/* ── Course page (owner 2026-11-22): course dropdown · subject buttons · chapter list ── */
+#screen-course { display: flex; flex-direction: column; gap: 14px; padding-bottom: 90px; }
+#screen-course.hidden { display: none; }
+#screen-course .home-section { margin: 0; }
+.course-head { display: flex; flex-direction: column; gap: 6px; }
+.course-label { font-size: 12px; color: var(--text2); }
+.course-select { width: 100%; padding: 12px 40px 12px 14px; border-radius: 14px; border: 1.5px solid var(--border); background-color: var(--surface);
+  color: var(--text); font: 700 16px 'Baloo 2', 'Noto Sans Devanagari', system-ui, sans-serif; appearance: none; -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text2) 50%), linear-gradient(135deg, var(--text2) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 52%, calc(100% - 14px) 52%; background-size: 6px 6px; background-repeat: no-repeat; }
+.course-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.course-title { margin: 0; font: 800 20px/1.25 'Baloo 2', 'Noto Sans Devanagari', system-ui, sans-serif; text-wrap: balance; }
+/* subjects as one row of buttons */
+#screen-course .subject-grid { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin: 0; scrollbar-width: none; }
+#screen-course .subject-grid::-webkit-scrollbar { display: none; }
+#screen-course .subject-card { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px !important; border-width: 1.5px !important; transform: none !important; }
+#screen-course .subject-card .subject-icon { font-size: 1rem; margin: 0; }
+#screen-course .subject-card .batch-count { display: none; }
+#screen-course .subject-card .subject-name { font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
+#screen-course .subject-card.active { background: var(--accent) !important; border-color: var(--accent) !important; }
+#screen-course .subject-card.active .subject-name { color: #fff; }
+/* chapters */
+#screen-course .chapter-item { gap: 12px; padding: 12px; }
+#screen-course .chapter-item:hover { transform: none !important; }
+.chapter-no { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 14px; }
+.ch-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ch-pill { font-size: 11px; font-weight: 600; line-height: 1.6; border-radius: 999px; padding: 1px 8px; background: var(--surface2); color: var(--text2); }
+.ch-pill-free { background: rgba(37, 99, 235, .12); color: #2563eb; }
+.ch-pill-ok { background: rgba(31, 157, 107, .14); color: #178a5c; }
+.ch-pill-weak { background: rgba(238, 122, 42, .14); color: #c25a12; }
+.theme-dark .ch-pill-free, .theme-contrast .ch-pill-free, .theme-board-dark .ch-pill-free { color: #7aa7ff; }
+.theme-dark .ch-pill-ok, .theme-contrast .ch-pill-ok, .theme-board-dark .ch-pill-ok { color: #3ccf91; }
+.theme-dark .ch-pill-weak, .theme-contrast .ch-pill-weak, .theme-board-dark .ch-pill-weak { color: #ff9a52; }
+.ch-bar { height: 5px; border-radius: 9px; background: var(--surface2); margin-top: 6px; overflow: hidden; }
+.ch-bar i { display: block; height: 100%; border-radius: 9px; background: #1f9d6b; }

@@ -2555,7 +2555,7 @@ const APP = (() => {
       home: 'Home', quiz: 'Practice', results: 'Results',
       'test-player': 'Test', analytics: 'Me', 'deep-study': 'Deep Study',
       exercise: 'Exercise', 'chapter-hub': 'Chapter', 'test-list': 'Tests',
-      notes: 'Notes', vocab: 'Words', 'word-test': 'Word Tests',
+      notes: 'Notes', vocab: 'Words', 'word-test': 'Word Tests', course: 'Course',
     };
     UI.setBreadcrumb(labels[name] || name);
     _updateBottomNav(name);
@@ -2572,8 +2572,10 @@ const APP = (() => {
       'deep-study': 'bnav-home',
       vocab: 'bnav-vocab',
       'word-test': 'bnav-vocab',
-      exercise: 'bnav-exercise',
-      notes: 'bnav-notes',
+      // Notes / Exercise are opened from a chapter now (no own tab since 2026-11-22)
+      exercise: 'bnav-home',
+      notes: 'bnav-home',
+      course: 'bnav-home',
     };
     document.querySelectorAll('.bnav-btn').forEach(btn => btn.classList.remove('bnav-active'));
     const activeId = tabMap[screen] ?? 'bnav-home';
@@ -2828,6 +2830,8 @@ const APP = (() => {
         onExercise: () => {
           window.EXERCISE_VIEWER?.openChapter?.(batchName, subject, chapter);
         },
+        // the chapter's question-bank practice, one tap from the chapter (also in its Tests list)
+        onPractice: () => QUIZ.startQuiz(batchName, subject, chapter, 'practice'),
       });
       UI.fillChapterHubFacts?.(batchName, subject, chapter).catch(err => console.warn('chapter facts failed', err));
       // opened by the free-part guide: straight into the Notes (the hub stays one Back away)
@@ -2874,43 +2878,85 @@ const APP = (() => {
     card.classList.remove('hidden');
   }
 
+  // The subject last picked in a course is remembered on the phone and opened next time.
+  const _courseSubjectKey = batch => `course_subject|${batch}`;
+
   function _bindSubjectFlow(batchName) {
-    return async subject => {
+    return async (subject, { remember = true } = {}) => {
       _homeSubject = subject;
       _homeChapter = null;
       $('btn-deep-study')?.classList.add('hidden');
+      if (remember) DB.setSetting(_courseSubjectKey(batchName), subject).catch(() => {});
       await UI.renderChapterList(batchName, subject, _bindChapterFlow(batchName, subject));
     };
   }
 
+  // ── Course page (owner 2026-11-22) ─────────────────────────────
+  // Home shows the classes; tapping one opens its own page: a course dropdown (only
+  // when the student has more than one), subject buttons, Paper Pattern tests and the
+  // chapter list. They used to open further down Home, which meant a long scroll.
+  let _courseGen = 0;
+  async function _openCourse(batch) {
+    if (!batch?.name) return;
+    _homeBatch = batch;
+    _homeSubject = null;
+    _homeChapter = null;
+    showScreen('course');
+    await _renderCourse();
+  }
+
+  async function _renderCourse({ keepSubject = false } = {}) {
+    const batchName = _homeBatch?.name;
+    if (!batchName) return;
+    const gen = ++_courseGen;
+    const stale = () => gen !== _courseGen;
+
+    const courses = await UI.getAllowedBatches().catch(() => [batchName]);
+    if (stale()) return;
+    const many = courses.length > 1;
+    const sel = $('course-select'), title = $('course-title'), label = document.querySelector('label[for="course-select"]');
+    if (sel) {
+      sel.replaceChildren(...courses.map(name => { const o = document.createElement('option'); o.value = name; o.textContent = name; return o; }));
+      sel.value = batchName;
+      sel.classList.toggle('hidden', !many);
+      sel.onchange = () => {
+        _homeBatch = { name: sel.value };
+        _homeSubject = null;
+        _homeChapter = null;
+        _activateHomeChoice('.batch-card', sel.value, '.batch-name');
+        _renderCourse().catch(err => console.warn('course failed', err));
+      };
+    }
+    label?.classList.toggle('hidden', !many);
+    if (title) { title.textContent = batchName; title.classList.toggle('hidden', many); }
+
+    await UI.renderSubjectGrid(batchName, _bindSubjectFlow(batchName));
+    if (stale()) return;
+    await UI.renderMixedTestsSection(batchName, quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'));
+    if (stale()) return;
+
+    const names = [...document.querySelectorAll('#subject-grid .subject-card .subject-name')].map(el => el.textContent.trim());
+    if (!names.length) return;
+    let pick = keepSubject && _homeSubject && names.includes(_homeSubject) ? _homeSubject : '';
+    if (!pick) {
+      const saved = await DB.getSetting(_courseSubjectKey(batchName), '').catch(() => '');
+      if (stale()) return;
+      pick = names.includes(saved) ? saved : names[0];
+    }
+    const keepChapter = keepSubject && pick === _homeSubject ? _homeChapter : null;
+    _activateHomeChoice('.subject-card', pick, '.subject-name');
+    await _bindSubjectFlow(batchName)(pick, { remember: false });
+    if (stale() || !keepChapter) return;
+    // a background refresh (e.g. after a test) only re-highlights the chapter; it never navigates
+    _homeChapter = keepChapter;
+    _activateHomeChoice('.chapter-item', keepChapter, '.chapter-name');
+  }
+
   async function _renderHomeHierarchy({ preserveSelection = false } = {}) {
-    await UI.renderBatchGrid(async batch => {
-      _homeBatch = batch;
-      _homeSubject = null;
-      _homeChapter = null;
-      await UI.renderMixedTestsSection(batch.name, quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'));
-      await UI.renderSubjectGrid(batch.name, _bindSubjectFlow(batch.name));
-    });
-
+    await UI.renderBatchGrid(batch => _openCourse(batch).catch(err => console.warn('course failed', err)));
     if (!preserveSelection || !_homeBatch?.name) return;
-
     _activateHomeChoice('.batch-card', _homeBatch.name, '.batch-name');
-    await UI.renderMixedTestsSection(_homeBatch.name, quiz => TEST_PLAYER.startTest(quiz.quiz_id, quiz.default_mode || 'practice'));
-    await UI.renderSubjectGrid(_homeBatch.name, _bindSubjectFlow(_homeBatch.name));
-
-    if (!_homeSubject) return;
-
-    _activateHomeChoice('.subject-card', _homeSubject, '.subject-name');
-    await UI.renderChapterList(_homeBatch.name, _homeSubject, _bindChapterFlow(_homeBatch.name, _homeSubject));
-
-    if (!_homeChapter) return;
-
-    // Just re-highlight the previously-picked chapter — Chapter Hub is now
-    // its own screen (not inline home content), so a background refresh
-    // (e.g. after finishing a quiz) must not forcibly navigate the student
-    // away from home. They reach the Hub the same way as any other time:
-    // by tapping the chapter again.
-    _activateHomeChoice('.chapter-item', _homeChapter, '.chapter-name');
+    await _renderCourse({ keepSubject: true });
   }
 
   // Server class/subject/chapter list (once per session inside the API):
@@ -2918,7 +2964,7 @@ const APP = (() => {
   function _syncServerHierarchyInBackground() {
     if (!API.syncServerBatchesForStudent) return;
     API.syncServerBatchesForStudent().then(async batches => {
-      if (!batches || _currentScreen !== 'home' || _isTeacherOrParentMode) return;
+      if (!batches || !['home', 'course'].includes(_currentScreen) || _isTeacherOrParentMode) return;
       await DB.syncHierarchyFromExisting?.();
       await _renderHomeHierarchy({ preserveSelection: true });
     }).catch(() => {});
@@ -3344,6 +3390,7 @@ const APP = (() => {
     isTouchDevice,
     // Free-chapter locks
     isChapterLocked,
+    isOnFreePlan: async () => _isFreePlan(await API.getStudentProfile().catch(() => null)),
     isQuizLocked,
     isFreeWindowOver,
     shareApp: () => _shareApp(),
