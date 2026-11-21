@@ -339,11 +339,16 @@ const API = (() => {
   // (login, payment, saves) clears all of them, so nothing old is ever used after a change.
   const _shared = new Map();
   const _copy = v => { if (!v || typeof v !== 'object') return v; try { return structuredClone(v); } catch { return JSON.parse(JSON.stringify(v)); } };
-  function _sharedGet(key, ttlMs, fn) {
+  // ttlMs may be a function of the answer (e.g. "until the next paper starts"); fresh: ask the server anyway
+  function _sharedGet(key, ttlMs, fn, { fresh = false } = {}) {
     const hit = _shared.get(key);
-    if (hit && (hit.pending || Date.now() - hit.at < ttlMs)) return hit.p.then(_copy);
-    const entry = { pending: true, at: 0, p: null };
-    entry.p = Promise.resolve().then(fn).then(v => { entry.pending = false; entry.at = Date.now(); return v; }, err => { if (_shared.get(key) === entry) _shared.delete(key); throw err; });
+    if (hit && (hit.pending || (!fresh && Date.now() - hit.at < hit.ttl))) return hit.p.then(_copy);
+    const entry = { pending: true, at: 0, ttl: 0, p: null };
+    entry.p = Promise.resolve().then(fn).then(v => {
+      entry.pending = false; entry.at = Date.now();
+      try { entry.ttl = typeof ttlMs === 'function' ? Math.max(0, Number(ttlMs(v)) || 0) : ttlMs; } catch { entry.ttl = 0; }
+      return v;
+    }, err => { if (_shared.get(key) === entry) _shared.delete(key); throw err; });
     _shared.set(key, entry);
     if (_shared.size > 50) for (const [k, e] of _shared) if (!e.pending && Date.now() - e.at > 60000) _shared.delete(k);
     return entry.p.then(_copy);
@@ -1478,7 +1483,8 @@ const API = (() => {
     const profile = await getStudentProfile();
     const token = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
     if (!token) return null;
-    const payload = await request('/referrals/me', { headers: { Authorization: `Bearer ${token}` } });
+    // Home is rebuilt on every Home tap: one answer is kept for a minute (speed audit 2026-11-22); a claim (POST) clears it
+    const payload = await _sharedGet('referrals|' + token, 60000, () => request('/referrals/me', { headers: { Authorization: `Bearer ${token}` } }));
     return payload?.data || null;
   }
   async function claimReferralPrize(body) {
@@ -2252,8 +2258,8 @@ const API = (() => {
   // Public — no admin session needed, so students can also fetch the
   // admin-chosen chapter order (their local subject_chapters table has no
   // order info of its own; it's derived alphabetically from synced content).
-  async function fetchChapterOrder(batch, subject) {
-    const payload = await request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters`);
+  async function fetchChapterOrder(batch, subject, options = {}) {
+    const payload = await request(`/batches/${encodeURIComponent(batch)}/subjects/${encodeURIComponent(subject)}/chapters`, options);
     return payload?.data || [];
   }
 
@@ -2300,8 +2306,23 @@ const API = (() => {
     return { Authorization: `Bearer ${token}` };
   }
   // The list also carries `consent`: has "माझं नाव दाखवा" been answered already (asked once).
-  async function fetchWeeklyTests() {
-    const payload = await request('/weekly/my', { headers: await _studentAuth() });
+  // Kept for a minute (Home is rebuilt on every Home tap), but never past the moment a paper
+  // opens / closes / shows results, so the card changes on time; { fresh: true } asks the server
+  // anyway. Register / submit (POST) clear it, and so does starting a paper (weeklyKey).
+  function _weeklyTtl(payload) {
+    const now = Date.now(); let ttl = 60000;
+    for (const e of (Array.isArray(payload?.data) ? payload.data : [])) {
+      for (const t of [e.starts_at, e.ends_at, e.reveal_at]) {
+        const ms = new Date(t) - now;
+        if (ms > 0 && ms < ttl) ttl = ms;
+      }
+    }
+    return ttl;
+  }
+  function _dropWeeklyCache() { for (const k of [..._shared.keys()]) if (k.startsWith('weekly|')) _shared.delete(k); }
+  async function fetchWeeklyTests({ fresh = false } = {}) {
+    const auth = await _studentAuth();
+    const payload = await _sharedGet('weekly|' + auth.Authorization, _weeklyTtl, () => request('/weekly/my', { headers: auth }), { fresh });
     const list = Array.isArray(payload?.data) ? payload.data : [];
     list.consent = payload?.consent === true;
     // website: after the family's first महा-Test the next ones are in the app only
@@ -2335,6 +2356,7 @@ const API = (() => {
     return (await request(`/weekly/${encodeURIComponent(id)}/paper`, { headers: await _studentAuth() }))?.data || null;
   }
   async function weeklyKey(id) {
+    _dropWeeklyCache();   // the Home card then shows this paper as started
     // the child is waiting on "⏳ उघडत आहे…": give up sooner (the paper itself is already on the phone)
     return (await request(`/weekly/${encodeURIComponent(id)}/key`, { headers: await _studentAuth(), timeoutMs: 30000 }))?.key || '';
   }
@@ -2532,20 +2554,50 @@ const API = (() => {
   // Returns the locally-known chapters for a batch/subject, re-sorted to
   // match the admin's saved order when reachable. Falls back to the plain
   // alphabetical local list when offline or if the backend has no order info.
+  // The list no longer waits for the server (speed audit 2026-11-22: 1.4 s on 2G, 50 s while the
+  // server was asleep): the order last fetched is kept on the phone and used at once; it is
+  // refreshed quietly in the background at most every 10 minutes, and the next opening uses it.
+  // Only the very first time (nothing kept yet) the list waits — at most 5 s.
+  const CH_ORDER_TTL = 10 * 60 * 1000;
+  const _chOrderInFlight = new Map();
+  function _sortByChapterOrder(local, order) {
+    if (!Array.isArray(order) || !order.length) return local;
+    const orderMap = new Map(order);
+    return [...local].sort((a, b) => {
+      const oa = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity;
+      const ob = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity;
+      if (oa !== ob) return oa - ob;
+      return a.name.localeCompare(b.name);
+    });
+  }
+  function _refreshChapterOrder(batch, subject, key, timeoutMs) {
+    if (_chOrderInFlight.has(key)) return _chOrderInFlight.get(key);
+    const p = fetchChapterOrder(batch, subject, { timeoutMs })
+      .then(async remote => {
+        const order = remote.map(c => [c.name, c.order]);
+        await DB.setSetting(key, { order, at: Date.now() }).catch(() => {});
+        return order;
+      })
+      .finally(() => _chOrderInFlight.delete(key));
+    _chOrderInFlight.set(key, p);
+    return p;
+  }
   async function getOrderedChapters(batch, subject) {
     const local = await DB.getChaptersByBatchSubject(batch, subject);
-    if (!navigator.onLine) return local;
+    const key = `chapter_order|${batch}|${subject}`;
+    const saved = await DB.getSetting(key, null).catch(() => null);
+    const online = navigator.onLine;
+    if (saved && Array.isArray(saved.order)) {
+      if (online && Date.now() - (Number(saved.at) || 0) > CH_ORDER_TTL) {
+        _refreshChapterOrder(batch, subject, key, 60000).catch(() => {});
+      }
+      return _sortByChapterOrder(local, saved.order);
+    }
+    if (!online) return local;
     try {
-      const remote = await fetchChapterOrder(batch, subject);
-      if (!remote.length) return local;
-      const orderMap = new Map(remote.map(c => [c.name, c.order]));
-      return [...local].sort((a, b) => {
-        const oa = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity;
-        const ob = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity;
-        if (oa !== ob) return oa - ob;
-        return a.name.localeCompare(b.name);
-      });
+      return _sortByChapterOrder(local, await _refreshChapterOrder(batch, subject, key, 5000));
     } catch {
+      _refreshChapterOrder(batch, subject, key, 60000).catch(() => {});   // keep it for the next time
       return local;
     }
   }
@@ -3222,7 +3274,7 @@ const API = (() => {
   // student: my teachers' videos (Home list)
   async function fetchMyTeacherVideos() {
     const token = await ensureStudentSession();
-    return (await request('/teacher-videos/for-me', { headers: { Authorization: `Bearer ${token}` } }))?.data || [];
+    return (await _sharedGet('tvideos|' + token, 60000, () => request('/teacher-videos/for-me', { headers: { Authorization: `Bearer ${token}` } })))?.data || [];
   }
   // admin: every teacher's videos · take one off the students' side (or put it back)
   async function adminTeacherVideos(q = '') {

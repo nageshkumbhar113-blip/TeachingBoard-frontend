@@ -109,10 +109,10 @@ const WEEKLY = (() => {
   }
 
   // ── Home card ───────────────────────────────────────────────────
-  async function renderHomeCard() {
+  async function renderHomeCard({ fresh = false } = {}) {
     const home = document.getElementById('screen-home');
     if (!home || !window.API?.fetchWeeklyTests || !navigator.onLine) return;
-    try { _events = await API.fetchWeeklyTests(); _homeTries = 0; }
+    try { _events = await API.fetchWeeklyTests({ fresh }); _homeTries = 0; }
     catch {   // slow / sleeping server: try the card again a little later (3 times)
       if (_homeTries++ < 3) setTimeout(() => { if (document.getElementById('screen-home')?.offsetParent) renderHomeCard().catch(() => {}); }, 20000);
       return;
@@ -176,7 +176,7 @@ const WEEKLY = (() => {
           // a phone whose clock runs ahead of the server reached 0 before the server changed the paper's state:
           // ask again at most every 20 s, not every second (audit 2026-11-21)
           if (Date.now() - _autoAt < 20000) continue;
-          _autoAt = Date.now(); clearInterval(_tick); renderHomeCard(); return;
+          _autoAt = Date.now(); clearInterval(_tick); renderHomeCard({ fresh: true }); return;
         }
       }
     }, 1000);
@@ -373,7 +373,7 @@ const WEEKLY = (() => {
           done(true);
         } catch (err) {
           e.target.disabled = false;
-          if (err?.code === 'APP_ONLY') { done(false); _events.app_only = true; _appOnlySheet(err.message); renderHomeCard(); return; }
+          if (err?.code === 'APP_ONLY') { done(false); _events.app_only = true; _appOnlySheet(err.message); renderHomeCard({ fresh: true }); return; }
           msg.textContent = err?.message || 'Register झालं नाही';
         }
       };
@@ -392,7 +392,7 @@ const WEEKLY = (() => {
     } catch (err) {
       if (err?.code === 'APP_ONLY') { _appOnlySheet(err.message); return; }
       _toast(err?.code === 'NOT_YET' ? 'Test अजून सुरू झाला नाही' : (err?.message || 'Test उघडता आला नाही'), 'error');
-      if (err?.code === 'JOIN_CLOSED') renderHomeCard();
+      if (err?.code === 'JOIN_CLOSED') renderHomeCard({ fresh: true });
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '▶ आत्ता सुरू करा'; }
     }
