@@ -2296,7 +2296,7 @@ const ADMIN = (() => {
       // 4थी शिष्यवृत्ती (पूर्वीची 5वी), 2020–2024 papers: पेपर 1 = मराठी 1–25 + गणित 26–75, पेपर 2 = इंग्रजी 1–25 + बुद्धिमत्ता 26–75;
       // every question 2 marks (150), 90 minutes, no negative marking. `gen` = the subject in Create Quiz › 🎓 शिष्यवृत्ती
       // that can fill this part's bank (📦 सराव बँक).
-      id: 'sch4', name: '4थी शिष्यवृत्ती — पेपर 1 (मराठी 25 + गणित 50) · पेपर 2 (इंग्रजी 25 + बुद्धिमत्ता 50)',
+      id: 'sch4', exam: '4', name: '4थी शिष्यवृत्ती — पेपर 1 (मराठी 25 + गणित 50) · पेपर 2 (इंग्रजी 25 + बुद्धिमत्ता 50)',
       title: 'शिष्यवृत्ती Paper Practice', duration: 90, join: 15, top: 3, open_to: 'paid',
       papers: [
         { name: 'पेपर 1', parts: [
@@ -2309,6 +2309,23 @@ const ADMIN = (() => {
         ] },
       ],
       // 9-10 वर्षांची मुलं: रोज एक पेपर, आलटून पालटून — सोम/बुध/शुक्र पेपर 1, मंगळ/गुरु/शनि पेपर 2, संध्याकाळी 6; रविवारी महा-Test
+      slots: { 'पेपर 1': { 1: '18:00', 3: '18:00', 5: '18:00' }, 'पेपर 2': { 2: '18:00', 4: '18:00', 6: '18:00' } },
+    },
+    {
+      // 7वी शिष्यवृत्ती (UPS, पूर्वीची 8वी पूर्व माध्यमिक), 2021–2026 papers: same shape as 4थी — पेपर 1 = मराठी 1–25 + गणित 26–75,
+      // पेपर 2 = इंग्रजी 1–25 + बुद्धिमत्ता 26–75; 2 marks each (150), 90 minutes, no negative marking.
+      id: 'sch7', exam: '7', name: '7वी शिष्यवृत्ती (UPS) — पेपर 1 (मराठी 25 + गणित 50) · पेपर 2 (इंग्रजी 25 + बुद्धिमत्ता 50)',
+      title: 'शिष्यवृत्ती Paper Practice', duration: 90, join: 15, top: 3, open_to: 'paid',
+      papers: [
+        { name: 'पेपर 1', parts: [
+          { label: 'मराठी', match: ['मराठी', 'marathi'], count: 25, marks: 2, gen: 'मराठी' },
+          { label: 'गणित', match: ['गणित', 'math'], count: 50, marks: 2, gen: 'गणित' },
+        ] },
+        { name: 'पेपर 2', parts: [
+          { label: 'इंग्रजी', match: ['english', 'इंग्रजी', 'इंग्लिश'], count: 25, marks: 2, gen: 'English' },
+          { label: 'बुद्धिमत्ता', match: ['बुद्धिमत्ता', 'intelligence', 'reasoning', 'बौद्धिक'], count: 50, marks: 2, gen: 'बुद्धिमत्ता' },
+        ] },
+      ],
       slots: { 'पेपर 1': { 1: '18:00', 3: '18:00', 5: '18:00' }, 'पेपर 2': { 2: '18:00', 4: '18:00', 6: '18:00' } },
     },
   ];
@@ -2340,7 +2357,7 @@ const ADMIN = (() => {
     $('wk-join').value = pt.join;
     $('wk-top').value = String(pt.top);
     $('wk-open').value = pt.open_to;
-    _wkGenParts = gens; _wkGenExam = pt.id === 'sch4' ? '4' : ''; _wkGenBatch = $('wk-batch')?.value || '';
+    _wkGenExam = pt.exam || ''; _wkGenParts = gens.filter(g => window.SCHGEN?.GROUPS[_wkGenExam]?.[g.gen]); _wkGenBatch = $('wk-batch')?.value || '';
     _wkPaintPapers(); _wkPaintSlots(); _wkPaintBank();
     APP.toast(missing.length ? `⚠️ या class मध्ये हे विषय सापडले नाहीत: ${missing.join(', ')} — खालच्या पेपरमध्ये हाताने निवडा` : '✅ Pattern भरला — तपासा आणि Save करा', missing.length ? 'info' : 'success');
   }
@@ -2356,11 +2373,12 @@ const ADMIN = (() => {
     const box = $('wk-bank');
     if (!box) return;
     if (_wkGenBatch !== ($('wk-batch')?.value || '')) { _wkGenParts = []; _wkGenExam = ''; _wkGenMsg = {}; _wkGenBatch = $('wk-batch')?.value || ''; }
-    // a saved 4थी schedule opened again: find the bank subjects without pressing the pattern button
-    if (!_wkGenParts.length && /(4\s*थी|चौथी|4th)/i.test($('wk-batch')?.value || '') && /(शिष्यवृत्ती|scholar)/i.test($('wk-batch')?.value || '')) {
-      const pt = _WK_PATTERNS.find(x => x.id === 'sch4'), subs = _wkPool.map(x => x.subject);
-      _wkGenParts = pt.papers.flatMap(p => p.parts).map(part => ({ label: part.label, gen: part.gen, subject: subs.find(n => part.match.some(m => n.toLowerCase().includes(m))) })).filter(g => g.subject);
-      _wkGenExam = _wkGenParts.length ? '4' : '';
+    // a saved 4थी / 7वी schedule opened again: find the bank subjects without pressing the pattern button
+    const bn = $('wk-batch')?.value || '', ex = !/(शिष्यवृत्ती|scholar|UPS)/i.test(bn) ? '' : /(4\s*थी|चौथी|4th)/i.test(bn) ? '4' : /(7\s*वी|सातवी|7th|8\s*वी|आठवी|8th|UPS)/i.test(bn) ? '7' : '';
+    if (!_wkGenParts.length && ex) {
+      const pt = _WK_PATTERNS.find(x => x.exam === ex), subs = _wkPool.map(x => x.subject);
+      _wkGenParts = pt.papers.flatMap(p => p.parts).filter(part => window.SCHGEN?.GROUPS[ex]?.[part.gen]).map(part => ({ label: part.label, gen: part.gen, subject: subs.find(n => part.match.some(m => n.toLowerCase().includes(m))) })).filter(g => g.subject);
+      _wkGenExam = _wkGenParts.length ? ex : '';
     }
     if (!_wkGenParts.length || !_wkGenExam || !window.SCHGEN) { box.hidden = true; box.innerHTML = ''; return; }
     box.hidden = false;

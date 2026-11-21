@@ -1325,9 +1325,9 @@
    come from FIGGEN (figureGen.js) at a 4th-standard level; everything else from SCH above. */
 const SCHGEN = (() => {
   const S = window.SCH, OPTL = ['A', 'B', 'C', 'D'], LEVELS = ['easy', 'medium', 'hard'], LVN = ['सोपी', 'मध्यम', 'कठीण'];
-  const EXAMS = [{ id: '4', name: '4थी शिष्यवृत्ती (पूर्वीची 5वी)', tag: 'sch4' }];
+  const EXAMS = [{ id: '4', name: '4थी शिष्यवृत्ती (पूर्वीची 5वी)', tag: 'sch4' }, { id: '7', name: '7वी शिष्यवृत्ती (UPS, पूर्वीची 8वी)', tag: 'sch7' }];
   // FIGGEN has 3 levels made for 8th (NMMS). 4th: सोपी / मध्यम → its easy, कठीण → its medium.
-  const FIG_LEVEL = [0, 0, 1];
+  const FIG_LEVEL = { 4: [0, 0, 1], 7: [0, 1, 2] };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const isFig = k => k.startsWith('f:');
@@ -1341,10 +1341,10 @@ const SCHGEN = (() => {
     const lesson = lessonOf(exam, sub, key);
     if (isFig(key)) {
       const t = figType(key); if (!t || !t.fn) return null;
-      const q = window.FIGGEN.make(t, FIG_LEVEL[L - 1]);
+      const q = window.FIGGEN.make(t, (FIG_LEVEL[exam] || FIG_LEVEL[4])[L - 1]);
       return q ? { src: 'fig', key, L, lesson, q } : null;
     }
-    const q = S.make(key, L, false, R);
+    const q = S.make(key, L, exam === '7', R);
     return q ? { src: 'sch', key, L, lesson, q } : null;
   }
   const ansIdx = it => it.src === 'fig' ? it.q.ans : OPTL.indexOf(it.q.answer);
