@@ -1108,7 +1108,14 @@ const SYNC = (() => {
   // fetch is retried on the next cycle.
   const STUDENT_FP_KEY = 'student_sync_fp'; // { student_code, quizzes, questions, access, fullAt }
   let _studentFp      = null;
-  let _forceFullNext  = true;               // first cycle after launch is full
+  // App launch (audit 2026-11-21): the first cycle used to be a FULL download every time — the whole question
+  // bank and every quiz, even when nothing had changed. Now it trusts the fingerprints like every other cycle,
+  // and is full only when: no full sync yet on this phone, the hourly full sync is due, access changed,
+  // the server can't answer sync-state, or the phone's own copy looks incomplete (fewer quizzes / questions
+  // than the server counts — e.g. storage was cleared). Payment / re-login still force a full sync.
+  // Back to the old way without an app update: Render SYNC_STATE_DISABLED=1 (or a small SYNC_FULL_SEC).
+  let _forceFullNext  = false;
+  let _launchCycle    = true;
   let _lastStudentCheckAt = 0;
   let _studentHints   = null;               // { checkEverySec, resumeMinSec, fullEverySec } from server
 
@@ -1133,7 +1140,21 @@ const SYNC = (() => {
     } catch { /* keep the previously saved list */ }
   }
 
-  async function _studentSyncOnce(force) {
+  // Which part of the phone's copy is short: fewer published quizzes / questions of the student's classes than
+  // the server counts (each fingerprint starts with that count). Unsure → both short (downloaded, as before).
+  async function _localGaps(state) {
+    try {
+      const want = f => Number(String(f || '').split(':')[0]) || 0;
+      const prof = await API.getStudentProfile?.();
+      const mine = new Set((prof?.assigned_batches || []).map(b => String(b || '').trim()).filter(Boolean));
+      if (!mine.size) return { quizzes: true, questions: true };
+      const qz = (await DB.getQuizzesByStatus('published')).filter(q => mine.has(String(q.batch || '').trim())).length;
+      const qs = (await DB.getAllQuestions()).filter(q => mine.has(String(q.batch || '').trim())).length;
+      return { quizzes: qz < want(state.quizzes), questions: qs < want(state.questions) };
+    } catch { return { quizzes: true, questions: true }; }
+  }
+
+  async function _studentSyncOnce(force, launch) {
     const fp = await _loadStudentFp();
     let state = null;
     try { state = await API.fetchSyncState?.(); } catch { state = null; } // old server / offline → legacy full
@@ -1147,8 +1168,9 @@ const SYNC = (() => {
 
     const fullEveryMs = (_studentHints?.fullEverySec || 3600) * 1000;
     const full = force || !smart || !fp.fullAt || (Date.now() - fp.fullAt) >= fullEveryMs || state.access !== fp.access;
-    const doQuizzes   = full || state.quizzes !== fp.quizzes;
-    const doQuestions = full || state.questions !== fp.questions;
+    const gap = !full && launch ? await _localGaps(state) : { quizzes: false, questions: false };
+    const doQuizzes   = full || state.quizzes !== fp.quizzes || gap.quizzes;
+    const doQuestions = full || state.questions !== fp.questions || gap.questions;
 
     let okQuizzes = false, okQuestions = false, okMe = false;
     const tasks = [];
@@ -1174,7 +1196,7 @@ const SYNC = (() => {
       fp.access = smart ? state.access : undefined;
       _forceFullNext = false;
     }
-    if (full) await _refreshFreeChapters();
+    if (full || doQuizzes) await _refreshFreeChapters();   // a free-chapter change also changes the quizzes fingerprint
     DB.setSetting(STUDENT_FP_KEY, fp).catch(() => {});
     return { changed: tasks.length > 0, full, smart };
   }
@@ -1192,11 +1214,12 @@ const SYNC = (() => {
     _studentSyncing = true;
     _setStatus('syncing');
     const force = !!(opts && opts.force) || _forceFullNext;
+    const launch = _launchCycle; _launchCycle = false;
     let result = null;
 
     return Promise.resolve()
       .then(() => _drainQueue())
-      .then(() => _studentSyncOnce(force))
+      .then(() => _studentSyncOnce(force, launch))
       .then(r => {
         result = r;
         // Nothing downloaded → nothing on Home can have changed; skip the re-render.

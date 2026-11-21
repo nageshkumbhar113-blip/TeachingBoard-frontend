@@ -324,7 +324,23 @@ const API = (() => {
     return '';
   }
 
+  // ── one request for the same GET asked twice at app open (audit 2026-11-21) ──
+  // Callers that ask within ttlMs share one answer (each gets its own copy). Any POST / PUT / DELETE
+  // (login, payment, saves) clears all of them, so nothing old is ever used after a change.
+  const _shared = new Map();
+  const _copy = v => { if (!v || typeof v !== 'object') return v; try { return structuredClone(v); } catch { return JSON.parse(JSON.stringify(v)); } };
+  function _sharedGet(key, ttlMs, fn) {
+    const hit = _shared.get(key);
+    if (hit && (hit.pending || Date.now() - hit.at < ttlMs)) return hit.p.then(_copy);
+    const entry = { pending: true, at: 0, p: null };
+    entry.p = Promise.resolve().then(fn).then(v => { entry.pending = false; entry.at = Date.now(); return v; }, err => { if (_shared.get(key) === entry) _shared.delete(key); throw err; });
+    _shared.set(key, entry);
+    if (_shared.size > 50) for (const [k, e] of _shared) if (!e.pending && Date.now() - e.at > 60000) _shared.delete(k);
+    return entry.p.then(_copy);
+  }
+
   async function request(path, options = {}, authRetry = true) {
+    if (options.method && String(options.method).toUpperCase() !== 'GET') _shared.clear();
     const url     = `${getApiUrl()}${path}`;
     const headers = { ...(options.headers || {}) };
     if (!headers['Content-Type'] && options.body !== undefined) {
@@ -557,9 +573,9 @@ const API = (() => {
 
   async function fetchStudentMe() {
     const token = await ensureStudentSession();
-    const payload = await request('/auth/me', {
+    const payload = await _sharedGet('me|' + token, 3000, () => request('/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
-    });
+    }));
     if (payload?.user) {
       await _storeStudentProfile(payload.user);
     }
@@ -1728,7 +1744,7 @@ const API = (() => {
   }
 
   async function getBatchPlans() {
-    const payload = await request('/batches/pricing/all');
+    const payload = await _sharedGet('plans', 30000, () => request('/batches/pricing/all'));
     return payload?.data || [];
   }
 
@@ -1911,7 +1927,7 @@ const API = (() => {
     if (!profile?.student_code) return null;
     const token = await ensureStudentSession().catch(() => '');
     if (!token) return null;
-    return request('/student/sync-state', { headers: { Authorization: `Bearer ${token}` } });
+    return _sharedGet('syncstate|' + token, 3000, () => request('/student/sync-state', { headers: { Authorization: `Bearer ${token}` } }));
   }
 
   async function syncServerLessons() {
@@ -3078,9 +3094,9 @@ const API = (() => {
   // banner (server-side gated, see bannerController.getBannersForStudent).
   async function fetchHomeBanners() {
     const token = await ensureStudentSession();
-    const payload = await request('/banners/for-student', {
+    const payload = await _sharedGet('banners|' + token, 30000, () => request('/banners/for-student', {
       headers: { Authorization: `Bearer ${token}` },
-    });
+    }));
     return payload?.banners || [];
   }
 
@@ -3100,9 +3116,9 @@ const API = (() => {
   // (see bannerController.getDefaultQuotesForStudent) — plain string array.
   async function fetchDefaultBannerQuotes() {
     const token = await ensureStudentSession();
-    const payload = await request('/banners/default-quotes', {
+    const payload = await _sharedGet('quotes|' + token, 30000, () => request('/banners/default-quotes', {
       headers: { Authorization: `Bearer ${token}` },
-    });
+    }));
     return payload?.quotes || [];
   }
 

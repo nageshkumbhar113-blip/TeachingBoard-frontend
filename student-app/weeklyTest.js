@@ -20,6 +20,7 @@ const WEEKLY = (() => {
   const _stateKey = id => `weekly_state_${id}`;
   let _events = [];
   let _consent = true;     // "माझं नाव दाखवा" already answered? (asked once, at the first registration)
+  let _autoAt = 0;   // last time the countdown itself asked the server again
   let _tick = null;
   const EVENTS_CACHE = 'weekly_events_cache';
   // who is logged in on this phone (student code, or the guest's id)
@@ -144,7 +145,12 @@ const WEEKLY = (() => {
         const ms = new Date(target) - Date.now();
         const t = card.querySelector('.wk-count');
         if (t) t.textContent = _left(ms);
-        if (ms <= 0 && !(ev.state === 'closed' && ev.results)) { clearInterval(_tick); renderHomeCard(); return; }
+        if (ms <= 0 && !(ev.state === 'closed' && ev.results)) {
+          // a phone whose clock runs ahead of the server reached 0 before the server changed the paper's state:
+          // ask again at most every 20 s, not every second (audit 2026-11-21)
+          if (Date.now() - _autoAt < 20000) continue;
+          _autoAt = Date.now(); clearInterval(_tick); renderHomeCard(); return;
+        }
       }
     }, 1000);
     // every paper still to come is downloaded now, quietly (encrypted): at start time only the

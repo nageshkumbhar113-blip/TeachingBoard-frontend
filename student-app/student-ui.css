@@ -4734,7 +4734,8 @@ body.mode-board .bottom-nav #bnav-mode { color: var(--accent, #f0883e); }
   display:flex; align-items:center; justify-content:center; padding:16px;
 }
 .td-dialog-box {
-  background:var(--card-bg,#1e2433); border:1px solid var(--border,rgba(255,255,255,0.12));
+  /* the theme's own card colour: --card-bg was never defined, so light theme got dark text on this dark box (audit 2026-11-21) */
+  background:var(--card-bg,var(--card,#1e2433)); border:1px solid var(--border,rgba(255,255,255,0.12));
   border-radius:14px; padding:20px 16px 16px; width:100%; max-width:340px;
 }
 .td-dialog-msg  { font-size:0.95rem; color:var(--text,#e6edf3); margin:0 0 14px; line-height:1.45; white-space:pre-line; }
