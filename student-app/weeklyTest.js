@@ -406,14 +406,16 @@ const WEEKLY = (() => {
     const paint = () => {
       const q = qs[st.i];
       const given = st.answers[q.q_id] || '';
-      const opts = Object.entries(q.options || {}).filter(([, v]) => String(v ?? '').trim());
+      // an option may be text, a picture (figure questions) or both
+      const oi = q.option_images || {}, opts = [...new Set([...Object.keys(q.options || {}), ...Object.keys(oi)])].sort()
+        .map(k => [k, String((q.options || {})[k] ?? '').trim(), String(oi[k] || '').trim()]).filter(([, v, im]) => v || im);
       el.querySelector('#wk-q').innerHTML = `
         <div class="wk-qn">प्रश्न ${st.i + 1} / ${qs.length}${paperMode && q.subject ? ` · <span class="wk-subj">${_esc(q.subject)}</span>` : ''}${paperMode && q.marks && q.marks !== 1 ? ` · ${q.marks} गुण` : ''}</div>
         <div class="wk-qt">${_esc(q.question)}</div>
         ${q.image ? `<img class="wk-img" src="${_esc(q.image)}" alt="">` : ''}
         ${q.type === 'fib'
           ? `<input class="gx-input" id="wk-fib" value="${_esc(given)}" placeholder="उत्तर लिहा" />`
-          : opts.map(([k, v]) => `<button type="button" class="wk-opt${given === k ? ' on' : ''}" data-k="${_esc(k)}"><b>${_esc(k)}</b> ${_esc(v)}</button>`).join('')}`;
+          : opts.map(([k, v, im]) => `<button type="button" class="wk-opt${given === k ? ' on' : ''}${im ? ' has-img' : ''}" data-k="${_esc(k)}"><b>${_esc(k)}</b> ${_esc(v)}${im ? `<img class="wk-oimg" src="${_esc(im)}" alt="पर्याय ${_esc(k)}">` : ''}</button>`).join('')}`;
       el.querySelectorAll('.wk-opt').forEach(b => b.onclick = () => { st.answers[q.q_id] = b.dataset.k; save(); paint(); });
       el.querySelector('#wk-fib')?.addEventListener('input', e => { st.answers[q.q_id] = e.target.value; save(); palette(); });
       el.querySelector('#wk-prev').disabled = st.i === 0;
@@ -531,9 +533,10 @@ const WEEKLY = (() => {
         </div>
         ${d.review_locked ? `<button type="button" class="gx-btn gx-cool wk-review-lock" id="wk-unlock" style="width:100%;margin-top:10px">🔒 बरोबर उत्तरं आणि उकल पाहण्यासाठी Course घ्या</button>` : `<details class="wk-review"><summary>📖 बरोबर उत्तरं बघा</summary>
           ${d.review.map((q, i) => {
-            const ok = q.given && (q.given === q.answer || String((q.options || {})[q.given] ?? q.given).trim().toLowerCase() === String((q.options || {})[q.answer] ?? q.answer).trim().toLowerCase());
+            const tx = k => String((q.options || {})[k] ?? k).trim().toLowerCase(), ok = q.given && (q.given === q.answer || (tx(q.given) !== '' && tx(q.given) === tx(q.answer)));
+            const show = k => { const t = (q.options || {})[k] ?? k, im = (q.option_images || {})[k]; return `${String(t).trim() ? _esc(t) : _esc(k)}${im ? ` <img class="wk-oimg sm" src="${_esc(im)}" alt="">` : ''}`; };
             return `<div class="wk-rv ${q.given ? (ok ? 'ok' : 'bad') : 'skip'}">${q.subject && (i === 0 || d.review[i - 1].subject !== q.subject) && d.paper_order === 'sections' ? `<div class="wk-sec">${_esc(q.subject)}</div>` : ''}<b>${i + 1}. ${_esc(q.question)}</b>
-              <div>✅ ${_esc((q.options || {})[q.answer] ?? q.answer)}${q.given && !ok ? ` · ❌ तुमचं: ${_esc((q.options || {})[q.given] ?? q.given)}` : ''}${!q.given ? ' · ⏭ सोडला' : ''}</div>
+              <div>✅ ${show(q.answer)}${q.given && !ok ? ` · ❌ तुमचं: ${show(q.given)}` : ''}${!q.given ? ' · ⏭ सोडला' : ''}</div>
               ${q.explanation ? `<small>${_esc(q.explanation).replace(/(^|\n)\s*🖼\s+(https:\/\/[^\s"'<>]+\.(?:png|jpe?g|webp|gif))[ \t]*(?=\n|$)/gi, '$1<img class="sol-fig" src="$2" alt="उकलीतील आकृती" loading="lazy">')}</small>` : ''}</div>`;
           }).join('')}
         </details>`}
