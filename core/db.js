@@ -903,12 +903,63 @@ const DB = (() => {
   // SETTINGS
   // ════════════════════════
 
+  // ── Login PINs on the WEBSITE (security audit 2026-11-22) ──
+  // On a shared computer (school, cyber café) a PIN kept in the browser could be read by the next
+  // person. On the website the PIN now lives only for the open browser session (sessionStorage);
+  // what stays is a slow salted hash, enough for the PIN-lock screen to check a typed PIN (which then
+  // brings the session copy back). The installed app (a child's own phone) keeps it as before.
+  const _PIN_KEYS = new Set(['student_pin', 'teacher_pin', 'parent_pin']);
+  const _isNative = () => !!(typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.());
+  const _webPin = key => _PIN_KEYS.has(key) && !_isNative() && typeof sessionStorage !== 'undefined' && !!window.crypto?.subtle;
+  const _ss = { get: k => { try { return sessionStorage.getItem('tb_' + k) || ''; } catch { return ''; } }, set: (k, v) => { try { v ? sessionStorage.setItem('tb_' + k, v) : sessionStorage.removeItem('tb_' + k); } catch { /* blocked */ } } };
+  const _u8b64 = u8 => btoa(String.fromCharCode(...u8));
+  async function _pinDigest(pin, saltB64) {
+    const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+    const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, k, 256);
+    return _u8b64(new Uint8Array(bits));
+  }
+  async function _webPinSet(key, value) {
+    const v = String(value || '').trim();
+    _ss.set(key, v);
+    if (!v) return _put('settings', { key: key + '_check', value: null });
+    const s = _u8b64(crypto.getRandomValues(new Uint8Array(16)));
+    return _put('settings', { key: key + '_check', value: { s, h: await _pinDigest(v, s) } });
+  }
+  // an older version kept the PIN itself in the browser store: moved to this session + a hash, then removed
+  async function _migrateWebPin(key) {
+    const old = await _get('settings', key);
+    if (old?.value) { await _webPinSet(key, old.value).catch(() => {}); await _del('settings', key); }
+  }
+  // a PIN typed on the lock screen: right? (website: checked against the hash; app: the stored PIN)
+  async function checkSavedPin(key, typed) {
+    const t = String(typed || '').trim();
+    if (!t) return false;
+    if (!_webPin(key)) return t === String(await getSetting(key, '') || '').trim();
+    await _migrateWebPin(key);
+    const c = (await _get('settings', key + '_check'))?.value;
+    if (!c?.s || !c?.h) return false;
+    const ok = (await _pinDigest(t, c.s)) === c.h;
+    if (ok) _ss.set(key, t);   // this session can log in again on its own
+    return ok;
+  }
+  async function hasSavedPin(key) {
+    if (!_webPin(key)) return !!String(await getSetting(key, '') || '').trim();
+    await _migrateWebPin(key);
+    return !!_ss.get(key) || !!(await _get('settings', key + '_check'))?.value?.h;
+  }
+
   async function getSetting(key, def) {
+    if (_webPin(key)) {
+      await _migrateWebPin(key);
+      return _ss.get(key) || def;
+    }
     const r = await _get('settings', key);
     return r != null ? r.value : def;
   }
 
   async function setSetting(key, value) {
+    if (_webPin(key)) return _webPinSet(key, value);
     return _put('settings', { key, value });
   }
 
@@ -1463,6 +1514,8 @@ const DB = (() => {
     // Settings
     getSetting,
     setSetting,
+    checkSavedPin,
+    hasSavedPin,
 
     // Images
     saveImage,

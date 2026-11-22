@@ -897,12 +897,13 @@ const APP = (() => {
       const pinKey = role === 'teacher' ? 'teacher_pin' : role === 'parent' ? 'parent_pin' : 'student_pin';
       const wrongCountKey = role === 'teacher' ? 'teacher_pin_wrong_count' : role === 'parent' ? 'parent_pin_wrong_count' : 'student_pin_wrong_count';
       const lockoutKey = role === 'teacher' ? 'teacher_pin_lockout_until' : role === 'parent' ? 'parent_pin_lockout_until' : 'student_pin_lockout_until';
-      const [storedPin, rawWrong, rawLockout] = await Promise.all([
-        DB.getSetting(pinKey, '').catch(() => ''),
+      // website: only a hash of the PIN is kept (core/db.js) — DB.checkSavedPin checks a typed PIN either way
+      const [hasPin, rawWrong, rawLockout] = await Promise.all([
+        DB.hasSavedPin ? DB.hasSavedPin(pinKey).catch(() => false) : DB.getSetting(pinKey, '').then(v => !!String(v || '').trim()).catch(() => false),
         DB.getSetting(wrongCountKey, 0).catch(() => 0),
         DB.getSetting(lockoutKey, 0).catch(() => 0),
       ]);
-      const _storedPin = String(storedPin || '').trim();
+      const _isRight = async typed => (DB.checkSavedPin ? DB.checkSavedPin(pinKey, typed).catch(() => false) : typed === String(await DB.getSetting(pinKey, '') || '').trim());
       let _wrongCount   = Number(rawWrong)   || 0;
       let _lockoutUntil = Number(rawLockout) || 0;
 
@@ -939,7 +940,7 @@ const APP = (() => {
 
         const entered = String(input?.value || '').trim();
         if (!entered) { input?.focus(); return; }
-        if (!_storedPin) {
+        if (!hasPin) {
           // DB मध्ये PIN नाही — re-login आवश्यक
           if (errorEl) {
             errorEl.textContent = 'PIN सापडला नाही. "Switch Account" करून पुन्हा login करा.';
@@ -947,7 +948,7 @@ const APP = (() => {
           }
           return;
         }
-        if (entered === _storedPin) {
+        if (await _isRight(entered)) {
           // Correct — reset rate-limit state
           _wrongCount   = 0;
           _lockoutUntil = 0;
