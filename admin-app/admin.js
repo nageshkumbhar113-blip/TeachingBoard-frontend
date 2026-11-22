@@ -2708,11 +2708,35 @@ const ADMIN = (() => {
     box.innerHTML = '<p class="import-hint">⏳ …</p>';
     try {
       const r = (await API.adminWeekly('GET', `/events/${id}`))?.data;
-      const rows = (r.entries || []).filter(x => x.submitted_at);
-      box.innerHTML = `<h4 class="admin-section-title">🏆 ${_esc(r.event.subject)} · ${_esc(r.event.batch)} — ${rows.length} जणांनी दिला</h4>
-        <table class="wka-table"><thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>Mobile</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead><tbody>
-        ${rows.map(x => `<tr><td>${x.rank ?? '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${x.score}/${x.total}${(x.by_subject || []).length > 1 ? `<br><small>${x.by_subject.map(b => `${_esc(b.subject)} ${b.score}/${b.total}`).join(' · ')}</small>` : ''}</td><td>${Math.round(x.time_taken / 60)} मि</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`).join('')}
-        </tbody></table>`;
+      const all = r.entries || [];
+      // 📲 the app (noted since 2026-11-22): used the app on some day, or only the website so far
+      const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+      const hasApp = x => !!(x.app_last_day || x.app_first_at || x.via === 'app');
+      const appCell = x => hasApp(x)
+        ? `📲 App ✓${x.app_last_day ? `<br><small>शेवटचे: ${x.app_last_day === today ? 'आज' : _esc(x.app_last_day.split('-').reverse().join('/'))}</small>` : ''}`
+        : `🌐 फक्त website${x.mobile ? `<br><button type="button" class="admin-btn-secondary wk-app-wa" data-m="${_esc(x.mobile)}" data-n="${_esc(x.name || '')}">📲 App link पाठवा</button>` : ''}`;
+      const evName = `${r.event.subject} · ${r.event.batch}`;
+      const draw = () => {
+        const noApp = box.querySelector('#wk-noapp')?.checked;
+        const show = all.filter(x => !noApp || !hasApp(x));
+        const done = show.filter(x => x.submitted_at), notDone = show.filter(x => !x.submitted_at);
+        const row = x => `<tr><td>${x.submitted_at ? (x.rank ?? '—') : '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${appCell(x)}</td><td>${x.submitted_at ? `${x.score}/${x.total}${(x.by_subject || []).length > 1 ? `<br><small>${x.by_subject.map(b => `${_esc(b.subject)} ${b.score}/${b.total}`).join(' · ')}</small>` : ''}` : '<small>दिला नाही</small>'}</td><td>${x.submitted_at ? Math.round(x.time_taken / 60) + ' मि' : '—'}</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`;
+        const head = '<thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>Mobile</th><th>App</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead>';
+        box.querySelector('#wk-res-body').innerHTML = `
+          <table class="wka-table">${head}<tbody>${done.map(row).join('') || '<tr><td colspan="8">—</td></tr>'}</tbody></table>
+          ${notDone.length ? `<h4 class="admin-section-title" style="margin-top:14px">📝 Register केले, test दिली नाही — ${notDone.length}</h4><table class="wka-table">${head}<tbody>${notDone.map(row).join('')}</tbody></table>` : ''}`;
+        box.querySelectorAll('.wk-app-wa').forEach(b => b.addEventListener('click', () => {
+          const msg = `नमस्कार 🙏 ${b.dataset.n ? b.dataset.n + ' ने' : 'तुमच्या पाल्याने'} ${evName} महा-Test मध्ये भाग घेतला 👏\nपुढचे सगळे महा-Test, rank आणि सराव आता NKs EduOrbit app मध्ये मिळतील.\n📲 App (Play Store): ${PLAY_APP}`;
+          window.open(`https://wa.me/91${String(b.dataset.m).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+        }));
+      };
+      const appN = all.filter(hasApp).length;
+      box.innerHTML = `<h4 class="admin-section-title">🏆 ${_esc(evName)} — ${all.filter(x => x.submitted_at).length} जणांनी दिला · ${all.length} नोंदले</h4>
+        <p class="import-hint">📲 App वापरणारे: <b>${appN}</b> · 🌐 फक्त website: <b>${all.length - appN}</b> <small>(App ची नोंद 22/11/2026 पासून)</small></p>
+        <label class="import-hint"><input type="checkbox" id="wk-noapp" /> फक्त ज्यांच्याकडे App नाही</label>
+        <div id="wk-res-body"></div>`;
+      box.querySelector('#wk-noapp').addEventListener('change', draw);
+      draw();
       box.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { box.innerHTML = `<p class="import-hint">${_esc(err?.message || '')}</p>`; }
   }
