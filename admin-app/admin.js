@@ -2714,26 +2714,61 @@ const ADMIN = (() => {
       const hasApp = x => !!(x.app_last_day || x.app_first_at || x.via === 'app');
       const appCell = x => hasApp(x)
         ? `📲 App ✓${x.app_last_day ? `<br><small>शेवटचे: ${x.app_last_day === today ? 'आज' : _esc(x.app_last_day.split('-').reverse().join('/'))}</small>` : ''}`
-        : `🌐 फक्त website${x.mobile ? `<br><button type="button" class="admin-btn-secondary wk-app-wa" data-m="${_esc(x.mobile)}" data-n="${_esc(x.name || '')}">📲 App link पाठवा</button>` : ''}`;
+        : `🌐 फक्त website${x.mobile ? `<br>${appLinkBtn(x)}` : ''}`;
+      // 📲 App link button: 🟢 not sent yet · 🟠 sent (date) · 🔵 the family opened the link (date)
+      const dm = d => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      function appLinkBtn(x) {
+        const st = x.app_link_opened_at ? 'opened' : x.app_link_sent_at ? 'sent' : 'new';
+        const label = st === 'opened' ? `👀 Link उघडली<br><small>${_esc(dm(x.app_link_opened_at))}</small>`
+          : st === 'sent' ? `✔ पाठवली · पुन्हा<br><small>${_esc(dm(x.app_link_sent_at))}</small>` : '📲 App link पाठवा';
+        return `<button type="button" class="wk-app-wa wk-al-${st}" data-id="${_esc(x._id)}" data-m="${_esc(x.mobile)}" data-n="${_esc(x.name || '')}">${label}</button>`;
+      }
       const evName = `${r.event.subject} · ${r.event.batch}`;
+      // 🏆 which महा-Test of this child this is ("…चा हा तिसरा महा-Test")
+      const ord = n => (['', 'पहिला', 'दुसरा', 'तिसरा', 'चौथा', 'पाचवा', 'सहावा', 'सातवा', 'आठवा', 'नववा', 'दहावा'][n] || `${n} वा`);
+      const mtNo = x => (x.submitted_at ? (x.mt_given || 1) : (x.mt_given || 0) + 1);   // given: this one is the Nth; not yet: it will be
+      const mtCell = x => (x.submitted_at
+        ? `🏆 ${ord(mtNo(x))}`
+        : `<small>${x.mt_given ? `आधी ${x.mt_given} दिले` : 'आधी एकही नाही'}<br>हा ${ord(mtNo(x))}</small>`);
+      const nameOf = x => x.name || 'तुमच्या पाल्या';
+      const when = new Date(r.event.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      // the message under each number (WhatsApp opens with it filled in; edit before sending)
+      const msgFor = x => {
+        const upcomingNow = Date.now() < new Date(r.event.starts_at).getTime();
+        if (x.submitted_at) return `नमस्कार 🙏 ${nameOf(x)}चा हा ${ord(mtNo(x))} महा-Test (${evName}) 👏\nगुण: ${x.score}/${x.total}${x.rank ? ` · क्रमांक #${x.rank}` : ''}\nपुढचा महा-Test पण जरूर द्या 💪`;
+        if (upcomingNow) return `नमस्कार 🙏 आठवण: ${nameOf(x)}चा हा ${ord(mtNo(x))} महा-Test ${when} ला आहे (${evName}).\nवेळेवर सुरू करा — सगळ्यांना शुभेच्छा! 🏆`;
+        return `नमस्कार 🙏 ${nameOf(x)}ने ${evName} महा-Test साठी नोंदणी केली होती, पण test दिली नाही.\nपुढचा महा-Test जरूर द्या — तयारीत काही अडचण असेल तर कळवा 🙏`;
+      };
       const draw = () => {
         const noApp = box.querySelector('#wk-noapp')?.checked;
         const show = all.filter(x => !noApp || !hasApp(x));
         const done = show.filter(x => x.submitted_at), notDone = show.filter(x => !x.submitted_at);
-        const row = x => `<tr><td>${x.submitted_at ? (x.rank ?? '—') : '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${appCell(x)}</td><td>${x.submitted_at ? `${x.score}/${x.total}${(x.by_subject || []).length > 1 ? `<br><small>${x.by_subject.map(b => `${_esc(b.subject)} ${b.score}/${b.total}`).join(' · ')}</small>` : ''}` : (upcoming ? '—' : '<small>दिला नाही</small>')}</td><td>${x.submitted_at ? Math.round(x.time_taken / 60) + ' मि' : '—'}</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`;
-        const head = '<thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>Mobile</th><th>App</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead>';
+        const row = x => `<tr><td>${x.submitted_at ? (x.rank ?? '—') : '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${mtCell(x)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(String(x.mobile).replace(/\D/g, '').slice(-10))}?text=${encodeURIComponent(msgFor(x))}" target="_blank" rel="noopener" title="WhatsApp — संदेश तयार">📱 ${_esc(x.mobile)} 💬</a>` : '—'}</td><td>${appCell(x)}</td><td>${x.submitted_at ? `${x.score}/${x.total}${(x.by_subject || []).length > 1 ? `<br><small>${x.by_subject.map(b => `${_esc(b.subject)} ${b.score}/${b.total}`).join(' · ')}</small>` : ''}` : (upcoming ? '—' : '<small>दिला नाही</small>')}</td><td>${x.submitted_at ? Math.round(x.time_taken / 60) + ' मि' : '—'}</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`;
+        const head = '<thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>कितवा</th><th>Mobile (💬 संदेश)</th><th>App</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead>';
         const upcoming = Date.now() < new Date(r.event.starts_at).getTime();
         box.querySelector('#wk-res-body').innerHTML = `
-          ${done.length || !notDone.length ? `<table class="wka-table">${head}<tbody>${done.map(row).join('') || '<tr><td colspan="8">—</td></tr>'}</tbody></table>` : ''}
+          ${done.length || !notDone.length ? `<table class="wka-table">${head}<tbody>${done.map(row).join('') || '<tr><td colspan="9">—</td></tr>'}</tbody></table>` : ''}
           ${notDone.length ? `<h4 class="admin-section-title" style="margin-top:14px">${upcoming ? '📝 नोंदलेले (महा-Test अजून सुरू व्हायचा)' : '📝 Register केले, test दिली नाही'} — ${notDone.length}</h4><table class="wka-table">${head}<tbody>${notDone.map(row).join('')}</tbody></table>` : ''}`;
         box.querySelectorAll('.wk-app-wa').forEach(b => b.addEventListener('click', () => {
-          const msg = `नमस्कार 🙏 ${b.dataset.n ? b.dataset.n + ' ने' : 'तुमच्या पाल्याने'} ${evName} महा-Test मध्ये भाग घेतला 👏\nपुढचे सगळे महा-Test, rank आणि सराव आता NKs EduOrbit app मध्ये मिळतील.\n📲 App (Play Store): ${PLAY_APP}`;
+          const x = all.find(e => String(e._id) === b.dataset.id);
+          // the link goes through our server first (it notes the tap, then opens the Play Store)
+          const link = b.dataset.id ? `${API.getApiUrl()}/weekly/app-link/${b.dataset.id}` : PLAY_APP;
+          const msg = `नमस्कार 🙏 ${b.dataset.n ? b.dataset.n + ' ने' : 'तुमच्या पाल्याने'} ${evName} महा-Test मध्ये भाग घेतला 👏${x ? ` (हा ${ord(mtNo(x))} महा-Test)` : ''}\nपुढचे सगळे महा-Test, rank आणि सराव आता NKs EduOrbit app मध्ये मिळतील.\n📲 App (Play Store): ${link}`;
           window.open(`https://wa.me/91${String(b.dataset.m).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+          if (!b.dataset.id) return;
+          API.adminWeekly('POST', `/entries/${b.dataset.id}/app-link`).then(d => {
+            if (x) { x.app_link_sent_at = d?.sent_at || new Date().toISOString(); x.app_link_opened_at = d?.opened_at || x.app_link_opened_at; }
+            draw();
+          }).catch(err => APP.toast(err?.message || 'पाठवल्याची नोंद झाली नाही', 'error'));
         }));
+        const sentN = all.filter(e => e.app_link_sent_at).length, openN = all.filter(e => e.app_link_opened_at).length;
+        const lg = box.querySelector('#wk-al-legend');
+        if (lg) lg.innerHTML = `App link: <span class="wk-al-dot wk-al-new"></span> अजून नाही · <span class="wk-al-dot wk-al-sent"></span> पाठवली <b>${sentN}</b> · <span class="wk-al-dot wk-al-opened"></span> उघडली <b>${openN}</b>`;
       };
       const appN = all.filter(hasApp).length;
       box.innerHTML = `<h4 class="admin-section-title">🏆 ${_esc(evName)} — ${all.filter(x => x.submitted_at).length} जणांनी दिला · ${all.length} नोंदले</h4>
         <p class="import-hint">📲 App वापरणारे: <b>${appN}</b> · 🌐 फक्त website: <b>${all.length - appN}</b> <small>(App ची नोंद 22/11/2026 पासून)</small></p>
+        <p class="import-hint" id="wk-al-legend"></p>
         <div class="admin-toolbar"><label class="import-hint"><input type="checkbox" id="wk-noapp" /> फक्त ज्यांच्याकडे App नाही</label>
           <button type="button" class="admin-btn-secondary" id="wk-copy">📋 यादी copy करा (नाव · नंबर · App)</button></div>
         <div id="wk-res-body"></div>`;
@@ -2741,8 +2776,8 @@ const ADMIN = (() => {
       // the list as text (Excel / WhatsApp): name, code, number, app, marks — the rows now shown
       box.querySelector('#wk-copy').addEventListener('click', async () => {
         const noApp = box.querySelector('#wk-noapp')?.checked;
-        const lines = all.filter(x => !noApp || !hasApp(x)).map(x => [x.name || '', x.student_code, x.mobile || '', hasApp(x) ? 'App' : 'Website', x.submitted_at ? `${x.score}/${x.total}` : 'दिला नाही'].join('\t'));
-        const text = ['नाव\tCode\tनंबर\tApp\tगुण', ...lines].join('\n');
+        const lines = all.filter(x => !noApp || !hasApp(x)).map(x => [x.name || '', x.student_code, x.mobile || '', hasApp(x) ? 'App' : 'Website', `${ord(mtNo(x))} महा-Test`, x.submitted_at ? `${x.score}/${x.total}` : 'दिला नाही'].join('\t'));
+        const text = ['नाव\tCode\tनंबर\tApp\tकितवा\tगुण', ...lines].join('\n');
         try { await navigator.clipboard.writeText(text); APP.toast(`✅ ${lines.length} जणांची यादी copy झाली — Excel / WhatsApp मध्ये paste करा`, 'success'); }
         catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); APP.toast(`✅ ${lines.length} जणांची यादी copy झाली`, 'success'); }
       });

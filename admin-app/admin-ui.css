@@ -3001,3 +3001,13 @@ body.crm-lead-open { overflow: hidden; }
 .wka-bank-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 6px; }
 .wka-bank { border-collapse: collapse; width: 100%; }
 .wka-bank td { padding: 4px 6px; vertical-align: middle; }
+
+/* महा-Test list: 📲 App link button — 🟢 not sent · 🟠 sent · 🔵 opened by the family */
+.wk-app-wa { margin-top: 4px; border: 0; border-radius: 10px; padding: 7px 12px; font-weight: 700; font-size: 0.82rem; line-height: 1.3; cursor: pointer; color: #fff; text-align: center; }
+.wk-app-wa small { font-weight: 500; opacity: .92; }
+.wk-app-wa:focus-visible { outline: 2px solid #1f2937; outline-offset: 2px; }
+.wk-al-new { background: #16a34a; }
+.wk-al-new:hover { background: #15803d; }
+.wk-al-sent { background: #f59e0b; color: #1f1300; }
+.wk-al-opened { background: #2563eb; }
+.wk-al-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; padding: 0; margin: 0 2px; }
