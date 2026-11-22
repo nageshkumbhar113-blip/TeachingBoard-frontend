@@ -2670,7 +2670,7 @@ const ADMIN = (() => {
             <div class="batch-admin-meta">${_esc(new Date(e.starts_at).toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))} · registered ${e.registered} · दिला ${e.submitted}${e.skip_reason ? ' · ' + _esc(e.skip_reason) : ''}</div>
           </div>
           <div class="batch-admin-actions">
-            ${e.submitted ? '<button class="admin-btn-secondary" data-a="res" type="button">🏆 Results</button>' : ''}
+            ${e.submitted ? '<button class="admin-btn-secondary" data-a="res" type="button">🏆 Results</button>' : e.registered ? `<button class="admin-btn-secondary" data-a="res" type="button">👥 नोंदलेले (${e.registered})</button>` : ''}
             <button class="admin-btn-secondary" data-a="del" type="button" title="हा test काढा">🗑️</button>
           </div>`;
         item.querySelector('[data-a="res"]')?.addEventListener('click', () => _showWeeklyResults(e._id));
@@ -2720,11 +2720,12 @@ const ADMIN = (() => {
         const noApp = box.querySelector('#wk-noapp')?.checked;
         const show = all.filter(x => !noApp || !hasApp(x));
         const done = show.filter(x => x.submitted_at), notDone = show.filter(x => !x.submitted_at);
-        const row = x => `<tr><td>${x.submitted_at ? (x.rank ?? '—') : '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${appCell(x)}</td><td>${x.submitted_at ? `${x.score}/${x.total}${(x.by_subject || []).length > 1 ? `<br><small>${x.by_subject.map(b => `${_esc(b.subject)} ${b.score}/${b.total}`).join(' · ')}</small>` : ''}` : '<small>दिला नाही</small>'}</td><td>${x.submitted_at ? Math.round(x.time_taken / 60) + ' मि' : '—'}</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`;
+        const row = x => `<tr><td>${x.submitted_at ? (x.rank ?? '—') : '—'}</td><td>${_esc(x.name)}${x.is_guest ? ' <small>(free)</small>' : ''}</td><td>${_esc(x.student_code)}</td><td>${x.mobile ? `<a href="https://wa.me/91${_esc(x.mobile)}" target="_blank" rel="noopener">📱 ${_esc(x.mobile)}</a>` : '—'}</td><td>${appCell(x)}</td><td>${x.submitted_at ? `${x.score}/${x.total}${(x.by_subject || []).length > 1 ? `<br><small>${x.by_subject.map(b => `${_esc(b.subject)} ${b.score}/${b.total}`).join(' · ')}</small>` : ''}` : (upcoming ? '—' : '<small>दिला नाही</small>')}</td><td>${x.submitted_at ? Math.round(x.time_taken / 60) + ' मि' : '—'}</td><td>${x.leave_count ? '⚠️ ' + x.leave_count : '—'}</td></tr>`;
         const head = '<thead><tr><th>Rank</th><th>नाव</th><th>Code</th><th>Mobile</th><th>App</th><th>गुण</th><th>वेळ</th><th>App सोडलं</th></tr></thead>';
+        const upcoming = Date.now() < new Date(r.event.starts_at).getTime();
         box.querySelector('#wk-res-body').innerHTML = `
-          <table class="wka-table">${head}<tbody>${done.map(row).join('') || '<tr><td colspan="8">—</td></tr>'}</tbody></table>
-          ${notDone.length ? `<h4 class="admin-section-title" style="margin-top:14px">📝 Register केले, test दिली नाही — ${notDone.length}</h4><table class="wka-table">${head}<tbody>${notDone.map(row).join('')}</tbody></table>` : ''}`;
+          ${done.length || !notDone.length ? `<table class="wka-table">${head}<tbody>${done.map(row).join('') || '<tr><td colspan="8">—</td></tr>'}</tbody></table>` : ''}
+          ${notDone.length ? `<h4 class="admin-section-title" style="margin-top:14px">${upcoming ? '📝 नोंदलेले (महा-Test अजून सुरू व्हायचा)' : '📝 Register केले, test दिली नाही'} — ${notDone.length}</h4><table class="wka-table">${head}<tbody>${notDone.map(row).join('')}</tbody></table>` : ''}`;
         box.querySelectorAll('.wk-app-wa').forEach(b => b.addEventListener('click', () => {
           const msg = `नमस्कार 🙏 ${b.dataset.n ? b.dataset.n + ' ने' : 'तुमच्या पाल्याने'} ${evName} महा-Test मध्ये भाग घेतला 👏\nपुढचे सगळे महा-Test, rank आणि सराव आता NKs EduOrbit app मध्ये मिळतील.\n📲 App (Play Store): ${PLAY_APP}`;
           window.open(`https://wa.me/91${String(b.dataset.m).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
@@ -2733,9 +2734,18 @@ const ADMIN = (() => {
       const appN = all.filter(hasApp).length;
       box.innerHTML = `<h4 class="admin-section-title">🏆 ${_esc(evName)} — ${all.filter(x => x.submitted_at).length} जणांनी दिला · ${all.length} नोंदले</h4>
         <p class="import-hint">📲 App वापरणारे: <b>${appN}</b> · 🌐 फक्त website: <b>${all.length - appN}</b> <small>(App ची नोंद 22/11/2026 पासून)</small></p>
-        <label class="import-hint"><input type="checkbox" id="wk-noapp" /> फक्त ज्यांच्याकडे App नाही</label>
+        <div class="admin-toolbar"><label class="import-hint"><input type="checkbox" id="wk-noapp" /> फक्त ज्यांच्याकडे App नाही</label>
+          <button type="button" class="admin-btn-secondary" id="wk-copy">📋 यादी copy करा (नाव · नंबर · App)</button></div>
         <div id="wk-res-body"></div>`;
       box.querySelector('#wk-noapp').addEventListener('change', draw);
+      // the list as text (Excel / WhatsApp): name, code, number, app, marks — the rows now shown
+      box.querySelector('#wk-copy').addEventListener('click', async () => {
+        const noApp = box.querySelector('#wk-noapp')?.checked;
+        const lines = all.filter(x => !noApp || !hasApp(x)).map(x => [x.name || '', x.student_code, x.mobile || '', hasApp(x) ? 'App' : 'Website', x.submitted_at ? `${x.score}/${x.total}` : 'दिला नाही'].join('\t'));
+        const text = ['नाव\tCode\tनंबर\tApp\tगुण', ...lines].join('\n');
+        try { await navigator.clipboard.writeText(text); APP.toast(`✅ ${lines.length} जणांची यादी copy झाली — Excel / WhatsApp मध्ये paste करा`, 'success'); }
+        catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); APP.toast(`✅ ${lines.length} जणांची यादी copy झाली`, 'success'); }
+      });
       draw();
       box.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { box.innerHTML = `<p class="import-hint">${_esc(err?.message || '')}</p>`; }
