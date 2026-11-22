@@ -3011,3 +3011,30 @@ body.crm-lead-open { overflow: hidden; }
 .wk-al-sent { background: #f59e0b; color: #1f1300; }
 .wk-al-opened { background: #2563eb; }
 .wk-al-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; padding: 0; margin: 0 2px; }
+
+/* ── Admin PIN gate: 6 boxes + the Google Authenticator step (2026-11-22) ── */
+.admin-pin-go { margin-top: 12px; min-width: 160px; }
+.admin-otp-step { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.admin-otp-step.hidden { display: none; }
+.admin-otp-input { width: 190px; text-align: center; font-size: 1.5rem; letter-spacing: .3em; font-weight: 700; }
+.admin-otp-remember { font-size: .9rem; display: flex; gap: 6px; align-items: center; }
+.admin-otp-link { background: none; border: 0; color: #2563eb; cursor: pointer; font-size: .88rem; text-decoration: underline; padding: 2px; }
+/* ── Settings › 🔐 Admin सुरक्षा ── */
+.admin-sec-row { display: block; }
+.admin-security { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.asec-title { margin: 0; font-size: 1.1rem; }
+.asec-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.asec-chip { border-radius: 999px; padding: 4px 12px; font-size: .85rem; font-weight: 700; background: #f1f5f9; color: #334155; }
+.asec-chip.ok { background: #dcfce7; color: #166534; }
+.asec-chip.warn { background: #fef3c7; color: #92400e; }
+.asec-sec { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; }
+.asec-sec h4 { margin: 0 0 8px; font-size: .98rem; }
+.asec-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.asec-steps { margin: 0 0 8px 18px; }
+.asec-warn { background: #fff7ed; color: #9a3412; border-radius: 10px; padding: 8px 10px; font-size: .88rem; margin: 6px 0 0; }
+.asec-qr-wrap { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-top: 10px; }
+.asec-qr { background: #fff; padding: 10px; border-radius: 10px; border: 1px solid #e5e7eb; }
+.asec-secret { display: inline-block; font-size: 1rem; letter-spacing: .08em; background: #f8fafc; padding: 6px 10px; border-radius: 8px; word-break: break-all; }
+.asec-rec { background: #fefce8; border: 1px solid #fde68a; border-radius: 12px; padding: 12px 14px; }
+.asec-rec-list { columns: 2; font-size: 1.05rem; margin: 6px 0 10px 18px; }
+.asec-ev-warn td { background: #fff7ed; }

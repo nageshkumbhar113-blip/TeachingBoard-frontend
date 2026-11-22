@@ -65,13 +65,55 @@ const ADMIN = (() => {
   // PIN GATE
   // ════════════════════════
 
+  // The PIN is no longer kept on the device (security audit 2026-11-22). Offline, the screen can still be
+  // opened with the PIN: only a slow, salted hash of it is kept for that (it opens the local data only).
+  let _pinForOtp = '';
+  let _otpBackup = false;
+  const _b64 = u8 => btoa(String.fromCharCode(...u8));
+  async function _pinHash(pin, salt) {
+    const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, k, 256);
+    return _b64(new Uint8Array(bits));
+  }
+  async function _pinCheckSave(pin) {
+    try { const salt = crypto.getRandomValues(new Uint8Array(16)); await DB.setSetting('admin_pin_check', { s: _b64(salt), h: await _pinHash(pin, salt) }); } catch { /* old browser: no offline opening */ }
+  }
+  async function _pinCheckOk(pin) {
+    try {
+      const c = await DB.getSetting('admin_pin_check', null);
+      if (!c?.s || !c?.h) return false;
+      return (await _pinHash(pin, Uint8Array.from(atob(c.s), ch => ch.charCodeAt(0)))) === c.h;
+    } catch { return false; }
+  }
+
+  function _showOtpStep(msg = '') {
+    $('admin-pin-step')?.classList.add('hidden');
+    $('admin-otp-step')?.classList.remove('hidden');
+    _setOtpMode(_otpBackup);
+    if (msg) { _setText('pin-error', msg); $('pin-error')?.classList.remove('hidden'); } else $('pin-error')?.classList.add('hidden');
+    const inp = $('admin-otp-input'); if (inp) { inp.value = ''; inp.focus(); }
+  }
+  function _showPinStep() {
+    _pinForOtp = ''; _otpBackup = false;
+    $('admin-otp-step')?.classList.add('hidden');
+    $('admin-pin-step')?.classList.remove('hidden');
+    document.querySelectorAll('.pin-digit').forEach(i => { i.value = ''; });
+    document.querySelector('.pin-digit')?.focus();
+  }
+  function _setOtpMode(backup) {
+    _otpBackup = backup;
+    const inp = $('admin-otp-input');
+    _setText('admin-otp-label', backup ? '🗝️ कागदावरचा एक राखीव code टाका (उदा. AB12C-D34EF)' : '🔐 Google Authenticator मधला 6 अंकी code टाका');
+    _setText('admin-otp-backup', backup ? '‹ Authenticator चा code वापरा' : 'Phone नाही? राखीव code वापरा');
+    if (inp) { inp.maxLength = backup ? 11 : 6; inp.inputMode = backup ? 'text' : 'numeric'; inp.placeholder = backup ? 'XXXXX-XXXXX' : '••••••'; }
+  }
+
   function open() {
     _unlocked = false;
     $('admin-pin-gate')?.classList.remove('hidden');
     $('admin-content')?.classList.add('hidden');
     $('pin-error')?.classList.add('hidden');
-    document.querySelectorAll('.pin-digit').forEach(i => { i.value = ''; });
-    document.querySelector('.pin-digit')?.focus();
+    _showPinStep();
     $('admin-overlay')?.classList.remove('hidden');
   }
 
@@ -84,50 +126,48 @@ const ADMIN = (() => {
     _unlocked = false;
   }
 
-  async function _checkPin() {
-    const digits = [...document.querySelectorAll('.pin-digit')].map(i => i.value).join('');
+  // extra: the Google Authenticator step ({ otp } / { recovery }, { remember })
+  async function _checkPin(extra = null) {
+    const digits = extra ? _pinForOtp : [...document.querySelectorAll('.pin-digit')].map(i => i.value).join('');
     if (digits.length < 4) return;
 
     function _showPinError(msg) {
       _setText('pin-error', msg || I18N.t('admin.pin.error'));
       $('pin-error')?.classList.remove('hidden');
+      if (extra) { const inp = $('admin-otp-input'); if (inp) { inp.value = ''; inp.focus(); } return; }
       document.querySelectorAll('.pin-digit').forEach(i => { i.value = ''; });
       document.querySelector('.pin-digit')?.focus();
     }
 
     if (navigator.onLine) {
       try {
-        await API.loginAdmin(digits);
-        await DB.setSetting('admin_pin', digits);
+        await API.loginAdmin(digits, extra || {});
+        _pinCheckSave(digits);
       } catch (err) {
+        // a new device (or no remembered one): the Authenticator code is asked
+        if (err?.code === 'OTP_REQUIRED' || err?.code === 'OTP_INVALID') {
+          _pinForOtp = digits;
+          _showOtpStep(err.code === 'OTP_INVALID' ? err.message : '');
+          return;
+        }
         const message = String(err?.message || '').trim();
-        const savedPin = await DB.getSetting('admin_pin', null);
-        const canUseCachedPin = savedPin && digits === savedPin;
-        const canFallbackOffline = canUseCachedPin && (
-          /too many login attempts/i.test(message) ||
-          /fetch|network|timeout|unreachable|failed/i.test(message)
-        );
-
-        if (canFallbackOffline) {
-          APP.toast?.('Server temporarily unavailable — using cached credentials', 'info');
+        const network = ['OFFLINE', 'TIMEOUT'].includes(err?.code) || (!err?.status && /fetch|network|timeout|unreachable|failed/i.test(message));
+        if (network && await _pinCheckOk(digits)) {
+          APP.toast?.('Server ला पोहोचता आलं नाही — फक्त या साधनावरचा data उघडला', 'info');
         } else {
           _showPinError(message || 'PIN check failed');
           return;
         }
       }
     } else {
-      const savedPin = await DB.getSetting('admin_pin', null);
-      if (!savedPin) {
-        _showPinError('Offline: no cached PIN. Connect once to authenticate.');
+      if (!(await _pinCheckOk(digits))) {
+        _showPinError('Offline: आधी एकदा internet वर login करा, किंवा PIN चुकीचा आहे.');
         return;
       }
-      if (digits !== savedPin) {
-        _showPinError(I18N.t('admin.pin.error'));
-        return;
-      }
-      APP.toast?.('Offline mode — using cached credentials', 'info');
+      APP.toast?.('Offline — फक्त या साधनावरचा data उघडला', 'info');
     }
 
+    _pinForOtp = '';
     _unlocked = true;
     $('admin-pin-gate')?.classList.add('hidden');
     $('admin-content')?.classList.remove('hidden');
@@ -135,16 +175,41 @@ const ADMIN = (() => {
   }
 
   function _initPinInputs() {
-    document.querySelectorAll('.pin-digit').forEach((inp, i, all) => {
+    const all = [...document.querySelectorAll('.pin-digit')];
+    all.forEach((inp, i) => {
       inp.addEventListener('input', () => {
         inp.value = inp.value.replace(/\D/, '');
         if (inp.value && i < all.length - 1) all[i + 1].focus();
-        if ([...all].every(d => d.value)) _checkPin();
+        if (all.every(d => d.value)) _checkPin();   // all 6 digits typed
       });
       inp.addEventListener('keydown', e => {
         if (e.key === 'Backspace' && !inp.value && i > 0) all[i - 1].focus();
+        if (e.key === 'Enter') _checkPin();             // a 4-digit PIN (until it is changed to 6)
       });
     });
+    $('admin-pin-go')?.addEventListener('click', () => _checkPin());
+    $('admin-otp-step')?.addEventListener('submit', e => {
+      e.preventDefault();
+      const v = String($('admin-otp-input')?.value || '').trim();
+      if (!v) return;
+      _checkPin({ ...(_otpBackup ? { recovery: v } : { otp: v.replace(/\D/g, '') }), remember: !!$('admin-otp-remember')?.checked });
+    });
+    $('admin-otp-input')?.addEventListener('input', e => {
+      if (!_otpBackup && /^\d{6}$/.test(e.target.value.trim())) $('admin-otp-step').requestSubmit?.();
+    });
+    $('admin-otp-backup')?.addEventListener('click', () => { _setOtpMode(!_otpBackup); $('admin-otp-input').value = ''; $('admin-otp-input').focus(); });
+    $('admin-otp-back')?.addEventListener('click', () => { $('pin-error')?.classList.add('hidden'); _showPinStep(); });
+    // the admin's login ran out (12 h) and the PIN is not kept: the PIN screen again
+    const _loginAgain = () => {
+      if (!_unlocked) return;
+      APP.toast?.('🔐 Admin login संपलं — PIN पुन्हा टाका', 'info');
+      open();
+    };
+    window.addEventListener('tb-admin-login-needed', _loginAgain);
+    // the server refused the admin login (ran out / signed out elsewhere) and it could not be renewed
+    window.addEventListener('teachingboard:unauthorized', () => { if (!API.getAdminToken?.()) _loginAgain(); });
+    // an old copy of the PIN kept by earlier versions is removed
+    DB.getSetting('admin_pin', '').then(p => { if (p) DB.setSetting('admin_pin', '').catch(() => {}); }).catch(() => {});
   }
 
   function _loadScript(src, globalName) {
@@ -4532,17 +4597,10 @@ const ADMIN = (() => {
     _setValue('default-theme', await DB.getSetting('admin_theme', 'theme-light'));
     if ($('setting-shuffle')) $('setting-shuffle').checked = await DB.getSetting('shuffle', false);
     _setValue('api-url', await DB.getSetting('api_url', API.DEFAULT_API_URL));
+    window.ADMIN_SECURITY?.mount($('admin-security'));   // 🔐 PIN, Authenticator, devices, log (adminSecurity.js)
   }
 
-  async function _savePin() {
-    const pin = $('new-pin').value.trim();
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-      APP.toast('PIN must be 4 digits', 'error'); return;
-    }
-    await DB.setSetting('admin_pin', pin);
-    $('new-pin').value = '';
-    APP.toast(I18N.t('pin.saved'), 'success');
-  }
+  // (the admin PIN is changed in Settings › 🔐 Admin सुरक्षा — on the server; adminSecurity.js)
 
   // ════════════════════════
   // INIT
@@ -4887,7 +4945,6 @@ const ADMIN = (() => {
     $('sync-retry-btn')?.addEventListener('click', () => SYNC.retryQueue());
 
     // Settings
-    $('btn-save-pin')?.addEventListener('click', _savePin);
     $('default-timer')?.addEventListener('change', e => DB.setSetting('timer', e.target.value));
     $('default-theme')?.addEventListener('change', e => {
       APP.setTheme(e.target.value);

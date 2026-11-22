@@ -97,14 +97,28 @@
       <div class="admin-pin-card">
         <div class="admin-pin-logo" aria-hidden="true">🎓</div>
         <h1 id="admin-panel-title" class="admin-pin-title">TeachingBoard Admin</h1>
-        <p class="pin-label">Enter 4-digit PIN to continue</p>
-        <div class="pin-inputs" role="group" aria-label="PIN digits">
-          <input type="password" maxlength="1" class="pin-digit" data-i="0" aria-label="PIN digit 1" inputmode="numeric" />
-          <input type="password" maxlength="1" class="pin-digit" data-i="1" aria-label="PIN digit 2" inputmode="numeric" />
-          <input type="password" maxlength="1" class="pin-digit" data-i="2" aria-label="PIN digit 3" inputmode="numeric" />
-          <input type="password" maxlength="1" class="pin-digit" data-i="3" aria-label="PIN digit 4" inputmode="numeric" />
+        <div id="admin-pin-step">
+          <p class="pin-label">Admin PIN टाका</p>
+          <div class="pin-inputs" role="group" aria-label="PIN digits">
+            <input type="password" maxlength="1" class="pin-digit" data-i="0" aria-label="PIN digit 1" inputmode="numeric" />
+            <input type="password" maxlength="1" class="pin-digit" data-i="1" aria-label="PIN digit 2" inputmode="numeric" />
+            <input type="password" maxlength="1" class="pin-digit" data-i="2" aria-label="PIN digit 3" inputmode="numeric" />
+            <input type="password" maxlength="1" class="pin-digit" data-i="3" aria-label="PIN digit 4" inputmode="numeric" />
+            <input type="password" maxlength="1" class="pin-digit" data-i="4" aria-label="PIN digit 5" inputmode="numeric" />
+            <input type="password" maxlength="1" class="pin-digit" data-i="5" aria-label="PIN digit 6" inputmode="numeric" />
+          </div>
+          <button type="button" id="admin-pin-go" class="admin-btn-primary admin-pin-go">आत जा →</button>
+          <p class="pin-hint">6 अंकी PIN (जुना 4 अंकी PIN असेल तर 4 अंक टाकून "आत जा" दाबा)</p>
         </div>
-        <p class="pin-hint">Enter the admin PIN configured on the server.</p>
+        <!-- the Google Authenticator step (only on a new device, once the owner turned it on) -->
+        <form id="admin-otp-step" class="admin-otp-step hidden" autocomplete="off">
+          <p class="pin-label" id="admin-otp-label">🔐 Google Authenticator मधला 6 अंकी code टाका</p>
+          <input id="admin-otp-input" class="admin-input admin-otp-input" inputmode="numeric" maxlength="6" placeholder="••••••" aria-label="Authenticator code" />
+          <label class="admin-otp-remember"><input type="checkbox" id="admin-otp-remember" checked /> हे साधन 30 दिवस लक्षात ठेवा</label>
+          <button type="submit" class="admin-btn-primary admin-pin-go">पुढे →</button>
+          <button type="button" class="admin-otp-link" id="admin-otp-backup">Phone नाही? राखीव code वापरा</button>
+          <button type="button" class="admin-otp-link" id="admin-otp-back">‹ PIN पुन्हा</button>
+        </form>
         <p class="pin-error hidden" id="pin-error" role="alert">Wrong PIN — try again</p>
       </div>
     </div>
@@ -1562,15 +1576,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
             </div>
             <div class="admin-card settings-card">
               <div class="settings-list">
-                <div class="setting-row">
-                  <div class="setting-info">
-                    <label for="new-pin" class="setting-label">Admin PIN</label>
-                    <p class="setting-hint">Change the 4-digit admin PIN</p>
-                  </div>
-                  <div class="setting-control">
-                    <input type="password" id="new-pin" class="admin-input short" placeholder="New PIN" maxlength="4" inputmode="numeric" />
-                    <button id="btn-save-pin" class="admin-btn-secondary">Save</button>
-                  </div>
+                <!-- 🔐 Admin सुरक्षा (security audit 2026-11-22): PIN, Google Authenticator, devices, log -->
+                <div class="setting-row admin-sec-row">
+                  <div id="admin-security" class="admin-security"><p class="import-hint">⏳ …</p></div>
                 </div>
 
                 <div class="setting-row">
@@ -2727,6 +2735,7 @@ Marks: 1"></textarea>
   <script src="admin-mobile.js" defer></script>
   <script src="adminSubtabs.js" defer></script>
   <script src="adminNav.js" defer></script>
+  <script src="adminSecurity.js" defer></script>
 
   <!-- Test Preview Modal -->
   <div id="test-preview-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="test-preview-title">

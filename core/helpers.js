@@ -120,13 +120,21 @@ const API = (() => {
     return headers.Authorization || headers.authorization || '';
   }
 
+  // The admin PIN is no longer kept on the device (security audit 2026-11-22): when the admin's login
+  // has run out (12 h), the admin page is asked to show its PIN screen again.
   async function _resolveAdminPin(pin) {
-    const savedPin = String(await DB.getSetting('admin_pin', '').catch(() => '') || '').trim();
-    const preferredPin = String(pin || '').trim();
-    const resolved = preferredPin || savedPin;
-    if (!resolved) throw new Error('Admin PIN not set — please log in first');
+    const resolved = String(pin || '').trim();
+    if (!resolved) {
+      try { window.dispatchEvent(new Event('tb-admin-login-needed')); } catch { /* no window */ }
+      const err = new Error('Admin login संपलं — PIN पुन्हा टाका');
+      err.code = 'ADMIN_LOGIN_NEEDED';
+      throw err;
+    }
     return resolved;
   }
+  // "remember this device 30 days" (Google Authenticator step): the key the server gave this device
+  const ADMIN_DEVICE_KEY = 'tb_admin_device_key';
+  const _adminDeviceKey = () => { try { return localStorage.getItem(ADMIN_DEVICE_KEY) || ''; } catch { return ''; } };
 
   async function _resolveStudentCredentials(input = {}) {
     const source = input && typeof input === 'object'
@@ -422,14 +430,21 @@ const API = (() => {
   // AUTH
   // ════════════════════════
 
-  async function loginAdmin(pin) {
+  // extra: { otp, recovery, remember } — the Google Authenticator step (backend utils/adminSecurity.js)
+  async function loginAdmin(pin, extra = {}) {
     const payload = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ role: 'admin', pin }),
+      body: JSON.stringify({ role: 'admin', pin, device_key: _adminDeviceKey(), ...extra }),
     });
     clearExpiredState();
     if (payload?.token) setAdminToken(payload.token);
+    if (payload?.device_key) { try { localStorage.setItem(ADMIN_DEVICE_KEY, payload.device_key); } catch { /* private mode */ } }
     return payload;
+  }
+  // Admin › Settings › 🔐 सुरक्षा (backend routes/adminSecurityRoutes.js)
+  async function adminSecurity(method, path = '', body) {
+    const token = await ensureAdminSession();
+    return request(`/admin/security${path}`, { method, headers: { Authorization: `Bearer ${token}` }, body: body ? JSON.stringify(body) : undefined });
   }
 
   // The phone's per-student local data (attempt history, stats, notes and
@@ -3363,7 +3378,7 @@ const API = (() => {
     clearAdminToken, clearStudentToken, clearTeacherToken, clearParentToken,
     setTeacherToken, setParentToken,
     getExpiredState, isExpiredLocally, clearExpiredState, markExpired,
-    loginAdmin, loginStudent, loginTeacher, loginParent,
+    loginAdmin, adminSecurity, loginStudent, loginTeacher, loginParent,
     ensureAdminSession, ensureStudentSession, ensureTeacherSession, ensureParentSession,
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,

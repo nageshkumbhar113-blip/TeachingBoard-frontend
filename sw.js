@@ -1,4 +1,4 @@
-const SW_VERSION = 'v308';
+const SW_VERSION = 'v309';
 const CACHE_PREFIX = 'nkseduorbit';
 const LEGACY_CACHE_PREFIX = 'teachingboard';
 const STATIC_CACHE = `${CACHE_PREFIX}-static-${SW_VERSION}`;
@@ -89,6 +89,7 @@ const CORE_ASSETS = [
   './admin-app/admin-mobile.js',
   './admin-app/adminSubtabs.js',
   './admin-app/adminNav.js',
+  './admin-app/adminSecurity.js',
   './admin-app/figureGen.js',
   './admin-app/schGen.js',
   './admin-app/schLang.js',

@@ -722,9 +722,9 @@ const SYNC = (() => {
     }
 
     const body  = await _buildPublishPayload(quiz);
-    const pin   = opts.pin || String(await DB.getSetting('admin_pin', '').catch(() => '') || '');
-    if (!pin) { console.warn('SYNC: admin_pin not available — skipping publish sync'); return { skipped: true }; }
-    const token = await API.ensureAdminSession(pin);
+    // the admin's current login is used; the PIN is no longer kept on the device (security audit 2026-11-22) —
+    // when the login has run out, ensureAdminSession asks for the PIN again (the PIN screen opens)
+    const token = await API.ensureAdminSession(opts.pin || '');
     const result = await API.request('/quizzes', {
       method : 'POST',
       headers: { Authorization: `Bearer ${token}` },
