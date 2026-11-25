@@ -2736,10 +2736,10 @@ const ADMIN = (() => {
           </div>
           <div class="batch-admin-actions">
             ${e.submitted ? '<button class="admin-btn-secondary" data-a="res" type="button">🏆 Results</button>' : e.registered ? `<button class="admin-btn-secondary" data-a="res" type="button">👥 नोंदलेले (${e.registered})</button>` : ''}
-            <button class="admin-btn-secondary" data-a="del" type="button" title="हा test काढा">🗑️</button>
+            ${e.submitted && !e.is_trial ? '<span class="batch-admin-meta" title="results असलेला test काढता येत नाही">🔒</span>' : '<button class="admin-btn-secondary" data-a="del" type="button" title="हा test काढा">🗑️</button>'}
           </div>`;
         item.querySelector('[data-a="res"]')?.addEventListener('click', () => _showWeeklyResults(e._id));
-        item.querySelector('[data-a="del"]').addEventListener('click', async () => {
+        item.querySelector('[data-a="del"]')?.addEventListener('click', async () => {
           const msg = e.submitted ? `हा test (${e.subject}) आणि त्याचे ${e.submitted} results काढायचे?` : `हा test (${e.subject}${e.is_trial ? ', trial' : ''}) काढायचा?`;
           if (window.UI?.confirmAsync && !(await UI.confirmAsync(msg))) return;
           try { await API.adminWeekly('DELETE', `/events/${e._id}`); _loadWeekly(); } catch (err) { APP.toast(err?.message || 'काढता आलं नाही', 'error'); }
@@ -3351,8 +3351,9 @@ const ADMIN = (() => {
       _closeStudentDrawer();
       if (!await APP.confirmAsync(`"${student.name}" (${student.student_code}) ला permanently delete करायचं?\n\nहे action undo होणार नाही!`)) return;
       try {
-        await API.deleteStudent(student.id);
-        APP.toast(`${student.name} deleted ✅`, 'success');
+        const r = await API.deleteStudent(student.id);
+        if (r?.blocked) APP.toast(r.message || `${student.name} Block केलं`, 'info');
+        else APP.toast(`${student.name} deleted ✅`, 'success');
         await _loadStudentsAdmin();
       } catch (err) { APP.toast(err.message || 'Delete failed', 'error'); }
     });
