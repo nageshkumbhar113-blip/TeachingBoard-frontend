@@ -51,6 +51,9 @@ const CRM_ADMIN = (() => {
     return `📲 शेवटचं app मध्ये: ${days == null ? '—' : days <= 0 ? 'आज' : days === 1 ? 'काल' : days + ' दिवसांपूर्वी'} · ${u.tests || 0} tests${u.min7 ? ` · ${u.min7} मि. (7 दिवस)` : ''}`; };
   const SITE = 'https://nkseduorbit.in', PLAY = 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student';
   // the ready messages; {…} are filled for each family. Admin › ✏️ Messages can change them (kept in the bot).
+const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
+  // "8th NMMS EXAM 26-27 BATCH" → "8वी NMMS Test Series" (parents read "Test Series", never the batch's own name)
+  const seriesName = n => { let x = String(n || '').replace(/\b(batch|exam|class)\b/gi, ' ').replace(/\b\d{2,4}\s*[-–]\s*\d{2,4}\b/g, ' ').replace(/\b(\d{1,2})\s*(st|nd|rd|th)\b/gi, (_, d) => _ORD[d] || d + 'वी').replace(/\s*\(\s*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim(); return x ? x + ' Test Series' : ''; };
   const DEFAULT_TPLS = [
     { id: 'hello', title: '👋 पहिला संपर्क + free test', when: 'नंबर दिला, test नाही (1️⃣ / 7️⃣)',
       text: 'नमस्कार 🙏 मी NKs EduOrbit मधून.\n{नाव} साठी {class} ची free test (10 मिनिटं, login नाही) 👇\n{test}{bot:TEST}' },
@@ -59,11 +62,11 @@ const CRM_ADMIN = (() => {
     { id: 'remind', title: '📝 Test आठवण', when: 'Step 2: test दिली नाही',
       text: 'नमस्कार 🙏 {नाव} ने free test दिली का? फक्त 10 मिनिटं, login नाही 👇\n{test}{bot:TEST}' },
     { id: 'result', title: '🎯 Result + सवलत', when: 'Step 3: test दिली',
-      text: 'नमस्कार 🙏 {नाव} ने {tests} free test दिल्या 👏\nपूर्ण result, कमकुवत भाग आणि सवलत{सवलत} 👇\n{pay}{bot:RESULT}' },
+      text: 'नमस्कार 🙏 {नाव} ने {tests} free test दिल्या 👏\nपूर्ण result, कमकुवत भाग आणि सवलत{सवलत}:\n👇 या link वर दाबा आणि pay करा\n{pay}{bot:RESULT}' },
     { id: 'offer', title: '🎁 सवलत संपतेय', when: 'सवलत चालू (1️⃣ / 4️⃣)',
-      text: 'नमस्कार 🙏 {नाव} साठी पहिल्या payment वर सूट{सवलत} आहे.\nसगळे tests, notes, स्वाध्याय उत्तरं आणि दर रविवारी महा-Test 👇\n{pay}{bot:OFFER}' },
-    { id: 'course', title: '📚 पूर्ण course', when: 'Tests देतात, pay नाही (4️⃣)',
-      text: 'नमस्कार 🙏 {नाव} ने {tests} free tests दिल्या 👏\nपूर्ण course मध्ये सगळ्या chapters चे tests, प्रत्येक प्रश्नाची युक्ती, notes आणि महा-Test 👇\n{pay}{bot:OFFER}' },
+      text: 'नमस्कार 🙏 {नाव} साठी पहिल्या payment वर सूट{सवलत} आहे.\n{class}: सगळे tests, स्पष्टीकरण आणि दर रविवारी महा-Test.\n👇 या link वर दाबा आणि pay करा\n{pay}{bot:OFFER}' },
+    { id: 'course', title: '📚 पूर्ण Test Series', when: 'Tests देतात, pay नाही (4️⃣)',
+      text: 'नमस्कार 🙏 {नाव} ने {tests} free tests दिल्या 👏\nपूर्ण {class} मध्ये सगळे tests, प्रत्येक प्रश्नाचं स्पष्टीकरण आणि महा-Test.\n👇 या link वर दाबा आणि pay करा\n{pay}{bot:OFFER}' },
     { id: 'next', title: '📝 पुढची free test', when: 'Reply नाही (6️⃣)',
       text: 'नमस्कार 🙏 {नाव} साठी पुढची free test तयार आहे 👇\n{test}{bot:TEST}' },
     { id: 'missed', title: '📞 Call लागला नाही', when: 'Call उचलला नाही',
@@ -223,7 +226,7 @@ const CRM_ADMIN = (() => {
   function _bubble(m) {
     const t = new Date(m.at).toLocaleString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
     let body = m.body || '';
-    if (m.dir === 'out' && body.startsWith('{')) { try { const i = JSON.parse(body); body = (i.body?.text || '') + '\n[' + ((i.action?.buttons || []).map(b => b.reply.title).concat((i.action?.sections?.[0]?.rows || []).map(r => r.title)).join(' · ')) + ']'; } catch {} }
+    if (m.dir === 'out' && body.startsWith('{')) { try { const i = JSON.parse(body); body = (i.body?.text || '') + '\n[' + ((i.action?.buttons || []).map(b => b.reply.title).concat((i.action?.sections?.[0]?.rows || []).map(r => r.title)).concat(i.action?.parameters?.display_text ? ['🔗 ' + i.action.parameters.display_text] : []).join(' · ')) + ']'; } catch {} }
     const cls = { in: 'in', out: 'out', team: 'team', push: 'sys', app: 'sys', log: 'log', do: 'log' }[m.dir] || 'log';
     const tag = m.dir === 'team' ? '📱 टीम' : m.dir === 'push' ? '🔔 push' : m.dir === 'app' ? '📱 app' : m.dir === 'do' ? '⚙️ ' + (m.kind || '') : m.dir === 'log' ? (m.kind || '') : '';
     return `<div class="crm-msg ${cls}">${tag ? `<b>${esc(tag)}</b> ` : ''}${esc(body)}<small>${t}${m.cost ? ' · ₹' + m.cost : ''}${m.status && m.dir === 'out' ? ' · ' + esc(m.status) : ''}</small></div>`;
@@ -363,8 +366,8 @@ const CRM_ADMIN = (() => {
     const bot = kw => _botNum ? `\n\n${String(kw).toUpperCase() === 'MTWANT' ? 'गुण आणि क्रमांक test संपताच WhatsApp वर हवे? इथे फक्त Send दाबा' : 'प्रश्न / पुढची test: आमच्या WhatsApp bot ला इथे message करा (फक्त Send दाबा)'} 👇\nhttps://wa.me/${_botNum}?text=${encodeURIComponent(String(kw || 'TEST').toUpperCase() + ' ' + g)}` : '';
     return text
       .replace(/\{bot(?::([A-Za-z]+))?\}/g, (_, kw) => bot(kw))
-      .replace(/\{नाव\}/g, L.name || 'तुमचा पाल्य').replace(/\{class\}/g, L.cls || '').replace(/\{tests\}/g, String(L.testsDone || 0))
-      .replace(/\{test\}/g, `${SITE}/student-app/?free=1&g=${g}`).replace(/\{pay\}/g, `${SITE}/parent-pay.html?g=${g}`).replace(/\{app\}/g, PLAY)
+      .replace(/\{नाव\}/g, L.name || 'तुमचा पाल्य').replace(/\{class\}/g, seriesName(L.cls)).replace(/\{tests\}/g, String(L.testsDone || 0))
+      .replace(/\{test\}/g, `${SITE}/student-app/?free=1&g=${g}`).replace(/\{pay\}/g, `${SITE}/p/${g}`).replace(/\{app\}/g, PLAY)
       .replace(/\{code\}/g, acct?.code || '').replace(/\{pin\}/g, acct?.pin || (acct?.own ? 'तुमचा आधीचाच PIN (विसरलात तर App › Login › "📲 WhatsApp ने login")' : '')).replace(/\{सवलत\}/g, offer)
       .replace(/\{महा-test वेळ\}/g, L.mtWhen || 'येत्या रविवारी').replace(/\{महा-test\}/g, `${SITE}/maha-test.html?class=${encodeURIComponent(L.cls || '')}`);
   }

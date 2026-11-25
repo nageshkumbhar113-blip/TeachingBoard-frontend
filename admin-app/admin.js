@@ -1830,10 +1830,12 @@ const ADMIN = (() => {
     ['bd-board-custom', 'bd-medium-custom', 'bd-standard-custom'].forEach(id => $(id)?.classList.add('hidden'));
 
     if ($('bd-kind')) $('bd-kind').value = batch?.kind || '';
+    // the name parents see ("8वी NMMS" → "8वी NMMS Test Series"); filled from the server's list below
+    if ($('bd-public-name')) { $('bd-public-name').value = batch?.public_name || ''; _bdPublicPreview(); }
     _bdColor = Number.isInteger(batch?.card_color) ? batch.card_color : -1;
     _bdCover = batch?.cover_image || '';
     if ($('bd-mode-image')) { $('bd-mode-image').checked = batch?.card_mode === 'image'; $('bd-mode-card').checked = batch?.card_mode !== 'image'; $('bd-mode-image').disabled = !_bdCover; }
-    if (mode === 'edit' && batch && navigator.onLine) API.getBatchPlans().then(list => { const p = (list || []).find(x => x.name === batch.name); if (p) { if (Number.isInteger(p.card_color)) _bdColor = p.card_color; if ($('bd-mode-image')) { $('bd-mode-image').checked = p.card_mode === 'image'; $('bd-mode-card').checked = p.card_mode !== 'image'; } _bdDrawColors(); _bdRefreshCard(); } }).catch(() => {});
+    if (mode === 'edit' && batch && navigator.onLine) API.getBatchPlans().then(list => { const p = (list || []).find(x => x.name === batch.name); if (p) { if ($('bd-public-name') && p.public_name && !$('bd-public-name').value) { $('bd-public-name').value = p.public_name; _bdPublicPreview(); } if (Number.isInteger(p.card_color)) _bdColor = p.card_color; if ($('bd-mode-image')) { $('bd-mode-image').checked = p.card_mode === 'image'; $('bd-mode-card').checked = p.card_mode !== 'image'; } _bdDrawColors(); _bdRefreshCard(); } }).catch(() => {});
     _bdDrawColors();
     if ($('bd-subject-list')) $('bd-subject-list').innerHTML = '';
     _bdExistingSubjects = [];
@@ -1888,6 +1890,18 @@ const ADMIN = (() => {
     custom?.addEventListener('input', _bdRefreshPreview);
   }
 
+  // "8th NMMS EXAM 26-27 BATCH" → "8वी NMMS" (the same rule as the server's utils/seriesInfo.js cleanName)
+  function _bdCleanName(n) {
+    const ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
+    return String(n || '').replace(/\b(batch|exam|class)\b/gi, ' ').replace(/\b\d{2,4}\s*[-–]\s*\d{2,4}\b/g, ' ')
+      .replace(/\b(\d{1,2})\s*(st|nd|rd|th)\b/gi, (_, d) => ORD[d] || d + 'वी').replace(/\s*\(\s*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
+  function _bdPublicPreview() {
+    const el = $('bd-public-preview'); if (!el) return;
+    el.textContent = String($('bd-public-name')?.value || '').trim() || _bdCleanName($('bd-name-preview')?.value || $('bd-edit-name')?.value || '') || '…';
+  }
+  document.addEventListener('input', e => { if (e.target && (e.target.id === 'bd-public-name' || e.target.id === 'bd-name-preview')) _bdPublicPreview(); });
+
   async function _saveBatchDetails() {
     const board       = _bdSelectedValue('bd-board', 'bd-board-custom');
     const medium      = _bdSelectedValue('bd-medium', 'bd-medium-custom');
@@ -1897,6 +1911,7 @@ const ADMIN = (() => {
     const kind        = $('bd-kind')?.value || '';
     const card_color  = _bdColor;
     const card_mode   = $('bd-mode-image')?.checked ? 'image' : 'card';
+    const public_name = String($('bd-public-name')?.value || '').trim().slice(0, 60);
     const addSubjects = [...document.querySelectorAll('#bd-subject-list input:checked')].map(i => i.value);
 
     if (!name) { APP.toast('Batch नाव रिकामं ठेवू नका', 'error'); return; }
@@ -1908,7 +1923,7 @@ const ADMIN = (() => {
         // server-side, purely a metadata update.
         await DB.saveBatch({ name: editingName, board, medium, standard, kind, card_color, card_mode });
         if (navigator.onLine) {
-          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard, kind, card_color, card_mode });
+          await API.renameBatchCatalog(editingName, editingName, undefined, { board, medium, standard, kind, card_color, card_mode, public_name });
         }
         await _bdAddSubjects(editingName, addSubjects);
         APP.toast(`✅ "${editingName}" चे Board/Medium/Class अपडेट झाले`, 'success');
@@ -1916,7 +1931,7 @@ const ADMIN = (() => {
         const icons = ['📚','🌱','🔬','🧮','🏛️','🎯','⚡','🌍'];
         const icon  = icons[Math.floor(Math.random() * icons.length)];
         await DB.saveBatch({ name, icon, board, medium, standard, kind, card_color });
-        if (navigator.onLine) await API.createBatchCatalog(name, icon, { board, medium, standard, kind, card_color });
+        if (navigator.onLine) await API.createBatchCatalog(name, icon, { board, medium, standard, kind, card_color, public_name });
         await _bdAddSubjects(name, addSubjects);
         APP.toast(`✅ Class "${name}" added`, 'success');
       }

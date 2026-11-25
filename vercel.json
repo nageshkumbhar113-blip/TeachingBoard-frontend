@@ -11,7 +11,8 @@
     { "source": "/get-app",  "destination": "/get-app.html",             "permanent": false },
     { "source": "/shop",     "destination": "/shop.html",                "permanent": false },
     { "source": "/teachers", "destination": "/teacher-portal/index.html","permanent": false },
-    { "source": "/team",     "destination": "/team-app/index.html",      "permanent": false }
+    { "source": "/team",     "destination": "/team-app/index.html",      "permanent": false },
+    { "source": "/p/:gid",  "destination": "/parent-pay.html?g=:gid",   "permanent": false }
   ],
   "rewrites": [
     { "source": "/demo",         "destination": "/demo/index.html" },

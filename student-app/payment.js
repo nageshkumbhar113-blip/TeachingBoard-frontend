@@ -262,7 +262,11 @@ const PAYMENT = (() => {
         <span class="admit-plan-price" data-price-el>₹${_esc(batch.yearly_price)}</span>
       </button>`);
     }
-    host.innerHTML = `${btns.join('')}<p id="pay-msg" class="pin-error hidden" role="alert" style="margin-top:6px"></p>`;
+    // 🎯 what the Test Series holds — the same lines as the WhatsApp bot and the pay page (server: utils/seriesInfo.js)
+    const lines = Array.isArray(batch.series_lines) ? batch.series_lines.filter(l => !/^💳/.test(l)) : [];
+    const about = lines.length ? `<div class="admit-series" style="text-align:left;margin:4px 0 10px;padding:10px 12px;border-radius:12px;background:var(--surface2,rgba(127,127,127,.1));font-size:.82rem;line-height:1.55">
+        <b>🎯 ${_esc(batch.series_name || batch.name)} Test Series</b>${lines.map(l => `<div>${_esc(l)}</div>`).join('')}</div>` : '';
+    host.innerHTML = `${about}${btns.join('')}<p id="pay-msg" class="pin-error hidden" role="alert" style="margin-top:6px"></p>`;
 
     host.querySelectorAll('button[data-plan]').forEach(btn => {
       btn.addEventListener('click', () => _choosePlan(btn.dataset.plan, batch, student, onActivated, host));

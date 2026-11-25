@@ -113,8 +113,8 @@
     </div>
 
     <div class="card">
-      <h2>सगळे chapters <span class="grad">उघडा</span></h2>
-      <ul class="feats">
+      <h2 id="s-head">सगळे chapters <span class="grad">उघडा</span></h2>
+      <ul class="feats" id="s-feats">
         <li>📝 सगळ्या chapters चे सगळे tests आणि लगेच result</li>
         <li>💡 प्रत्येक प्रश्नाचं स्पष्टीकरण</li>
         <li>📖 Notes, Exercise आणि सराव प्रश्न</li>
@@ -249,7 +249,14 @@
       var pct = info.best_pct || 0;
       $('c-name').textContent = info.name || 'तुमचा पाल्य';
       $('c-line').textContent = info.tests ? info.tests + ' free tests दिले · सगळ्यात चांगले ' + pct + '%' : 'Free अभ्यास सुरू केला';
-      $('c-batch').textContent = info.batch ? '📚 ' + info.batch : '';
+      $('c-batch').textContent = info.series ? '📚 ' + info.series.name + ' Test Series' : info.batch ? '📚 ' + info.batch : '';
+      // 🎯 the Test Series in parents' words — the same lines the WhatsApp bot sends (server: utils/seriesInfo.js)
+      if (info.series && info.series.lines && info.series.lines.length) {
+        var sh = $('s-head'); sh.textContent = '🎯 ' + info.series.name + ' ';
+        var g = document.createElement('span'); g.className = 'grad'; g.textContent = 'Test Series'; sh.appendChild(g);
+        var ul = $('s-feats'); ul.textContent = '';
+        info.series.lines.forEach(function (line) { var li = document.createElement('li'); li.textContent = line; ul.appendChild(li); });
+      }
       if (info.students_count >= 20) $('proof').textContent = '🎓 ' + Number(info.students_count).toLocaleString('en-IN') + '+ students NKs EduOrbit वर अभ्यास करतात';
       $('f-name').value = info.name || '';
       // the free account already exists (made with the parent's number): nothing to fill in — plan → pay

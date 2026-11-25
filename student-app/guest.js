@@ -794,6 +794,22 @@ const GUEST = (() => {
     };
   }
 
+  // 💳 the family paid — in the browser (the app was left on the free Home), or the parent on another phone:
+  // on the next Home / return to the app the login opens by itself, with the Code (owner 2026-11-25: "pay केल्यावर
+  // login page शोधावं लागतं, call करून सांगावं लागतं"). At most once in 30 s; once shown, not again.
+  let _paidAt = 0, _paidShown = false;
+  async function _paidCheck() {
+    if (_paidShown || !_active || !_state.gid || !navigator.onLine || Date.now() - _paidAt < 30e3) return false;
+    if (!_bootDone()) { setTimeout(() => _paidCheck().catch(() => {}), 1500); return false; }   // after the splash
+    _paidAt = Date.now();
+    const info = await _prices();
+    if (!info?.paid || !info.student_code || !_active || _paidShown) return false;
+    _paidShown = true;
+    document.querySelector('#gx-wait')?.closest('.gx-layer')?.remove();
+    _loginAfterPay(info.student_code, info.name);
+    return true;
+  }
+
   function _loginAfterPay(code, name) {
     const el = _layer('gx-hero', `
       <div class="gx-card">
@@ -1221,6 +1237,7 @@ const GUEST = (() => {
     const home = $('screen-home');
     if (!home) return;
     if (!_active) { home.querySelector('.gx-guide')?.remove(); return; }
+    _paidCheck().catch(() => {});   // paid meanwhile → the login, not the free Home
     if ((await _kind()) === 'regular') return _renderLessonGuide(home);
     const tests = await _freeTests();
     home.querySelector('.gx-guide')?.remove();

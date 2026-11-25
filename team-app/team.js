@@ -52,13 +52,16 @@
   function logout(why) { tok = null; me = null; bot = null; ls.set('nks_team_token', null); ls.set('nks_team_me', null); ls.set('nks_team_bot', null); ls.set('nks_team_home', null); showLogin(why); }
 
   // ── ready messages (the admin's own from the bot, else these) ──
+const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
+  // "8th NMMS EXAM 26-27 BATCH" → "8वी NMMS Test Series" (parents read "Test Series", never the batch's own name)
+  const seriesName = n => { let x = String(n || '').replace(/\b(batch|exam|class)\b/gi, ' ').replace(/\b\d{2,4}\s*[-–]\s*\d{2,4}\b/g, ' ').replace(/\b(\d{1,2})\s*(st|nd|rd|th)\b/gi, (_, d) => _ORD[d] || d + 'वी').replace(/\s*\(\s*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim(); return x ? x + ' Test Series' : ''; };
   const DEFAULT_TPLS = [
     { id: 'hello', title: '👋 पहिला संपर्क + free test', text: 'नमस्कार 🙏 मी NKs EduOrbit मधून.\n{नाव} साठी {class} ची free test (10 मिनिटं, login नाही) 👇\n{test}{bot:TEST}' },
     { id: 'acct', title: '🔑 App चा Code + PIN', text: 'नमस्कार 🙏 {नाव} चं NKs EduOrbit app account तयार आहे.\n👤 Code: *{code}*\n🔑 PIN: *{pin}*\n📲 App 👇\n{app}\nApp उघडा → Login → Code आणि PIN टाका → सगळ्या free tests.{bot:HELP}' },
     { id: 'remind', title: '📝 Test आठवण', text: 'नमस्कार 🙏 {नाव} ने free test दिली का? फक्त 10 मिनिटं, login नाही 👇\n{test}{bot:TEST}' },
-    { id: 'result', title: '🎯 Result + सवलत', text: 'नमस्कार 🙏 {नाव} ने {tests} free test दिल्या 👏\nपूर्ण result, कमकुवत भाग आणि सवलत{सवलत} 👇\n{pay}{bot:RESULT}' },
-    { id: 'offer', title: '🎁 सवलत संपतेय', text: 'नमस्कार 🙏 {नाव} साठी पहिल्या payment वर सूट{सवलत} आहे.\nसगळे tests, notes, स्वाध्याय उत्तरं आणि दर रविवारी महा-Test 👇\n{pay}{bot:OFFER}' },
-    { id: 'course', title: '📚 पूर्ण course', text: 'नमस्कार 🙏 {नाव} ने {tests} free tests दिल्या 👏\nपूर्ण course मध्ये सगळ्या chapters चे tests, प्रत्येक प्रश्नाची युक्ती, notes आणि महा-Test 👇\n{pay}{bot:OFFER}' },
+    { id: 'result', title: '🎯 Result + सवलत', text: 'नमस्कार 🙏 {नाव} ने {tests} free test दिल्या 👏\nपूर्ण result, कमकुवत भाग आणि सवलत{सवलत}:\n👇 या link वर दाबा आणि pay करा\n{pay}{bot:RESULT}' },
+    { id: 'offer', title: '🎁 सवलत संपतेय', text: 'नमस्कार 🙏 {नाव} साठी पहिल्या payment वर सूट{सवलत} आहे.\n{class}: सगळे tests, स्पष्टीकरण आणि दर रविवारी महा-Test.\n👇 या link वर दाबा आणि pay करा\n{pay}{bot:OFFER}' },
+    { id: 'course', title: '📚 पूर्ण Test Series', text: 'नमस्कार 🙏 {नाव} ने {tests} free tests दिल्या 👏\nपूर्ण {class} मध्ये सगळे tests, प्रत्येक प्रश्नाचं स्पष्टीकरण आणि महा-Test.\n👇 या link वर दाबा आणि pay करा\n{pay}{bot:OFFER}' },
     { id: 'next', title: '📝 पुढची free test', text: 'नमस्कार 🙏 {नाव} साठी पुढची free test तयार आहे 👇\n{test}{bot:TEST}' },
     { id: 'missed', title: '📞 Call लागला नाही', text: 'नमस्कार 🙏 NKs EduOrbit मधून {नाव} बद्दल call केला होता. सोयीची वेळ सांगा, आम्ही परत call करू.{bot:HELP}' },
   ];
@@ -71,8 +74,8 @@
     const off = offer ? ` (${offer.pct}%) ` + new Date(offer.end).toLocaleString('mr-IN-u-nu-latn', { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + ' पर्यंत' : '';
     const b = kw => botNum ? `\n\nप्रश्न / पुढची test: आमच्या WhatsApp bot ला इथे message करा (फक्त Send दाबा) 👇\nhttps://wa.me/${botNum}?text=${encodeURIComponent(String(kw || 'TEST').toUpperCase() + ' ' + g)}` : '';
     return text.replace(/\{bot(?::([A-Za-z]+))?\}/g, (_, kw) => b(kw))
-      .replace(/\{नाव\}/g, L.name || 'तुमचा पाल्य').replace(/\{class\}/g, L.cls || '').replace(/\{tests\}/g, String(L.testsDone || 0))
-      .replace(/\{test\}/g, `${SITE}/student-app/?free=1&g=${g}`).replace(/\{pay\}/g, `${SITE}/parent-pay.html?g=${g}`).replace(/\{app\}/g, PLAY)
+      .replace(/\{नाव\}/g, L.name || 'तुमचा पाल्य').replace(/\{class\}/g, seriesName(L.cls)).replace(/\{tests\}/g, String(L.testsDone || 0))
+      .replace(/\{test\}/g, `${SITE}/student-app/?free=1&g=${g}`).replace(/\{pay\}/g, `${SITE}/p/${g}`).replace(/\{app\}/g, PLAY)
       .replace(/\{code\}/g, a?.code || '').replace(/\{pin\}/g, a?.pin || (a?.own ? 'तुमचा आधीचाच PIN (विसरलात तर App › Login › "📲 WhatsApp ने login")' : '')).replace(/\{सवलत\}/g, off)
       .replace(/\{महा-test वेळ\}/g, 'येत्या रविवारी').replace(/\{महा-test\}/g, `${SITE}/maha-test.html?class=${encodeURIComponent(L.cls || '')}`);
   }
