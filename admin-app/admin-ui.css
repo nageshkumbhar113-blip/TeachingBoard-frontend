@@ -2671,6 +2671,8 @@ body.admin-app {
 .ads-meta { font-size: .7rem; font-weight: 800; color: #1877f2; }
 
 .ads-metabox { background: #eef4ff; border: 1px solid #c7d8ff; }
+.ads-filebox { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px; padding-top: 10px; border-top: 1px dashed #c7d8ff; }
+.ads-filebox input[type="file"] { max-width: 100%; }
 .ads-metabox[hidden] { display: none !important; }
 .ads-metabox small { color: #3b4a6b; font-weight: 700; }
 .ads-metabox input { width: 110px; display: inline-block; }
