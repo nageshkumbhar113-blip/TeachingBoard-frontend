@@ -1282,8 +1282,12 @@ const AD_STUDIO = (() => {
   const _libPicked = () => [...($('ads-lib-list')?.querySelectorAll('input:checked') || [])].map(c => _lib.find(v => v.id === c.value)).filter(Boolean);
   // a Meta video ticked: only its own button sends — the studio's "📤 ही ad पाठवा" above would send the studio's
   // animated video instead (owner 2026-11-26 pressed it and got the wrong video), so it is off until nothing is ticked
+  // which ad set the videos go to: the audience chosen at the top (owner 2026-11-26: a teacher video went to the parents)
+  const _libFor = () => (isTeacher(_audOf(st.v)) ? '👩‍🏫 शिक्षक' : _audOf(st.v) === 'student' ? '🎓 विद्यार्थी' : '👨‍👩‍👧 पालक') + ' · ' + adsetName(st.v);
+  const _videoIsTeacher = v => /teacher|शिक्षक|tutor/i.test(_libName(v));
   function _paintLib() {
     const n = _libPicked().length, b = $('ads-lib-send');
+    const tg = $('ads-lib-target'); if (tg) tg.textContent = '➡️ निवडलेले videos या ad set मध्ये जातील: ' + _libFor() + ' (बदलायचं असेल तर वर audience / ad निवडा)';
     if (b) {
       b.disabled = !n;
       b.className = n ? 'admin-btn-primary' : 'admin-btn-secondary';
@@ -1310,12 +1314,13 @@ const AD_STUDIO = (() => {
       for (const v of vids) {
         const id = _libAdId(v);
         try {
+          if (_videoIsTeacher(v) && !isTeacher(_audOf(st.v))) throw new Error('हा शिक्षकांचा video आहे — वर आधी 🏫 School teacher निवडा (आत्ता ' + _libFor() + ')');
           show(`⏳ ${_esc(id)}: Meta मध्ये ad बनत आहे…`);
           const out = await API.metaCreateAd({ name: id, adset: set, audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, geo: _geo(), dest: _dest(st.v), video_id: v.id,
             message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link.split(from).join('ad=' + encodeURIComponent(id)) });
           const vid = ` · 🎞️ ${_esc(_libName(v))}`;
           lines.push(out.exists ? `ℹ️ <b>${_esc(id)}</b> आधीच Meta मध्ये आहे${vid}` : out.pending ? `⏳ <b>${_esc(id)}</b>: Meta video तयार करत आहे — 2 मिनिटांनी पुन्हा दाबा${vid}`
-            : `✅ <b>${_esc(id)}</b> बनली — <b>बंद (Paused)</b>${vid}${out.note ? ' · ⚠️ ' + _esc(out.note) : ''}`);
+            : `✅ <b>${_esc(id)}</b> बनली — <b>बंद (Paused)</b>${vid}${out.note ? ' · ' + _esc(out.note) : ''}`);
         } catch (err) { lines.push(`⚠️ ${_esc(_libName(v))}: ${_esc(err?.message || 'पाठवता आलं नाही')}`); }
       }
       show('खालच्या "📡 Meta मधल्या ads" मध्ये पाहा आणि ▶ ने चालू करा.');
@@ -1325,6 +1330,7 @@ const AD_STUDIO = (() => {
 
   function _paintMetaBox() {
     const box = $('ads-metabox'); if (!box) return;
+    _paintLib();   // the "➡️ these videos go to …" line follows the audience / ad chosen
     box.hidden = !_metaOk || st.plat !== 'meta';
     if ($('ads-ytbox')) { $('ads-ytbox').hidden = st.plat !== 'yt'; $('ads-yt-name').textContent = `Ad: ${adId()}`; }
     const total = Math.max(0, Number($('ads-budget')?.value) || 0);
@@ -1668,10 +1674,16 @@ const AD_STUDIO = (() => {
       box.innerHTML = rows.length ? `<div style="overflow-x:auto"><table class="crm-table"><thead><tr><th>Ad set</th><th>स्थिती</th><th>भाग</th><th>वय</th><th>कोणाला</th><th>₹/दिवस</th></tr></thead><tbody>${rows.map(r => {
         const teacherSet = /^t-/.test(r.name);
         const who = r.who.length ? _esc(r.who.join(', ')) : r.advantage ? 'Meta ठरवतं (Advantage+)' : (teacherSet ? '<b style="color:#b91c1c">⚠️ सगळे — शिक्षक targeting नाही</b>' : 'सगळे (वय + भाग)');
-        return `<tr><td>${_esc(r.name)}<br><small>${_esc(r.campaign)}${r.dest === 'WHATSAPP' ? ' · 💬 WhatsApp' : ''}</small></td><td>${_esc(r.status)}</td><td>${_esc(r.area)}</td><td>${_esc(r.ages)}</td><td style="white-space:normal;min-width:180px">${who}</td><td>${r.budget ?? '—'}</td></tr>`;
+        const fix = teacherSet && !r.who.length ? `<br><button type="button" class="admin-btn-primary" data-tfix="${_esc(r.id)}" style="margin-top:4px">👩‍🏫 शिक्षक targeting लावा</button>` : '';
+        return `<tr><td>${_esc(r.name)}<br><small>${_esc(r.campaign)}${r.dest === 'WHATSAPP' ? ' · 💬 WhatsApp' : ''}</small></td><td>${_esc(r.status)}</td><td>${_esc(r.area)}</td><td>${_esc(r.ages)}</td><td style="white-space:normal;min-width:180px">${who}${fix}</td><td>${r.budget ?? '—'}</td></tr>`;
       }).join('')}</tbody></table></div><p class="import-hint">शिक्षकांचा ad set (t-…) "शिक्षक targeting नाही" दाखवत असेल तर: नवीन WhatsApp teacher ad बनवा — नवीन ad set ला शिक्षक targeting आपोआप लागतं.</p>` : 'Meta मध्ये अजून ad set नाही.';
     } catch (err) { box.textContent = '⚠️ ' + (err?.message || 'आणता आलं नाही'); }
     btn.disabled = false;
+    box.querySelectorAll('[data-tfix]').forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true; b.textContent = '⏳ Meta मध्ये लावत आहे…';
+      try { const out = await API.metaAction({ action: 'teacher_targeting', adset_id: b.dataset.tfix }); APP.toast(out.note || '✅ लावलं', 'success'); _loadSets(); }
+      catch (err) { b.disabled = false; b.textContent = '👩‍🏫 शिक्षक targeting लावा'; APP.toast(err?.message || 'लावता आलं नाही', 'error'); }
+    }));
   }
   async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
@@ -2456,6 +2468,7 @@ const AD_STUDIO = (() => {
                   <li>Upload झाल्यावर इथे <b>🔄 Meta मधील videos आणा</b> दाबा, हवे ते निवडा, मग <b>📤 Ads बनवा</b>.</li>
                 </ol>
                 <div class="admin-toolbar"><button type="button" class="admin-btn-secondary" id="ads-lib-load">🔄 Meta मधील videos आणा</button></div>
+                <p id="ads-lib-target" class="import-hint" style="font-weight:700"></p>
                 <div id="ads-lib-list" class="ads-lib"></div>
                 <button type="button" class="admin-btn-secondary" id="ads-lib-send" disabled>📤 निवडलेल्या videos च्या ads बनवा (बंद स्थितीत)</button>
                 <p class="import-hint" id="ads-file-msg">वर निवडलेल्या ad चा मजकूर, बटण, link, ad set, बजेट आणि वय वापरले जातात — फक्त video तुमचा. Video चं चित्र Meta स्वतः घेतं.</p>
