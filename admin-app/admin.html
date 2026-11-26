@@ -684,6 +684,32 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                 <p class="import-hint">Assigned Courses</p>
                 <div id="student-batch-list" class="student-batch-list"></div>
               </div>
+              <!-- 💳 plan (admin.js _studentPlan*): the money taken offline, the teacher; a student already here: 🔁 Renew -->
+              <div class="student-batch-box" id="student-plan-box">
+                <p class="import-hint" id="student-plan-now" hidden></p>
+                <button type="button" id="btn-student-renew" class="admin-btn-secondary" hidden>🔁 नवीन plan / Renew</button>
+                <div id="student-plan-fields" class="import-target" style="flex-wrap:wrap">
+                  <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Plan
+                    <select id="student-plan" class="admin-select" aria-label="Plan">
+                      <option value="yearly">Yearly — 30 April पर्यंत</option>
+                      <option value="monthly">Monthly — 30 दिवस</option>
+                      <option value="custom">स्वतः तारीख</option>
+                      <option value="free">🎁 Free — पैसे नाहीत (2 दिवस)</option>
+                    </select>
+                  </label>
+                  <label class="student-paid-only" style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">सूट %
+                    <input id="student-discount" type="number" min="0" max="100" step="0.5" class="admin-input" placeholder="0" aria-label="Discount percent" />
+                  </label>
+                  <label class="student-paid-only" style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">घेतलेली रक्कम ₹ (रोख / UPI)
+                    <input id="student-amount" type="number" min="0" step="1" class="admin-input" placeholder="आपोआप" aria-label="Amount received" />
+                  </label>
+                  <label class="student-paid-only" style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">शिक्षक (ऐच्छिक)
+                    <input id="student-teacher-q" class="admin-input" placeholder="🔍 नाव / code / गाव" aria-label="Search teacher" />
+                    <select id="student-teacher" class="admin-select" aria-label="Teacher"><option value="">— शिक्षक नाही —</option></select>
+                  </label>
+                </div>
+                <p class="import-hint" id="student-plan-info"></p>
+              </div>
               <div class="admin-toolbar">
                 <button id="btn-save-student" class="admin-btn-primary">Save Student</button>
                 <button id="btn-reset-student" class="admin-btn-secondary" type="button">Reset</button>
@@ -717,8 +743,9 @@ For Fill in the blank use Type: fib and put ___ in the question</pre>
                 <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Expiry (आपोआप, बदलता येते)
                   <input id="simp-expiry" type="date" class="admin-input" aria-label="Expiry date" />
                 </label>
-                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Teacher code
-                  <input id="simp-teacher" class="admin-input" placeholder="उदा. T1234 (ऐच्छिक)" aria-label="Teacher code" style="text-transform:uppercase" />
+                <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">शिक्षक (ऐच्छिक)
+                  <input id="simp-teacher-q" class="admin-input" placeholder="🔍 नाव / code / गाव" aria-label="Search teacher" />
+                  <select id="simp-teacher" class="admin-select" aria-label="Teacher"><option value="">— शिक्षक नाही —</option></select>
                 </label>
                 <label style="display:flex;flex-direction:column;font-size:0.8rem;gap:4px">Discount % (रिकामं = teacher चा)
                   <input id="simp-discount" type="number" min="0" max="100" step="0.5" class="admin-input" placeholder="teacher चा" aria-label="Discount percent" />

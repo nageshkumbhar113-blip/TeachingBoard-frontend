@@ -1727,6 +1727,15 @@ const API = (() => {
     return payload?.data || null;
   }
 
+  // 💳 one student by hand (Admin › Students): the plan's price (nothing saved) / 🔁 a new plan or renewal
+  async function studentPlanPreview(body) {
+    const token = await ensureAdminSession();
+    return (await request('/students/plan/preview', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }))?.data || null;
+  }
+  async function studentPlanRenew(studentId, body) {
+    const token = await ensureAdminSession();
+    return (await request(`/students/${encodeURIComponent(studentId)}/plan`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }))?.data || null;
+  }
   async function updateStudent(studentId, student, pin = '') {
     const token = await ensureAdminSession(pin);
     const payload = await request(`/students/${encodeURIComponent(studentId)}`, {
@@ -3402,7 +3411,7 @@ const API = (() => {
     getPaymentConfig, getBatchPlans, createPaymentOrder, startTrial, getSubscriptionStatus, verifyPayment, previewPaymentPrice,
     fetchPendingPayments, fetchRevenueSummary,
     searchYoutubeSubscriberPartners, getMySubscriberClaimStatus, claimYoutubeSubscriber,
-    fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents,
+    fetchTeachers, createTeacher, updateTeacher, deleteTeacher, fetchUnassignedStudents, studentPlanPreview, studentPlanRenew,
     fetchPaperQuotas, setPaperQuotaConfig, setTeacherPaperOverride, fetchMyPaperQuota, fetchMyEarnings, saveMyPayoutProfile, fetchMyReferrals, claimReferralPrize,
     fetchMyStudyPlan, fetchMyStudyToday, createStudyPlan, updateStudyTask, abandonStudyPlan, fetchStudyHierarchy,
     fetchPartnerConfig, setPartnerConfig, fetchPartners, fetchPartnerStatements, closePartnerMonth,

@@ -3243,6 +3243,73 @@ const ADMIN = (() => {
     _setValue('student-expiry', '');
     _setValue('student-status', 'active');
     _renderStudentBatchOptions([]);
+    _studentPlanMode(null);
+  }
+
+  // ── 💳 the plan of one student (owner 2026-11-26): Yearly / Monthly / own date — the money taken offline (the
+  // courses' price minus the सूट %, or the amount typed), the teacher (optional, active only) — or 🎁 Free: 2 days, no
+  // money. A new student: the plan is part of Save. A student already here: only after 🔁 Renew (no money twice).
+  // Server: studentImportController.planOne / saveOne (the same rules as 📥 Import).
+  let _planKey = '', _planTimer = null, _planCur = '';
+  const _newPlanKey = () => { _planKey = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); };
+  const _istDayPlus = n => new Date(Date.now() + n * 864e5 + 5.5 * 3600e3).toISOString().slice(0, 10);
+  const _dmy = d => String(d || '').slice(0, 10).split('-').reverse().join('-');
+  function _planExpiry(plan) {
+    if (plan === 'free') return _istDayPlus(2);
+    // 🔁 a renewal while the plan still runs: from its end (monthly +30 days, yearly the 30 April after it)
+    if ($('student-edit-id')?.value && _planCur > _istDayPlus(0)) {
+      if (plan === 'monthly') { const d = new Date(_planCur + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 30); return d.toISOString().slice(0, 10); }
+      if (plan === 'yearly') { const y = Number(_planCur.slice(0, 4)); return _planCur < y + '-04-30' ? y + '-04-30' : (y + 1) + '-04-30'; }
+    }
+    return window.STUDENT_IMPORT?.planExpiry?.(plan) || '';
+  }
+  // student = null: a new student (plan shown); a student: edit (plan hidden until 🔁 Renew)
+  function _studentPlanMode(student) {
+    const fields = $('student-plan-fields'), now = $('student-plan-now'), renew = $('btn-student-renew');
+    if (!fields) return;
+    _newPlanKey();
+    _setValue('student-plan', 'yearly'); _setValue('student-discount', ''); _setValue('student-amount', ''); _setValue('student-teacher', ''); _setValue('student-teacher-q', '');
+    if ($('student-amount')) delete $('student-amount').dataset.touched;
+    window.STUDENT_IMPORT?.teacherPicker?.('student-teacher', 'student-teacher-q');
+    _planCur = String(student?.expiry_date || '').slice(0, 10);
+    if (student) {
+      fields.hidden = true; renew.hidden = false; now.hidden = false;
+      now.textContent = `सध्या: ${student.expiry_date ? 'Expiry ' + _dmy(student.expiry_date) : 'Expiry नाही'}${student.referred_by_teacher ? ' · शिक्षक ' + student.referred_by_teacher : ''} — नाव / PIN / status बदलल्याने पैशांची नोंद होत नाही.`;
+      $('student-plan-info').textContent = '';
+    } else {
+      fields.hidden = false; renew.hidden = true; now.hidden = true;
+      _setValue('student-expiry', _planExpiry('yearly'));
+      _studentPlanPreview();
+    }
+  }
+  const _planOn = () => !$('student-plan-fields')?.hidden;
+  function _studentPlanBody() {
+    const amt = $('student-amount');
+    return {
+      plan: $('student-plan')?.value || 'yearly', expiry: String($('student-expiry')?.value || ''),
+      discount_percent: String($('student-discount')?.value || '').trim(),
+      amount: amt?.dataset.touched ? String(amt.value || '').trim() : '',
+      teacher_code: String($('student-teacher')?.value || ''), courses: _selectedStudentBatches(),
+    };
+  }
+  function _studentPlanPreview() {
+    clearTimeout(_planTimer);
+    _planTimer = setTimeout(async () => {
+      const info = $('student-plan-info');
+      if (!info || !_planOn()) return;
+      const b = _studentPlanBody();
+      document.querySelectorAll('.student-paid-only').forEach(el => { el.hidden = b.plan === 'free'; });
+      if (b.plan === 'free') { info.textContent = `🎁 Free: ${_dmy(b.expiry)} पर्यंत (2 दिवस) सगळं उघडं — मग access बंद होईल (app मधून pay करू शकतात). पैशांची नोंद नाही.`; return; }
+      if (!b.courses.length) { info.textContent = 'वर course निवडा — मग किंमत दिसेल.'; return; }
+      try {
+        const p = await API.studentPlanPreview(b);
+        if (!p) return;
+        const amt = $('student-amount');
+        if (amt && !amt.dataset.touched) amt.value = p.amount;
+        const plan = { yearly: 'Yearly', monthly: 'Monthly', custom: 'स्वतः तारीख' }[p.plan] || p.plan;
+        info.innerHTML = `💳 ${plan} · ${_dmy(p.expiry)} पर्यंत · किंमत ₹${p.list_total}${p.discount_percent ? ` − सूट ${p.discount_percent}%` : ''} → <b>₹${p.amount}</b> घेतले${b.amount !== '' ? ' (हाताने लिहिलेली रक्कम)' : ''}${p.teacher_name ? ` · 👩‍🏫 ${_escHtml(p.teacher_name)}` : ''}`;
+      } catch (err) { info.textContent = '⚠️ ' + (err.message || 'किंमत काढता आली नाही'); }
+    }, 300);
   }
 
   // Same rule as the backend (utils/mobile.js): 10 digits, starts 6-9, not all-same.
@@ -3387,6 +3454,7 @@ const ADMIN = (() => {
     _setValue('student-expiry', student?.expiry_date || '');
     _setValue('student-status', student?.status || 'active');
     _renderStudentBatchOptions(student?.assigned_batches || []);
+    _studentPlanMode(student || null);
   }
 
   function _renderStudentList(query = '', courseFilter = '') {
@@ -3829,15 +3897,23 @@ const ADMIN = (() => {
       const pinVal    = String($('student-pin')?.value || '').trim();
       const expiryVal = String($('student-expiry')?.value || '').trim();
       const payload   = _studentFormPayload({ requirePin: !studentId });
+      // 💳 the plan (shown for a new student, or after 🔁 Renew): money taken offline; 🎁 Free = only the 2-day expiry
+      const pb = _planOn() ? _studentPlanBody() : null;
+      if (pb && !pb.expiry) throw new Error('Expiry तारीख निवडा');
+      if (studentId && pb?.plan === 'free' && _planCur > pb.expiry) throw new Error('हा विद्यार्थी आधीच ' + _dmy(_planCur) + ' पर्यंत चालू आहे — 🎁 Free ने मुदत कमी होईल');
+      const offline = pb && pb.plan !== 'free' ? { ...pb, key: _planKey } : null;
+      if (offline) delete offline.courses;
+      if (studentId && offline && _planCur > payload.expiry_date) payload.expiry_date = _planCur;   // a renewal never shortens
       if (studentId) {
         await API.updateStudent(studentId, payload);
-        APP.toast('Student updated', 'success');
+        if (offline) { await API.studentPlanRenew(studentId, { ...offline, courses: payload.assigned_batches }); APP.toast(`Student updated · 💳 ₹${$('student-amount')?.value || 0} ची नोंद झाली`, 'success'); }
+        else APP.toast('Student updated', 'success');
       } else {
         const auto = $('student-code')?.dataset.auto === '1';
         let created = false;
         for (const suffix of auto ? ['', ...'BCDEFGH'] : ['']) {
           try {
-            await API.createStudent({ ...payload, student_code: payload.student_code + suffix });
+            await API.createStudent({ ...payload, student_code: payload.student_code + suffix, ...(offline ? { offline_plan: offline } : {}) });
             payload.student_code += suffix;
             created = true;
             break;
@@ -4820,6 +4896,18 @@ const ADMIN = (() => {
     // Students
     $('btn-save-student')?.addEventListener('click', _saveStudentAccount);
     $('btn-reset-student')?.addEventListener('click', _resetStudentForm);
+    // 💳 the plan box
+    $('student-plan')?.addEventListener('change', e => { if (e.target.value !== 'custom') _setValue('student-expiry', _planExpiry(e.target.value)); _studentPlanPreview(); });
+    $('student-discount')?.addEventListener('input', () => { if ($('student-amount')) delete $('student-amount').dataset.touched; _studentPlanPreview(); });
+    $('student-amount')?.addEventListener('input', e => { e.target.dataset.touched = e.target.value === '' ? '' : '1'; if (!e.target.dataset.touched) delete e.target.dataset.touched; _studentPlanPreview(); });
+    $('student-teacher')?.addEventListener('change', _studentPlanPreview);
+    $('student-expiry')?.addEventListener('change', () => { if (_planOn() && $('student-plan')?.value !== 'free') { if (!['custom'].includes($('student-plan').value)) _setValue('student-plan', 'custom'); _studentPlanPreview(); } });
+    $('student-batch-list')?.addEventListener('change', _studentPlanPreview);
+    $('btn-student-renew')?.addEventListener('click', () => {
+      $('student-plan-fields').hidden = false; $('btn-student-renew').hidden = true;
+      _newPlanKey(); _setValue('student-expiry', _planExpiry('yearly')); _studentPlanPreview();
+    });
+    setTimeout(() => _studentPlanMode(null), 0);
     $('btn-refresh-students')?.addEventListener('click', _loadStudentsAdmin);
     $('btn-export-students-csv')?.addEventListener('click', _exportStudentsCSV);
     $('btn-export-leads-csv')?.addEventListener('click', _exportLeadsCSV);

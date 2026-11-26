@@ -138,6 +138,32 @@ const STUDENT_IMPORT = (() => {
     return '';
   }
 
+  // 👩‍🏫 the teacher dropdown (here and the one-student form in admin.js): active teachers only; the 🔍 box filters it
+  let _tList = null;
+  async function activeTeachers(fresh) {
+    if (!_tList || fresh) {
+      const all = await API.fetchTeachers().catch(() => null);
+      if (all) _tList = all.filter(t => (t.status || 'active') === 'active' && t.teacher_code).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
+    return _tList || [];
+  }
+  const teacherLabel = t => `${t.name || '—'} — ${t.teacher_code}${t.institute_name ? ' · ' + t.institute_name : ''}`;
+  async function teacherPicker(selId, qId, fresh) {
+    const sel = $(selId), q = $(qId);
+    if (!sel) return;
+    const list = await activeTeachers(fresh);
+    const paint = () => {
+      const keep = sel.value, s = String(q?.value || '').trim().toLowerCase();
+      const shown = list.filter(t => !s || t.teacher_code === keep || teacherLabel(t).toLowerCase().includes(s));
+      sel.innerHTML = `<option value="">— शिक्षक नाही —${s ? ` (${shown.length} सापडले)` : ''}</option>` + shown.map(t => `<option value="${esc(t.teacher_code)}">${esc(teacherLabel(t))}</option>`).join('');
+      sel.value = keep;
+    };
+    sel._paint = paint;   // the latest list (the first call may run before login, with none)
+    paint();
+    if (q && !q.dataset.on) { q.dataset.on = '1'; q.addEventListener('input', () => sel._paint && sel._paint()); }
+  }
+  const teacherName = code => { const t = (_tList || []).find(x => x.teacher_code === code); return t ? teacherLabel(t) : code; };
+
   async function renderBatches() {
     const box = $('simp-batches');
     if (!box) return;
@@ -363,13 +389,14 @@ ${rulesHtml}
     ['simp-paste', 'simp-plan', 'simp-expiry', 'simp-teacher', 'simp-discount'].forEach(id => $(id).addEventListener('input', () => { _preview = null; $('simp-run-btn').disabled = true; }));
     $('simp-batches').addEventListener('change', () => { _preview = null; $('simp-run-btn').disabled = true; });
     renderBatches();
-    // courses are added / renamed in the Classes tab: refresh when Students opens
-    document.addEventListener('click', e => { if (e.target.closest?.('.atab[data-tab="students"]')) renderBatches(); });
+    teacherPicker('simp-teacher', 'simp-teacher-q');
+    // courses are added / renamed in the Classes tab (teachers in Teachers): refresh when Students opens
+    document.addEventListener('click', e => { if (e.target.closest?.('.atab[data-tab="students"]')) { renderBatches(); teacherPicker('simp-teacher', 'simp-teacher-q', true).then(() => teacherPicker('student-teacher', 'student-teacher-q')); } });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(init, 0));
   else setTimeout(init, 0);
 
-  return { init, namePrefix, transliterate, parseDelimited, tableToRows };
+  return { init, namePrefix, transliterate, parseDelimited, tableToRows, planExpiry, teacherPicker, teacherName };
 })();
 window.STUDENT_IMPORT = STUDENT_IMPORT;

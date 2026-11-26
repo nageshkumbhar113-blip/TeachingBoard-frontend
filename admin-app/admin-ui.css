@@ -3051,3 +3051,6 @@ body.crm-lead-open { overflow: hidden; }
 .crm-rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
 .crm-rules label { display: grid; gap: 4px; font-size: .84rem; }
 .crm-row-mini { padding: 6px 0; border-bottom: 1px solid var(--border, #e2e8f0); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* 💳 one student's plan box (admin.js _studentPlan*): its parts are shown / hidden with [hidden] */
+#student-plan-box [hidden] { display: none !important; }
