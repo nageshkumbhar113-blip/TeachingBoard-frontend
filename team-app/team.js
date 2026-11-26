@@ -49,6 +49,36 @@
     try { offerCfg = { at: Date.now(), data: (await rq('/guest/offer-config')).data }; } catch { /* keep the old one */ }
     return offerCfg?.data || null;
   }
+  // 🔔 this phone gets a push for every new family (wa-worker desk.js teamNewPush → Render → FCM). The app only
+  // (a browser has no push here); asked once per app start. A tap opens that family's card.
+  let pushSet = false, pushTok = '', pushFor = '';
+  // the phone's token → the member logged in now (once per member; again after a logout + another login)
+  const sendPushTok = () => { if (!pushTok || !tok || !me || pushFor === me.id) return; pushFor = me.id; rq('/team/device-token', { method: 'PATCH', body: { token: pushTok } }).catch(() => { pushFor = ''; }); };
+  async function setupPush() {
+    const Push = window.Capacitor?.isNativePlatform?.() && window.Capacitor?.Plugins?.PushNotifications;
+    if (!Push || !tok) return;
+    if (pushSet) return sendPushTok();
+    pushSet = true;
+    try {
+      Push.addListener('registration', ({ value }) => { if (value) { pushTok = value; pushFor = ''; sendPushTok(); } });
+      Push.addListener('notificationActionPerformed', a => {
+        const d = a?.notification?.data || {};
+        if (d.kind !== 'team_new' || !tok) return;
+        document.querySelector('.sheet-bg')?.remove();
+        queue = null; tab = 'home';
+        if (d.gid) openCard(d.gid); else route();
+      });
+      // the app is open (Android shows no notification then): a toast and fresh numbers
+      Push.addListener('pushNotificationReceived', n => {
+        if (n?.data?.kind !== 'team_new') return;
+        toast(n.title || '🆕 नवीन पालक');
+        if (tab === 'home' && !queue && !document.querySelector('.sheet-bg') && document.querySelector('.dk-home')) home().catch(() => {});
+      });
+      const p = await Push.requestPermissions();
+      if (p.receive !== 'granted') return;
+      await Push.register();
+    } catch (e) { console.warn('push', e); }
+  }
   function logout(why) { tok = null; me = null; bot = null; ls.set('nks_team_token', null); ls.set('nks_team_me', null); ls.set('nks_team_bot', null); ls.set('nks_team_home', null); showLogin(why); }
 
   // ── ready messages (the admin's own from the bot, else these) ──
@@ -123,6 +153,7 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
     if (Array.isArray(tp) && tp.length) tpls = tp;
     desk = d; ls.set('nks_team_desk', JSON.stringify(d));
     if (tab === 'home' && !queue) drawHome(d, false);
+    setTimeout(setupPush, 2000);   // after the screen settles (asking at once crashes some Android phones)
     // fresh numbers every minute while the home screen is open (a new family, a callback coming due)
     deskTimer = setInterval(() => { if (tab === 'home' && !queue && !document.querySelector('.sheet-bg') && document.querySelector('.dk-home')) home().catch(() => {}); }, 60e3);
   }
@@ -579,7 +610,7 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
       </div>
       <p class="mt" style="margin:14px 2px">आज (${esc(m.day)}) · ${esc(me?.name || '')}</p>
       <button type="button" class="btn ghost" id="lo" style="width:100%">🚪 Logout</button>`, 'माझं काम');
-    $('lo').onclick = () => logout();
+    $('lo').onclick = () => { rq('/team/device-token', { method: 'PATCH', body: { token: '' } }).catch(() => {}); pushFor = ''; logout(); };   // 🔔 no pushes after logout
   }
 
   // ➕ a family / a student (free account)
