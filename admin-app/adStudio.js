@@ -1275,7 +1275,22 @@ const AD_STUDIO = (() => {
     _paintLib();
   }
   const _libPicked = () => [...($('ads-lib-list')?.querySelectorAll('input:checked') || [])].map(c => _lib.find(v => v.id === c.value)).filter(Boolean);
-  function _paintLib() { const b = $('ads-lib-send'); if (b) b.disabled = !_libPicked().length; }
+  // a Meta video ticked: only its own button sends — the studio's "📤 ही ad पाठवा" above would send the studio's
+  // animated video instead (owner 2026-11-26 pressed it and got the wrong video), so it is off until nothing is ticked
+  function _paintLib() {
+    const n = _libPicked().length, b = $('ads-lib-send');
+    if (b) {
+      b.disabled = !n;
+      b.className = n ? 'admin-btn-primary' : 'admin-btn-secondary';
+      b.textContent = n ? `📤 या ${n} Meta video${n > 1 ? 's' : ''} च्या ads बनवा (बंद स्थितीत)` : '📤 निवडलेल्या videos च्या ads बनवा (बंद स्थितीत)';
+    }
+    for (const id of ['ads-meta-send', 'ads-meta-send-all']) {
+      const s = $(id); if (!s) continue;
+      if (!s.dataset.label) s.dataset.label = s.textContent;
+      s.disabled = !!n;
+      s.textContent = n ? '⛔ Meta मधील video निवडला आहे — खालचं 📤 बटण वापरा' : s.dataset.label;
+    }
+  }
   async function sendLibToMeta() {
     const vids = _libPicked(), msg = $('ads-file-msg'), btn = $('ads-lib-send');
     if (!vids.length) { msg.textContent = 'आधी Meta मधील video निवडा'; return; }
