@@ -1257,6 +1257,9 @@ const AD_STUDIO = (() => {
   };
   let _lib = [];
   const _libName = v => v.title || ('video-' + v.id.slice(-6));
+  // the ad's name carries the Meta video's own id: two videos never share one ad (same title, or an older ad of
+  // that name with another video — 2026-11-26: such a name said 'already there' and the old video ran)
+  const _libAdId = v => _fileId(_libName(v)).slice(0, 44).replace(/-$/, '') + '-v' + String(v.id).slice(-5);
   async function _loadLib() {
     const box = $('ads-lib-list'), btn = $('ads-lib-load');
     btn.disabled = true; box.innerHTML = '<small class="import-hint">⏳ Meta मधून आणत आहे…</small>';
@@ -1268,7 +1271,7 @@ const AD_STUDIO = (() => {
       <input type="checkbox" value="${_esc(v.id)}" ${v.ready ? '' : 'disabled'} />
       ${v.picture ? `<img src="${_esc(v.picture)}" alt="" width="40" height="40" style="object-fit:cover;border-radius:6px" loading="lazy" />` : '🎞️'}
       <span>${_esc(_libName(v))} · ${v.length ? v.length + ' सेकंद' : ''}${v.created_time ? ' · ' + _esc(new Date(v.created_time).toLocaleDateString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short' })) : ''}
-      → ad <b>${_esc(_fileId(_libName(v)))}</b>${v.ready ? '' : ' ⏳ Meta अजून तयार करत आहे'}</span></label>`).join('');
+      → ad <b>${_esc(_libAdId(v))}</b>${v.ready ? '' : ' ⏳ Meta अजून तयार करत आहे'}</span></label>`).join('');
     _paintLib();
   }
   const _libPicked = () => [...($('ads-lib-list')?.querySelectorAll('input:checked') || [])].map(c => _lib.find(v => v.id === c.value)).filter(Boolean);
@@ -1285,13 +1288,14 @@ const AD_STUDIO = (() => {
     const show = now => { msg.innerHTML = [...lines, now].filter(Boolean).join('<br>'); };
     try {
       for (const v of vids) {
-        const id = _fileId(_libName(v));
+        const id = _libAdId(v);
         try {
           show(`⏳ ${_esc(id)}: Meta मध्ये ad बनत आहे…`);
           const out = await API.metaCreateAd({ name: id, adset: set, audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, geo: _geo(), dest: _dest(st.v), video_id: v.id,
             message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link.split(from).join('ad=' + encodeURIComponent(id)) });
-          lines.push(out.exists ? `ℹ️ <b>${_esc(id)}</b> आधीच Meta मध्ये आहे` : out.pending ? `⏳ <b>${_esc(id)}</b>: Meta video तयार करत आहे — 2 मिनिटांनी पुन्हा दाबा`
-            : `✅ <b>${_esc(id)}</b> बनली — <b>बंद (Paused)</b>${out.note ? ' · ⚠️ ' + _esc(out.note) : ''}`);
+          const vid = ` · 🎞️ ${_esc(_libName(v))}`;
+          lines.push(out.exists ? `ℹ️ <b>${_esc(id)}</b> आधीच Meta मध्ये आहे${vid}` : out.pending ? `⏳ <b>${_esc(id)}</b>: Meta video तयार करत आहे — 2 मिनिटांनी पुन्हा दाबा${vid}`
+            : `✅ <b>${_esc(id)}</b> बनली — <b>बंद (Paused)</b>${vid}${out.note ? ' · ⚠️ ' + _esc(out.note) : ''}`);
         } catch (err) { lines.push(`⚠️ ${_esc(_libName(v))}: ${_esc(err?.message || 'पाठवता आलं नाही')}`); }
       }
       show('खालच्या "📡 Meta मधल्या ads" मध्ये पाहा आणि ▶ ने चालू करा.');
