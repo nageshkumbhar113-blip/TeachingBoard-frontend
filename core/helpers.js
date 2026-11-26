@@ -867,6 +867,26 @@ const API = (() => {
     return payload?.data || [];
   }
 
+  // Tests "only what changed" (owner 2026-11-27): every test's version (a few KB, no questions) — null when the
+  // server is older and does not know ?versions=1 (then the app downloads the whole list as before)
+  async function fetchQuizVersions() {
+    const profile = await getStudentProfile();
+    const token   = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
+    const payload = await request('/quizzes?status=published&versions=1', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return payload && payload.versions && typeof payload.versions === 'object' ? payload.versions : null;
+  }
+  // …and just these tests, in full (the same items as the whole list)
+  async function fetchQuizzesByIds(ids) {
+    const profile = await getStudentProfile();
+    const token   = profile?.student_code ? await ensureStudentSession().catch(() => '') : '';
+    const payload = await request(`/quizzes?status=published&ids=${ids.map(encodeURIComponent).join(',')}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return payload?.data || [];
+  }
+
   async function fetchQuizById(quizId) {
     const cleanId = String(quizId || '').trim();
     if (!cleanId) throw new Error('quiz id is required');
@@ -2749,9 +2769,10 @@ const API = (() => {
   async function fetchMcqBankAdmin(params = {}) { return _fetchMcqBank(await ensureAdminSession(), params); }
   async function fetchMcqBankTeacher(params = {}) { return _fetchMcqBank(await ensureTeacherSession(), params); }
   // every published test (with its questions) — Teacher › competitive paper
-  async function fetchQuizzesTeacher() {
+  async function fetchQuizzesTeacher(batch) {
     const token = await ensureTeacherSession();
-    const payload = await request('/quizzes?status=published', { headers: { Authorization: `Bearer ${token}` } });
+    // one class only when given (index audit 2026-11-27: was every published test with its questions)
+    const payload = await request('/quizzes?status=published' + (batch ? '&batch=' + encodeURIComponent(batch) : ''), { headers: { Authorization: `Bearer ${token}` } });
     return payload?.data || [];
   }
 
@@ -3422,7 +3443,7 @@ const API = (() => {
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,
     getParentProfile, clearParentProfile,
-    fetchQuiz, fetchPublishedQuizzes, fetchQuizById, generateQuizQuestions,
+    fetchQuiz, fetchPublishedQuizzes, fetchQuizVersions, fetchQuizzesByIds, fetchQuizById, generateQuizQuestions,
     fetchQuizPatterns, saveQuizPattern, deleteQuizPattern,
     fetchLessons, fetchQuestions, fetchAttempts,
     addQuestion, updateQuestion, deleteQuestion, deleteQuiz, bulkSaveQuestions, uploadFigures,

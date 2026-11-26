@@ -948,6 +948,58 @@ const SYNC = (() => {
     return { fetched, removed };
   }
 
+  // ── Student tests: only what changed (owner 2026-11-27) ──
+  // Before: any change in the class's tests (one Admin edit) and the daily full sync downloaded EVERY test with its
+  // questions again (~5.5 MB for a full-access student). Now the app asks each test's version (a few KB) and
+  // downloads just the new / changed / newly (un)locked ones; tests no longer offered leave the phone as before.
+  // The versions it has are kept in a setting; a test missing on the phone is fetched even if its version matches.
+  // An older server (no versions) or a first run without saved versions → the whole list, as before.
+  const QUIZ_VER_KEY = 'quiz_versions';   // { student_code, v: { quiz_id: "updated|version|L/U" } }
+  async function fetchQuizzesDelta(code) {
+    if (!_isOnline()) return { fetched: 0 };
+    let versions = null;
+    try { versions = await API.fetchQuizVersions?.(); } catch (err) { if (!/404|not found/i.test(err.message)) throw err; }
+    const saved = await DB.getSetting(QUIZ_VER_KEY, null).catch(() => null);
+    const have = saved && saved.student_code === code && saved.v ? saved.v : null;
+    if (!versions || !have) {
+      const r = await fetchQuizzes({ silent: true, status: 'published' });
+      if (versions) await DB.setSetting(QUIZ_VER_KEY, { student_code: code, v: versions }).catch(() => {});
+      return { ...r, mode: 'full' };
+    }
+    const local = new Map();
+    for (const q of await DB.getAllQuizzes().catch(() => [])) if (q && q.source === 'api') local.set(String(q.quiz_id), q);
+    const ids = Object.keys(versions);
+    const need = ids.filter(id => have[id] !== versions[id] || !local.has(id)
+      || (versions[id].endsWith('|U') && !(local.get(id).questions || []).length));   // open but empty on the phone
+    // most of it changed (a new class, a long time away): one whole download is cheaper than many small ones
+    if (need.length > Math.max(40, ids.length * 0.6)) {
+      const r = await fetchQuizzes({ silent: true, status: 'published' });
+      await DB.setSetting(QUIZ_VER_KEY, { student_code: code, v: versions }).catch(() => {});
+      return { ...r, mode: 'full' };
+    }
+    const next = {};
+    for (const id of ids) if (have[id] === versions[id] && local.has(id)) next[id] = versions[id];
+    let fetched = 0;
+    for (let i = 0; i < need.length; i += 40) {
+      const part = need.slice(i, i + 40);
+      const list = await API.fetchQuizzesByIds(part);
+      for (const rq of list) {
+        const c = await _cacheRemoteQuiz(rq);
+        if (versions[c.quiz_id] !== undefined) next[c.quiz_id] = versions[c.quiz_id];
+        fetched++;
+      }
+    }
+    // tests no longer offered to this student leave the phone (same rule as the whole list)
+    let removed = 0;
+    const keep = new Set(ids);
+    for (const [id, q] of local) {
+      if (keep.has(id) || (q.backend_id && keep.has(String(q.backend_id)))) continue;
+      await DB.deleteQuiz(id); removed++;
+    }
+    await DB.setSetting(QUIZ_VER_KEY, { student_code: code, v: next }).catch(() => {});
+    return { fetched, removed, mode: 'delta', asked: need.length };
+  }
+
   async function refreshQuiz(quizId, options = {}) {
     const cleanId = String(quizId || '').trim();
     if (!cleanId) throw new Error('Quiz id is required');
@@ -1231,7 +1283,7 @@ const SYNC = (() => {
 
     let okQuizzes = false, okQuestions = false, okMe = false;
     const tasks = [];
-    if (doQuizzes) tasks.push(fetchQuizzes({ silent: true, status: 'published' })
+    if (doQuizzes) tasks.push(fetchQuizzesDelta(fp.student_code)   // only the changed tests (was: all of them)
       .then(() => { okQuizzes = true; })
       .catch(err => console.warn('SYNC quizzes (student cycle):', err.message)));
     if (doQuestions) tasks.push(API.syncStudentQuestions()
@@ -1523,6 +1575,7 @@ const SYNC = (() => {
     publishQuiz,
     retryQueue,
     fetchQuizzes,
+    fetchQuizzesDelta,
     refreshQuiz,
 
     // SLS Notes offline-cache refresh

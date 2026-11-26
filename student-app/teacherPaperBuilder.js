@@ -459,7 +459,7 @@ const TEACHER_PAPER_BUILDER = (() => {
       }
       // + the questions inside every published test of this class (same lessons), not already in the bank
       const haveQ = new Set([...groups.values()].flat().map(r => r.q_id).filter(Boolean));
-      const quizzes = (await API.fetchQuizzesTeacher().catch(() => [])).filter(qz => qz.batch === _batch);
+      const quizzes = (await API.fetchQuizzesTeacher(_batch).catch(() => [])).filter(qz => qz.batch === _batch);
       for (const qz of quizzes) {
         for (const qq of qz.questions || []) {
           const r = { ...qq, _id: `quiz:${qz.quiz_id}:${qq.q_id}`, quizRef: { quizId: qz.quiz_id, qId: qq.q_id }, subject: qq.subject || qz.subject, chapter: qq.chapter || qz.chapter };
