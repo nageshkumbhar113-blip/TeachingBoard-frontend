@@ -165,3 +165,6 @@ details.more > summary { cursor: pointer; font-weight: 700; color: var(--brand);
 .dk-disc button.ask { border-style: dashed; color: var(--muted); }
 .dk-out { flex-direction: column; gap: 0; }
 .dk-out small { font-weight: 500; font-size: .74rem; opacity: .85; }
+/* 👩‍🏫 teachers to call (Teacher Guide) */
+.dk-alert.t { border-color: #b45309; background: #fff7ed; }
+.dk-alert.t b { color: #b45309; }

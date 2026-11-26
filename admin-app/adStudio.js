@@ -1166,7 +1166,9 @@ const AD_STUDIO = (() => {
   const _isNmms = () => /nmms/i.test(st.batch || '') && !isTeacher(st.aud);
   const _geo = () => (_isNmms() ? (_geoPick[st.batch] || 'gata') : 'all');
   // 💬 a parent ad may open WhatsApp (the bot) instead of the website
-  const _dest = (v = st.v) => (_audOf(v) === 'parent' && $('ads-meta-dest')?.value === 'wa' ? 'wa' : 'web');
+  // 💬 WhatsApp ads: parents, and (owner 2026-11-26) school teachers — the bot then runs the Teacher Guide
+  const _waOk = (v = st.v) => _audOf(v) === 'parent' || _audOf(v) === 'school';
+  const _dest = (v = st.v) => (_waOk(v) && $('ads-meta-dest')?.value === 'wa' ? 'wa' : 'web');
   const adsetName = (v = st.v) => { const a = _audOf(v); return isTeacher(a) ? `t-${a}` : `${_slug(st.batch)}-${st.kind === 'reg' ? 'r' : 'c'}-${a}${_geo() !== 'all' ? '-' + _geo() : ''}`; };
 
   // ── "📤 Meta वर पाठवा": record the 9:16 video here, send it + a thumbnail through our server to
@@ -1327,7 +1329,9 @@ const AD_STUDIO = (() => {
     if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * _share(st.aud) / 100 : 150));
     const n = $('ads-meta-name'); if (n) n.textContent = `Ad: ${adId()} · Ad set: ${adsetName()}`;
     if ($('ads-geo-row')) { $('ads-geo-row').hidden = !_isNmms(); $('ads-meta-geo').value = _geo(); }
-    if ($('ads-dest-row')) { const par = _audOf(st.v) === 'parent'; $('ads-dest-row').hidden = !par; $('ads-dest-note').hidden = !par || _dest() !== 'wa'; }
+    if ($('ads-dest-row')) { const par = _waOk(st.v); $('ads-dest-row').hidden = !par;
+      // teacher ads: WhatsApp by default (owner 2026-11-26: their number must come to us), parents keep their choice
+      const dsel = $('ads-meta-dest'); if (dsel && !dsel.dataset.touched) dsel.value = _audOf(st.v) === 'school' ? 'wa' : 'web'; $('ads-dest-note').hidden = !par || _dest() !== 'wa'; }
     // ages: the audience's, until the admin changes them (per audience)
     const [lo, hi] = _ages(st.aud), a1 = $('ads-meta-age-min'), a2 = $('ads-meta-age-max');
     if (a1 && a1.dataset.aud !== st.aud) { a1.value = lo; a2.value = hi; a1.dataset.aud = st.aud; }
@@ -2549,7 +2553,7 @@ const AD_STUDIO = (() => {
       $('ads-lib-list').addEventListener('change', _paintLib);
       $('ads-lib-send').addEventListener('click', sendLibToMeta);
       _geoPick = (await DB.getSetting(GEO_KEY, null).catch(() => null)) || {};
-      $('ads-meta-dest').addEventListener('change', () => _paintMetaBox());
+      $('ads-meta-dest').addEventListener('change', e => { e.target.dataset.touched = '1'; _paintMetaBox(); });
       $('ads-meta-geo').addEventListener('change', e => { _geoPick[st.batch] = e.target.value; DB.setSetting(GEO_KEY, { ..._geoPick }).catch(() => {}); _paintMetaBox(); });
       $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
       $('ads-refresh').addEventListener('click', () => _loadBoard(true));

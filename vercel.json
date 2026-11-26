@@ -18,6 +18,7 @@
     { "source": "/demo",         "destination": "/demo/index.html" },
     { "source": "/teacher-rules", "destination": "/teacher-rules.html" },
     { "source": "/book-demo",    "destination": "/teacher-demo.html" },
+    { "source": "/teacher-guide", "destination": "/teacher-guide.html" },
     { "source": "/exams",        "destination": "/exams/index.html" },
     { "source": "/exams/:slug",  "destination": "/exams/:slug/index.html" },
     { "source": "/student/:path*",  "destination": "/student-app/index.html" },

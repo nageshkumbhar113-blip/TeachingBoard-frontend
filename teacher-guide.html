@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="mr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>शिक्षकांसाठी मार्गदर्शन · NKs EduOrbit</title>
+<meta name="description" content="NKs EduOrbit शिक्षक app — 7 छोट्या steps: login, 1 मिनिटात पेपर, विद्यार्थी, test, Analytics आणि शिक्षकांसाठी खास सूट." />
+<meta name="robots" content="noindex" />
+<link rel="icon" href="icons-student/playstore-icon-512.png" />
+<style>
+  /* 👩‍🏫 Teacher Guide (owner 2026-11-26): the WhatsApp bot sends one step at a time with a link to its card here
+     (#login, #paper, #students, #student, #analytics, #tour, #offer). The phone pictures follow the app's own look
+     (dark, orange accent, "▾" section menu) and mark the button to press. Words: "सूट" only — no percent, no "free". */
+  :root { --bg:#f5f3ff; --card:#fff; --ink:#1b1340; --muted:#5b5680; --brand:#4338ca; --accent:#f97316; --ok:#15803d; --line:#e1dcf7;
+          --app-bg:#0d1117; --app-bar:#161b22; --app-ink:#e6edf3; --app-muted:#8b949e; --app-line:rgba(255,255,255,.1); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#110f1f; --card:#1b1833; --ink:#efecff; --muted:#b3acd6; --line:#332c5c; --brand:#a5a1ff; } }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .hot::after { animation: none !important; } }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 "Noto Sans Devanagari","Mukta",system-ui,sans-serif; }
+  main { max-width:980px; margin:0 auto; padding:16px max(16px, env(safe-area-inset-left)) 48px; display:grid; gap:16px; }
+  header.top { background:var(--brand); color:#fff; border-radius:20px; padding:18px 20px; display:grid; gap:4px; }
+  header.top h1 { margin:0; font-size:1.5rem; line-height:1.25; }
+  header.top p { margin:0; opacity:.92; }
+  nav.steps { display:flex; gap:6px; flex-wrap:wrap; position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0; }
+  @media (max-width:680px) { nav.steps { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; } nav.steps a { white-space:nowrap; } }
+  nav.steps a { text-decoration:none; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:999px; padding:4px 12px; font-size:.88rem; font-weight:600; }
+  nav.steps a:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .step { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px; display:grid; grid-template-columns:250px minmax(0,1fr); gap:22px; align-items:start; scroll-margin-top:64px; }
+  .step:target { border-color:var(--accent); box-shadow:0 0 0 3px rgba(249,115,22,.25); }
+  @media (max-width:680px) { .step { grid-template-columns:minmax(0,1fr); } .phone { justify-self:center; } }
+  .eyebrow { font-size:.78rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+  .step h2 { margin:2px 0 6px; font-size:1.3rem; line-height:1.3; }
+  .step ol { margin:0; padding-left:22px; display:grid; gap:6px; }
+  .step .tip { margin:10px 0 0; padding:10px 12px; border-radius:12px; background:var(--bg); font-size:.92rem; color:var(--ink); }
+  .step .wa { margin:10px 0 0; font-size:.9rem; color:var(--muted); }
+  b.k { background:rgba(249,115,22,.15); color:inherit; border-radius:6px; padding:0 5px; }
+  /* the phone, in the app's own colours */
+  .phone { width:250px; max-width:100%; border:9px solid #0b0b12; border-radius:30px; background:var(--app-bg); color:var(--app-ink); overflow:hidden; font:13px/1.45 system-ui,"Noto Sans Devanagari",sans-serif; box-shadow:0 14px 30px -20px rgba(20,10,60,.6); }
+  .sbar { display:flex; justify-content:space-between; padding:4px 12px; font-size:.68rem; color:var(--app-muted); }
+  .abar { background:var(--app-bar); border-bottom:1px solid var(--app-line); padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:6px; font-weight:700; }
+  .abar small { color:var(--app-muted); font-weight:500; }
+  .drawer { color:var(--accent); font-weight:700; padding:9px 12px; display:flex; justify-content:space-between; border-bottom:1px solid var(--app-line); }
+  .abody { padding:10px; display:grid; gap:7px; min-height:300px; align-content:start; }
+  .row { background:var(--app-bar); border:1px solid var(--app-line); border-radius:10px; padding:8px 10px; display:flex; justify-content:space-between; gap:6px; align-items:center; }
+  .row small { color:var(--app-muted); }
+  .fld { border:1px solid var(--app-line); border-radius:8px; padding:7px 9px; color:var(--app-muted); background:#0b0f14; }
+  .btn { border-radius:10px; padding:9px; text-align:center; font-weight:700; border:1px solid var(--app-line); background:var(--app-bar); }
+  .btn.pri { background:var(--accent); border-color:var(--accent); color:#111; }
+  .tabs { display:flex; gap:4px; }
+  .tabs span { flex:1; text-align:center; border:1px solid var(--app-line); border-radius:8px; padding:6px 2px; font-size:.75rem; color:var(--app-muted); }
+  .tabs span.on { border-color:var(--accent); color:var(--accent); font-weight:700; }
+  .chips { display:flex; gap:4px; flex-wrap:wrap; }
+  .chips span { border:1px solid var(--app-line); border-radius:999px; padding:2px 8px; font-size:.72rem; }
+  .chips span.on { background:var(--accent); border-color:var(--accent); color:#111; font-weight:700; }
+  .bar { height:7px; border-radius:4px; background:var(--app-line); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--accent); }
+  .bar.low i { background:#ef4444; }
+  .menu .row { padding:7px 10px; }
+  .hot { position:relative; }
+  .hot::after { content:""; position:absolute; inset:-5px; border:3px solid #fde047; border-radius:13px; animation:pulse 1.5s ease-in-out infinite; pointer-events:none; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+  .help { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px; display:grid; gap:6px; }
+  .help h2 { margin:0; font-size:1.2rem; }
+  .help a { color:var(--brand); font-weight:700; }
+  .num { font-weight:800; letter-spacing:.02em; user-select:all; }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1>👩‍🏫 शिक्षकांसाठी मार्गदर्शन</h1>
+    <p>NKs EduOrbit app — 7 छोट्या steps, प्रत्येक 1–2 मिनिटं. तुमचा शिक्षक Code / PIN आणि demo विद्यार्थ्याचा Code / PIN WhatsApp वर आला आहे.</p>
+  </header>
+  <nav class="steps" aria-label="Steps">
+    <a href="#login">1 · Login</a><a href="#paper">2 · पेपर</a><a href="#students">3 · विद्यार्थी</a><a href="#student">4 · विद्यार्थी test</a><a href="#analytics">5 · Analytics</a><a href="#tour">6 · आणखी</a><a href="#offer">7 · खास सूट</a>
+  </nav>
+
+  <section class="step" id="login" aria-labelledby="h-login">
+    <div class="phone" aria-hidden="true">
+      <div class="sbar"><span>10:30</span><span>📶 🔋</span></div>
+      <div class="abar"><span>NKs EduOrbit</span><small>Login</small></div>
+      <div class="abody">
+        <div class="tabs"><span>🎓 Student</span><span class="on hot">👩‍🏫 Teacher</span><span>👪 Parent</span></div>
+        <div class="fld">Teacher Code — उदा. SAN321</div>
+        <div class="fld">PIN — ••••</div>
+        <div class="btn pri hot">Login →</div>
+        <small style="color:var(--app-muted)">PIN विसरलात? ❓ मदत</small>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">Step 1 / 7</span>
+      <h2 id="h-login">Login 🔑</h2>
+      <ol>
+        <li>Play Store वरून <b>NKs EduOrbit</b> app install करा आणि उघडा.</li>
+        <li>वरती <b class="k">👩‍🏫 Teacher</b> निवडा (🎓 Student नाही).</li>
+        <li>WhatsApp वर आलेला <b>शिक्षक Code</b> (मोठ्या अक्षरात) आणि <b>PIN</b> टाका → <b class="k">Login</b>.</li>
+      </ol>
+      <p class="tip">💡 Login झालं की app आपोआप आम्हाला कळवतं — WhatsApp वर पुढची step लगेच येते.</p>
+    </div>
+  </section>
+
+  <section class="step" id="paper" aria-labelledby="h-paper">
+    <div class="phone" aria-hidden="true">
+      <div class="sbar"><span>10:32</span><span>📶 🔋</span></div>
+      <div class="abar"><span>Teacher Dashboard</span><small>↺</small></div>
+      <div class="drawer hot"><span>📄 Paper</span><span>▾</span></div>
+      <div class="abody">
+        <div class="fld">वर्ग: 8वी NMMS ▾</div>
+        <div class="fld">विषय: गणित ▾</div>
+        <div class="row"><span>☑ 1. संख्याज्ञान</span></div>
+        <div class="row"><span>☑ 2. भूमिती</span></div>
+        <div class="row"><span>☐ 3. मापन</span></div>
+        <div class="btn pri hot">पेपर बनवा</div>
+        <div class="btn">⬇ PDF · Answer key</div>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">Step 2 / 7</span>
+      <h2 id="h-paper">1 मिनिटात पेपर 📄</h2>
+      <ol>
+        <li>वरचं <b class="k">▾</b> menu उघडा → <b class="k">📄 Paper</b>.</li>
+        <li>आधी <b>वर्ग</b>, मग <b>विषय</b> निवडा — धड्यांची यादी येते.</li>
+        <li>हवे ते धडे निवडा → <b class="k">पेपर बनवा</b>.</li>
+        <li><b>PDF</b> आणि <b>Answer key</b> download करा — print करून वर्गात द्या.</li>
+      </ol>
+      <p class="tip">💡 धडा दिसत नाही? आधी वर्ग आणि विषय निवडलेत ना ते पाहा.</p>
+    </div>
+  </section>
+
+  <section class="step" id="students" aria-labelledby="h-students">
+    <div class="phone" aria-hidden="true">
+      <div class="sbar"><span>10:35</span><span>📶 🔋</span></div>
+      <div class="abar"><span>Teacher Dashboard</span><small>↺</small></div>
+      <div class="drawer"><span>👨‍🎓 Students</span><span>▾</span></div>
+      <div class="abody">
+        <div class="row"><span>Demo विद्यार्थी<br><small>JIP5001 · 8वी NMMS</small></span><small>📝 0</small></div>
+        <div class="row" style="opacity:.55"><span>तुमचे विद्यार्थी इथे येतील</span></div>
+        <div class="menu" style="display:grid;gap:5px;margin-top:6px">
+          <div class="row"><span>▾ menu मधून:</span></div>
+          <div class="row hot"><span>📤 Share — वर्गाची link / QR</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">Step 3 / 7</span>
+      <h2 id="h-students">तुमचे विद्यार्थी 👨‍🎓</h2>
+      <ol>
+        <li><b class="k">▾</b> → <b class="k">👨‍🎓 Students</b> — तुमचा <b>demo विद्यार्थी</b> इथे आधीच जोडलेला आहे.</li>
+        <li>तुमच्या वर्गातील मुलांसाठी: <b class="k">▾</b> → <b class="k">📤 Share</b> → link किंवा QR मुलांना / पालकांना पाठवा.</li>
+        <li>मुलं join झाली की ती याच यादीत दिसतात.</li>
+      </ol>
+      <p class="wa">झालं की WhatsApp वर <b>✅ झालं</b> दाबा.</p>
+    </div>
+  </section>
+
+  <section class="step" id="student" aria-labelledby="h-student">
+    <div class="phone" aria-hidden="true">
+      <div class="sbar"><span>10:38</span><span>📶 🔋</span></div>
+      <div class="abar"><span>👤 Demo विद्यार्थी</span><small>Profile</small></div>
+      <div class="abody">
+        <div class="row hot"><span>↔ Switch Account</span></div>
+        <div class="tabs"><span class="on">🎓 Student</span><span>👩‍🏫 Teacher</span><span>👪 Parent</span></div>
+        <div class="row"><span>📘 1. संख्याज्ञान</span><small>Test ▶</small></div>
+        <div class="btn pri hot">▶ Test सुरू करा</div>
+        <div class="row"><span>प्र. 1 — 3/5 + 1/5 = ?</span></div>
+        <div class="chips"><span>2/5</span><span class="on">4/5</span><span>1</span><span>3/10</span></div>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">Step 4 / 7</span>
+      <h2 id="h-student">विद्यार्थी बनून पाहा 🎓</h2>
+      <ol>
+        <li>वरती तुमचं नाव (<b>Profile</b>) → <b class="k">↔ Switch Account</b>.</li>
+        <li>Login वर <b class="k">🎓 Student</b> निवडा → <b>demo विद्यार्थ्याचा</b> Code आणि PIN टाका.</li>
+        <li>कोणताही एक धडा उघडा → <b class="k">Test</b> द्या.</li>
+      </ol>
+      <p class="tip">💡 तुमचे विद्यार्थी app असंच वापरतात. Demo विद्यार्थी 3 दिवस चालू असतो.</p>
+    </div>
+  </section>
+
+  <section class="step" id="analytics" aria-labelledby="h-analytics">
+    <div class="phone" aria-hidden="true">
+      <div class="sbar"><span>10:45</span><span>📶 🔋</span></div>
+      <div class="abar"><span>Teacher Dashboard</span><small>↺</small></div>
+      <div class="drawer hot"><span>📊 Analytics</span><span>▾</span></div>
+      <div class="abody">
+        <div class="row"><span>Demo विद्यार्थी</span><b>14 / 20</b></div>
+        <small style="color:var(--app-muted)">संख्याज्ञान</small><div class="bar"><i style="width:85%"></i></div>
+        <small style="color:var(--app-muted)">भूमिती</small><div class="bar low"><i style="width:40%"></i></div>
+        <div class="row hot"><span>⚠️ कमकुवत: भूमिती</span></div>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">Step 5 / 7</span>
+      <h2 id="h-analytics">गुण तुमच्या phone वर 📊</h2>
+      <ol>
+        <li>परत <b class="k">↔ Switch Account</b> → <b class="k">👩‍🏫 Teacher</b> login.</li>
+        <li><b class="k">▾</b> → <b class="k">📊 Analytics</b>.</li>
+        <li>Demo विद्यार्थ्याचे गुण आणि <b>कमकुवत धडे</b> पाहा — तुमच्या प्रत्येक विद्यार्थ्याचं असंच दिसेल.</li>
+      </ol>
+      <p class="tip">💡 गुण दिसत नाहीत? Test दिल्यानंतर 1–2 मिनिटांनी ↺ दाबा.</p>
+    </div>
+  </section>
+
+  <section class="step" id="tour" aria-labelledby="h-tour">
+    <div class="phone" aria-hidden="true">
+      <div class="sbar"><span>10:50</span><span>📶 🔋</span></div>
+      <div class="abar"><span>Teacher Dashboard</span><small>↺</small></div>
+      <div class="drawer"><span>▾ menu</span><span>▴</span></div>
+      <div class="abody menu">
+        <div class="row"><span>👨‍🎓 Students</span></div>
+        <div class="row"><span>➕ Students बनवा</span></div>
+        <div class="row"><span>📊 Analytics</span></div>
+        <div class="row hot"><span>🔔 Notify</span></div>
+        <div class="row hot"><span>💰 Fee</span></div>
+        <div class="row"><span>📄 Paper</span></div>
+        <div class="row hot"><span>🎬 Videos</span></div>
+        <div class="row"><span>📚 Books</span></div>
+        <div class="row"><span>📤 Share</span></div>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">Step 6 / 7</span>
+      <h2 id="h-tour">आणखी काही ✨</h2>
+      <ol>
+        <li><b class="k">🎬 Videos</b> — तुमचे YouTube videos फक्त तुमच्या विद्यार्थ्यांना दिसतात (link paste करा → Save).</li>
+        <li><b class="k">🔔 Notify</b> — पालकांना एका क्लिकमध्ये सूचना.</li>
+        <li><b class="k">💰 Fee</b> — विद्यार्थ्यांच्या फी ची नोंद.</li>
+        <li><b class="k">📚 Books</b> — पुस्तकं.</li>
+      </ol>
+      <p class="wa">पाहिलं की WhatsApp वर <b>✅ झालं</b> दाबा.</p>
+    </div>
+  </section>
+
+  <section class="step" id="offer" aria-labelledby="h-offer">
+    <div class="phone" aria-hidden="true">
+      <div class="sbar"><span>11:00</span><span>📶 🔋</span></div>
+      <div class="abar"><span>Teacher Dashboard</span><small>↺</small></div>
+      <div class="drawer hot"><span>➕ Students बनवा</span><span>▾</span></div>
+      <div class="abody">
+        <div class="fld">नावं + mobile (Excel मधून paste)</div>
+        <div class="fld">वर्ग: 8वी NMMS ▾</div>
+        <div class="row"><span>🎁 शिक्षकांसाठी खास सूट</span><small>✓</small></div>
+        <div class="btn pri hot">Pay करा</div>
+        <div class="row"><span>प्रत्येक मुलाचा Code + PIN लगेच</span></div>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">Step 7 / 7</span>
+      <h2 id="h-offer">शिक्षकांसाठी खास सूट 🎁</h2>
+      <ol>
+        <li><b class="k">▾</b> → <b class="k">➕ Students बनवा</b>.</li>
+        <li>मुलांची नावं आणि mobile टाका (Excel मधून paste करता येतं), वर्ग निवडा.</li>
+        <li><b>शिक्षकांसाठी खास सूट</b> लागते → <b class="k">Pay करा</b> → प्रत्येक मुलाचा Code + PIN लगेच.</li>
+      </ol>
+      <p class="tip">💡 सूट ची माहिती आणि मदतीसाठी call करा: <span class="num">8390484545</span></p>
+    </div>
+  </section>
+
+  <section class="help" aria-labelledby="h-help">
+    <h2 id="h-help">अडचण आली?</h2>
+    <p style="margin:0">WhatsApp वर <b>❓ अडचण</b> दाबा आणि एका ओळीत लिहा — लगेच उत्तर मिळेल. किंवा आमच्या team ला call करा: <span class="num">8390484545</span></p>
+    <p style="margin:0;color:var(--muted);font-size:.9rem">तुमचं शिक्षक account नेहमी चालू राहतं. Demo विद्यार्थी 3 दिवस चालू असतो; तुमच्या वर्गाचे 10 विद्यार्थी pay करतात तेव्हा तो परत चालू होतो.</p>
+  </section>
+</main>
+</body>
+</html>

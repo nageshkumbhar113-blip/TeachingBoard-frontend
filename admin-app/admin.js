@@ -4060,7 +4060,7 @@ const ADMIN = (() => {
       const [c, batches] = await Promise.all([API.adminTeacherDemo('GET', '/admin/config'), API.syncServerBatches().catch(() => [])]);
       const d = c?.data || {};
       $('tdemo-on').checked = d.on !== false;
-      $('tdemo-hours').value = d.hours || 48;
+      $('tdemo-hours').value = d.hours || 72;
       $('tdemo-course').innerHTML = '<option value="">(पहिला NMMS course)</option>' + (batches || []).map(b => `<option ${b.name === d.course ? 'selected' : ''}>${_escHtml(b.name)}</option>`).join('');
     } catch { /* not yet */ }
     $('tdemo-save').onclick = async () => {
