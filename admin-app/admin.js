@@ -108,7 +108,51 @@ const ADMIN = (() => {
     if (inp) { inp.maxLength = backup ? 11 : 6; inp.inputMode = backup ? 'text' : 'numeric'; inp.placeholder = backup ? 'XXXXX-XXXXX' : '••••••'; }
   }
 
+  // ── 🔄 Refresh (owner 2026-11-26): the page reloads and the same tab opens again, at the same place. After the
+  // Refresh button (this browser tab, within 2 minutes, the admin login still valid) the PIN is not asked again;
+  // after the browser's own reload (F5) the PIN is asked, then the same tab opens. ──
+  const _ss = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch { return null; } };
+  const _mainEl = () => $('admin-main');
+  function _saveSpot() {
+    const t = document.querySelector('.atab.active')?.dataset.tab;
+    if (t) _ss('admin_tab', t);
+    _ss('admin_scroll', JSON.stringify({ win: window.scrollY || 0, main: _mainEl()?.scrollTop || 0 }));
+  }
+  function _restoreSpot() {
+    const t = _ss('admin_tab');
+    let sc = null; try { sc = JSON.parse(_ss('admin_scroll') || 'null'); } catch {}
+    _ss('admin_scroll', null);
+    const b = t && t !== 'dashboard' ? document.querySelector(`.atab[data-tab="${t}"]`) : null;
+    if (b) b.click();
+    // the tab's own data loads first: put the scroll back a little later (and once more when it has grown)
+    if (sc && (sc.win || sc.main)) for (const ms of [500, 1500]) setTimeout(() => { window.scrollTo(0, sc.win || 0); if (_mainEl()) _mainEl().scrollTop = sc.main || 0; }, ms);
+  }
+  function _tokenLive() {
+    try {
+      const part = String(API.getAdminToken() || '').split('.')[0].replace(/-/g, '+').replace(/_/g, '/');   // our token: "<payload>.<signature>"
+      const p = JSON.parse(atob(part + '='.repeat((4 - (part.length % 4)) % 4)));
+      return !p.exp || p.exp * 1000 > Date.now() + 60e3;
+    } catch { return false; }
+  }
+  function _refresh() {
+    _saveSpot();
+    if (_unlocked) _ss('admin_quick', String(Date.now()));
+    location.reload();
+  }
+  window.addEventListener('pagehide', () => { if (_unlocked) _saveSpot(); });   // F5 / the browser's reload: the same tab after the PIN
+
   function open() {
+    // the 🔄 Refresh button a moment ago, and the login is still valid: straight back in
+    const quick = Number(_ss('admin_quick') || 0);
+    _ss('admin_quick', null);
+    if (quick && Date.now() - quick < 120e3 && _tokenLive()) {
+      _unlocked = true;
+      $('admin-pin-gate')?.classList.add('hidden');
+      $('admin-content')?.classList.remove('hidden');
+      $('admin-overlay')?.classList.remove('hidden');
+      _loadAdminContent().then(_restoreSpot, _restoreSpot);
+      return;
+    }
     _unlocked = false;
     $('admin-pin-gate')?.classList.remove('hidden');
     $('admin-content')?.classList.add('hidden');
@@ -172,6 +216,7 @@ const ADMIN = (() => {
     $('admin-pin-gate')?.classList.add('hidden');
     $('admin-content')?.classList.remove('hidden');
     await _loadAdminContent();
+    _restoreSpot();   // after a reload: the tab that was open
   }
 
   function _initPinInputs() {
@@ -4894,6 +4939,7 @@ const ADMIN = (() => {
     $('class-chapter-subject')?.addEventListener('change', _loadChapterAdmin);
 
     // Students
+    $('btn-admin-refresh')?.addEventListener('click', _refresh);   // 🔄 the same tab after the reload
     $('btn-save-student')?.addEventListener('click', _saveStudentAccount);
     $('btn-reset-student')?.addEventListener('click', _resetStudentForm);
     // 💳 the plan box
