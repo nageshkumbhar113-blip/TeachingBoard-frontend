@@ -1247,37 +1247,35 @@ const AD_STUDIO = (() => {
       _loadBoard(true);
     });
   }
-  // ── 📁 a video made elsewhere (an MP4 on this computer): sent as it is, with the text, button, link,
-  //    ad set, budget and ages of the ad chosen above; its own ad name <ad>-f-<file name> ──
-  const FILE_MAX = 95 * 1024 * 1024;
-  const _fileId = file => {
-    const base = String(file.name || '').replace(/.[^.]+$/, '').toLowerCase().replace(/^nks[-_ ]*(teacher[-_ ]*ad[-_ ]*)?/, '');
+  // ── 📚 a video made elsewhere: the admin uploads it straight into Meta (Ads Manager › Media library) and picks it
+  //    here — its bytes never pass through our server (100 MB uploads ran it out of memory, 2026-11-26). The ad uses
+  //    the text, button, link, ad set, budget and ages of the ad chosen above; its own ad name <ad>-f-<video title> ──
+  const _fileId = name => {
+    const base = String(name || '').replace(/\.[a-z0-9]{2,4}$/i, '').toLowerCase().replace(/^nks[-_ ]*(teacher[-_ ]*ad[-_ ]*)?/, '');
     const pre = isTeacher(_audOf(st.v)) ? 't-' : `${_slug(st.batch)}-`;
     return (pre + 'f-' + (base.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'video')).slice(0, 50).replace(/-$/, '');
   };
-  function _fileThumb(file) {
-    return new Promise((ok, bad) => {
-      const url = URL.createObjectURL(file), vd = document.createElement('video');
-      const done = (b, e) => { URL.revokeObjectURL(url); b ? ok(b) : bad(e || new Error('Video चं चित्र घेता आलं नाही')); };
-      vd.muted = true; vd.preload = 'auto'; vd.playsInline = true;
-      vd.onerror = () => done(null, new Error(`${file.name}: हा video browser मध्ये उघडत नाही`));
-      vd.onloadedmetadata = () => { vd.currentTime = Math.min(2, (vd.duration || 4) / 3); };
-      vd.onseeked = () => {
-        const c = document.createElement('canvas'); c.width = vd.videoWidth; c.height = vd.videoHeight;
-        c.getContext('2d').drawImage(vd, 0, 0);
-        c.toBlob(b => done(b), 'image/jpeg', 0.9);
-      };
-      vd.src = url;
-    });
+  let _lib = [];
+  const _libName = v => v.title || ('video-' + v.id.slice(-6));
+  async function _loadLib() {
+    const box = $('ads-lib-list'), btn = $('ads-lib-load');
+    btn.disabled = true; box.innerHTML = '<small class="import-hint">⏳ Meta मधून आणत आहे…</small>';
+    try { _lib = await API.metaVideos(); }
+    catch (err) { box.innerHTML = `<small class="import-hint">⚠️ ${_esc(err?.message || 'आणता आलं नाही')}</small>`; btn.disabled = false; return; }
+    btn.disabled = false;
+    if (!_lib.length) { box.innerHTML = '<small class="import-hint">Meta मध्ये अजून video नाही — आधी Ads Manager › Media library मध्ये upload करा.</small>'; _paintLib(); return; }
+    box.innerHTML = _lib.map(v => `<label class="ads-lib-row" style="display:flex;gap:8px;align-items:center;padding:4px 0">
+      <input type="checkbox" value="${_esc(v.id)}" ${v.ready ? '' : 'disabled'} />
+      ${v.picture ? `<img src="${_esc(v.picture)}" alt="" width="40" height="40" style="object-fit:cover;border-radius:6px" loading="lazy" />` : '🎞️'}
+      <span>${_esc(_libName(v))} · ${v.length ? v.length + ' सेकंद' : ''}${v.created_time ? ' · ' + _esc(new Date(v.created_time).toLocaleDateString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short' })) : ''}
+      → ad <b>${_esc(_fileId(_libName(v)))}</b>${v.ready ? '' : ' ⏳ Meta अजून तयार करत आहे'}</span></label>`).join('');
+    _paintLib();
   }
-  function _paintFiles() {
-    const files = [...($('ads-file')?.files || [])], list = $('ads-file-list'); if (!list) return;
-    list.innerHTML = files.map(fl => `🎞️ ${_esc(fl.name)} (${(fl.size / 1048576).toFixed(1)} MB) → ad <b>${_esc(_fileId(fl))}</b>${fl.size > FILE_MAX ? ' ⚠️ 95 MB पेक्षा मोठा' : ''}`).join('<br>');
-    $('ads-file-send').disabled = !files.length;
-  }
-  async function sendFilesToMeta() {
-    const files = [...($('ads-file')?.files || [])], msg = $('ads-file-msg'), btn = $('ads-file-send');
-    if (!files.length) { msg.textContent = 'आधी MP4 video निवडा'; return; }
+  const _libPicked = () => [...($('ads-lib-list')?.querySelectorAll('input:checked') || [])].map(c => _lib.find(v => v.id === c.value)).filter(Boolean);
+  function _paintLib() { const b = $('ads-lib-send'); if (b) b.disabled = !_libPicked().length; }
+  async function sendLibToMeta() {
+    const vids = _libPicked(), msg = $('ads-file-msg'), btn = $('ads-lib-send');
+    if (!vids.length) { msg.textContent = 'आधी Meta मधील video निवडा'; return; }
     const budget = Math.max(100, Number($('ads-meta-budget')?.value) || 0);
     const ageMin = parseInt($('ads-meta-age-min')?.value, 10), ageMax = parseInt($('ads-meta-age-max')?.value, 10);
     if (!(ageMin >= 13 && ageMax <= 65 && ageMin <= ageMax)) { msg.textContent = '⚠️ वय 13 ते 65 मध्ये, आणि पहिलं वय दुसऱ्यापेक्षा लहान हवं'; return; }
@@ -1286,29 +1284,19 @@ const AD_STUDIO = (() => {
     const lines = [];
     const show = now => { msg.innerHTML = [...lines, now].filter(Boolean).join('<br>'); };
     try {
-      for (const fl of files) {
-        const id = _fileId(fl);
+      for (const v of vids) {
+        const id = _fileId(_libName(v));
         try {
-          if (!/.mp4$/i.test(fl.name) && fl.type !== 'video/mp4') throw new Error('फक्त MP4 video चालतो');
-          if (fl.size > FILE_MAX) throw new Error('95 MB पेक्षा मोठा — लहान करून पाठवा');
-          let up = _sent[id];
-          if (!up) {
-            show(`⏳ ${_esc(fl.name)}: Meta वर जात आहे (${(fl.size / 1048576).toFixed(0)} MB — internet नुसार काही मिनिटं, हे tab उघडं ठेवा)…`);
-            const thumb = await _fileThumb(fl);
-            const vid = await API.metaUpload('video', fl.type ? fl : new Blob([fl], { type: 'video/mp4' }), id);
-            const img = await API.metaUpload('image', thumb, id);
-            up = _sent[id] = { video_id: vid.video_id, image_hash: img.image_hash };
-          }
           show(`⏳ ${_esc(id)}: Meta मध्ये ad बनत आहे…`);
-          const out = await API.metaCreateAd({ name: id, adset: set, audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, geo: _geo(), dest: _dest(st.v), ...up,
+          const out = await API.metaCreateAd({ name: id, adset: set, audience: parts.aud, daily_budget: budget, age_min: ageMin, age_max: ageMax, geo: _geo(), dest: _dest(st.v), video_id: v.id,
             message: parts.message, headline: parts.headline, cta: parts.cta, link: parts.link.split(from).join('ad=' + encodeURIComponent(id)) });
-          lines.push(out.exists ? `ℹ️ <b>${_esc(id)}</b> आधीच Meta मध्ये आहे` : out.pending ? `⏳ <b>${_esc(id)}</b>: Meta video तयार करत आहे — 2 मिनिटांनी पुन्हा दाबा (video पुन्हा जाणार नाही)`
+          lines.push(out.exists ? `ℹ️ <b>${_esc(id)}</b> आधीच Meta मध्ये आहे` : out.pending ? `⏳ <b>${_esc(id)}</b>: Meta video तयार करत आहे — 2 मिनिटांनी पुन्हा दाबा`
             : `✅ <b>${_esc(id)}</b> बनली — <b>बंद (Paused)</b>${out.note ? ' · ⚠️ ' + _esc(out.note) : ''}`);
-        } catch (err) { lines.push(`⚠️ ${_esc(fl.name)}: ${_esc(err?.message || 'पाठवता आलं नाही')}`); }
+        } catch (err) { lines.push(`⚠️ ${_esc(_libName(v))}: ${_esc(err?.message || 'पाठवता आलं नाही')}`); }
       }
       show('खालच्या "📡 Meta मधल्या ads" मध्ये पाहा आणि ▶ ने चालू करा.');
       _loadBoard(true);
-    } finally { btn.disabled = false; }
+    } finally { btn.disabled = false; _paintLib(); }
   }
 
   function _paintMetaBox() {
@@ -2422,11 +2410,15 @@ const AD_STUDIO = (() => {
               <div id="ads-meta-bulk" class="import-hint"></div>
               <p class="import-hint" id="ads-meta-msg">9:16 video इथे बनतो आणि Meta वर जातो. Ad <b>बंद (Paused)</b> बनते — Ads Manager मध्ये तपासून तुम्ही चालू करायची.</p>
               <div class="ads-filebox">
-                <b>📁 तयार video (computer वरचा MP4) पाठवा</b>
-                <input type="file" id="ads-file" accept="video/mp4,.mp4" multiple class="admin-input" />
-                <small id="ads-file-list" class="import-hint"></small>
-                <button type="button" class="admin-btn-secondary" id="ads-file-send" disabled>📤 हे video Meta वर पाठवा (बंद स्थितीत)</button>
-                <p class="import-hint" id="ads-file-msg">वर निवडलेल्या ad चा मजकूर, बटण, link, ad set, बजेट आणि वय वापरले जातात — फक्त video तुमचा. एकावेळी अनेक files निवडता येतात.</p>
+                <b>📚 Meta मधील videos (तयार video — तुम्ही थेट Meta मध्ये upload केलेले)</b>
+                <ol class="import-hint">
+                  <li><a href="${ADS_LINKS[0][1]}" target="_blank" rel="noopener">↗️ Ads Manager उघडा</a> → ☰ <b>All tools</b> → <b>Media library</b> → <b>Upload</b> → video निवडा. (Video आपल्या server वरून जात नाही.)</li>
+                  <li>Upload झाल्यावर इथे <b>🔄 Meta मधील videos आणा</b> दाबा, हवे ते निवडा, मग <b>📤 Ads बनवा</b>.</li>
+                </ol>
+                <div class="admin-toolbar"><button type="button" class="admin-btn-secondary" id="ads-lib-load">🔄 Meta मधील videos आणा</button></div>
+                <div id="ads-lib-list" class="ads-lib"></div>
+                <button type="button" class="admin-btn-secondary" id="ads-lib-send" disabled>📤 निवडलेल्या videos च्या ads बनवा (बंद स्थितीत)</button>
+                <p class="import-hint" id="ads-file-msg">वर निवडलेल्या ad चा मजकूर, बटण, link, ad set, बजेट आणि वय वापरले जातात — फक्त video तुमचा. Video चं चित्र Meta स्वतः घेतं.</p>
               </div>
             </div>
             <div class="ads-recbox ads-ytbox" id="ads-ytbox" hidden>
@@ -2534,8 +2526,9 @@ const AD_STUDIO = (() => {
       $('ads-tts-set').addEventListener('click', _ttsSet);
       $('ads-meta-send').addEventListener('click', () => sendToMeta());
       $('ads-meta-send-all').addEventListener('click', sendAllToMeta);
-      $('ads-file').addEventListener('change', _paintFiles);
-      $('ads-file-send').addEventListener('click', sendFilesToMeta);
+      $('ads-lib-load').addEventListener('click', _loadLib);
+      $('ads-lib-list').addEventListener('change', _paintLib);
+      $('ads-lib-send').addEventListener('click', sendLibToMeta);
       _geoPick = (await DB.getSetting(GEO_KEY, null).catch(() => null)) || {};
       $('ads-meta-dest').addEventListener('change', () => _paintMetaBox());
       $('ads-meta-geo').addEventListener('change', e => { _geoPick[st.batch] = e.target.value; DB.setSetting(GEO_KEY, { ..._geoPick }).catch(() => {}); _paintMetaBox(); });
@@ -2584,7 +2577,7 @@ const AD_STUDIO = (() => {
   // "8th NMMS EXAM 26-27 BATCH" → "8th NMMS"
   function _defaultLabel() { return String(st.batch || '').replace(/\b(batch|exam|class)\b/gi, '').replace(/\d{2}\s*-\s*\d{2}/g, '').replace(/\s+/g, ' ').trim().slice(0, 30); }
 
-  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, sendFilesToMeta, __fileId: f => _fileId(f), audioPlan, playWithSound, __mix: _mix, __score: (...a) => _score(...a), __scripts: _scripts, __shots: _shots, __phValues: () => _phValues(_facts()), __st: st, __content: _content, __voice: _voice, __adId: adId, __vidCheck: (...a) => _vidCheck(...a) };
+  return { init, verdicts, adLink, adText, adParts, record, drawAt, sendToMeta, sendAllToMeta, sendLibToMeta, __fileId: f => _fileId(f), audioPlan, playWithSound, __mix: _mix, __score: (...a) => _score(...a), __scripts: _scripts, __shots: _shots, __phValues: () => _phValues(_facts()), __st: st, __content: _content, __voice: _voice, __adId: adId, __vidCheck: (...a) => _vidCheck(...a) };
 })();
 
 window.AD_STUDIO = AD_STUDIO;
