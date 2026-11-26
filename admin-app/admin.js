@@ -2655,6 +2655,7 @@ const ADMIN = (() => {
     const kind = s?.kind === 'daily' ? 'daily' : (s ? 'weekly' : _wkKind());
     document.querySelectorAll('input[name="wk-kind"]').forEach(r => { r.checked = r.value === kind; });
     $('wk-join').value = s?.join_minutes ?? 15;
+    $('wk-until').value = s?.open_until || '';
     $('wk-from').value = s?.start_date || '';
     $('wk-to').value = s?.end_date || '';
     $('wk-holidays').value = (s?.skip_dates || []).join(', ');
@@ -2684,6 +2685,8 @@ const ADMIN = (() => {
       body.window_minutes = body.duration_minutes;   // one fixed end for the whole class
       body.result_time = '';
       body.join_minutes = Number($('wk-join').value) || 0;
+      body.open_until = $('wk-until').value || '';   // '' = everyone at the paper's time; '22:00' = any time till then
+      if (body.open_until) body.join_minutes = 0;     // open all day → may start any time in it
       body.start_date = $('wk-from').value || '';
       body.end_date = $('wk-to').value || '';
       body.skip_dates = String($('wk-holidays').value || '').split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
@@ -2739,7 +2742,7 @@ const ADMIN = (() => {
         const what = s.mode === 'papers' ? (s.kind === 'daily' ? `पेपर: ${(s.papers || []).map(p => `${_esc(p.name)} (${(p.parts || []).reduce((n, x) => n + (Number(x.count) || 0), 0)} प्रश्न)`).join(', ')}` : s.papers_same_day ? `सगळे पेपर एकाच दिवशी: ${(s.papers || []).map(p => _esc(p.name)).join(` → ${s.gap_minutes} मि gap → `)}` : `पेपर आलटून-पालटून: ${(s.papers || []).map(p => _esc(p.name)).join(' → ')}`) : `${s.question_count} प्रश्न`;
         const daily = s.kind === 'daily';
         const when = daily
-          ? `📝 रोज: ${(s.papers || []).map(p => `<b>${_esc(p.name)}</b> ${_WK_ORDER.filter(d => (s.slots || []).some(x => x.paper === p.name && x.dow === d)).map(d => `${_WK_DAYS[d].slice(0, 3)} ${_esc((s.slots || []).find(x => x.paper === p.name && x.dow === d).time)}`).join(', ')}`).join(' · ')} · ${s.duration_minutes} मि · सुरू करायची मुदत ${s.join_minutes} मि${s.end_date ? ` · ${_esc(s.end_date)} पर्यंत` : ''}${(s.skip_dates || []).length ? ` · सुट्टी ${s.skip_dates.length}` : ''}`
+          ? `📝 रोज: ${(s.papers || []).map(p => `<b>${_esc(p.name)}</b> ${_WK_ORDER.filter(d => (s.slots || []).some(x => x.paper === p.name && x.dow === d)).map(d => `${_WK_DAYS[d].slice(0, 3)} ${_esc((s.slots || []).find(x => x.paper === p.name && x.dow === d).time)}`).join(', ')}`).join(' · ')} · ${s.duration_minutes} मि · ${s.open_until ? `🕘 दिवसभर खुला — ${_esc(s.open_until)} पर्यंत कधीही` : `सुरू करायची मुदत ${s.join_minutes} मि`}${s.end_date ? ` · ${_esc(s.end_date)} पर्यंत` : ''}${(s.skip_dates || []).length ? ` · सुट्टी ${s.skip_dates.length}` : ''}`
           : `दर ${_WK_DAYS[s.day_of_week]} ${_esc(s.start_time)} ते ${_esc(_wkEnd(s))} · Result ${_esc(s.result_time || _wkEnd(s))} · ${s.duration_minutes} मि test`;
         item.innerHTML = `
           <div>
