@@ -2516,6 +2516,10 @@ const API = (() => {
     });
   }
   // 📚 the videos uploaded straight into Meta (Ads Manager › Media library) — Admin › Ads makes ads from them
+  async function metaAdsets() {
+    const token = await ensureAdminSession();
+    return (await request('/guest/admin/meta/adsets', { headers: { Authorization: `Bearer ${token}` } })).data || [];
+  }
   async function metaVideos() {
     const token = await ensureAdminSession();
     return (await request('/guest/admin/meta/videos', { headers: { Authorization: `Bearer ${token}` } })).data || [];
@@ -3397,7 +3401,7 @@ const API = (() => {
     fetchStudentMe,
     getGuestState, setGuestState, isGuest, fetchGuestBatches, startGuestSession,
     guestEvent, saveGuestContact, claimGuestOffer, fetchGuestRank, saveGuestDeviceToken,
-    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaVideos, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adVoice, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
+    fetchGuestLeads, fetchGuestFunnel, fetchAdContent, fetchMetaAds, fetchMetaStatus, botToken, crmLeadPin, crmBackfill, crmLeadsAdd, crmAppStudents, crmMtList, crmMtReminded, crmLeadPaid, teamMembers, fetchBotConfig, metaUpload, metaVideos, metaAdsets, metaCreateAd, metaAction, fetchGoogleAds, googleAction, googleTopup, googleTopupDelete, adScripts, adScriptSave, adVoice, adScriptDelete, siteExams, siteSeed, siteSave, sitePublish,
     adminOfferConfig, adminStopOffer, adminNotifySchedule, adminTeacherDemo, fetchOfferConfig, fetchWeeklyTests, weeklyHistory, weeklyPracticeMe, fetchTeacherPractice, fetchParentPractice, weeklyRegister, weeklyPaper, weeklyKey, weeklySubmit, weeklyResult, adminWeekly, fetchNextExam, fetchExamDates, addExamDate, deleteExamDate,
     getStudentProfile, clearStudentProfile,
     getTeacherProfile, clearTeacherProfile,

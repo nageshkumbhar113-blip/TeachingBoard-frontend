@@ -1164,7 +1164,10 @@ const AD_STUDIO = (() => {
   const GEO_KEY = 'ad_geo';
   let _geoPick = {};
   const _isNmms = () => /nmms/i.test(st.batch || '') && !isTeacher(st.aud);
-  const _geo = () => (_isNmms() ? (_geoPick[st.batch] || 'gata') : 'all');
+  // the area: NMMS parents (default group A) and (owner 2026-11-26) school teachers (default the whole state)
+  const _geoOn = () => _isNmms() || _audOf(st.v) === 'school';
+  const _geoKey = () => (_audOf(st.v) === 'school' ? '__teacher' : st.batch);
+  const _geo = () => (_geoOn() ? (_geoPick[_geoKey()] || (_isNmms() ? 'gata' : 'all')) : 'all');
   // 💬 a parent ad may open WhatsApp (the bot) instead of the website
   // 💬 WhatsApp ads: parents, and (owner 2026-11-26) school teachers — the bot then runs the Teacher Guide
   const _waOk = (v = st.v) => _audOf(v) === 'parent' || _audOf(v) === 'school';
@@ -1328,7 +1331,7 @@ const AD_STUDIO = (() => {
     const inp = $('ads-meta-budget');
     if (inp && !inp.dataset.touched) inp.value = Math.max(100, Math.round(total ? total * _share(st.aud) / 100 : 150));
     const n = $('ads-meta-name'); if (n) n.textContent = `Ad: ${adId()} · Ad set: ${adsetName()}`;
-    if ($('ads-geo-row')) { $('ads-geo-row').hidden = !_isNmms(); $('ads-meta-geo').value = _geo(); }
+    if ($('ads-geo-row')) { $('ads-geo-row').hidden = !_geoOn(); $('ads-meta-geo').value = _geo(); }
     if ($('ads-dest-row')) { const par = _waOk(st.v); $('ads-dest-row').hidden = !par;
       // teacher ads: WhatsApp by default (owner 2026-11-26: their number must come to us), parents keep their choice
       const dsel = $('ads-meta-dest'); if (dsel && !dsel.dataset.touched) dsel.value = _audOf(st.v) === 'school' ? 'wa' : 'web'; $('ads-dest-note').hidden = !par || _dest() !== 'wa'; }
@@ -1655,6 +1658,20 @@ const AD_STUDIO = (() => {
         <input id="gads-date" type="date" class="admin-input" value="${today}" max="${today}" aria-label="तारीख" />
         <button type="button" class="ads-mini good" id="gads-add">+ लिहा</button> ${list}
         <a href="${G_BILLING}" target="_blank" rel="noopener">Billing ↗</a></span>`;
+  }
+  // 🎯 who each ad set reaches (read from Meta): a teacher ad set must name teachers; an ad set open to everyone says so
+  async function _loadSets() {
+    const box = $('ads-sets'), btn = $('ads-sets-load');
+    btn.disabled = true; box.textContent = '⏳ Meta मधून आणत आहे…';
+    try {
+      const rows = await API.metaAdsets();
+      box.innerHTML = rows.length ? `<div style="overflow-x:auto"><table class="crm-table"><thead><tr><th>Ad set</th><th>स्थिती</th><th>भाग</th><th>वय</th><th>कोणाला</th><th>₹/दिवस</th></tr></thead><tbody>${rows.map(r => {
+        const teacherSet = /^t-/.test(r.name);
+        const who = r.who.length ? _esc(r.who.join(', ')) : r.advantage ? 'Meta ठरवतं (Advantage+)' : (teacherSet ? '<b style="color:#b91c1c">⚠️ सगळे — शिक्षक targeting नाही</b>' : 'सगळे (वय + भाग)');
+        return `<tr><td>${_esc(r.name)}<br><small>${_esc(r.campaign)}${r.dest === 'WHATSAPP' ? ' · 💬 WhatsApp' : ''}</small></td><td>${_esc(r.status)}</td><td>${_esc(r.area)}</td><td>${_esc(r.ages)}</td><td style="white-space:normal;min-width:180px">${who}</td><td>${r.budget ?? '—'}</td></tr>`;
+      }).join('')}</tbody></table></div><p class="import-hint">शिक्षकांचा ad set (t-…) "शिक्षक targeting नाही" दाखवत असेल तर: नवीन WhatsApp teacher ad बनवा — नवीन ad set ला शिक्षक targeting आपोआप लागतं.</p>` : 'Meta मध्ये अजून ad set नाही.';
+    } catch (err) { box.textContent = '⚠️ ' + (err?.message || 'आणता आलं नाही'); }
+    btn.disabled = false;
   }
   async function _loadBoard(fresh = false) {
     const box = $('ads-board'); if (!box) return;
@@ -2471,6 +2488,9 @@ const AD_STUDIO = (() => {
           <label class="ads-target">₹ <input id="ads-tgt-paid" type="number" min="1" step="50" class="admin-input" aria-label="एका paid चा खर्च" /> / paid</label></div>
         <p class="import-hint">लक्ष्य = एका test देणाऱ्यासाठी / एका pay करणाऱ्यासाठी किती खर्च चालेल. एकटी ad (उदा. फक्त NMMS) याच लक्ष्याशी तपासली जाते.</p>
         <div id="ads-board"></div>
+        <h4 class="admin-section-title" style="margin-top:14px">🎯 Ad sets — Meta कोणाला दाखवतं</h4>
+        <div class="admin-toolbar"><button type="button" class="admin-btn-secondary" id="ads-sets-load">🔍 तपासा</button></div>
+        <div id="ads-sets" class="import-hint">प्रत्येक ad set चा भाग (location), वय आणि कोणाला (उदा. शिक्षक) — Meta मधून आत्ताचं.</div>
         <h4 class="admin-section-title" style="margin-top:14px">🔗 Ads चालवण्याच्या links</h4>
         <div class="ads-links">${ADS_LINKS.map(([n, u]) => `<div class="ads-link"><span>${n}</span><a href="${u}" target="_blank" rel="noopener">उघडा ↗</a><button type="button" class="admin-btn-secondary" data-copy="${u}">📋 Copy</button></div>`).join('')}</div>`;
       cv = $('ads-cv'); x = cv.getContext('2d');
@@ -2554,9 +2574,10 @@ const AD_STUDIO = (() => {
       $('ads-lib-send').addEventListener('click', sendLibToMeta);
       _geoPick = (await DB.getSetting(GEO_KEY, null).catch(() => null)) || {};
       $('ads-meta-dest').addEventListener('change', e => { e.target.dataset.touched = '1'; _paintMetaBox(); });
-      $('ads-meta-geo').addEventListener('change', e => { _geoPick[st.batch] = e.target.value; DB.setSetting(GEO_KEY, { ..._geoPick }).catch(() => {}); _paintMetaBox(); });
+      $('ads-meta-geo').addEventListener('change', e => { _geoPick[_geoKey()] = e.target.value; DB.setSetting(GEO_KEY, { ..._geoPick }).catch(() => {}); _paintMetaBox(); });
       $('ads-meta-budget').addEventListener('input', e => { e.target.dataset.touched = '1'; });
       $('ads-refresh').addEventListener('click', () => _loadBoard(true));
+      $('ads-sets-load').addEventListener('click', _loadSets);
       $('ads-days').addEventListener('change', () => _loadBoard());
       for (const k of ['test', 'paid']) $('ads-tgt-' + k).addEventListener('change', async e => {
         _targets[k] = Math.max(1, Number(e.target.value) || _targets[k]);
