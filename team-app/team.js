@@ -2,7 +2,7 @@
    NKs Team — the team's CRM app (mobile first)
    Login: mobile + PIN (Admin › CRM › 👥 Team makes members). Render gives a token; the bot's CRM (Cloudflare
    Worker) is called with a short "staff" token that names the member, so every action is counted for them.
-   Screens: 🏠 आज (today's work, one family after another) · 🔍 शोध · ❓ प्रश्न · 📊 माझं · ➕ नवीन.
+   Screens: 🏠 आज (the call desk: new-family alert, numbered day list, callbacks) · 🔍 शोध · ❓ प्रश्न · 📊 माझं · ➕ नवीन.
    A family's card: 📞 Call / 💬 WhatsApp / ✉️ SMS, then its result in one tap — with a reason:
    ✅ बोललो → पुढची Step · 💳 Pay करणार · ⏰ नंतर · 📵 उचलला नाही · ❌ नको.
 ════════════════════════════════════════ */
@@ -108,180 +108,299 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
     } catch (e) { shell(`<p class="empty">⚠️ ${esc(e.message)}</p>`); }
   }
 
+  // ═══════════ 📞 Call desk (owner 2026-11-26) — the server side is wa-worker/src/desk.js ═══════════
+  // 🏠 आज: the new-family alert (15 min), the numbered day list (#1…), today's callbacks, questions, teachers,
+  // my numbers. A family's card → 📞 Call / 💬 Chat → "काय झालं?" (required) → the next family.
+  let desk = null, deskTimer = null, pendingOutcome = null;   // pendingOutcome: { gid, L } after 📞 / 💬
+  const HEAT = { hot: '🔥 गरम', warm: '🌤 कोमट', cold: '❄️ थंड' };
+  const STAGES = ['संपर्क', 'test', 'app', 'pay करणार', 'paid'];
+  const hm = ms => new Date(ms).toLocaleTimeString('mr-IN-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
   async function home() {
-    const kept = JSON.parse(ls.get('nks_team_home') || 'null');
-    if (kept) drawHome(kept.sum, kept.fu, true); else shell('<p class="empty">⏳ उघडत आहे…</p>', 'आजचं काम');
-    const [sum, fu, tp] = await Promise.all([crm('/crm/summary'), crm('/crm/fu'), crm('/crm/templates').catch(() => null)]);
+    clearInterval(deskTimer);
+    const kept = JSON.parse(ls.get('nks_team_desk') || 'null');
+    if (kept) drawHome(kept, true); else shell('<p class="empty">⏳ उघडत आहे…</p>', 'आजचं काम');
+    const [d, tp] = await Promise.all([crm('/crm/desk/home'), crm('/crm/templates').catch(() => null)]);
     if (Array.isArray(tp) && tp.length) tpls = tp;
-    ls.set('nks_team_home', JSON.stringify({ sum, fu }));
-    if (tab === 'home' && !queue) drawHome(sum, fu, false);
+    desk = d; ls.set('nks_team_desk', JSON.stringify(d));
+    if (tab === 'home' && !queue) drawHome(d, false);
+    // fresh numbers every minute while the home screen is open (a new family, a callback coming due)
+    deskTimer = setInterval(() => { if (tab === 'home' && !queue && !document.querySelector('.sheet-bg') && document.querySelector('.dk-home')) home().catch(() => {}); }, 60e3);
   }
-  function drawHome(sum, fu, stale) {
-    botNum = /^91\d{10}$/.test(String(sum.bot_number || '')) ? sum.bot_number : '';
-    steps = fu.steps || []; qCount = sum.counts.q || 0;
-    const due = fu.counts.reduce((t, c) => t + c.due, 0);
+  function drawHome(d, stale) {
+    qCount = d.q || 0;
+    const day = d.day || { items: [], total: 0, done: 0 }, nx = day.next, t = d.today || {}, tot = d.totals || {};
     const sat = [0, 6].includes(new Date().getDay());
-    shell(`
-      <button type="button" class="big wide today" style="--c:#b91c1c" data-go="today"><span class="n">${sum.counts.today || 0}</span><span class="t">🎯 आजचं काम</span><span class="s">${sum.counts.today_now ? `<b>${sum.counts.today_now} लगेच</b> (💳 pay / 📞 call / ❓) · ` : ''}एकामागून एक — कारण, वेळ आणि message तयार</span></button>
-      <button type="button" class="big wide" style="--c:#6d3cf0" data-go="teacher"><span class="n">${sum.counts.teachers || 0}</span><span class="t">👩‍🏫 शिक्षक (Ad)</span><span class="s">${sum.counts.teachers_now ? `<b>${sum.counts.teachers_now} ना आत्ता call</b> · ` : ''}Teacher ad मधून demo बुक केलेले — codes, प्रगती, message तयार</span></button>
-      <details class="more"${ls.get('nks_team_more') === '1' ? ' open' : ''}><summary>अधिक याद्या</summary>
+    shell(`<div class="dk-home">
+      ${(d.alert || []).slice(0, 3).map(a => `<button type="button" class="dk-alert" data-gid="${esc(a.gid)}">
+        <b>🆕 नवीन पालक — ${a.left_min > 0 ? `${a.left_min} मिनिटांत call करा` : `${-a.left_min} मिनिटं उशीर — आत्ताच call`}</b>
+        <span>${esc(a.name || 'नाव नाही')} · ${esc(a.cls || '')} · ${esc(a.from || '')} · ${hm(a.created_at)}</span></button>`).join('')}
+      <button type="button" class="dk-today" data-go="list">
+        <span class="dk-top"><span>🎯 आजचं काम</span><b>${day.done}/${day.total}</b></span>
+        <span class="dk-prog"><i style="width:${day.total ? day.done / day.total * 100 : 0}%"></i></span>
+        <span class="dk-next">${nx ? `▶ पुढचा: #${nx.n} ${esc(nx.name || '')} — ${esc(nx.why || '')}` : day.total ? '✅ आजची यादी पूर्ण' : 'आज यादीत कोणी नाही'}</span>
+      </button>
+      ${(d.callbacks || []).length ? `<div class="box"><h3>⏰ आजचे callbacks</h3>${d.callbacks.map(c => `<button type="button" class="row" style="--c:#b45309" data-gid="${esc(c.gid)}"><span class="nm">${hm(c.at)} · ${esc(c.name || '—')} <small>${esc(c.cls || '')}</small></span><span class="mt">${esc(c.why || '')}</span></button>`).join('')}</div>` : ''}
       <div class="grid">
-        <button type="button" class="big wide" style="--c:#059669" data-go="new"><span class="n">${sum.counts.new || 0}</span><span class="t">🆕 नवीन पालक (48 तास)</span><span class="s">${sum.counts.new_untouched ? `<b>${sum.counts.new_untouched} ना अजून संपर्क नाही</b> — लगेच call` : 'सगळ्यांना संपर्क झाला ✅'}</span></button>
-        <button type="button" class="big wide" style="--c:#4338ca" data-go="all"><span class="n">${due}</span><span class="t">📋 आज पाठवायचे / call</span><span class="s">एकामागून एक — Step प्रमाणे message तयार</span></button>
-        <button type="button" class="big" style="--c:#be123c" data-go="q"><span class="n">${qCount}</span><span class="t">❓ प्रश्न</span><span class="s">पालकांनी विचारलेलं</span></button>
-        <button type="button" class="big" style="--c:#e11d48" data-go="first"><span class="n">${sum.counts.first || 0}</span><span class="t">☀️ आधी call</span><span class="s">सूट संपतेय / test नाही</span></button>
-        <button type="button" class="big" style="--c:#ea580c" data-go="call"><span class="n">${sum.counts.call || 0}</span><span class="t">📞 Call मागितला</span><span class="s">लगेच call</span></button>
-        <button type="button" class="big wide" style="--c:#0e7490" data-go="appfree"><span class="n">${sum.counts.appfree || 0}</span><span class="t">📲 App वापरतात · pay नाही</span><span class="s">सगळ्यात जास्त वापरणारे आधी — course बद्दल call</span></button>
-        <button type="button" class="big" style="--c:#7c3aed" data-go="noapp"><span class="n">${sum.counts.noapp || 0}</span><span class="t">📲 App नाही</span><span class="s">install मदत</span></button>
+        <button type="button" class="big" style="--c:#be123c" data-go="q"><span class="n">${d.q || 0}</span><span class="t">❓ प्रश्न</span><span class="s">Bot ला उत्तर देता आलं नाही</span></button>
+        <button type="button" class="big" style="--c:#6d3cf0" data-go="teacher"><span class="n">${d.teachers || 0}</span><span class="t">👩‍🏫 शिक्षक</span><span class="s">Teacher ad मधून demo</span></button>
         ${sat ? '<button type="button" class="big wide" style="--c:#b45309" data-go="mt"><span class="n">🏆</span><span class="t">महा-Test आठवण</span><span class="s">नोंदणी केलेल्या पालकांना</span></button>' : ''}
       </div>
-      <div class="h2">📋 Steps</div>
-      ${steps.map((st, i) => { const c = fu.counts[i] || { total: 0, due: 0 }; return `<button type="button" class="row" style="--c:${esc(st.color)}" data-step="${i + 1}"><span class="nm">Step ${i + 1} · ${esc(st.name)}</span><span class="mt">${c.total} पालक · <b>आज ${c.due}</b></span></button>`; }).join('')}
-      </details>`, 'आजचं काम', stale ? '⏳ ताजे आकडे येत आहेत…' : '');
-    // "अधिक याद्या" stays open / closed as the member left it (the screen redraws with fresh numbers)
-    app.querySelector('details.more')?.addEventListener('toggle', e => ls.set('nks_team_more', e.target.open ? '1' : null));
-    app.querySelectorAll('[data-step]').forEach(b => b.onclick = () => startQueue(`Step ${b.dataset.step}`, `/crm/fu/list?step=${b.dataset.step}&due=1`, Number(b.dataset.step)));
-    app.querySelectorAll('[data-go]').forEach(b => b.onclick = async () => {
+      <div class="h2">माझं आज</div>
+      <div class="dk-kpi"><span><b>${t.calls || 0}</b>📞 call</span><span><b>${t.talk || 0}</b>✅ बोलणं</span><span><b>${t.paying || 0}</b>💳 करणार</span><span><b>${t.paid || 0}</b>✅ pay</span></div>
+      <p class="mt" style="margin:8px 2px">एकूण कुटुंबं <b>${tot.all || 0}</b> · संपर्क झाले <b>${tot.touched || 0}</b> · बाकी <b>${tot.left || 0}</b> · paid <b>${tot.paid || 0}</b></p>
+    </div>`, 'आजचं काम', stale ? '⏳ ताजे आकडे येत आहेत…' : (me ? '👤 ' + me.name : ''));
+    app.querySelectorAll('.dk-home [data-gid]').forEach(b => b.onclick = () => { queue = null; openCard(b.dataset.gid); });
+    app.querySelectorAll('.dk-home [data-go]').forEach(b => b.onclick = async () => {
       const g = b.dataset.go;
-      if (g === 'all') {
-        return startQueue('आजचे सगळे', '/crm/fu/list?step=all&due=1', 0);
-      }
+      if (g === 'list') return dayList();
       if (g === 'q') { tab = 'q'; return route(); }
       if (g === 'mt') return mtQueue();
-      return startQueue({ today: '🎯 आजचं काम', new: '🆕 नवीन पालक', first: '☀️ आधी call', call: '📞 Call मागितला', noapp: '📲 App नाही', appfree: '📲 App · free', teacher: '👩‍🏫 शिक्षक (Ad)' }[g], `/crm/list?list=${g}`, 0);
+      if (g === 'teacher') return startQueue('👩‍🏫 शिक्षक', '/crm/list?list=teacher', 0);
     });
   }
-
+  // 🎯 the day list, numbered; "▶ पुढचा" opens the first one not done
+  async function dayList() {
+    const items = desk && desk.day ? desk.day.items : await crm('/crm/desk/day');
+    const done = items.filter(x => x.status === 'done').length, nx = items.find(x => x.status !== 'done' && !x.lock);
+    shell(`<div class="dk-prog light"><i style="width:${items.length ? done / items.length * 100 : 0}%"></i></div>
+      ${nx ? `<button type="button" class="btn pri" style="width:100%;margin:10px 0" data-gid="${esc(nx.gid)}">▶ पुढचा: #${nx.n} ${esc(nx.name || '')}</button>` : '<p class="empty">✅ आजची यादी पूर्ण</p>'}
+      ${items.map(x => `<button type="button" class="row dk-row${x.status === 'done' ? ' done' : ''}" style="--c:${x.cat === 1 ? '#b91c1c' : x.cat <= 3 ? '#b45309' : '#4338ca'}" data-gid="${esc(x.gid)}"${x.lock ? ' data-lock="' + esc(x.lock) + '"' : ''}>
+        <span class="nm"><span class="dk-n">#${x.n}</span> ${esc(x.name || '—')} <small>${esc(x.cls || '')}</small> <small>${HEAT[x.heat] || ''}</small></span>
+        <span class="mt">${esc(x.why || '')}${x.status === 'done' ? ` · ✅ ${esc((OUTS.find(o => o[0] === x.outcome) || [0, x.outcome === 'teacher' ? '👩‍🏫 Admin कडे' : x.outcome || ''])[1])}` : ''}${x.lock ? ` · 🔒 ${esc(x.lock)} बोलत आहेत` : ''}</span></button>`).join('')}`,
+      '🎯 आजचं काम', `✅ ${done} झाले · बाकी ${items.length - done}`);
+    queue = { title: '🎯 आजचं काम', rows: items.filter(x => x.status !== 'done'), i: 0, step: 0, done: 0, sentMob: new Set(), desk: true };
+    app.querySelectorAll('[data-gid]').forEach(b => b.onclick = () => {
+      if (b.dataset.lock) return toast(`🔒 ${b.dataset.lock} आत्ता बोलत आहेत`, true);
+      const i = queue.rows.findIndex(r => r.gid === b.dataset.gid); if (i >= 0) queue.i = i;
+      openCard(b.dataset.gid);
+    });
+  }
   async function startQueue(title, path, step, rows) {
     rows = rows || await crm(path).catch(e => { toast(e.message, true); return []; });
     if (!rows.length) { toast('या यादीत आत्ता कोणी नाही'); return; }
     queue = { title, rows, i: 0, step, done: 0, sentMob: new Set() };
     openCard(rows[0].gid);
   }
-  function nextInQueue() {
+  async function nextInQueue() {
     if (!queue) return route();
+    if (queue.desk) {   // the day list: fresh from the server (numbers stay), the next one not done
+      try { desk = await crm('/crm/desk/home'); } catch { /* keep */ }
+      const nx = desk && desk.day && desk.day.next;
+      if (!nx) { queue = null; toast('✅ आजची यादी पूर्ण'); return route(); }
+      return openCard(nx.gid);
+    }
     queue.i++; queue.done++;
-    if (queue.i >= queue.rows.length) { const n = queue.done; queue = null; toast(`✅ यादी पूर्ण — ${n} पालक`); return route(); }
+    if (queue.i >= queue.rows.length) { const n = queue.done; queue = null; toast(`✅ यादी पूर्ण — ${n}`); return route(); }
     openCard(queue.rows[queue.i].gid);
   }
 
-  // 👨‍👩‍👧 one family
-  const ahead = new Map();   // gid → Promise of the card's data, fetched while the previous family is on screen
-  const fetchCard = gid => { const p = crm('/crm/lead/' + gid); ahead.set(gid, { p, at: Date.now() }); p.catch(() => ahead.delete(gid)); return p; };
+  // 👨‍👩‍👧 one family — everything at a glance
+  const objections = (L, offer) => {
+    const p = L.prices || {}, cut = n => Math.round(n * (100 - (offer ? offer.pct : 0)) / 100);
+    return [
+      ['💸 "फी जास्त आहे"', `${p.yearly ? `वर्षभर ₹${p.yearly} म्हणजे दिवसाला ₹${(p.yearly / 365).toFixed(1)}.` : ''}${offer && p.yearly ? ` आत्ता ${offer.pct}% सूट: वर्षभर ₹${cut(p.yearly)}.` : ''}${p.monthly ? ` Monthly ₹${offer ? cut(p.monthly) : p.monthly} पासून सुरू करता येतं.` : ''}`],
+      ['🏫 "क्लास लावलाय"', 'क्लासच्या सोबत रोजचा पेपर, मागच्या वर्षांचे पेपर आणि प्रत्येक प्रश्नाचं स्पष्टीकरण. क्लासमध्ये शिकवलेलं इथे सराव होतं.'],
+      ['⏳ "नंतर बघू"', `${offer ? `${offer.pct}% सूट ${left(offer.end)}. ` : ''}आज Monthly घ्या, नंतर वर्षभर करता येतं.`],
+      ['📱 "Phone नाही"', 'आई/बाबांच्या phone वर चालतं, internet नसतानाही. एकाच account वर.'],
+    ];
+  };
+  function sayLine(L, offer) {
+    const nm = L.name && L.name !== 'तुमचा पाल्य' ? L.name : 'तुमच्या पाल्या';
+    const ts = (L.series && L.series.name ? L.series.name + ' Test Series' : seriesName(L.cls)) || 'Test Series';
+    const parts = [];
+    if (L.checkoutAt || L.paySeenAt) parts.push('Pay चं पान उघडलं होतं — काही अडचण आली का?');
+    if (L.last) parts.push(nm + 'ने शेवटच्या test मध्ये ' + L.last.score + '/' + L.last.total + ' घेतले.' + (L.last.weak ? ' ' + L.last.weak + ' कमी पडतं.' : ''));
+    else if (!L.testsDone) parts.push(nm + 'ची demo test अजून झाली नाही — आज 10 मिनिटं द्या.');
+    parts.push('पूर्ण ' + ts + ' मध्ये रोज सराव आणि प्रत्येक प्रश्नाचं स्पष्टीकरण.');
+    if (offer) parts.push(offer.pct + '% सूट ' + left(offer.end) + '.');
+    return '"' + parts.join(' ') + '"';
+  }
   async function openCard(gid) {
-    const pre = ahead.get(gid); ahead.delete(gid);
-    if (!pre) shell('<p class="empty">⏳</p>', queue ? `${queue.title} · ${queue.i + 1}/${queue.rows.length}` : 'पालक');
-    let d; try { d = await (pre && Date.now() - pre.at < 120e3 ? pre.p : crm('/crm/lead/' + gid)); } catch (e) { toast(e.message, true); return queue ? nextInQueue() : route(); }
-    if (queue && queue.rows[queue.i + 1]) fetchCard(queue.rows[queue.i + 1].gid);
-    if (d.lead && d.lead.tdemo) return teacherCard(gid, d);   // 👩‍🏫 a teacher from a teacher ad: its own card
-    const L = d.lead, offer = d.offer, st = d.fu ? (d.fu_steps || [])[d.fu.step - 1] : null;
-    const oc = await loadOfferCfg();
-    steps = d.fu_steps || steps;
-    const qr = queue && queue.rows[queue.i] && queue.rows[queue.i].gid === gid ? queue.rows[queue.i] : null;   // 🎯 why / when / which message
-    const pick = qr && qr.tpl && tplById(qr.tpl) ? qr.tpl : st && tplById(st.tpl) ? st.tpl : suggest(L, offer);
+    clearInterval(deskTimer);
+    shell('<p class="empty">⏳</p>', queue ? queue.title : 'पालक');
+    let d; try { d = await crm('/crm/desk/lead/' + gid); } catch (e) { toast(e.message, true); return queue ? nextInQueue() : route(); }
+    if (d.lead && d.lead.tdemo) { const old = await crm('/crm/lead/' + gid).catch(() => null); return old ? teacherCard(gid, old) : route(); }
+    const L = d.lead, offer = d.offer, k = L.desk || {}, plan = k.plan || (L.paidInfo && L.paidInfo.amount ? { period: L.paidInfo.period, till: L.paidInfo.till, amount: L.paidInfo.amount } : null);
     const q = L.question && !L.question.answered ? L.question : null;
-    const dupe = queue && queue.sentMob.has(L.mobile);
+    const pos = queue && queue.desk && desk ? (desk.day.items.find(x => x.gid === gid) || {}).n : null;
+    const lastUse = d.usage && d.usage.last ? ago(d.usage.last) : k.lastLogin ? ago(Date.parse(k.lastLogin)) : '—';
+    const hist = [
+      ...(d.history || []).map(h => ({ at: h.at, c: 'team', t: `${h.by_name}: ${(d.names && d.names[h.action]) || h.action}${h.detail ? ' — ' + h.detail : ''}` })),
+      ...(d.msgs || []).filter(m => m.dir === 'in').slice(-8).map(m => ({ at: m.at, c: 'in', t: 'पालक: ' + String(m.body || '').slice(0, 80) })),
+    ].sort((a, b) => b.at - a.at).slice(0, 14);
     shell(`
       <div class="fam-h">
-        <div class="nm">${esc(L.name || '—')}</div>
-        <div class="mt">${esc(L.cls || '')}${L.place ? ' · ' + esc(L.place) : ''} · 📱 ${esc(L.mobile || '—')}</div>
-        <div class="mt">📝 ${L.testsDone || 0}/${L.freeTotal || 0} tests · ${L.app ? '📲 app ✓' : (L.acct?.code ? '👤 Code आहे, app नाही' : 'app नाही')}${offer ? ` · <span class="pill offer">🎁 ${offer.pct}% सूट · ${left(offer.end)}</span>` : ''}${L.paid ? ' · ✅ Paid' : ''}</div>
-        ${d.fu ? `<span class="step" style="--c:${esc(st?.color || '#4338ca')}">📋 Step ${d.fu.step} · ${esc(st?.name || '')} · ${dueText(d.fu.due)}</span>` : (L.closed ? `<span class="step" style="--c:#64748b">❌ ${esc(L.closed)}</span>` : '')}
-        ${d.usage && (d.usage.last || d.usage.tests) ? `<div class="mt" style="color:#0e7490;font-weight:600">${usageText(d.usage)}</div>` : ''}
-        ${!(qr && qr.why) && (L.checkoutAt || L.paySeenAt || L.payWantAt) ? `<div class="mt"><span class="pill dupe">💳 ${L.checkoutAt ? 'Pay दाबलं, पूर्ण नाही' : L.paySeenAt ? 'Pay पान उघडलं' : 'Bot मध्ये course मागितला'} · ${ago(Date.parse(L.checkoutAt || L.paySeenAt || L.payWantAt))} — आधी call</span></div>` : ''}
-        ${L.lastTeam ? `<div class="mt">शेवटचं: ${esc(L.lastTeam.by)} — ${esc(L.lastTeam.reason || L.lastTeam.result)} (${ago(Date.parse(L.lastTeam.at))})</div>` : ''}
-        ${qr && qr.why ? `<div class="why"><b>${esc(qr.why)}</b><span>⏰ ${esc(qr.when || '')}${qr.no_answer ? ` · 📵 ${qr.no_answer} वेळा उचलला नाही` : ''}</span></div>` : ''}
-        ${d.open && L.mobile ? `<div class="mt"><span class="pill open">🟢 Bot chat उघडी — bot मधून मोफत message पाठवता येतो</span></div>` : ''}
-        ${dupe ? '<div class="mt"><span class="pill dupe">🔁 या नंबरला आत्ताच message पाठवला</span></div>' : ''}
+        <div class="nm">${esc(L.name || '—')} <span class="pill">${HEAT[d.heat] || ''}</span></div>
+        <div class="mt">${esc((L.series && L.series.name ? L.series.name + ' Test Series' : seriesName(L.cls)) || L.cls || '')}${L.place ? ' · ' + esc(L.place) : ''} · 📱 ${esc(L.mobile || '—')}</div>
+        <div class="dk-stage">${STAGES.map((s, i) => `<span class="${i < d.stage ? 'on' : i === d.stage ? 'cur' : ''}" title="${s}"></span>`).join('')}</div>
+        <div class="dk-stagel">${STAGES.map(s => `<span>${s}</span>`).join('')}</div>
+        <div>${offer ? `<span class="pill offer">🎁 ${offer.pct}% सूट · ${left(offer.end)}</span>` : ''}${k.source || L.ctwaUntil ? `<span class="pill">📣 ${esc(L.ctwaUntil ? 'WhatsApp ad' : k.source)}</span>` : ''}${L.noCall ? '<span class="pill dupe">🔕 Call नको — फक्त WhatsApp</span>' : ''}${(d.siblings || []).map(s => `<span class="pill">👨‍👩‍👧‍👦 ${esc(s.name || '')} ${esc(s.cls || '')}${s.paid ? ' ✅' : ''}</span>`).join('')}</div>
+        ${d.lock ? `<div class="dk-lock">🔒 ${esc(d.lock.name)} आत्ता बोलत आहेत — ${hm(d.lock.until)} पर्यंत</div>` : ''}
+        ${L.lastTeam ? `<div class="mt">शेवटचं: ${esc(L.lastTeam.by)} — ${esc((d.names && d.names[L.lastTeam.result]) || L.lastTeam.result || '')}${L.lastTeam.reason ? ' · ' + esc(L.lastTeam.reason) : ''} (${ago(Date.parse(L.lastTeam.at))})</div>` : ''}
+        ${d.discReq ? `<div class="mt">🎁 ${d.discReq.pct}% — Admin च्या परवानगीची वाट</div>` : ''}
       </div>
-      ${q ? `<div class="box qbox"><h3>❓ पालकांचा प्रश्न <small>${ago(Date.parse(q.at))}</small></h3><div class="qt">"${esc(q.text)}"</div>
-        ${d.open ? '<label class="f">उत्तर (bot च्या chat मध्ये, मोफत)<textarea class="in" id="q-ans" rows="3" placeholder="उत्तर लिहा…"></textarea></label><button type="button" class="btn pri" id="q-send">📤 उत्तर पाठवा</button>' : '<p class="mt">Call करा किंवा खालच्या 💬 WhatsApp ने उत्तर द्या.</p>'}
-        <button type="button" class="btn ghost" id="q-done" style="margin-top:8px;width:100%">✅ उत्तर दिलं</button></div>` : ''}
-      ${L.mobile ? `<div class="acts3">
+      <div class="dk-facts">
+        <div><small>💳 Plan</small><b class="${L.paid ? 'good' : 'mid'}">${L.paid ? `${plan && plan.period === 'yearly' ? 'Yearly' : plan && plan.period === 'monthly' ? 'Monthly' : 'Paid'}${plan && plan.till ? ' · ' + new Date(plan.till).toLocaleDateString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short' }) + ' पर्यंत' : ''}${plan && plan.amount ? ' · ₹' + plan.amount : ''}` : 'Free (demo)'}</b></div>
+        <div><small>📲 App</small><b class="${L.app ? 'good' : 'low'}">${L.app ? 'Install ✓' + (k.bound ? ' · phone शी जोडलेलं' : '') : (L.acct && L.acct.code ? 'Code आहे, app नाही' : 'नाही')}</b></div>
+        <div><small>🕒 App शेवटचं</small><b>${esc(lastUse)}</b></div>
+        <div><small>🔔 Notifications</small><b class="${L.pushOn ? 'good' : 'mid'}">${L.pushOn ? 'चालू' : 'बंद / माहीत नाही'}</b></div>
+        <div><small>📝 Tests</small><b>${L.testsDone || 0}${L.last ? ' · शेवटचे ' + esc(L.last.score + '/' + L.last.total) : ''}</b></div>
+        <div><small>📉 कमकुवत</small><b>${esc((L.last && L.last.weak) || '—')}</b></div>
+        <div><small>👤 Code · PIN</small><b>${L.acct && L.acct.code ? esc(L.acct.code + ' · ' + (L.acct.pin || 'त्यांचा')) : '—'}</b></div>
+        <div><small>🕗 Call ची योग्य वेळ</small><b>${esc(d.best || '—')}</b></div>
+      </div>
+      <div class="dk-say"><small>बोलताना सांगा</small>${esc(sayLine(L, offer))}</div>
+      ${q ? `<div class="box qbox"><h3>❓ पालकांचा प्रश्न <small>${ago(Date.parse(q.at))}</small></h3><div class="qt">"${esc(q.text)}"</div><p class="mt">Call करून किंवा 💬 Chat मधून उत्तर द्या.</p></div>` : ''}
+      <details class="box"><summary><b>💬 पालक म्हणाले तर… (तयार उत्तरं)</b></summary><div class="dk-obj">${objections(L, offer).map(o => `<details><summary>${o[0]}</summary><p>${esc(o[1])}</p></details>`).join('')}</div></details>
+      ${L.mobile ? `<div class="acts3" style="grid-template-columns:1fr 1fr">
         <a class="btn call" id="c-call" href="tel:+91${esc(L.mobile)}">📞 Call</a>
-        <a class="btn wa" id="c-wa" target="_blank" rel="noopener">💬 WhatsApp</a>
-        <a class="btn sms" id="c-sms">✉️ SMS</a>
-      </div>
-      <div class="box"><h3>💬 Message</h3>
-        <select class="in" id="c-tpl" aria-label="Message">${tpls.map(t => `<option value="${esc(t.id)}"${t.id === pick ? ' selected' : ''}>${esc(t.title)}</option>`).join('')}</select>
-        <textarea class="in" id="c-text" aria-label="मजकूर" style="margin-top:8px"></textarea>
-        ${d.open ? '<button type="button" class="btn pri" id="c-bot" style="width:100%;margin-top:8px">🤖 Bot च्या WhatsApp मधून पाठवा (मोफत)</button><p class="mt">पालकांना हा message NKs च्या bot नंबरवरून जातो — त्यांनी उत्तर दिलं की ते इथे 💬 Chat मध्ये दिसतं.</p>' : ''}
-        <button type="button" class="btn ghost hidden" id="c-pin" style="width:100%;margin-top:8px">🔑 Code + PIN बनवा / मिळवा</button>
+        <button type="button" class="btn wa" id="c-chat">💬 Chat / Message</button>
       </div>` : '<p class="empty">या पालकांचा नंबर नाही.</p>'}
-      ${!L.paid && L.mobile && !offer && oc?.team_on !== false && (oc?.team_percents || [30, 50]).length ? `<div class="box" id="c-offer"><h3>🎁 सूट द्या — फक्त ${oc?.team_hours || 3} तास</h3>
-        <p class="mt">पालक pay करायला तयार असतील तरच. पहिल्या payment वर; pay link आणि app — दोन्हीकडे लागू.</p>
-        <div class="outs">${(oc?.team_percents || [30, 50]).map((p, i) => `<button type="button" class="btn ${i % 2 ? 'ok' : 'pri'}" data-offer="${p}">🎁 ${p}% सूट</button>`).join('')}</div></div>` : ''}
-      ${!L.paid && offer ? `<div class="box"><h3>🎁 ${offer.pct}% सूट चालू · ${left(offer.end)}</h3><button type="button" class="btn ghost" id="c-stop-offer" style="width:100%;color:#b91c1c">🛑 या कुटुंबाची सूट थांबवा</button></div>` : ''}
-      ${!L.paid && !L.closed ? `<div class="box"><h3>📞 Call / message नंतर — निकाल निवडा</h3>
-        <div class="outs">
-          <button type="button" class="btn ok wide" data-out="next">✅ बोललो → पुढची Step</button>
-          <button type="button" class="btn pri" data-out="paying">💳 Pay करणार</button>
-          <button type="button" class="btn warn" data-out="later">⏰ नंतर</button>
-          <button type="button" class="btn ghost" data-out="noanswer">📵 उचलला नाही</button>
-          <button type="button" class="btn bad" data-out="close">❌ नको</button>
-        </div></div>` : ''}
-      ${queue ? '<button type="button" class="btn ghost" id="c-skip" style="width:100%">⏭ हा नंतर — पुढचा पालक</button>' : ''}
-      <details class="box"${d.open ? ' open' : ''}><summary><b>💬 Chat (${(d.msgs || []).filter(m => m.dir === 'in').length} messages)</b></summary>
-        <div class="chat">${(d.msgs || []).slice(-60).map(m => { let b = m.body || ''; if (m.dir === 'out' && b.startsWith('{')) { try { b = JSON.parse(b).body?.text || b; } catch {} } const c = { in: 'in', out: 'out', team: 'team' }[m.dir] || 'log'; return `<div class="cm ${c}">${esc(b)}<small>${new Date(m.at).toLocaleString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</small></div>`; }).join('') || '<p class="mt">अजून नाही</p>'}</div>
-      </details>`, queue ? `${queue.title} · ${queue.i + 1}/${queue.rows.length}` : 'पालक', L.name || '');
+      ${!L.paid && !L.closed ? `<div class="outs" style="margin-top:8px"><button type="button" class="btn ghost" id="c-result">✅ निकाल लिहा</button><button type="button" class="btn ghost" id="c-teacher">👩‍🏫 हा शिक्षक आहे</button></div>` : ''}
+      ${queue && queue.desk ? '<button type="button" class="btn ghost" id="c-skip" style="width:100%;margin-top:8px">⏭ नंतर (आज) — पुढचा</button>' : ''}
+      <details class="box"><summary><b>🕒 इतिहास — कोणी, कधी, काय</b></summary><div class="dk-tl">${hist.map(h => `<div class="${h.c}"><time>${new Date(h.at).toLocaleString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</time>${esc(h.t)}</div>`).join('') || '<p class="mt">अजून नाही</p>'}</div></details>`,
+      pos ? `#${pos} / ${desk.day.total}` : (queue ? queue.title : 'पालक'), L.name || '');
+    $('fab')?.classList.add('hidden');
+    // 📞: recorded at once (+ the lock); back in the app → "काय झालं?"
+    $('c-call')?.addEventListener('click', async e => {
+      try { await crm('/crm/desk/attempt/' + gid, { via: 'call' }); }
+      catch (err) { e.preventDefault(); return toast(err.message, true); }
+      pendingOutcome = { gid, L };
+    });
+    $('c-chat')?.addEventListener('click', () => chatScreen(gid, d));
+    $('c-result')?.addEventListener('click', () => deskOutcome(gid, L));
+    $('c-teacher')?.addEventListener('click', () => teacherFwd(gid, L));
+    $('c-skip')?.addEventListener('click', async () => { await crm('/crm/desk/skip/' + gid, { why: 'नंतर' }).catch(() => {}); nextInQueue(); });
+  }
+  // back from the phone call / WhatsApp → the outcome is asked before anything else
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && pendingOutcome && !document.querySelector('.sheet-bg')) { const p = pendingOutcome; setTimeout(() => deskOutcome(p.gid, p.L), 400); } });
 
-    $('fab')?.classList.add('hidden');   // the card's own buttons stay free
-    // the message box
-    const sel = $('c-tpl'), ta = $('c-text'), wa = $('c-wa'), sms = $('c-sms'), pin = $('c-pin');
-    const links = () => { if (!wa) return; wa.href = `https://wa.me/91${L.mobile}?text=${encodeURIComponent(ta.value)}`; sms.href = `sms:+91${L.mobile}?body=${encodeURIComponent(ta.value)}`; };
-    const show = () => { if (!sel) return; const t = tplById(sel.value) || tpls[0]; const text = fill(t.text, L, offer); ta.value = text || ''; ta.disabled = text === null; ta.placeholder = text === null ? 'या message साठी Code + PIN हवा — खालचं बटण' : ''; pin.classList.toggle('hidden', text !== null); wa.classList.toggle('hidden', text === null); links(); };
-    if (sel) { sel.onchange = show; ta.oninput = links; show(); }
-    const sent = via => () => {
-      const t = tplById(sel.value);
-      crm(`/crm/lead/${gid}/sent`, { via, advance: !!queue && !!d.fu && t && st && t.id === st.tpl, tpl: t?.title || '', tpl_id: sel.value, text: ta.value }).catch(() => {});
-      if (queue) { queue.sentMob.add(L.mobile); setTimeout(nextInQueue, 900); }
+  // 💬 the family's WhatsApp chat + ready messages (or ✍️ your own) + the discount
+  function chatScreen(gid, d) {
+    const L = d.lead, open = d.open, R = (desk && desk.rules) || { staffDisc: [20, 30] };
+    let offer = d.offer, kind = 'pay', btn = 'pay';
+    const nm = L.name && L.name !== 'तुमचा पाल्य' ? L.name : 'तुमच्या पाल्या';
+    const ts = (L.series && L.series.name ? L.series.name + ' Test Series' : seriesName(L.cls)) || 'Test Series';
+    const p = L.prices || {}, cut = n => Math.round(n * (100 - (offer ? offer.pct : 0)) / 100);
+    const price = () => [p.monthly ? `Monthly ₹${p.monthly}${offer ? ' → ₹' + cut(p.monthly) : ''}` : '', p.yearly ? `Yearly ₹${p.yearly}${offer ? ' → ₹' + cut(p.yearly) : ''}` : ''].filter(Boolean).join(' · ');
+    const link = `${SITE}/p/${gid}`, viaBot = () => open;
+    const READY = {
+      own: () => '',
+      pay: () => `नमस्कार 🙏 ${nm}साठी पूर्ण ${ts}:\n${price()}${offer ? `\n🎁 ${offer.pct}% सूट — ${left(offer.end)}` : ''}\n👇 ${viaBot() ? 'खालचं बटण दाबा आणि pay करा' : 'या link वर दाबा आणि pay करा\n' + link}`,
+      pin: () => L.acct && L.acct.code ? `नमस्कार 🙏 ${nm}चं app account:\n👤 Code: *${L.acct.code}*\n🔑 PIN: *${L.acct.pin || 'तुमचा आधीचाच'}*\nApp उघडा → Login → Code आणि PIN टाका.` : '',
+      app: () => `नमस्कार 🙏 ${nm}साठी app मध्ये पुढच्या tests आणि रोजची आठवण.\n👇 ${viaBot() ? 'खालचं बटण दाबा आणि app download करा' : 'App: ' + PLAY}`,
+      test: () => `नमस्कार 🙏 ${nm}साठी demo test (10 मिनिटं) 👇\n${SITE}/student-app/?free=1&g=${gid}`,
+      info: () => `🎯 ${ts}\n${(L.series && L.series.lines ? L.series.lines.filter(x => !/^💳/.test(x)).slice(0, 6) : []).join('\n')}${price() ? '\n💳 ' + price() : ''}\n👇 ${viaBot() ? 'खालचं बटण दाबा आणि pay करा' : link}`,
+      mt: () => `🏆 महा-Test ची link — याच link वरून द्यायचा 👇\n${SITE}/student-app/?free=1&g=${gid}`,
     };
-    wa?.addEventListener('click', sent('wa')); sms?.addEventListener('click', sent('sms'));
-    // 🤖 inside the bot's chat (the window is open: free)
-    $('c-bot')?.addEventListener('click', async () => {
-      const b = $('c-bot'), text = ta.value.trim();
-      if (!text) return toast('Message लिहा', true);
-      b.disabled = true;
-      try {
-        await crm(`/crm/lead/${gid}/reply`, { text });
-        toast('📤 Bot मधून गेलं');
-        if (queue) { queue.sentMob.add(L.mobile); setTimeout(nextInQueue, 900); } else openCard(gid);
-      } catch (e) { toast(e.message, true); b.disabled = false; }
-    });
-    pin?.addEventListener('click', async () => {
-      pin.disabled = true;
-      try { const r = await rq('/guest/admin/lead-pin', { body: { gid } }); acct[gid] = { code: r.data.code, pin: r.data.pin, own: !!r.data.own }; crm(`/crm/lead/${gid}/act`, { action: 'acct', detail: r.data.code }).catch(() => {}); toast(r.data.own ? `🔑 Code ${r.data.code} — आधीचंच account; PIN पालकांचा आधीचाच` : `🔑 Code ${r.data.code} · PIN ${r.data.pin}`); show(); }
-      catch (e) { toast(e.message, true); } finally { pin.disabled = false; }
-    });
-    // the question
-    $('q-send')?.addEventListener('click', async () => { const t = $('q-ans').value.trim(); if (!t) return toast('उत्तर लिहा', true); try { await crm(`/crm/lead/${gid}/reply`, { text: t }); toast('📤 उत्तर गेलं'); openCard(gid); } catch (e) { toast(e.message, true); } });
-    $('q-done')?.addEventListener('click', async () => { try { await crm(`/crm/lead/${gid}/answered`, {}); toast('✅ प्रश्न सुटला'); openCard(gid); } catch (e) { toast(e.message, true); } });
-    $('c-skip')?.addEventListener('click', () => { queue.i++; if (queue.i >= queue.rows.length) { queue = null; return route(); } openCard(queue.rows[queue.i].gid); });
-    $('c-stop-offer')?.addEventListener('click', async e => {
-      if (!confirm('या कुटुंबाची चालू सूट आत्ताच थांबवायची?')) return;
-      e.target.disabled = true;
-      try { await rq('/guest/admin/stop-offer', { body: { gid } }); crm(`/crm/lead/${gid}/act`, { action: 'offer', detail: '🛑 सूट थांबवली' }).catch(() => {}); toast('🛑 सूट थांबवली'); setTimeout(() => openCard(gid), 1500); }
-      catch (err) { toast(err.message, true); e.target.disabled = false; }
-    });
-    // 🎁 the team's own discount (the admin's percents / hours), then the ready message with the pay link
-    app.querySelectorAll('[data-offer]').forEach(b => b.onclick = async () => {
-      const pct = Number(b.dataset.offer);
-      app.querySelectorAll('[data-offer]').forEach(x => { x.disabled = true; });
-      try {
-        const r = (await rq('/guest/admin/team-offer', { body: { gid, percent: pct } })).data;
-        crm(`/crm/lead/${gid}/act`, { action: 'offer', detail: `${pct}% · 3 तास` }).catch(() => {});
-        const until = new Date(r.expires_at).toLocaleTimeString('mr-IN-u-nu-latn', { hour: 'numeric', minute: '2-digit' }), hrs = r.hours || 3;
-        $('c-offer').innerHTML = `<h3>🎁 ${pct}% सूट चालू — ${esc(until)} पर्यंत</h3><p class="mt">खालचा message पालकांना पाठवा (💬 WhatsApp / ✉️ SMS).</p>`;
-        if (ta) {
-          ta.value = `नमस्कार 🙏 ${L.name || 'तुमच्या पाल्या'} साठी खास सूट: पहिल्या payment वर *${pct}%* — फक्त ${hrs} तास (आज ${until} पर्यंत).\nसगळे tests, notes, स्वाध्याय उत्तरं आणि दर रविवारी महा-Test 👇\n${r.pay_url}\nApp मधून pay केलं तरी हीच सूट मिळेल.`;
-          ta.disabled = false; wa?.classList.remove('hidden'); links();
-          ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        toast(`🎁 ${pct}% सूट — ${hrs} तास`);
-      } catch (e) { toast(e.message, true); app.querySelectorAll('[data-offer]').forEach(x => { x.disabled = false; }); }
-    });
-    // the result, with a reason
-    app.querySelectorAll('[data-out]').forEach(b => b.onclick = () => outcomeSheet(b.dataset.out, L));
+    const BTN = { pay: 'pay', info: 'pay', app: 'app' };
+    const bubbles = (d.msgs || []).filter(m => ['in', 'out', 'team'].includes(m.dir)).slice(-40).map(m => {
+      let b = m.body || '', extra = '';
+      if (m.dir === 'out' && b.startsWith('{')) { try { const i = JSON.parse(b); b = i.body?.text || b; extra = i.action?.parameters?.display_text ? `<span class="dk-mbtn">${esc(i.action.parameters.display_text)}</span>` : (i.action?.buttons || []).map(x => `<span class="dk-mbtn">${esc(x.reply.title)}</span>`).join(' '); } catch {} }
+      return `<div class="dk-msg ${m.dir}">${esc(b)}${extra}<time>${new Date(m.at).toLocaleString('mr-IN-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ${m.dir === 'in' ? 'पालक' : m.dir === 'team' ? 'team' : '🤖 bot'}</time></div>`;
+    }).join('');
+    const teamPcts = () => { const o = (offerCfg && offerCfg.data && offerCfg.data.team_percents) || [20, 30, 50]; return [...new Set([...R.staffDisc, ...o])].sort((a, b) => a - b); };
+    const draw = () => {
+      shell(`
+        <div class="dk-win ${open ? 'open' : 'shut'}">${open ? '🟢 Bot chat उघडी — bot च्या नंबरवरून मोफत, खऱ्या बटणासह' : '🔴 Bot chat बंद — फक्त माझ्या WhatsApp वरून'}</div>
+        <div class="dk-chat" id="dk-chat">${bubbles || '<p class="mt">अजून chat नाही</p>'}</div>
+        <div class="h2">तयार message — एक दाबा</div>
+        <div class="dk-quick">${[['own', '✍️ स्वतः लिहा'], ['pay', '💳 Pay link'], ['pin', '🔑 Code + PIN'], ['app', '📲 App Download'], ['test', '📝 Test link'], ['info', 'ℹ️ माहिती'], ['mt', '🏆 महा-Test']].map(([k, l]) => `<button type="button" data-k="${k}" class="${k === kind ? 'on' : ''}">${l}</button>`).join('')}</div>
+        ${!L.paid ? `<div class="h2">🎁 सूट (3 तास · पहिल्या payment वर)</div><div class="dk-disc">${teamPcts().map(x => `<button type="button" data-p="${x}" class="${R.staffDisc.includes(x) ? '' : 'ask'}${offer && offer.pct === x ? ' on' : ''}">${x}%${R.staffDisc.includes(x) ? '' : ' · Admin'}</button>`).join('')}</div>` : ''}
+        <textarea class="in" id="dk-text" rows="6" placeholder="इथे लिहा…" style="margin-top:10px"></textarea>
+        ${kind === 'pin' && !(L.acct && L.acct.code) ? '<button type="button" class="btn ghost" id="dk-pin" style="width:100%;margin-top:8px">🔑 Code + PIN बनवा / मिळवा</button>' : ''}
+        <div class="outs" style="margin-top:8px">
+          ${open ? '<button type="button" class="btn pri" id="dk-bot">🤖 Bot मधून (मोफत)</button>' : ''}
+          <a class="btn wa" id="dk-wa" target="_blank" rel="noopener"${open ? '' : ' style="grid-column:1/-1"'}>💬 माझ्या WhatsApp वरून</a>
+        </div>`, '💬 ' + (L.name || ''), L.mobile ? '📱 ' + L.mobile : '');
+      $('fab')?.classList.add('hidden');
+      const ta = $('dk-text'), wa = $('dk-wa');
+      ta.value = READY[kind]();
+      const links = () => { wa.href = `https://wa.me/91${L.mobile}?text=${encodeURIComponent(ta.value)}`; };
+      ta.oninput = links; links();
+      if (kind === 'own') setTimeout(() => ta.focus(), 50);   // ✍️ an empty box, the keyboard open
+      const ch = $('dk-chat'); if (ch) ch.scrollTop = ch.scrollHeight;
+      app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { kind = b.dataset.k; btn = BTN[kind] || ''; draw(); });
+      app.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+        const pct = Number(b.dataset.p);
+        if (!R.staffDisc.includes(pct)) { try { await crm('/crm/desk/disc/' + gid, { pct, why: 'card' }); toast(`🎁 ${pct}% — Admin ला विचारलं`); } catch (e) { toast(e.message, true); } return; }
+        b.disabled = true;
+        try {
+          const r = (await rq('/guest/admin/team-offer', { body: { gid, percent: pct } })).data;
+          offer = { pct, end: r.expires_at }; kind = 'pay'; btn = 'pay';
+          crm(`/crm/lead/${gid}/act`, { action: 'offer', detail: `${pct}% · ${r.hours || 3} तास` }).catch(() => {});
+          toast(`🎁 ${pct}% सूट — ${r.hours || 3} तास`); draw();
+        } catch (e) { toast(e.message, true); b.disabled = false; }
+      });
+      $('dk-pin')?.addEventListener('click', async () => {
+        try { const r = await rq('/guest/admin/lead-pin', { body: { gid } }); L.acct = { code: r.data.code, pin: r.data.pin }; crm(`/crm/lead/${gid}/act`, { action: 'acct', detail: r.data.code }).catch(() => {}); draw(); }
+        catch (e) { toast(e.message, true); }
+      });
+      $('dk-bot')?.addEventListener('click', async () => {
+        const text = ta.value.trim(); if (!text) return toast('Message लिहा', true);
+        $('dk-bot').disabled = true;
+        try { await crm('/crm/desk/attempt/' + gid, { via: 'wa' }).catch(() => {}); await crm(`/crm/lead/${gid}/reply`, { text, btn }); toast('📤 Bot मधून गेलं'); deskOutcome(gid, L); }
+        catch (e) { toast(e.message, true); $('dk-bot').disabled = false; }
+      });
+      wa.addEventListener('click', () => {
+        crm('/crm/desk/attempt/' + gid, { via: 'wa' }).catch(() => {});
+        crm(`/crm/lead/${gid}/sent`, { via: 'wa', tpl: kind, tpl_id: kind, text: ta.value }).catch(() => {});
+        pendingOutcome = { gid, L };
+      });
+    };
+    loadOfferCfg().finally(draw);
+  }
+
+  // ✅ "काय झालं?" — required; the next contact is set by the server's rules
+  const OUTS = [['talk', '✅ बोललो', 'पुन्हा 2 दिवसांनी'], ['paying', '💳 Pay करणार', 'pay link + उद्या तपासणी'], ['noanswer', '📵 उचलला नाही', 'संध्याकाळी / उद्या'], ['later', '⏰ नंतर', 'दिवस + वेळ'], ['nocall', '🔕 Call नको', 'फक्त WhatsApp'], ['wrong', '☎️ नंबर चुकीचा', 'बंद'], ['no', '❌ नको', 'कारण निवडा']];
+  function deskOutcome(gid, L) {
+    pendingOutcome = null;
+    document.querySelector('.sheet-bg')?.remove();
+    const R = (desk && desk.rules && desk.rules.reasons) || {};
+    let pick = null, reason = '';
+    const bg = document.createElement('div'); bg.className = 'sheet-bg';
+    const draw = () => {
+      const rs = pick && R[pick === 'talk' ? 'talk' : pick];
+      bg.innerHTML = `<div class="sheet" role="dialog" aria-label="काय झालं?">
+        <h3>📞 ${esc(L.name || '')} — काय झालं?</h3>
+        <div class="outs">${OUTS.map(o => `<button type="button" class="btn ${pick === o[0] ? 'pri' : 'ghost'} dk-out" data-o="${o[0]}">${o[1]}<small>${o[2]}</small></button>`).join('')}</div>
+        ${rs && rs.length ? `<div class="h2">${pick === 'no' ? 'कारण (बंधनकारक)' : 'काय ठरलं'}</div><div class="dk-reasons">${rs.map(r => `<button type="button" data-r="${esc(r)}" class="${reason === r ? 'on' : ''}">${esc(r)}</button>`).join('')}</div>` : ''}
+        ${pick === 'later' ? '<label class="f">कधी<input class="in" id="o-at" type="datetime-local"></label>' : ''}
+        <label class="f">एक ओळ (हवं तर)<input class="in" id="o-note" maxlength="200" placeholder="उदा. वडिलांशी बोलून सांगणार"></label>
+        <p class="msg" id="o-msg"></p>
+        <button type="button" class="btn pri" id="o-save" style="width:100%"${!pick || (pick === 'no' && !reason) ? ' disabled' : ''}>✅ Save करा</button>
+        <p class="mt" style="text-align:center">निकाल दिल्याशिवाय पुढचं कुटुंब उघडत नाही.</p></div>`;
+      bg.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { pick = b.dataset.o; reason = ''; draw(); });
+      bg.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { reason = b.dataset.r; draw(); });
+      const atEl = bg.querySelector('#o-at');
+      if (atEl && !atEl.value) { const t = new Date(Date.now() + 864e5); t.setHours(11, 0, 0, 0); atEl.value = new Date(t - t.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); }
+      bg.querySelector('#o-save').onclick = async () => {
+        const save = bg.querySelector('#o-save'); save.disabled = true;
+        try {
+          const at = atEl && atEl.value ? new Date(atEl.value).toISOString() : '';
+          const r = await crm('/crm/desk/outcome/' + gid, { result: pick, reason, note: bg.querySelector('#o-note').value.trim(), at });
+          bg.remove();
+          toast({ talk: '✅ नोंद — पुन्हा 2 दिवसांनी', paying: '💳 नोंद — pay link पाठवा', noanswer: '📵 पुन्हा संध्याकाळी / उद्या', later: '⏰ आठवण लावली', nocall: '🔕 आता फक्त WhatsApp', wrong: '☎️ बंद केलं', no: '❌ बंद केलं' }[pick]);
+          if (pick === 'paying' && r && r.team && r.team[0] && r.team[0].waMe) window.open(r.team[0].waMe, '_blank');
+          if (queue) nextInQueue(); else route();
+        } catch (e) { save.disabled = false; bg.querySelector('#o-msg').textContent = e.message; }
+      };
+    };
+    draw();
+    document.body.appendChild(bg);
+  }
+  // 👩‍🏫 a teacher, not a parent → the Admin
+  function teacherFwd(gid, L) {
+    const bg = document.createElement('div'); bg.className = 'sheet-bg';
+    bg.innerHTML = `<div class="sheet" role="dialog" aria-label="शिक्षक"><h3>👩‍🏫 ${esc(L.name || '')} — शिक्षक</h3>
+      <label class="f">एक ओळ (Admin साठी)<input class="in" id="t-note" maxlength="200" placeholder="उदा. 8वी, 40 विद्यार्थी · पेपर बनवायचा"></label>
+      <div class="outs"><button type="button" class="btn ghost" id="t-cancel">रद्द</button><button type="button" class="btn pri" id="t-go">👩‍🏫 Admin कडे पाठवा</button></div></div>`;
+    document.body.appendChild(bg);
+    bg.querySelector('#t-cancel').onclick = () => bg.remove();
+    bg.querySelector('#t-go').onclick = async () => {
+      try { await crm('/crm/desk/teacher/' + gid, { note: bg.querySelector('#t-note').value.trim() }); bg.remove(); toast('👩‍🏫 Admin कडे गेलं'); if (queue) nextInQueue(); else route(); }
+      catch (e) { toast(e.message, true); }
+    };
   }
 
   // ── 👩‍🏫 a teacher who booked a demo from a teacher ad (owner 2026-11-20) ──
@@ -447,14 +566,16 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
     const m = await crm('/crm/my');
     const c = m.counts || {}, n = k => c[k] || 0;
     shell(`<div class="stats">
-        <div class="big" style="--c:#15803d"><span class="n">${n('next') + n('paying')}</span><span class="t">✅ बोललो</span></div>
+        <div class="big" style="--c:#0e7490"><span class="n">${n('attempt')}</span><span class="t">📞 Call</span></div>
+        <div class="big" style="--c:#15803d"><span class="n">${n('talk') + n('next') + n('paying')}</span><span class="t">✅ बोललो</span></div>
         <div class="big" style="--c:#128c4a"><span class="n">${n('wa') + n('sms')}</span><span class="t">💬 Messages</span></div>
         <div class="big" style="--c:#64748b"><span class="n">${n('noanswer')}</span><span class="t">📵 उचलला नाही</span></div>
         <div class="big" style="--c:#4338ca"><span class="n">${n('paying')}</span><span class="t">💳 Pay करणार</span></div>
         <div class="big" style="--c:#be123c"><span class="n">${n('reply') + n('answered')}</span><span class="t">❓ उत्तरं</span></div>
         <div class="big" style="--c:#7c3aed"><span class="n">${n('add') + n('acct')}</span><span class="t">➕ / 🔑 accounts</span></div>
         <div class="big" style="--c:#b45309"><span class="n">${n('later')}</span><span class="t">⏰ नंतर</span></div>
-        <div class="big" style="--c:#111827"><span class="n">${n('close')}</span><span class="t">❌ नको</span></div>
+        <div class="big" style="--c:#111827"><span class="n">${n('close') + n('no') + n('wrong')}</span><span class="t">❌ नको / ☎️ चुकीचा</span></div>
+        <div class="big" style="--c:#15803d"><span class="n">${n('paid')}</span><span class="t">✅ Pay झालं</span></div>
       </div>
       <p class="mt" style="margin:14px 2px">आज (${esc(m.day)}) · ${esc(me?.name || '')}</p>
       <button type="button" class="btn ghost" id="lo" style="width:100%">🚪 Logout</button>`, 'माझं काम');
@@ -526,7 +647,7 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
   }
 
   // Android back: a sheet closes, a card goes back to the list
-  const back = () => { const s = document.querySelector('.sheet-bg'); if (s) { s.remove(); return true; } if (queue || tab !== 'home' || !document.querySelector('.big')) { queue = null; tab = 'home'; route(); return true; } return false; };
+  const back = () => { const s = document.querySelector('.sheet-bg'); if (s) { s.remove(); return true; } clearInterval(deskTimer); if (queue || tab !== 'home' || !document.querySelector('.big')) { queue = null; tab = 'home'; route(); return true; } return false; };
   document.addEventListener('backbutton', back);
   try { window.Capacitor?.Plugins?.App?.addListener?.('backButton', () => { if (!back()) window.Capacitor.Plugins.App.exitApp?.(); }); } catch { /* the browser */ }
   window.TEAM_APP = { route };

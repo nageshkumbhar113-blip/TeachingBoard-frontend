@@ -114,6 +114,7 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
     $('crm-admin').innerHTML = `
       <div class="crm-head"><h3>📇 CRM — पालक</h3><button type="button" class="admin-btn-secondary" id="crm-refresh" aria-label="पुन्हा उघडा">🔄</button></div>
       <div class="crm-tools">
+        <button type="button" class="admin-btn-primary" data-panel="desk" style="background:#3b2a63">🛡️ Call desk</button>
         <button type="button" class="admin-btn-primary crm-mt-btn" data-panel="mt">🏆 महा-Test आठवण</button>
         <button type="button" class="admin-btn-primary crm-team-btn" data-panel="team">👥 Team</button>
         <button type="button" class="admin-btn-primary" data-panel="add">➕ नवीन पालक</button>
@@ -450,6 +451,60 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
     if (which === 'mt') return _panelMt(box);
     if (which === 'team') return _panelTeam(box);
     if (which === 'check') return _panelCheck(box);
+    if (which === 'desk') return _panelDesk(box);
+  }
+  // 🛡️ the call desk (wa-worker/src/desk.js): how the team is doing today, what brings payments, why families go
+  async function _panelDesk(box, day) {
+    let d;
+    try { d = await _call('/crm/desk/admin' + (day ? '?day=' + day : '')); } catch (e) { box.innerHTML = '⚠️ ' + esc(e.message); return; }
+    const t = d.team || [], sp = d.speed || {}, R = d.rules || {};
+    const maxLost = Math.max(1, ...(d.lost || []).map(x => x.n));
+    const wait = sp.median_min == null ? '—' : sp.median_min < 120 ? sp.median_min + ' मिनिटं' : Math.round(sp.median_min / 60) + ' तास';
+    box.innerHTML = `
+      <div class="crm-acts" style="justify-content:space-between;align-items:center"><h4 style="margin:0">🛡️ Call desk — ${esc(d.day)}</h4><input type="date" id="dk-day" class="admin-input" value="${esc(d.day)}" style="max-width:170px" aria-label="दिवस"></div>
+      <p class="crm-meta">⚡ नवीन पालकाला पहिला call (7 दिवस): सरासरी <b>${wait}</b> · ${R.newMin || 15} मिनिटांत: <b>${sp.within || 0}/${sp.n || 0}</b> · 24 तासांनंतर: <b>${sp.over_day || 0}</b></p>
+      <div style="overflow-x:auto"><table class="crm-table"><thead><tr><th>Member</th><th>यादी</th><th>📞</th><th>✅ बोलणं</th><th>💳 करणार</th><th>📵</th><th>💬</th><th>✅ pay</th><th>❌</th></tr></thead><tbody>
+        ${t.length ? t.map(p => `<tr><td>${esc(p.name)}</td><td>${p.day ? p.day.done + '/' + p.day.total : '—'}</td><td>${p.calls}</td><td>${p.talk}</td><td>${p.paying}</td><td>${p.noanswer}</td><td>${p.wa}</td><td>${p.paid}</td><td>${p.closed}</td></tr>`).join('') : '<tr><td colspan="9">आज अजून काही नाही</td></tr>'}
+      </tbody></table></div>
+      ${(d.approvals || []).length ? '<h4>🎁 सूट परवानगी</h4>' + d.approvals.map(a => `<div class="crm-row-mini"><b>${a.pct}%</b> · ${esc(a.gid)} · ${esc(a.by)}${a.why ? ' — ' + esc(a.why) : ''} <button type="button" class="admin-btn-primary" data-ok="${esc(a.gid)}" data-p="${a.pct}">✓ द्या (3 तास)</button> <button type="button" class="admin-btn-secondary" data-no="${esc(a.gid)}">✗ नाही</button></div>`).join('') : ''}
+      ${(d.teachers || []).length ? '<h4>👩‍🏫 Team ने पाठवलेले शिक्षक</h4>' + d.teachers.map(x => `<div class="crm-row-mini">${esc(x.name || '—')} · 📞 ${esc(x.mobile || '')}${x.fwd ? ' · ' + esc(x.fwd.by) + (x.fwd.note ? ' — "' + esc(x.fwd.note) + '"' : '') : ''} <a class="admin-btn-secondary" href="tel:+91${esc(x.mobile || '')}">📞</a> <a class="admin-btn-secondary" target="_blank" rel="noopener" href="https://wa.me/91${esc(x.mobile || '')}?text=${encodeURIComponent('नमस्कार 🙏 NKs EduOrbit कडून. शिक्षकांसाठी demo 👇\nhttps://nkseduorbit.in/book-demo?src=team')}">🎬 Demo link</a></div>`).join('') : ''}
+      <h4>📣 कुठून आले → pay</h4>
+      <div style="overflow-x:auto"><table class="crm-table"><thead><tr><th>कुठून</th><th>पालक</th><th>test</th><th>app</th><th>paid</th><th>₹</th><th>☎️ चुकीचे</th></tr></thead><tbody>
+        ${(d.sources || []).map(x => `<tr><td>${esc(x.source)}</td><td>${x.leads}</td><td>${x.tested}</td><td>${x.app}</td><td>${x.paid}</td><td>${x.rs ? '₹' + x.rs.toLocaleString('en-IN') : '—'}</td><td>${x.wrong}</td></tr>`).join('')}
+      </tbody></table></div>
+      <h4>❌ का गमावले</h4>
+      ${(d.lost || []).slice(0, 12).map(x => `<div class="crm-bar"><span>${esc(x.reason)}</span><i style="width:${Math.max(3, x.n / maxLost * 100)}%"></i><b>${x.n}</b></div>`).join('') || '<p class="crm-meta">अजून नाही</p>'}
+      <h4>⚙️ नियम</h4>
+      <div class="crm-rules">
+        <label>रोजची यादी (एका member ला)<input class="admin-input" id="dk-daySize" type="number" min="5" max="150" value="${R.daySize}"></label>
+        <label>नवीन पालकाला call (मिनिटांत)<input class="admin-input" id="dk-newMin" type="number" min="5" max="240" value="${R.newMin}"></label>
+        <label>✅ बोललो → पुन्हा (दिवस)<input class="admin-input" id="dk-talkDays" type="number" min="1" max="14" value="${R.talkDays}"></label>
+        <label>📵 किती वेळा, मग फक्त WhatsApp<input class="admin-input" id="dk-noAnswerMax" type="number" min="1" max="10" value="${R.noAnswerMax}"></label>
+        <label>🔁 Renewal (plan संपण्याआधी दिवस)<input class="admin-input" id="dk-renewDays" type="number" min="1" max="15" value="${R.renewDays}"></label>
+        <label>Member ला देता येणारी सूट (%, स्वल्पविराम)<input class="admin-input" id="dk-staffDisc" value="${(R.staffDisc || []).join(', ')}"></label>
+        <label>❌ नको ची कारणं (स्वल्पविराम)<input class="admin-input" id="dk-rno" value="${esc(((R.reasons || {}).no || []).join(', '))}"></label>
+        <label>✅ बोललो — काय ठरलं (स्वल्पविराम)<input class="admin-input" id="dk-rtalk" value="${esc(((R.reasons || {}).talk || []).join(', '))}"></label>
+      </div>
+      <div class="crm-acts"><button type="button" class="admin-btn-primary" id="dk-save">💾 नियम Save</button></div>`;
+    $('dk-day').onchange = e => _panelDesk(box, e.target.value);
+    const list = v => String(v || '').split(',').map(x => x.trim()).filter(Boolean);
+    $('dk-save').onclick = async () => {
+      try {
+        await _call('/crm/desk/rules', { daySize: $('dk-daySize').value, newMin: $('dk-newMin').value, talkDays: $('dk-talkDays').value, noAnswerMax: $('dk-noAnswerMax').value, renewDays: $('dk-renewDays').value,
+          staffDisc: list($('dk-staffDisc').value).map(Number), reasons: { ...(R.reasons || {}), no: list($('dk-rno').value), talk: list($('dk-rtalk').value) } });
+        APP.toast('⚙️ नियम save झाले', 'success');
+      } catch (e) { APP.toast(e.message, 'error'); }
+    };
+    box.querySelectorAll('[data-ok]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const token = await API.ensureAdminSession();
+        await API.request('/guest/admin/team-offer', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: JSON.stringify({ gid: b.dataset.ok, percent: Number(b.dataset.p) }) });
+        await _call('/crm/desk/approve', { gid: b.dataset.ok, ok: true });
+        APP.toast('🎁 सूट दिली — member ला दिसेल', 'success'); _panelDesk(box, day);
+      } catch (e) { APP.toast(e.message, 'error'); b.disabled = false; }
+    });
+    box.querySelectorAll('[data-no]').forEach(b => b.onclick = async () => { try { await _call('/crm/desk/approve', { gid: b.dataset.no, ok: false }); _panelDesk(box, day); } catch (e) { APP.toast(e.message, 'error'); } });
   }
   const _close = () => { _panelOpen = ''; $('crm-panel').classList.add('hidden'); $('crm-panel').innerHTML = ''; };
   const _labelList = () => `<datalist id="crm-label-names">${_labels.map(l => `<option value="${esc(l.name)}"></option>`).join('')}</datalist>`;
