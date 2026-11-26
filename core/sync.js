@@ -1004,8 +1004,53 @@ const SYNC = (() => {
    * Runs all three sync streams in parallel.
    * Individual failures are caught and logged but do NOT abort the others.
    */
-  async function _doSyncAll(apiUrl) {
+  // ── Admin: download only what changed (Admin audit 2026-11-27) ──
+  // The Admin used to download every test (~20 MB), 1,000 questions and the lessons every 5 minutes and each time its
+  // browser tab came back — the server ran out of memory. Now it asks GET /admin/sync-state (~200 bytes) and downloads
+  // a part only when its fingerprint changed; everything at least every few hours (server hint), and always with the
+  // "Delta Sync" button. A part's fingerprint is kept only after its download worked.
+  const ADMIN_FP_KEY = 'admin_sync_fp';   // { questions, lessons, quizzes, fullAt }
+  async function _adminPlan(force) {
+    const st = await API.fetchAdminSyncState?.().catch(() => null);
+    if (!st) return { st: null, full: true, need: { questions: true, lessons: true, quizzes: true } };
+    const old = (await DB.getSetting(ADMIN_FP_KEY, null).catch(() => null)) || {};
+    const full = !!force || !old.fullAt || Date.now() - old.fullAt > (Number(st.fullEverySec) || 10800) * 1000;
+    return { st, full, old, need: { questions: full || old.questions !== st.questions, lessons: full || old.lessons !== st.lessons, quizzes: full || old.quizzes !== st.quizzes } };
+  }
+  async function _adminSaveFp(plan, done) {
+    if (!plan.st) return;
+    const fp = { ...(plan.old || {}) };
+    for (const k of ['questions', 'lessons', 'quizzes']) if (done[k]) fp[k] = plan.st[k];
+    // a part that failed has no fingerprint, so the next cycle tries just that part again (not everything)
+    if (plan.full) fp.fullAt = Date.now();
+    await DB.setSetting(ADMIN_FP_KEY, fp).catch(() => {});
+  }
+  // the Admin opening (after the PIN): only the questions, and only if they changed
+  async function adminSyncQuestions() {
+    if (!API.getAdminToken()) return [];
+    const plan = await _adminPlan(false);
+    if (!plan.need.questions) return [];
+    const got = await API.syncServerQuestions();
+    await _adminSaveFp({ ...plan, full: false }, { questions: true });
+    return got;
+  }
+
+  async function _doSyncAll(apiUrl, opts = {}) {
     if (apiUrl) setApiUrl(apiUrl);   // throws on invalid URL, intentional
+
+    if (API.getAdminToken()) {
+      const plan = await _adminPlan(!!opts.force);
+      const done = { questions: !plan.need.questions, lessons: !plan.need.lessons, quizzes: !plan.need.quizzes };
+      const [syncedQ, syncedL, qz] = await Promise.all([
+        plan.need.questions ? API.syncServerQuestions().then(r => { done.questions = true; return r; }).catch(err => { console.warn('SYNC questions:', err.message); return []; }) : [],
+        plan.need.lessons ? API.syncServerLessons().then(r => { done.lessons = true; return r; }).catch(err => { console.warn('SYNC lessons:', err.message); return []; }) : [],
+        plan.need.quizzes ? fetchQuizzes({ silent: true }).then(r => { done.quizzes = true; return r; }).catch(err => { console.warn('SYNC quizzes:', err.message); return { fetched: 0 }; }) : { fetched: 0 },
+      ]);
+      await _adminSaveFp(plan, done);
+      _lastSyncAt = Date.now();
+      DB.setSetting('last_sync_at', _lastSyncAt).catch(() => {});
+      return { questions: syncedQ, lessons: syncedL, quizzes: qz.fetched || 0 };
+    }
 
     // Use admin question sync when admin token is present; fall back to student sync
     const questionSync = API.getAdminToken()
@@ -1054,7 +1099,7 @@ const SYNC = (() => {
 
     _setStatus('syncing');
     try {
-      const { questions, lessons, quizzes } = await _doSyncAll();
+      const { questions, lessons, quizzes } = await _doSyncAll(undefined, { force: true });   // the button: everything
       _setStatus('online');
 
       const parts = [];
@@ -1436,7 +1481,9 @@ const SYNC = (() => {
         stopAutoSync();
         stopStudentAutoSync();
       } else {
-        if (_wasAutoRunning) { startAutoSync(); setTimeout(_runCycle, 0); }
+        // back to the Admin's tab: the 5-minute rhythm again; a cycle now only if one is due (it used to download
+        // everything on every switch, e.g. Ads Manager ↔ Admin — Admin audit 2026-11-27)
+        if (_wasAutoRunning) { startAutoSync(); if (Date.now() - _lastSyncAt >= AUTO_MS) setTimeout(_runCycle, 0); }
         if (_wasStudentAutoRunning) _resumeStudentSync();
       }
     });
@@ -1472,6 +1519,7 @@ const SYNC = (() => {
     getApiUrl,
 
     // Quiz sync
+    adminSyncQuestions,
     publishQuiz,
     retryQueue,
     fetchQuizzes,

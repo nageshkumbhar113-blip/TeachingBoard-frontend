@@ -300,7 +300,7 @@ const ADMIN = (() => {
     // If online, fetch questions + batch hierarchy from backend
     if (navigator.onLine && API.getAdminToken()) {
       await Promise.allSettled([
-        API.syncServerQuestions(),
+        SYNC.adminSyncQuestions ? SYNC.adminSyncQuestions() : API.syncServerQuestions(),   // only if they changed (audit 2026-11-27)
         API.syncServerBatches(),
       ]);
     }

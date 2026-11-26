@@ -1930,9 +1930,25 @@ const API = (() => {
     return normalized;
   }
 
+  // Admin: every question, 2,000 at a time (the server sends at most 2,000 per call; one call used to bring only the
+  // newest 1,000 — a new Admin device never got the rest). Admin audit 2026-11-27.
   async function syncServerQuestions(pin = '') {
-    const questions = await fetchQuestions(pin);
-    return cacheQuizQuestions(questions);
+    const token = await ensureAdminSession(pin);
+    const all = [];
+    for (let skip = 0, page = 0; page < 50; page++, skip += 2000) {
+      const payload = await request(`/questions?limit=2000&skip=${skip}`, { headers: { Authorization: `Bearer ${token}` } });
+      const rows = payload?.data || [];
+      all.push(...rows);
+      if (rows.length < 2000) break;
+    }
+    return cacheQuizQuestions(all);
+  }
+  // Admin: "has anything changed?" (~200 bytes) — null on an older server / any error (the Admin then downloads all)
+  async function fetchAdminSyncState() {
+    const token = getAdminToken();
+    if (!token) return null;
+    try { const r = await request('/admin/sync-state', { headers: { Authorization: `Bearer ${token}` } }); return r && r.enabled ? r : null; }
+    catch { return null; }
   }
 
   // ── the question bank one chapter at a time (core/qbank.js; backend qbankController) ──
@@ -3447,7 +3463,7 @@ const API = (() => {
     safeFetch,
     toFrontendQuestion, toBackendQuestion,
     cacheQuizQuestions, cacheLessons,
-    syncServerQuestions, syncStudentQuestions, fetchQBankIndex, fetchQBankChapter, fetchSyncState, syncServerLessons, syncServerBatches,
+    syncServerQuestions, fetchAdminSyncState, syncStudentQuestions, fetchQBankIndex, fetchQBankChapter, fetchSyncState, syncServerLessons, syncServerBatches,
     syncServerBatchesForStudent,
     fetchMyAttempts, syncMyAttempts, forgetAttempt,
     createBatchCatalog, deleteBatchCatalog, renameBatchCatalog, setBatchCoverImage,
