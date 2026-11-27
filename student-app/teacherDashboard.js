@@ -18,11 +18,16 @@ const TEACHER_DASHBOARD = (() => {
   // Cache-first, background-refresh, offline-throw — same pattern used
   // across Notes/Exercise/Dictionary, generalized so every read below can
   // reuse it with one line instead of hand-rolling the 4-branch logic.
-  async function _cacheFirst(cacheKey, fetchFn) {
+  // onFresh(fresh): called when the background copy differs from the shown one (the screen repaints — owner
+  // 2026-11-27: students just made by an order did not show until the app was opened twice)
+  async function _cacheFirst(cacheKey, fetchFn, onFresh) {
     const cached = await DB.getGenericCache('teacher_dashboard_cache', cacheKey).catch(() => null);
     if (cached) {
       if (navigator.onLine) {
-        fetchFn().then(fresh => DB.putGenericCache('teacher_dashboard_cache', cacheKey, fresh).catch(() => {})).catch(() => {});
+        fetchFn().then(fresh => {
+          DB.putGenericCache('teacher_dashboard_cache', cacheKey, fresh).catch(() => {});
+          if (onFresh && JSON.stringify(fresh) !== JSON.stringify(cached)) onFresh(fresh);
+        }).catch(() => {});
       }
       return cached;
     }
@@ -294,7 +299,7 @@ const TEACHER_DASHBOARD = (() => {
     _showStudentList();
 
     try {
-      _students = await _cacheFirst('students', () => API.fetchTeacherStudents());
+      _students = await _cacheFirst('students', () => API.fetchTeacherStudents(), fresh => { _students = fresh; if ($('td-student-list')) _renderStudentList(); });
     } catch (err) {
       if (wrapEl) wrapEl.innerHTML = `<p class="td-hint">${_esc(err.message || 'Failed to load')}</p>`;
       return;
