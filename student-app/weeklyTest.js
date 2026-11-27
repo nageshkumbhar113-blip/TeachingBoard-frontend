@@ -431,6 +431,7 @@ const WEEKLY = (() => {
         <button type="button" class="gx-btn gx-ghost" id="wk-prev">← मागे</button>
         <button type="button" class="gx-btn" id="wk-next">पुढे →</button>
       </div>
+      <div class="wk-left" id="wk-left" hidden></div>
       <button type="button" class="gx-btn gx-cool" id="wk-submit">✅ Test जमा करा</button>`;
     document.body.appendChild(el);
     const onHide = () => { if (document.hidden) { st.leave++; save(); } };
@@ -456,7 +457,18 @@ const WEEKLY = (() => {
       palette();
       window.MATH?.renderElement?.(el.querySelector('#wk-q'));
     };
+    // रोजचा पेपर (owner 2026-11-27): "जमा करा" only once every question has an answer — a tap by mistake in the
+    // middle no longer ends the paper. The time running out still hands it in. Papers with minus marks: as before.
+    const mustAll = _isPractice(ev) && !(Number(ev.negative) > 0);
+    const leftN = () => qs.filter(q => !String(st.answers[q.q_id] || '').trim()).length;
+    const gate = () => {
+      if (!mustAll) return;
+      const n = leftN(), b = el.querySelector('#wk-submit'), info = el.querySelector('#wk-left');
+      if (b) b.style.display = n > 0 ? 'none' : '';   // .gx-btn sets display, so not the hidden attribute
+      if (info) { info.hidden = n === 0; info.textContent = `✍️ अजून ${n} प्रश्न सोडवायचे — सगळे सोडवल्यावर "Test जमा करा" दिसेल`; }
+    };
     const palette = () => {
+      gate();
       el.querySelector('#wk-pal').innerHTML = qs.map((q, k) => `${ev.paper_order === 'sections' && q.subject && (k === 0 || qs[k - 1].subject !== q.subject) ? `<span class="wk-sec">${_esc(q.subject)}</span>` : ''}<button type="button" class="wk-dot${String(st.answers[q.q_id] || '').trim() ? ' done' : ''}${k === st.i ? ' cur' : ''}" data-i="${k}">${k + 1}</button>`).join('');
       el.querySelectorAll('.wk-dot').forEach(b => b.onclick = () => { st.i = Number(b.dataset.i); paint(); });
     };
@@ -467,6 +479,8 @@ const WEEKLY = (() => {
     const finish = async (auto) => {
       if (finished) return;
       const unanswered = qs.filter(q => !String(st.answers[q.q_id] || '').trim()).length;
+      if (!auto && mustAll && unanswered) { gate(); _toast(`अजून ${unanswered} प्रश्न सोडवायचे आहेत`, 'info'); return; }
+      if (!auto && mustAll && window.UI?.confirmAsync && !(await UI.confirmAsync('सगळे प्रश्न सोडवले ✅ Test जमा करायचा?'))) return;
       if (!auto && unanswered && window.UI?.confirmAsync && !(await UI.confirmAsync(`${unanswered} प्रश्न सोडले आहेत. Test जमा करायचा?`))) return;
       finished = true;
       clearInterval(timer);
