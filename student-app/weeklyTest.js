@@ -233,7 +233,8 @@ const WEEKLY = (() => {
           <div data-slot="go"></div>${_dayLine(ev.day)}${mine}`;
         const go = card.querySelector('[data-slot="go"]');
         const startBtn = '<button type="button" class="gx-btn gx-big gx-shine wk-btn" data-act="start">▶ आत्ता सुरू करा</button>';
-        if (!late) go.innerHTML = startBtn;
+        if (ev.me?.not_given) go.innerHTML = '<div class="wk-ok">⏰ हा पेपर उघडला होता, वेळ संपली — "दिला नाही". पुढचा पेपर वेळेवर द्या 🙂</div>';
+        else if (!late) go.innerHTML = startBtn;
         else _startedHere(ev).then(started => {
           go.innerHTML = started ? startBtn.replace('आत्ता सुरू करा', 'पेपर पुढे सोडवा') : `<div class="wk-ok">⌛ सुरू करायची वेळ (${_esc(_clock(ev.join_until))}) संपली — पुढचा paper वेळेवर द्या</div>`;
           go.querySelector('[data-act="start"]')?.addEventListener('click', () => start(ev));
@@ -288,7 +289,7 @@ const WEEKLY = (() => {
         ${ev.registered_count > 4 ? `<div class="wk-meta">👥 ${ev.registered_count} जण तयार</div>` : ''}
         ${ev.me.registered ? '<div class="wk-ok">✅ तुम्ही registered आहात — वेळ झाली की इथे "सुरू करा" येईल</div>' : '<button type="button" class="gx-btn gx-shine wk-btn" data-act="reg">✍️ Register करा (Free)</button>'}`;
     } else if (ev.state === 'live') {
-      card.innerHTML = ev.me.submitted
+      card.innerHTML = ev.me.not_given ? `${head}<div class="wk-ok">⏰ हा महा-Test उघडला होता, वेळ संपली — "दिला नाही".</div>` : ev.me.submitted
         ? `${head}<div class="wk-ok">✅ जमा झालं! तुमचे गुण ${ev.me.score}/${ev.me.total}. 🏆 Rank list ${_esc(_when(ev.reveal_at))} ला</div>`
         : `${head}<div class="wk-live">🔴 LIVE · संपायला <b class="wk-count">${_left(new Date(ev.ends_at) - Date.now())}</b></div>
            <button type="button" class="gx-btn gx-big gx-shine wk-btn" data-act="start">▶ आत्ता सुरू करा</button>`;
@@ -381,7 +382,31 @@ const WEEKLY = (() => {
   }
 
   // ── Player ──────────────────────────────────────────────────────
+  // Before the FIRST opening (owner 2026-11-27): a paper opens only once — open it when there is time to write it
+  function _confirmStart(ev) {
+    return new Promise(resolve => {
+      const el = document.createElement('div');
+      el.className = 'gx-layer gx-dim';
+      el.setAttribute('role', 'dialog');
+      el.innerHTML = `
+        <div class="gx-card wk-warn">
+          <div class="gx-logo" aria-hidden="true">⚠️</div>
+          <h2 class="gx-title">लक्षात ठेवा</h2>
+          <p class="gx-sub">हा पेपर <b>एकदाच उघडता येतो.</b> एकदा उघडला की बंद केला तरी परत उघडणार नाही — वेळ संपल्यावर तो आपोआप जमा होतो.</p>
+          <p class="gx-sub">म्हणून <b>पेपर सोडवायला वेळ असेल तेव्हाच</b> उघडा. (वेळ: <b>${ev.duration_minutes} मिनिटं</b> · ${ev.question_count} प्रश्न)</p>
+          <p class="gx-sub">✍️ सगळे प्रश्न सोडवल्यावरच "Test जमा करा" बटण दिसतं.</p>
+          <button type="button" class="gx-btn gx-big gx-shine" data-a="go">▶ आता सोडवा</button>
+          <button type="button" class="gx-btn gx-ghost" data-a="no">नंतर सोडवतो</button>
+        </div>`;
+      document.body.appendChild(el);
+      const done = v => { el.remove(); resolve(v); };
+      el.querySelector('[data-a="go"]').onclick = () => done(true);
+      el.querySelector('[data-a="no"]').onclick = () => done(false);
+    });
+  }
+
   async function start(ev) {
+    if (!ev.me?.started && !(await _startedHere(ev)) && !(await _confirmStart(ev))) return;
     const btn = document.querySelector('.wk-card [data-act="start"]');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ उघडत आहे…'; }
     try {
@@ -459,7 +484,7 @@ const WEEKLY = (() => {
     };
     // रोजचा पेपर (owner 2026-11-27): "जमा करा" only once every question has an answer — a tap by mistake in the
     // middle no longer ends the paper. The time running out still hands it in. Papers with minus marks: as before.
-    const mustAll = _isPractice(ev) && !(Number(ev.negative) > 0);
+    const mustAll = !(Number(ev.negative) > 0);   // रोजचा पेपर and महा-Test (owner 2026-11-27); minus marks: as before
     const leftN = () => qs.filter(q => !String(st.answers[q.q_id] || '').trim()).length;
     const gate = () => {
       if (!mustAll) return;
@@ -513,6 +538,15 @@ const WEEKLY = (() => {
   function _hash(s) { let h = 0; for (const c of String(s)) h = (h * 33 + c.charCodeAt(0)) >>> 0; return h; }
 
   function _submitted(el, ev, res) {
+    if (res && res.not_given) {   // opened, the time ran out with no answer: not counted (owner 2026-11-27)
+      el.className = 'gx-layer gx-hero';
+      el.innerHTML = `<div class="gx-card"><div class="gx-logo">⏰</div><h2 class="gx-title">वेळ संपली</h2>
+        <p class="gx-sub">एकही उत्तर दिलं नव्हतं — म्हणून हा पेपर <b>"दिला नाही"</b> असं धरलं (0 गुण नाहीत, rank मध्ये नाही).</p>
+        <p class="gx-sub">पुढचा पेपर वेळ असेल तेव्हाच उघडा 🙂</p>
+        <button type="button" class="gx-btn gx-big" id="wk-done">🏠 Home</button></div>`;
+      el.querySelector('#wk-done').onclick = () => { el.remove(); window.APP?.loadHome?.(); };
+      return;
+    }
     window.USAGE?.bump('weekly');
     el.className = 'gx-layer gx-hero';
     el.innerHTML = `

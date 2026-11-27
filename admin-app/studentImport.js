@@ -276,7 +276,7 @@ const STUDENT_IMPORT = (() => {
           <button class="admin-btn-primary" type="button" data-simp-pdf="${gi}">📄 PDF (code, PIN + नियम)</button>
           <button class="admin-btn-secondary" type="button" data-simp-csv="${gi}">⬇ Excel / CSV</button>
           ${wa ? `<a class="admin-btn-secondary" href="${wa}" target="_blank" rel="noopener">📲 WhatsApp वर पाठवा</a>` : ''}
-          ${t ? `<button class="admin-btn-secondary" type="button" data-simp-copy="${esc(t.rules_url)}">🔗 नियमांची link copy</button>` : ''}
+          ${t && t.rules_pending ? `<button class="admin-btn-secondary" type="button" data-simp-copy="${esc(t.rules_url)}">🔗 नियमांची link copy</button>` : t ? '<span class="import-hint">✅ नियम आधीच मान्य</span>' : ''}
         </div>
         ${t ? `<p class="import-hint">${t.pushed ? '🔔 Teacher ला app notification गेलं.' : '🔔 Teacher चं app notification चालू नाही — WhatsApp वर पाठवा.'} ${t.rules_pending ? '📜 नियम मान्य होईपर्यंत Paper save थांबेल.' : '📜 नियम आधीच मान्य.'}</p>` : ''}
       </div>`;
