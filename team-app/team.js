@@ -190,7 +190,23 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
       if (g === 'list') return dayList();
       if (g === 'q') { tab = 'q'; return route(); }
       if (g === 'mt') return mtQueue();
-      if (g === 'teacher') return startQueue('👩‍🏫 शिक्षक', '/crm/list?list=teacher', 0);
+      if (g === 'teacher') return teacherList();
+    });
+  }
+  // 👩‍🏫 the teachers, numbered (owner 2026-11-27: one after another the same teachers kept coming) — tap a number to
+  // open that teacher; after the card the list comes back
+  async function teacherList() {
+    const rows = await crm('/crm/list?list=teacher').catch(e => { toast(e.message, true); return null; });
+    if (!rows) return;
+    const booked = rows.filter(r => /📅/.test(r.stage || '')).length;
+    shell(rows.length ? rows.map((x, i) => `<button type="button" class="row dk-row" style="--c:${x.call_now ? '#b91c1c' : /📅/.test(x.stage || '') ? '#15803d' : '#4338ca'}" data-ti="${i}">
+        <span class="nm"><span class="dk-n">#${i + 1}</span> ${esc(x.name || '—')} <small>${esc([x.school, x.village, x.district].filter(Boolean).join(', '))}</small></span>
+        <span class="mt">${esc(x.stage || '')}${x.why ? ' · ' + esc(x.why) : ''}</span></button>`).join('') : '<p class="empty">अजून कोणी शिक्षक नाहीत</p>',
+      '👩‍🏫 शिक्षक', `${rows.length} शिक्षक · 📅 ${booked} Demo बुक`);
+    app.querySelectorAll('[data-ti]').forEach(b => b.onclick = () => {
+      const i = Number(b.dataset.ti);
+      queue = { title: '👩‍🏫 शिक्षक', rows, i, step: 0, done: 0, sentMob: new Set(), back: 'teacher' };
+      openCard(rows[i].gid);
     });
   }
   // 🎯 the day list, numbered; "▶ पुढचा" opens the first one not done
@@ -218,6 +234,7 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
   }
   async function nextInQueue() {
     if (!queue) return route();
+    if (queue.back === 'teacher') { queue = null; return teacherList(); }   // back to the numbered teachers
     if (queue.desk) {   // the day list: fresh from the server (numbers stay), the next one not done
       try { desk = await crm('/crm/desk/home'); } catch { /* keep */ }
       const nx = desk && desk.day && desk.day.next;
