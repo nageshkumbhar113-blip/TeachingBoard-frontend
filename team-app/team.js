@@ -167,6 +167,8 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
         <span>${esc(a.name || 'नाव नाही')} · ${esc(a.cls || '')} · ${esc(a.from || '')} · ${hm(a.created_at)}</span></button>`).join('')}
       ${(d.tStuck || []).length ? `<button type="button" class="dk-alert t" ${d.tStuck.length === 1 ? 'data-gid="' + esc(d.tStuck[0].gid) + '"' : 'data-go="teacher"'}><b>⚠️ ${d.tStuck.length} शिक्षक — आत्ता call करा</b>
         <span>${d.tStuck.slice(0, 3).map(x => esc((x.name || 'शिक्षक') + ' — ' + (x.why || x.stage || ''))).join(' · ')}</span></button>` : ''}
+      ${d.meet && d.meet.teachers ? `<button type="button" class="dk-alert t" data-go="teacher"><b>📅 रविवार Live Demo — ${d.meet.booked} शिक्षक बुक</b>
+        <span>${esc(d.meet.when || '')} · ${d.meet.teachers} पैकी · यादीत "📅 Demo बुक"</span></button>` : ''}
       <button type="button" class="dk-today" data-go="list">
         <span class="dk-top"><span>🎯 आजचं काम</span><b>${day.done}/${day.total}</b></span>
         <span class="dk-prog"><i style="width:${day.total ? day.done / day.total * 100 : 0}%"></i></span>
