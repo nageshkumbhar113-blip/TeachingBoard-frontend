@@ -450,7 +450,7 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
   ];
   const TEACHER_TPLS = [
     { id: 't-step', title: '📷 पुढची step — चित्रांसह', text: 'नमस्कार {नाव} 🙏 पुढची step: *{step}* — कसं करायचं ते चित्रांसह 👇\nhttps://nkseduorbit.in/teacher-guide#{stepid}' },
-    { id: 't-login', title: '🔑 Login मदत (codes)', text: 'नमस्कार {नाव} 🙏 NKs EduOrbit कडून.\nApp 👇 {app}\nApp उघडा › 👩‍🏫 Teacher › Code *{tcode}*{tpin}\nDemo विद्यार्थी (3 दिवस): Code *{scode}*{spin}\nकाही अडचण आली तर याच नंबरवर कळवा.' },
+    { id: 't-login', title: '🔑 Login मदत (codes)', text: 'नमस्कार {नाव} 🙏 NKs EduOrbit कडून.\nApp 👇 {app}\nApp उघडा › 👩‍🏫 Teacher › Code *{tcode}*{tpin}\nविद्यार्थी account (रविवारपर्यंत): Code *{scode}*{spin}\nकाही अडचण आली तर याच नंबरवर कळवा.' },
     { id: 't-sut', title: '🎁 शिक्षकांसाठी खास सूट', text: 'नमस्कार {नाव} 🙏 तुमच्या विद्यार्थ्यांची accounts ▾ → ➕ Students बनवा मधून घ्या — शिक्षकांसाठी *खास सूट*.\nमाहिती आणि मदत: 📞 8390484545' },
     { id: 't-paper', title: '📄 पेपर 1 मिनिटात', text: 'नमस्कार {नाव} 🙏 तुमच्या वर्गाचा पेपर 1 मिनिटात बनवा: Teacher › Paper › विषय आणि धडे निवडा › पेपर + Answer sheet. Print करून विद्यार्थ्यांना द्या.' },
     { id: 't-demo', title: '📝 Demo विद्यार्थ्याचा test', text: 'नमस्कार {नाव} 🙏 School demo विद्यार्थी (Code *{scode}*) ने एका धड्याचा test द्या — त्याचे गुण आणि कमकुवत धडे Teacher › Analytics मध्ये दिसतील. तुमच्या प्रत्येक विद्यार्थ्याचे असेच दिसतील.' },
