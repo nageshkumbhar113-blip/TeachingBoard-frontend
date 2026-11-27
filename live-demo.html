@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="mr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>शिक्षकांसाठी Live Demo · NKs EduOrbit</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" href="icons-student/playstore-icon-512.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@500;700;800&family=Noto+Sans+Devanagari:wght@400;600&display=swap">
+<style>
+  /* 📅 Teachers' Sunday Live Demo booking (owner 2026-11-27). The WhatsApp bot sends each teacher a link with their
+     own token (?g=<lead>&t=<token>); this page fills what is known, books Sunday and the bot sends the accounts +
+     the 🎥 Join button on WhatsApp. Talks only to the bot (Cloudflare worker). Words: no percent, no "free" offer. */
+  :root {
+    --bg: #eef3fb; --card: #ffffff; --ink: #14213d; --muted: #5a6784; --line: #d6deec;
+    --brand: #0b3c8c; --brand-ink: #ffffff; --chip: #e3ecfb; --ok: #157347; --ok-ink: #ffffff; --ok-bg: #e6f4ec; --wa: #1f8f4e; --bad: #b42318;
+    --display: 'Mukta', 'Noto Sans Devanagari', system-ui, sans-serif;
+    --body: 'Noto Sans Devanagari', 'Mukta', system-ui, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg: #0d1424; --card: #151f35; --ink: #e8eefc; --muted: #9aa8c6; --line: #2a3756;
+    --brand: #6ea0ff; --brand-ink: #0d1424; --chip: #1d2b4a; --ok: #3fb27a; --ok-ink: #0d1424; --ok-bg: #13301f; --wa: #4cc983; --bad: #ff8a80; color-scheme: dark } }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* .card sets display: grid — the hidden attribute must still win */
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+  .wrap { max-width: 460px; margin: 0 auto; display: grid; gap: 14px; }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 15px; color: var(--brand); letter-spacing: .02em; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 18px; display: grid; gap: 14px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1.2; margin: 0; text-wrap: balance; }
+  .when { background: var(--brand); color: var(--brand-ink); border-radius: 12px; padding: 12px 14px; display: grid; gap: 2px; }
+  .when b { font-family: var(--display); font-size: 20px; }
+  .when span { font-size: 13px; opacity: .95; }
+  ul.pts { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  ul.pts li::before { content: '✓'; color: var(--ok); font-weight: 700; margin-right: 8px; }
+  .gift { background: var(--chip); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  form { display: grid; gap: 12px; }
+  label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+  input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; min-width: 0; width: 100%; }
+  input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 380px) { .row { grid-template-columns: 1fr; } }
+  .hint { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .btn { font-family: var(--display); font-weight: 700; font-size: 18px; border: 0; border-radius: 12px; padding: 14px; cursor: pointer; text-align: center; text-decoration: none; display: block; width: 100%; }
+  .btn.main { background: var(--brand); color: var(--brand-ink); }
+  .btn.main[disabled] { opacity: .6; cursor: wait; }
+  .btn.join { background: var(--ok); color: var(--ok-ink); }
+  .btn.wa { background: transparent; color: var(--wa); border: 2px solid var(--wa); }
+  .err { color: var(--bad); font-size: 13px; }
+  .done { text-align: center; }
+  .done .tick { font-size: 46px; line-height: 1; }
+  .done h2 { font-family: var(--display); font-size: 24px; margin: 4px 0 0; text-wrap: balance; }
+  .okbox { background: var(--ok-bg); border-radius: 12px; padding: 12px; font-size: 14px; text-align: left; display: grid; gap: 4px; }
+  .foot { font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">NKs EduOrbit</div>
+
+  <section class="card" id="loading"><p class="hint">⏳ उघडत आहे…</p></section>
+
+  <section class="card" id="bad" hidden>
+    <h1>शिक्षकांसाठी Live Demo</h1>
+    <p id="bad-msg">ही link जुनी किंवा चुकीची आहे.</p>
+    <a class="btn wa" href="https://wa.me/919226719313?text=teacher" target="_blank" rel="noopener">💬 WhatsApp वर "teacher" पाठवा</a>
+  </section>
+
+  <section class="card" id="form-card" hidden>
+    <h1>शिक्षकांसाठी Live Demo</h1>
+    <div class="when"><b class="when-text">रविवार · सकाळी 10:00</b><span>Google Meet · 30 मिनिटं</span></div>
+    <ul class="pts">
+      <li>1 मिनिटात पेपर कसा बनवायचा</li>
+      <li>मुलांचे गुण आणि कमकुवत धडे तुमच्या फोनवर</li>
+      <li>तुमच्या प्रश्नांची उत्तरं live</li>
+    </ul>
+    <div class="gift" id="gift">🎁 बुकिंगसोबत तुमचं <b>शिक्षक account</b> लगेच WhatsApp वर मिळेल.</div>
+    <form id="f" novalidate>
+      <label for="name">तुमचं नाव <input id="name" name="name" autocomplete="name" maxlength="60" required></label>
+      <label for="school">शाळा / क्लासचं नाव <input id="school" name="school" maxlength="80" required></label>
+      <div class="row">
+        <label for="village">गाव / तालुका <input id="village" name="village" placeholder="उदा. कागल" maxlength="60" required></label>
+        <label for="district">जिल्हा <input id="district" name="district" placeholder="उदा. कोल्हापूर" maxlength="40" required></label>
+      </div>
+      <label for="cls">कोणत्या वर्गाला शिकवता
+        <select id="cls" name="cls" required>
+          <option value="">निवडा</option><option value="nmms8">8वी NMMS</option><option value="sch4">4थी शिष्यवृत्ती</option>
+          <option value="sch7">7वी शिष्यवृत्ती</option><option value="other">इतर</option>
+        </select></label>
+      <label for="students">साधारण किती विद्यार्थी
+        <select id="students" name="students" required>
+          <option value="">निवडा</option><option value="1-20">1 ते 20</option><option value="21-50">21 ते 50</option><option value="50+">50 पेक्षा जास्त</option>
+        </select></label>
+      <div class="hint">📱 तुमचा mobile WhatsApp वरून आम्हाला माहीत आहे — पुन्हा टाकायची गरज नाही.</div>
+      <div class="err" id="err" hidden></div>
+      <button class="btn main" type="submit" id="go">✅ बुक करा</button>
+    </form>
+  </section>
+
+  <section class="card done" id="done-card" hidden>
+    <div class="tick">✅</div>
+    <h2 id="done-title">बुक झालं!</h2>
+    <div class="when"><b class="when-text">रविवार · सकाळी 10:00</b><span>⚠️ Join बटण रविवारी सकाळी 9:55 ला दाबा — आत्ता नाही</span></div>
+    <a class="btn join" id="join" href="https://meet.google.com/hsz-addq-znj" target="_blank" rel="noopener">🎥 Meet Join करा</a>
+    <div class="hint">हेच बटण WhatsApp वरही पाठवलं आहे. रविवारी 9:45 ला परत आठवण येईल.</div>
+    <div class="okbox">
+      <div id="acct-line">📲 तुमचं <b>शिक्षक account</b> (Code + PIN) WhatsApp वर पाठवत आहोत.</div>
+      <div>⏰ शनिवारी संध्याकाळी आणि रविवारी सकाळी आठवण येईल.</div>
+    </div>
+    <a class="btn wa" href="https://wa.me/919226719313" target="_blank" rel="noopener">💬 WhatsApp वर परत जा</a>
+  </section>
+
+  <div class="foot">मदत: 8390484545 · NKs EduOrbit</div>
+</div>
+
+<script>
+(function () {
+  var API = window.LIVE_DEMO_API || 'https://nks-wa-bot.nageshkumbhar113.workers.dev';
+  var q = new URLSearchParams(location.search), g = q.get('g') || '', t = q.get('t') || '';
+  var $ = function (id) { return document.getElementById(id); };
+  function show(id) { ['loading', 'bad', 'form-card', 'done-card'].forEach(function (x) { $(x).hidden = x !== id; }); window.scrollTo(0, 0); }
+  function setWhen(w) { document.querySelectorAll('.when-text').forEach(function (el) { el.textContent = w; }); }
+  function done(d) {
+    setWhen(d.when);
+    $('done-title').textContent = 'बुक झालं' + (d.name ? ', ' + d.name + ' सर/मॅडम' : '') + '!';
+    if (d.link) $('join').href = d.link;
+    if (d.hasAccount) $('acct-line').innerHTML = '📲 तुमचं <b>शिक्षक account</b> आधीच तयार आहे — Code + PIN WhatsApp वर आहेत.';
+    show('done-card');
+  }
+  function bad(msg) { $('bad-msg').textContent = msg || 'ही link जुनी किंवा चुकीची आहे.'; show('bad'); }
+  if (!g || !t) { bad('ही link अपूर्ण आहे — WhatsApp वर "teacher" पाठवा, तुमची स्वतःची link येईल.'); return; }
+  fetch(API + '/meet/info?g=' + encodeURIComponent(g) + '&t=' + encodeURIComponent(t))
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j || !j.success) return bad(j && j.message);
+      var d = j.data || {};
+      if (d.booked) return done(d);
+      setWhen(d.when);
+      ['name', 'school', 'village', 'district'].forEach(function (k) { if (d[k]) $(k).value = d[k]; });
+      if (d.hasAccount) $('gift').textContent = '👍 तुमचं शिक्षक account आधीच तयार आहे — फक्त रविवारची जागा बुक करा.';
+      show('form-card');
+    })
+    .catch(function () { bad('Internet नीट नाही — थोड्या वेळाने पुन्हा उघडा.'); });
+
+  $('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var form = {}, empty = false;
+    ['name', 'school', 'village', 'district', 'cls', 'students'].forEach(function (k) { form[k] = String($(k).value || '').trim(); if (!form[k]) empty = true; });
+    if (empty) { $('err').textContent = 'सगळ्या जागा भरा.'; $('err').hidden = false; return; }
+    $('err').hidden = true; $('go').disabled = true; $('go').textContent = '⏳ बुक होत आहे…';
+    // text/plain: no CORS pre-check needed
+    fetch(API + '/meet/book', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ g: g, t: t, form: form }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.success) { $('err').textContent = (j && j.message) || 'बुक झालं नाही — पुन्हा प्रयत्न करा.'; $('err').hidden = false; return; }
+        done(j.data || {});
+      })
+      .catch(function () { $('err').textContent = 'Internet नीट नाही — पुन्हा "बुक करा" दाबा.'; $('err').hidden = false; })
+      .finally(function () { $('go').disabled = false; $('go').textContent = '✅ बुक करा'; });
+  });
+})();
+</script>
+</body>
+</html>
