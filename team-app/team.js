@@ -469,6 +469,7 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
   ];
   const TEACHER_TPLS = [
     { id: 't-step', title: '📷 पुढची step — चित्रांसह', text: 'नमस्कार {नाव} 🙏 पुढची step: *{step}* — कसं करायचं ते चित्रांसह 👇\nhttps://nkseduorbit.in/teacher-guide#{stepid}' },
+    { id: 't-noans', title: '📵 Call उचलला नाही — Live Demo', text: 'नमस्कार {नाव} सर/मॅडम 🙏\nNKs EduOrbit मधून आम्ही तुम्हाला call केला होता, पण संपर्क झाला नाही.\n\n📅 *रविवारी सकाळी 10 वाजता शिक्षकांसाठी Live Demo* आहे (Google Meet, 30 मिनिटं). App कसं वापरायचं ते live दाखवतो आणि तुमच्या प्रश्नांची उत्तरं देतो.\nजागा बुक करा 👉 {demo}\n\nकिंवा वेळ असेल तेव्हा 📞 *8390484545* वर call करा.' },
     { id: 't-login', title: '🔑 Login मदत (codes)', text: 'नमस्कार {नाव} 🙏 NKs EduOrbit कडून.\nApp 👇 {app}\nApp उघडा › 👩‍🏫 Teacher › Code *{tcode}*{tpin}\nविद्यार्थी account (रविवारपर्यंत): Code *{scode}*{spin}\nकाही अडचण आली तर याच नंबरवर कळवा.' },
     { id: 't-sut', title: '🎁 शिक्षकांसाठी खास सूट', text: 'नमस्कार {नाव} 🙏 तुमच्या विद्यार्थ्यांची accounts ▾ → ➕ Students बनवा मधून घ्या — शिक्षकांसाठी *खास सूट*.\nमाहिती आणि मदत: 📞 8390484545' },
     { id: 't-paper', title: '📄 पेपर 1 मिनिटात', text: 'नमस्कार {नाव} 🙏 तुमच्या वर्गाचा पेपर 1 मिनिटात बनवा: Teacher › Paper › विषय आणि धडे निवडा › पेपर + Answer sheet. Print करून विद्यार्थ्यांना द्या.' },
@@ -526,7 +527,9 @@ const _ORD = { 1: '1ली', 2: '2री', 3: '3री', 4: '4थी' };
     const sel = $('t-tpl'), ta = $('t-text'), wa = $('t-wa'), sms = $('t-sms');
     const fillT = x => x.replace(/\{step\}/g, TSTEPS[cur] ? `Step ${cur + 1} — ${TSTEPS[cur][1]}` : '').replace(/\{stepid\}/g, TSTEPS[cur] ? TSTEPS[cur][0] : 'login').replace(/\{नाव\}/g, L.name || 'सर / मॅडम').replace(/\{app\}/g, 'https://play.google.com/store/apps/details?id=com.nkseduorbit.student')
       .replace(/\{tcode\}/g, t.tCode || '').replace(/\{scode\}/g, t.sCode || '')
-      .replace(/\{tpin\}/g, t.tPin ? ' · PIN *' + t.tPin + '*' : ' · PIN: तुम्ही ठेवलेला').replace(/\{spin\}/g, t.sPin ? ' · PIN *' + t.sPin + '*' : '');
+      .replace(/\{tpin\}/g, t.tPin ? ' · PIN *' + t.tPin + '*' : ' · PIN: तुम्ही ठेवलेला').replace(/\{spin\}/g, t.sPin ? ' · PIN *' + t.sPin + '*' : '')
+      // 📅 this teacher's own Live Demo booking link (the bot made it); none yet → ask them to write "teacher"
+      .replace(/\{demo\}/g, t.mtok ? `https://nkseduorbit.in/live-demo?g=${gid}&t=${t.mtok}` : 'WhatsApp वर "teacher" लिहा — बुकिंगची link येईल');
     const links = () => { wa.href = `https://wa.me/91${L.mobile}?text=${encodeURIComponent(ta.value)}`; sms.href = `sms:+91${L.mobile}?body=${encodeURIComponent(ta.value)}`; };
     const showT = () => { ta.value = fillT((TEACHER_TPLS.find(x => x.id === sel.value) || TEACHER_TPLS[0]).text); links(); };
     sel.onchange = showT; ta.oninput = links; showT();
